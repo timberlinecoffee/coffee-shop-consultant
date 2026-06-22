@@ -136,8 +136,30 @@ type BenchmarkResult = {
     high_cents: number;
     source_label: string;
     source_note: string;
+    // TIM-2922 review fix: industry dataset is USD; carry the currency so
+    // the UI does not silently relabel as the workspace currency.
+    currency?: string;
   } | null;
 };
+
+// TIM-2922: ISO-2 to display name for header rendering. Mirrors the small
+// table on the server but only the codes we care about for UI labelling.
+const COUNTRY_DISPLAY: Record<string, string> = {
+  US: "United States",
+  CA: "Canada",
+  GB: "United Kingdom",
+  AU: "Australia",
+  NZ: "New Zealand",
+  IE: "Ireland",
+  DE: "Germany",
+  FR: "France",
+  NL: "Netherlands",
+  MX: "Mexico",
+};
+function humaniseCountry(code: string | null | undefined): string {
+  if (!code) return "";
+  return COUNTRY_DISPLAY[code.toUpperCase()] ?? code.toUpperCase();
+}
 
 function makeLocalId() {
   return "local_" + Math.random().toString(36).slice(2, 10);
@@ -191,6 +213,10 @@ type PriceSuggestion = {
     high_cents: number;
     citations: { name: string; url: string; price_cents: number; city?: string | null }[];
   } | null;
+  // TIM-2922 review fix: distinct top-level signal — set when the live local
+  // research call failed. Lets the UI say "couldn't check local market" instead
+  // of "reason for going outside the band" (there's no band to be outside of).
+  local_range_unavailable?: string | null;
   country_used?: string | null;
   city_used?: string | null;
 };
@@ -1529,13 +1555,14 @@ function CostOfGoodsTabContent({
             <div className="mt-3 rounded-lg border border-[var(--teal-bg-750)] bg-[var(--teal-bg-f0f8)] p-4 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-[var(--muted-foreground)]">
-                  {/* TIM-2922: header surfaces the resolved city/country so the geo is auditable at a glance. */}
+                  {/* TIM-2922: header surfaces the resolved city/country so the geo is auditable at a glance.
+                      Country codes are humanised ("Canada" not "CA") so the parenthetical reads naturally. */}
                   Local cafe range for{" "}
                   <span className="font-medium text-[var(--foreground)]">{item.name}</span>
                   {benchmarkResult.city_used
                     ? ` in ${benchmarkResult.city_used}`
                     : benchmarkResult.country_used
-                      ? ` (${benchmarkResult.country_used})`
+                      ? ` (${humaniseCountry(benchmarkResult.country_used)})`
                       : ""}
                   :{" "}
                   <span className="font-semibold text-[var(--foreground)]">
@@ -1619,7 +1646,9 @@ function CostOfGoodsTabContent({
                   </ul>
                 </details>
               )}
-              {/* TIM-2922: industry-body figures (SCA/NCA/Square/BLS) — secondary panel, never the headline. */}
+              {/* TIM-2922: industry-body figures (SCA/NCA/Square/BLS) — secondary panel, never the headline.
+                  Currency is the industry dataset's own (USD), NOT the workspace currency — labelling
+                  with the workspace currency would silently mislabel ($ vs CA$) for non-US shops. */}
               {benchmarkResult.industry_comparison && (
                 <div className="mt-2 pt-2 border-t border-[var(--teal-bg-750)] text-[11px] text-[var(--muted-foreground)]">
                   <span className="font-medium">For reference</span>
@@ -1627,8 +1656,15 @@ function CostOfGoodsTabContent({
                     ({benchmarkResult.industry_comparison.source_label.replace(/_/g, " ")}):{" "}
                   </span>
                   <span className="text-[var(--foreground)]">
-                    {formatMinorExact(benchmarkResult.industry_comparison.low_cents, currencyCode)} to{" "}
-                    {formatMinorExact(benchmarkResult.industry_comparison.high_cents, currencyCode)}
+                    {formatMinorExact(
+                      benchmarkResult.industry_comparison.low_cents,
+                      benchmarkResult.industry_comparison.currency ?? "USD",
+                    )}{" "}
+                    to{" "}
+                    {formatMinorExact(
+                      benchmarkResult.industry_comparison.high_cents,
+                      benchmarkResult.industry_comparison.currency ?? "USD",
+                    )}
                   </span>
                 </div>
               )}
@@ -3681,11 +3717,14 @@ export function MenuWorkspace({
           : "Not set";
         // TIM-2922: surface the live local cafe band + any disagreement_reason
         // so the owner sees both the suggestion AND its reconciliation with the
-        // benchmark engine in the same modal.
+        // benchmark engine in the same modal. When the local range couldn't be
+        // fetched at all, label it as such — never as "outside the band".
         const localRangeLine = data.local_range
-          ? `\nLive local cafe band${data.city_used ? ` (${data.city_used})` : data.country_used ? ` (${data.country_used})` : ""}: ${symbol}${(data.local_range.low_cents / 100).toFixed(2)} – ${symbol}${(data.local_range.high_cents / 100).toFixed(2)} from ${data.local_range.citations.length} cited cafes.`
-          : "";
-        const disagreementLine = data.disagreement_reason
+          ? `\nLive local cafe band${data.city_used ? ` (${data.city_used})` : data.country_used ? ` (${humaniseCountry(data.country_used)})` : ""}: ${symbol}${(data.local_range.low_cents / 100).toFixed(2)} – ${symbol}${(data.local_range.high_cents / 100).toFixed(2)} from ${data.local_range.citations.length} cited cafes.`
+          : data.local_range_unavailable
+            ? `\nLocal cafe band: could not check (${data.local_range_unavailable}).`
+            : "";
+        const disagreementLine = data.local_range && data.disagreement_reason
           ? `\n\nReason for going outside the local band: ${data.disagreement_reason}`
           : "";
         openAIReviewModal({

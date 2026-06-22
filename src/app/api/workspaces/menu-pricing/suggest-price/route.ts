@@ -1,25 +1,24 @@
 // TIM-967: AI suggested retail price for menu items.
 // TIM-1020: Concept-aware pricing — location, positioning, regional benchmarks, margin floor, range output.
-// TIM-2922: Consult the live local-cafe benchmark engine before recommending.
-//   The previous version maintained its own hardcoded REGIONAL_BENCHMARKS table
-//   and a `detectRegion()` that defaulted to `us-other` for any unrecognised
-//   string — so a Calgary cafe got US prices and a $5 espresso suggestion
-//   while the local CAD range was $3–$4. Now: resolve structured country/city
-//   via resolvePlanGeo, call computeLocalCafeRange (web-search backed) to get
-//   real cited cafe prices in the same country, then anchor the suggestion
-//   inside that range (or surface `disagreement_reason` if the model insists).
+// TIM-2922: Consults the live local-cafe benchmark engine (computeLocalCafeRange)
+// before recommending; anchors the suggestion inside the local cafe band or
+// surfaces disagreement_reason. Same Pro gating + ownership check + rate
+// limit as /benchmark-price — both routes trigger the same paid Sonnet +
+// web_search round-trip and must be guarded identically.
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { normalizeAIOutput } from "@/lib/normalize"
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/lib/access"
 import { resolvePlanGeo } from "@/lib/wages/resolve-plan-geo"
 import { enforceRateLimit } from "@/lib/rate-limit"
-import { computeLocalCafeRange, type BenchmarkCitation } from "../benchmark-price/route"
+import { computeLocalCafeRange, type BenchmarkCitation } from "@/lib/menu-pricing/local-cafe-range"
 
 export const runtime = "nodejs"
-export const maxDuration = 60
+// TIM-2922: bumped from 30s. We now run web_search Sonnet + a Haiku
+// suggestion call sequentially. 120s leaves margin (Vercel Pro allows 300s).
+export const maxDuration = 120
 
 const anthropic = new Anthropic()
 
@@ -46,7 +45,9 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select(
+      "subscription_status, subscription_tier, trial_ends_at, beta_waiver_until",
+    )
     .eq("id", user.id)
     .single()
 
@@ -56,6 +57,19 @@ export async function POST(request: Request) {
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json({ error: "Subscription required" }, { status: 402 })
+  }
+
+  // TIM-2922: match /benchmark-price — both routes call the same paid
+  // web_search engine, so both must be Pro-gated. Without this, Starter
+  // subscribers can drive web_search billing through suggest-price.
+  if (
+    !isBetaWaived(profile.beta_waiver_until) &&
+    effectivePlanForGating(profile) !== "pro"
+  ) {
+    return Response.json(
+      { error: "Pro plan required", code: "pro_required" },
+      { status: 402 },
+    )
   }
 
   let body: {
@@ -70,19 +84,40 @@ export async function POST(request: Request) {
   }
 
   const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
+
+  const itemName = body.item_name?.trim()
+  if (!itemName) {
+    return Response.json({ error: "Missing required field: item_name" }, { status: 400 })
+  }
+
+  // TIM-2922: ownership check — confirm the named item exists on this plan
+  // before doing any paid AI work. Mirror /benchmark-price (which uses item_id).
+  // suggest-price's contract pre-dated item_id, so we look up by name; for
+  // accounts with two items of the same name we accept the first since the
+  // suggestion is shape-agnostic to which row served it.
+  const { data: ownedItem } = await supabase
+    .from("menu_items")
+    .select("id")
+    .eq("plan_id", planId)
+    .ilike("name", itemName)
+    .limit(1)
+    .maybeSingle()
+  if (!ownedItem) {
+    return Response.json({ error: "Menu item not found in active plan" }, { status: 404 })
+  }
+
   // TIM-2922: structured country/city for the local range.
-  const geo = planId ? await resolvePlanGeo(supabase, planId) : { city: null, countryCode: null }
+  const geo = await resolvePlanGeo(supabase, planId)
 
   const cogsDollars = (body.cogs_cents / 100).toFixed(2)
   const ctx = body.concept_context ?? {}
-  const itemName = body.item_name?.trim() || "this item"
 
   // Margin floor: coffee shops target 75–85% gross margin.
   const marginFloorCents = Math.ceil(body.cogs_cents / 0.25)
   const marginFloorDollars = (marginFloorCents / 100).toFixed(2)
 
-  // TIM-2922: Pull the live local cafe range. This is the same engine
-  // /benchmark-price uses, so suggestion ↔ benchmark will agree.
+  // TIM-2922: Pull the live local cafe range. Same engine as /benchmark-price.
   let localLow = 0
   let localHigh = 0
   let localCitations: BenchmarkCitation[] = []
@@ -100,9 +135,10 @@ export async function POST(request: Request) {
     localCitations = local.citations
   } catch (err) {
     // If the local research fails (web_search unavailable, model refused, etc.)
-    // we still want to suggest a price — just flag in the response so the UI
-    // can surface that the band wasn't checked.
+    // still emit a suggestion — but flag in the response so the UI surfaces
+    // the unchecked state rather than claiming reconciliation.
     localUnavailable = err instanceof Error ? err.message : "Local research unavailable"
+    console.warn("suggest-price: local range fetch failed:", localUnavailable)
   }
 
   const conceptLines: string[] = []
@@ -177,40 +213,50 @@ Return ONLY the JSON object, no other text.`
       disagreement_reason?: string | null
     }
 
-    // Enforce margin floor — never return below it
+    // Enforce margin floor — never return below it.
     let suggestedCents = Math.max(Number(parsed.suggested_price_cents), marginFloorCents)
-    let lowCents = Math.max(Number(parsed.low_cents), marginFloorCents)
-    let highCents = Math.max(Number(parsed.high_cents), lowCents)
+    // TIM-2922 (review fix): normalise an inverted (low > high) range from the
+    // model BEFORE clamping. Previously the floor-then-max chain turned a
+    // {low:600,high:300} response into {600,600} (zero-width at the low end);
+    // now we sort the pair first so the displayed range is always coherent.
+    let parsedLow = Number(parsed.low_cents)
+    let parsedHigh = Number(parsed.high_cents)
+    if (Number.isFinite(parsedLow) && Number.isFinite(parsedHigh) && parsedLow > parsedHigh) {
+      const swap = parsedLow
+      parsedLow = parsedHigh
+      parsedHigh = swap
+    }
+    let lowCents = Math.max(parsedLow, marginFloorCents)
+    let highCents = Math.max(parsedHigh, lowCents)
     let disagreementReason: string | null =
       typeof parsed.disagreement_reason === "string" && parsed.disagreement_reason.trim().length > 0
         ? normalizeAIOutput(parsed.disagreement_reason.trim())
         : null
 
-    // TIM-2922: Hard-enforce reconciliation with the local cafe band.
+    // TIM-2922: hard-enforce reconciliation with the local cafe band.
     // If the model recommended outside [localLow, localHigh] without setting
     // a disagreement_reason, clamp into the band. If margin floor is above
-    // the local high, that itself is a defensible disagreement_reason.
+    // the local high, surface that as a defensible disagreement_reason.
     if (localLow > 0 && localHigh > 0) {
       const insideBand = suggestedCents >= localLow && suggestedCents <= localHigh
       if (!insideBand) {
         if (marginFloorCents > localHigh) {
-          // COGS forces above the local band — surface as a disagreement.
           if (!disagreementReason) {
             disagreementReason = `Margin floor ($${marginFloorDollars}) exceeds the local cafe high of $${(localHigh / 100).toFixed(2)}. Suggestion sits at the floor.`
           }
         } else if (!disagreementReason) {
-          // No defensible reason — clamp to the band so suggestion + benchmark agree.
           suggestedCents = Math.max(localLow, Math.min(localHigh, suggestedCents))
-          // Re-derive low/high around the local band so the displayed range
-          // reflects reality, not the model's free-text guess.
           lowCents = Math.max(marginFloorCents, localLow)
           highCents = Math.max(lowCents, localHigh)
         }
-        // If the model DID set a disagreement reason, trust it and leave the price.
       }
-    } else if (!disagreementReason) {
-      disagreementReason = "Local cafe band unavailable; suggestion based on margin and concept only."
     }
+    // TIM-2922 (review fix): when the local band IS unavailable, leave
+    // disagreement_reason alone unless the model itself didn't supply one.
+    // The previous always-overwrite behaviour collided with the UI label
+    // "Reason for going outside the local band" (there's no band to be
+    // outside of). Surface this as a distinct top-level flag instead.
+    const localRangeChecked = localLow > 0 && localHigh > 0
 
     const marginAtSuggested = body.cogs_cents > 0
       ? (suggestedCents - body.cogs_cents) / suggestedCents
@@ -224,9 +270,10 @@ Return ONLY the JSON object, no other text.`
       commentary: normalizeAIOutput(String(parsed.commentary ?? "")),
       // TIM-2922 new fields
       disagreement_reason: disagreementReason,
-      local_range: localLow > 0 && localHigh > 0
+      local_range: localRangeChecked
         ? { low_cents: localLow, high_cents: localHigh, citations: localCitations }
         : null,
+      local_range_unavailable: localRangeChecked ? null : (localUnavailable ?? "no signal"),
       country_used: geo.countryCode,
       city_used: geo.city,
     })

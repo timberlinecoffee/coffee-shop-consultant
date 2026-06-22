@@ -215,58 +215,79 @@ const suggestCheck = {
 console.log("  Suggest assertions:", JSON.stringify(suggestCheck, null, 2));
 
 // ── 4. US scenario — temporarily flip hiring country override ────────────────
+// TIM-2922 (review fix): the flip MUST be inside a try/finally. trent is the
+// founder fixture; if anything between the flip and the restore throws, his
+// plan is left in US mode and every downstream feature (wages, financials,
+// benchmark, hiring docs) silently uses US data. The finally ALWAYS restores.
+let usCheck = {
+  http200: false,
+  countryUsed: null,
+  countryIsUS: false,
+  citationCount: 0,
+  hasAtLeastOneCitation: false,
+};
 console.log("\n=== SCENARIO 2: US (flip hiring_country override to US) ===");
 console.log("[6] flipping hiring_country to US...");
-if (initialHiringCountry !== null) {
-  await admin
-    .from("plan_hiring_settings")
-    .update({ hiring_country: "US" })
-    .eq("plan_id", planId);
-} else {
-  await admin
-    .from("plan_hiring_settings")
-    .insert({ plan_id: planId, hiring_country: "US" });
-}
+try {
+  if (initialHiringCountry !== null) {
+    await admin
+      .from("plan_hiring_settings")
+      .update({ hiring_country: "US" })
+      .eq("plan_id", planId);
+  } else {
+    await admin
+      .from("plan_hiring_settings")
+      .insert({ plan_id: planId, hiring_country: "US" });
+  }
 
-console.log("[7] POST /api/workspaces/menu-pricing/benchmark-price (US override) ...");
-const us = await apiPost(session, "/api/workspaces/menu-pricing/benchmark-price", {
-  item_id: target.id,
-  item_name: target.name,
-  current_price_cents: target.price_cents,
-  concept_context: {},
-});
-console.log(`  HTTP ${us.status}`);
-if (us.status !== 200) {
-  console.log("  body:", us.rawText.slice(0, 600));
-}
-const usBody = us.json ?? {};
-console.log(`  source: ${usBody.source}`);
-console.log(`  country_used: ${usBody.country_used}`);
-console.log(`  citation cities:`, (usBody.citations ?? []).map((c) => c.city).filter(Boolean));
+  console.log("[7] POST /api/workspaces/menu-pricing/benchmark-price (US override) ...");
+  const us = await apiPost(session, "/api/workspaces/menu-pricing/benchmark-price", {
+    item_id: target.id,
+    item_name: target.name,
+    current_price_cents: target.price_cents,
+    concept_context: {},
+  });
+  console.log(`  HTTP ${us.status}`);
+  if (us.status !== 200) {
+    console.log("  body:", us.rawText.slice(0, 600));
+  }
+  const usBody = us.json ?? {};
+  console.log(`  source: ${usBody.source}`);
+  console.log(`  country_used: ${usBody.country_used}`);
+  console.log(`  citation cities:`, (usBody.citations ?? []).map((c) => c.city).filter(Boolean));
 
-const usCheck = {
-  http200: us.status === 200,
-  countryUsed: usBody.country_used,
-  countryIsUS: usBody.country_used === "US",
-  citationCount: (usBody.citations ?? []).length,
-  hasAtLeastOneCitation: (usBody.citations ?? []).length >= 1,
-};
-console.log("  US assertions:", JSON.stringify(usCheck, null, 2));
-
-// ── 5. Restore initial hiring country ───────────────────────────────────────
-console.log("\n[8] restoring initial hiring_country...");
-if (initialHiringCountry !== null) {
-  await admin
-    .from("plan_hiring_settings")
-    .update({ hiring_country: initialHiringCountry })
-    .eq("plan_id", planId);
-} else {
-  await admin
-    .from("plan_hiring_settings")
-    .delete()
-    .eq("plan_id", planId);
+  usCheck = {
+    http200: us.status === 200,
+    countryUsed: usBody.country_used,
+    countryIsUS: usBody.country_used === "US",
+    citationCount: (usBody.citations ?? []).length,
+    hasAtLeastOneCitation: (usBody.citations ?? []).length >= 1,
+  };
+  console.log("  US assertions:", JSON.stringify(usCheck, null, 2));
+} finally {
+  console.log("\n[8] restoring initial hiring_country (finally — runs on success OR throw)...");
+  try {
+    if (initialHiringCountry !== null) {
+      await admin
+        .from("plan_hiring_settings")
+        .update({ hiring_country: initialHiringCountry })
+        .eq("plan_id", planId);
+    } else {
+      await admin
+        .from("plan_hiring_settings")
+        .delete()
+        .eq("plan_id", planId);
+    }
+    console.log(`  restored to ${initialHiringCountry ?? "(none)"}`);
+  } catch (restoreErr) {
+    // Don't swallow — print loudly so a heartbeat operator sees that
+    // restoration itself failed and trent's plan is in an inconsistent state.
+    console.error(`  !!! RESTORE FAILED — trent's plan still has hiring_country=US.
+  Manual fix: UPDATE plan_hiring_settings SET hiring_country=${JSON.stringify(initialHiringCountry)} WHERE plan_id='${planId}';
+  Error: ${restoreErr instanceof Error ? restoreErr.message : restoreErr}`);
+    throw restoreErr;
+  }
 }
-console.log(`  restored to ${initialHiringCountry ?? "(none)"}`);
 
 // ── 6. Verdict ──────────────────────────────────────────────────────────────
 const verdict = {
