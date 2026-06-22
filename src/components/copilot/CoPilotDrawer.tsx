@@ -169,6 +169,135 @@ async function applyMenuPricingProposal(accepted: ApprovedChange[]): Promise<voi
   }
 }
 
+// TIM-2901: write an accepted add_persona proposal to the Concept workspace.
+// Fetches the current concept document, merges the new persona into
+// doc.personas (capped at MAX_PERSONAS=5), and PATCHes the workspace document.
+// Each accepted change carries a JSON-serialized persona in finalValue;
+// per-change parse errors are silent. Throws on a non-OK API response so the
+// modal stays open for retry (TIM-1653 pattern).
+async function applyConceptPersonaProposal(accepted: ApprovedChange[]): Promise<void> {
+  if (accepted.length === 0) return;
+
+  const MAX_PERSONAS = 5;
+  const VALID_AGE = new Set(["18-25", "25-35", "35-50", "50+"]);
+  const VALID_INCOME = new Set(["under-40k", "40k-80k", "80k-120k", "over-120k"]);
+  const VALID_FREQ = new Set(["daily", "several-per-week", "weekly", "occasional"]);
+  const VALID_SPEND = new Set(["under-6", "6-10", "10-15", "over-15"]);
+  const VALID_VALUES = new Set([
+    "price", "speed", "atmosphere", "craft", "community", "convenience", "consistency",
+  ]);
+
+  function newPersonaId(): string {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    return `persona-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  // 1. Fetch current concept doc.
+  const getRes = await fetch("/api/workspaces/concept", { credentials: "same-origin" });
+  if (!getRes.ok) throw new Error("Couldn't load your Concept workspace. Please try again.");
+  const { content } = (await getRes.json()) as { content: unknown };
+
+  // Start from the existing doc, or an empty v2 shell so we don't clobber other
+  // workspaces -- defaults match EMPTY_CONCEPT_V2 in src/lib/concept.ts.
+  type ConceptShape = {
+    version?: number;
+    components?: Record<string, { content: string; included: boolean }>;
+    personas?: Array<{ id: string; name: string; isPrimary: boolean; [k: string]: unknown }>;
+    [k: string]: unknown;
+  };
+  const baseDoc: ConceptShape =
+    content && typeof content === "object"
+      ? (content as ConceptShape)
+      : {
+          version: 2,
+          components: {
+            shop_identity:   { content: "", included: true },
+            vision:          { content: "", included: true },
+            target_customer: { content: "", included: true },
+            differentiation: { content: "", included: true },
+            brand_voice:     { content: "", included: true },
+            location:        { content: "", included: false },
+            offering:        { content: "", included: false },
+          },
+          personas: [],
+        };
+
+  const personas = Array.isArray(baseDoc.personas) ? [...baseDoc.personas] : [];
+  if (personas.length >= MAX_PERSONAS) {
+    throw new Error(
+      `You already have ${MAX_PERSONAS} personas. Remove one in Concept before adding a new one.`,
+    );
+  }
+
+  // 2. Build merged persona list from accepted changes.
+  for (const change of accepted) {
+    let payload: {
+      name?: string;
+      ageRange?: string | null;
+      occupation?: string | null;
+      incomeRange?: string | null;
+      dailyContext?: string | null;
+      whyTheyVisit?: string;
+      painPoints?: string | null;
+      typicalOrder?: string | null;
+      values?: string[];
+      visitFrequency?: string | null;
+      spendPerVisit?: string | null;
+      isPrimary?: boolean | null;
+    };
+    try {
+      payload = JSON.parse(change.finalValue) as typeof payload;
+    } catch {
+      continue;
+    }
+    const name = (payload.name ?? "").trim();
+    const whyTheyVisit = (payload.whyTheyVisit ?? "").trim();
+    if (!name || !whyTheyVisit) continue;
+    if (personas.length >= MAX_PERSONAS) break;
+
+    const now = new Date().toISOString();
+    const isFirst = personas.length === 0;
+    const persona: Record<string, unknown> = {
+      id: newPersonaId(),
+      name,
+      isPrimary: isFirst ? true : Boolean(payload.isPrimary),
+      createdAt: now,
+      updatedAt: now,
+      whyTheyVisit,
+    };
+    if (payload.ageRange && VALID_AGE.has(payload.ageRange)) persona.ageRange = payload.ageRange;
+    if (payload.occupation && payload.occupation.trim()) persona.occupation = payload.occupation.trim();
+    if (payload.incomeRange && VALID_INCOME.has(payload.incomeRange)) persona.incomeRange = payload.incomeRange;
+    if (payload.dailyContext && payload.dailyContext.trim()) persona.dailyContext = payload.dailyContext.trim();
+    if (payload.painPoints && payload.painPoints.trim()) persona.painPoints = payload.painPoints.trim();
+    if (payload.typicalOrder && payload.typicalOrder.trim()) persona.typicalOrder = payload.typicalOrder.trim();
+    if (Array.isArray(payload.values)) {
+      const valid = payload.values.filter((v) => typeof v === "string" && VALID_VALUES.has(v));
+      if (valid.length > 0) persona.values = valid;
+    }
+    if (payload.visitFrequency && VALID_FREQ.has(payload.visitFrequency)) persona.visitFrequency = payload.visitFrequency;
+    if (payload.spendPerVisit && VALID_SPEND.has(payload.spendPerVisit)) persona.spendPerVisit = payload.spendPerVisit;
+    personas.push(persona as ConceptShape["personas"] extends Array<infer T> ? T : never);
+  }
+
+  // If nothing parseable came through, no-op (don't blow away the user's doc).
+  if (personas.length === (Array.isArray(baseDoc.personas) ? baseDoc.personas.length : 0)) {
+    return;
+  }
+
+  // 3. PATCH back. Preserve all other fields on the concept doc.
+  const merged: ConceptShape = { ...baseDoc, personas };
+  const patchRes = await fetch("/api/workspaces/concept", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ content: merged }),
+  });
+  if (!patchRes.ok) throw new Error("Couldn't add the persona to your Concept workspace. Please try again.");
+}
+
 // TIM-1798: write accepted cross-workspace equipment-cost changes. The equipment
 // item's unit cost is the single source of truth — writing it makes the Financials
 // equipment line + startup-cost total recompute on next load (TIM-1253 auto-sync),
@@ -1503,13 +1632,23 @@ export function CoPilotDrawer({
                             if (equipmentCost.length > 0) {
                               await applyEquipmentCostChanges(equipmentCost);
                             }
+                            // TIM-2901: add_persona proposals always target the
+                            // Concept workspace (the proposal carries fieldId
+                            // "new_persona" regardless of which workspace
+                            // Scout was invoked from). Split them out before
+                            // dispatching the remaining changes by workspace.
+                            const personaProposals = rest.filter((c) => c.fieldId === "new_persona");
+                            const nonPersona = rest.filter((c) => c.fieldId !== "new_persona");
+                            if (personaProposals.length > 0) {
+                              await applyConceptPersonaProposal(personaProposals);
+                            }
                             // TIM-2381: business_plan proposals write to sections API.
                             if (context.workspace === "business_plan") {
-                              await applyBusinessPlanChanges(rest);
+                              await applyBusinessPlanChanges(nonPersona);
                             } else if (context.workspace === "menu_pricing") {
-                              await applyMenuPricingProposal(rest);
-                            } else if (onApplySuggestions && rest.length > 0) {
-                              await onApplySuggestions(rest);
+                              await applyMenuPricingProposal(nonPersona);
+                            } else if (onApplySuggestions && nonPersona.length > 0) {
+                              await onApplySuggestions(nonPersona);
                             }
                             clearSuggestions();
                           },
