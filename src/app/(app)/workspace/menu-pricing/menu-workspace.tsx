@@ -3888,7 +3888,7 @@ export function MenuWorkspace({
     <>
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-4xl mx-auto px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1894: canonical WorkspaceHeader (title-only — no page-level actions). */}
         <WorkspaceHeader
           Icon={Utensils}

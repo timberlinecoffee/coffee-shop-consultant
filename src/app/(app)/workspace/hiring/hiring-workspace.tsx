@@ -2738,7 +2738,7 @@ export function HiringWorkspace({
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-4xl mx-auto px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         <WorkspaceHeader
           Icon={Users}
           title="Hiring & Onboarding"

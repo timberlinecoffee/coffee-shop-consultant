@@ -266,7 +266,7 @@ export function HomeV2({ firstName, overview, snapshot }: HomeV2Props) {
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      <div className="max-w-5xl mx-auto px-6 pt-8 pb-16 space-y-6">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16 space-y-6">
         {/* Header */}
         <header>
           <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">

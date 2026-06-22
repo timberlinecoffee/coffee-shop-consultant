@@ -710,7 +710,7 @@ export function BusinessPlanWorkspace({
       />
     )}
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-3xl mx-auto px-6 pt-8 pb-20">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-20">
         {/* TIM-1894: canonical WorkspaceHeader — actions live top-right on the
             title band (was a separate toolbar stacked below the header, the
             board-flagged Item-3 offender). Export PDF is the filled-primary to

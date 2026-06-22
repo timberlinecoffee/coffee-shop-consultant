@@ -1177,7 +1177,7 @@ export function OpeningMonthPlanWorkspace({
     <>
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
 
         {/* TIM-1894: canonical WorkspaceHeader (title-only; icon/title/subtitle
             are page-state-driven for the two Launch Plan sub-pages). */}

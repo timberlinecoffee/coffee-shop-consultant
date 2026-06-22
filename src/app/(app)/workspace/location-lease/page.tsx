@@ -60,7 +60,7 @@ export default async function LocationLeaseWorkspacePage() {
 
   return (
     <div className="bg-[var(--background)]">
-      <div className="max-w-4xl mx-auto px-6 pt-8 pb-12">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-12">
         {/* TIM-1894 / TIM-1937: matches the canonical WorkspaceHeader chrome
             (icon+title+description, mb-6, ≥1200px nowrap). Kept hand-rolled
             because this is a server component and the shared client
