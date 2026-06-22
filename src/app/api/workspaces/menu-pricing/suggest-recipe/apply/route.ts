@@ -125,18 +125,7 @@ export async function POST(request: Request) {
     )
   }
 
-  // Delete all existing recipe lines for this item so the AI suggestion fully
-  // replaces them — including amount updates for ingredients already present.
-  // (Skipping existing ingredient_ids caused silent no-ops on amount refinements.)
-  const { error: clearErr } = await supabase
-    .from("menu_item_ingredients")
-    .delete()
-    .eq("menu_item_id", body.item_id)
-  if (clearErr) {
-    console.error("suggest-recipe/apply clear error:", clearErr)
-    return Response.json({ error: "Failed to clear existing recipe lines" }, { status: 500 })
-  }
-
+  // Build the new line rows, deduplicating by ingredient_id.
   const seen = new Set<string>()
   const lineRows: {
     menu_item_id: string
@@ -156,13 +145,32 @@ export async function POST(request: Request) {
     })
   }
 
+  // UPSERT first (handles both new additions and amount updates for existing
+  // ingredients). If this fails, old lines are untouched — no data loss.
   if (lineRows.length > 0) {
-    const { error: lineErr } = await supabase
+    const { error: upsertErr } = await supabase
       .from("menu_item_ingredients")
-      .insert(lineRows)
-    if (lineErr) {
-      console.error("suggest-recipe/apply item-ingredient insert error:", lineErr)
+      .upsert(lineRows, { onConflict: "menu_item_id,ingredient_id" })
+    if (upsertErr) {
+      console.error("suggest-recipe/apply upsert error:", upsertErr)
       return Response.json({ error: "Failed to attach recipe lines" }, { status: 500 })
+    }
+  }
+
+  // DELETE rows for ingredients no longer in the AI suggestion (removes
+  // ingredients the user dropped from the recipe in the review modal).
+  // Runs after UPSERT so a delete failure never leaves recipe lines missing —
+  // worst case is a stale extra row which the user can remove manually.
+  const keepIds = lineRows.map((r) => r.ingredient_id)
+  if (keepIds.length > 0) {
+    const { error: deleteErr } = await supabase
+      .from("menu_item_ingredients")
+      .delete()
+      .eq("menu_item_id", body.item_id)
+      .not("ingredient_id", "in", `(${keepIds.join(",")})`)
+    if (deleteErr) {
+      console.error("suggest-recipe/apply stale-line delete error (upsert succeeded):", deleteErr)
+      // Non-fatal: user sees extra old lines; upsert already captured the new amounts.
     }
   }
 
