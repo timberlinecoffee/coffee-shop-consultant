@@ -5,6 +5,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
+import { getActivePlanId } from "@/lib/plan-context";
 import { MenuWorkspace } from "./menu-workspace";
 import { normalizeConceptV2 } from "@/lib/concept";
 import type {
@@ -52,13 +53,20 @@ export default async function MenuPricingWorkspacePage() {
 
   if (!user) redirect("/login");
 
+  // TIM-2917: resolve active plan via users.current_plan_id (same source the
+  // API routes use) — not latest-by-created_at — so multi-plan accounts see
+  // the categories/items the POST routes will accept. Without this, an
+  // account with 2+ plans would render categories from the latest-created
+  // plan but the Add Item POST (which uses getActivePlanId) would 404 on the
+  // category guard. Same bomb class as TIM-2860 / TIM-2868.
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
+
   const [{ data: plan }, { data: userProfile }] = await Promise.all([
     supabase
       .from("coffee_shop_plans")
-      .select("id, target_gross_margin")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
+      .select("target_gross_margin")
+      .eq("id", planId)
       .maybeSingle(),
     supabase
       .from("users")
@@ -68,8 +76,6 @@ export default async function MenuPricingWorkspacePage() {
   ]);
 
   if (!plan) redirect("/onboarding");
-
-  const planId = plan.id;
   // TIM-1471: workspace-level target gross margin drives MSRP in the Cost of
   // Goods tab. Column is non-null default 0.75 in the DB, but a numeric column
   // can come back as a string from PostgREST, so normalize.
