@@ -23,6 +23,7 @@ import { calibrateFundingSources } from "@/lib/financials/funding-source-calibra
 import { resolvePlanGeo, resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 import { FinancialsWorkspace } from "./financials-workspace";
 import type { EquipmentItem } from "./financials-workspace";
+import { getActivePlanId } from "@/lib/plan-context";
 
 export const dynamic = "force-dynamic";
 
@@ -34,21 +35,14 @@ export default async function FinancialsWorkspacePage() {
 
   if (!user) redirect("/login");
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!plan) redirect("/onboarding");
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
 
   const [modelResult, profileResult, menuItemsResult, equipmentResult, coverResult] = await Promise.all([
     supabase
       .from("financial_models")
       .select("*")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .maybeSingle(),
     supabase
       .from("users")
@@ -63,21 +57,21 @@ export default async function FinancialsWorkspacePage() {
     supabase
       .from("menu_items_with_cogs")
       .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_popularity, archived")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .eq("archived", false),
     // TIM-1253: fetch equipment items for shared-read capex sync — each item
     // becomes a synthetic capex ForecastLine in the financial projections.
     supabase
       .from("buildout_equipment_items")
       .select("*")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .eq("archived", false)
       .order("position"),
     // TIM-2755: load BP accent color so financial charts render in brand palette.
     supabase
       .from("business_plan_cover")
       .select("accent_color")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .maybeSingle(),
   ]);
 
@@ -90,7 +84,7 @@ export default async function FinancialsWorkspacePage() {
   // instead of always defaulting to USD.
   // TIM-2518: also resolved upfront so the personnel editor can warn on
   // sub-minimum entries the user types after the row exists.
-  const planMinimumWage = await resolvePlanMinimumWage(supabase, plan.id);
+  const planMinimumWage = await resolvePlanMinimumWage(supabase, planId);
 
   if (!modelRow) {
     const profileData = profileResult.data;
@@ -108,7 +102,7 @@ export default async function FinancialsWorkspacePage() {
     // TIM-2519 (CQ-03): swap the legacy $244k template for shop-type ×
     // city-tier calibration. Falls back to onboarding_data.location when no
     // signed location_candidate exists yet.
-    const planGeo = await resolvePlanGeo(supabase, plan.id);
+    const planGeo = await resolvePlanGeo(supabase, planId);
     const onboardingLocation = (profileData?.onboarding_data?.location ?? null) as
       | { city?: string | null; countryCode?: string | null }
       | null;
@@ -149,7 +143,7 @@ export default async function FinancialsWorkspacePage() {
     const { data: created } = await supabase
       .from("financial_models")
       .insert({
-        plan_id: plan.id,
+        plan_id: planId,
         forecast_inputs: forecastInputs,
         startup_costs: seededStartupCosts(shopTypes),
       })
@@ -185,7 +179,7 @@ export default async function FinancialsWorkspacePage() {
 
   return (
     <FinancialsWorkspace
-      planId={plan.id}
+      planId={planId}
       initialProjections={initialProjections}
       initialModelUpdatedAt={initialModelUpdatedAt}
       initialCritique={initialCritique}

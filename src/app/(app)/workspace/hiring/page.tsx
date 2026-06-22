@@ -18,6 +18,7 @@ import type {
   HiringRequirementSet,
   HiringCountry,
 } from "@/lib/hiring";
+import { getActivePlanId } from "@/lib/plan-context";
 
 export const dynamic = "force-dynamic";
 
@@ -29,17 +30,8 @@ export default async function HiringWorkspacePage() {
 
   if (!user) redirect("/login");
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!plan) redirect("/onboarding");
-
-  const planId = plan.id;
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
 
   const [
     { data: rolesData },
