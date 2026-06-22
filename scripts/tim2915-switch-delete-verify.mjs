@@ -194,15 +194,17 @@ if (!/Beaver & Beef/i.test(beforeSwitcherLabel)) {
 }
 
 // ============================================================
-// SWITCH TEST 1: Beaver & Beef → Sole Sisters duplicate A
+// SWITCH TEST 1: Beaver & Beef → first Sole Sisters in list (newest-first)
 // ============================================================
-console.log("[6/12] SWITCH: Beaver & Beef → Sole Sisters (b1197dc2)");
+// API returns plans newest-first, so the FIRST Sole Sisters row in the
+// listbox is SOLE_B (64302c3d). That is fine — both duplicates are
+// equally valid targets to prove switching works.
+const TARGET_SWITCH = SOLE_B;
+console.log(`[6/12] SWITCH: Beaver & Beef → Sole Sisters (${shortId(TARGET_SWITCH)})`);
 await switcherBtn.click();
 await page.waitForTimeout(300);
 await page.screenshot({ path: "scripts/shots/tim2915-02-menu-open.png" });
 
-// In the listbox, find the Sole Sisters row that is NOT active and click its main button.
-// The first "Sole Sisters" listbox option matches b1197dc2 (created earlier).
 const listbox = page.getByRole("listbox", { name: /projects/i });
 const soleAOption = listbox.locator('[role="option"]').filter({ hasText: "Sole Sisters" }).first();
 await soleAOption.locator("button").first().click();
@@ -215,12 +217,12 @@ await page.screenshot({ path: "scripts/shots/tim2915-03-switched-to-sole-a.png" 
 
 const afterSwitch1Active = await activePlanId();
 console.log(`       active after switch: ${shortId(afterSwitch1Active)}`);
-if (afterSwitch1Active !== SOLE_A) {
+if (afterSwitch1Active !== TARGET_SWITCH) {
   fail(
-    `Switch did not update users.current_plan_id. expected=${shortId(SOLE_A)} got=${shortId(afterSwitch1Active)}`,
+    `Switch did not update users.current_plan_id. expected=${shortId(TARGET_SWITCH)} got=${shortId(afterSwitch1Active)}`,
   );
 } else {
-  pass(`users.current_plan_id flipped to ${shortId(SOLE_A)}`);
+  pass(`users.current_plan_id flipped to ${shortId(TARGET_SWITCH)}`);
 }
 
 const afterSwitch1Label = (await switcherBtn.innerText()).trim();

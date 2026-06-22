@@ -90,17 +90,28 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
         setSwitching(null);
         return;
       }
-      // TIM-2915: hard-navigate to /dashboard so any workspace page that
-      // hydrated client state from the previous active plan unmounts.
-      // router.refresh() alone re-runs server components but leaves stale
-      // useState in client editors (concept, financials, etc).
+      // TIM-2915: optimistically flip the active flag in local state so the
+      // sidebar reflects the new active even though the ProjectSwitcher
+      // component itself does not unmount on navigation (it lives in the
+      // layout). Without this the switcher kept showing the old active
+      // after PATCH 200, which is what the board reported as "click does
+      // nothing." Then re-fetch to reconcile with the server.
+      setProjects((prev) =>
+        prev.map((p) => ({ ...p, isActive: p.id === id })),
+      );
       setToast({
         kind: "success",
         message: target ? `Switched to ${target.name}` : "Project switched",
       });
+      // Hard-navigate to /dashboard so any workspace page that hydrated
+      // client state from the previous active plan unmounts. router.refresh()
+      // alone re-runs server components but leaves stale useState in client
+      // editors (concept, financials, etc).
       router.push("/dashboard");
-      // Best-effort: trigger any server-side re-render too.
       router.refresh();
+      // Reconcile in the background — if the optimistic update is wrong for
+      // any reason, the server response wins.
+      refetchProjects();
     } catch {
       setToast({
         kind: "error",
