@@ -124,10 +124,19 @@ if (baselineActive !== BEAVER_BEEF) {
     },
   );
 }
-if (!baselinePlans.find((p) => p.id === SOLE_A)) {
-  console.error(`       MISSING expected duplicate ${SOLE_A.slice(0, 8)}. abort.`);
+if (!baselinePlans.find((p) => p.id === BEAVER_BEEF)) {
+  console.error(`       MISSING Beaver & Beef. abort.`);
   process.exit(3);
 }
+const nonBeaverPlans = baselinePlans.filter((p) => p.id !== BEAVER_BEEF);
+if (nonBeaverPlans.length === 0) {
+  console.error(`       Need at least one non-Beaver & Beef plan to test switching. abort.`);
+  process.exit(3);
+}
+// API returns newest-first; that's the row the test will click.
+const newestNonBeaver = nonBeaverPlans
+  .slice()
+  .sort((a, b) => (a.created_at > b.created_at ? -1 : 1))[0];
 
 console.log(`[2/12] minting magiclink for ${TARGET_EMAIL}...`);
 const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
@@ -194,25 +203,32 @@ if (!/Beaver & Beef/i.test(beforeSwitcherLabel)) {
 }
 
 // ============================================================
-// SWITCH TEST 1: Beaver & Beef → first Sole Sisters in list (newest-first)
+// SWITCH TEST 1: Beaver & Beef → first non-Beaver plan in list
 // ============================================================
-// API returns plans newest-first, so the FIRST Sole Sisters row in the
-// listbox is SOLE_B (64302c3d). That is fine — both duplicates are
-// equally valid targets to prove switching works.
-const TARGET_SWITCH = SOLE_B;
-console.log(`[6/12] SWITCH: Beaver & Beef → Sole Sisters (${shortId(TARGET_SWITCH)})`);
+const TARGET_SWITCH = newestNonBeaver.id;
+const TARGET_NAME = newestNonBeaver.plan_name;
+console.log(`[6/12] SWITCH: Beaver & Beef → ${TARGET_NAME} (${shortId(TARGET_SWITCH)})`);
 await switcherBtn.click();
 await page.waitForTimeout(300);
 await page.screenshot({ path: "scripts/shots/tim2915-02-menu-open.png" });
 
 const listbox = page.getByRole("listbox", { name: /projects/i });
-const soleAOption = listbox.locator('[role="option"]').filter({ hasText: "Sole Sisters" }).first();
-await soleAOption.locator("button").first().click();
+const soleAOption = listbox.locator('[role="option"]').filter({ hasText: TARGET_NAME }).first();
 
-// Wait for navigation to /dashboard + DB pointer flip
-await page.waitForURL(/\/dashboard\b/, { timeout: 15_000 });
+// Wait for the PATCH to actually complete before reading DB state.
+// We were already on /dashboard so waitForURL returned immediately, racing
+// past the in-flight PATCH and reading stale state.
+const patchPromise1 = page.waitForResponse(
+  (r) =>
+    r.url().includes(`/api/projects/${TARGET_SWITCH}`) &&
+    r.request().method() === "PATCH",
+  { timeout: 15_000 },
+);
+await soleAOption.locator("button").first().click();
+const patchResp1 = await patchPromise1;
+console.log(`       PATCH /api/projects/${shortId(TARGET_SWITCH)} → ${patchResp1.status()}`);
 await page.waitForLoadState("networkidle", { timeout: 30_000 });
-await page.waitForTimeout(800);
+await page.waitForTimeout(500);
 await page.screenshot({ path: "scripts/shots/tim2915-03-switched-to-sole-a.png" });
 
 const afterSwitch1Active = await activePlanId();
@@ -227,10 +243,10 @@ if (afterSwitch1Active !== TARGET_SWITCH) {
 
 const afterSwitch1Label = (await switcherBtn.innerText()).trim();
 console.log(`       sidebar now shows: "${afterSwitch1Label.replace(/\s+/g, " ")}"`);
-if (!/Sole Sisters/i.test(afterSwitch1Label)) {
-  fail(`Sidebar did not refresh to Sole Sisters: "${afterSwitch1Label}"`);
+if (!afterSwitch1Label.includes(TARGET_NAME)) {
+  fail(`Sidebar did not refresh to ${TARGET_NAME}: "${afterSwitch1Label}"`);
 } else {
-  pass("sidebar refreshed to Sole Sisters");
+  pass(`sidebar refreshed to ${TARGET_NAME}`);
 }
 
 // ============================================================
@@ -244,10 +260,17 @@ const beaverOption = page
   .locator('[role="option"]')
   .filter({ hasText: "Beaver & Beef" })
   .first();
+const patchPromise2 = page.waitForResponse(
+  (r) =>
+    r.url().includes(`/api/projects/${BEAVER_BEEF}`) &&
+    r.request().method() === "PATCH",
+  { timeout: 15_000 },
+);
 await beaverOption.locator("button").first().click();
-await page.waitForURL(/\/dashboard\b/, { timeout: 15_000 });
+const patchResp2 = await patchPromise2;
+console.log(`       PATCH /api/projects/${shortId(BEAVER_BEEF)} → ${patchResp2.status()}`);
 await page.waitForLoadState("networkidle", { timeout: 30_000 });
-await page.waitForTimeout(800);
+await page.waitForTimeout(500);
 await page.screenshot({ path: "scripts/shots/tim2915-04-switched-back.png" });
 
 const afterSwitch2Active = await activePlanId();
@@ -266,13 +289,16 @@ if (!/Beaver & Beef/i.test(afterSwitch2Label)) {
 }
 
 // ============================================================
-// DELETE TEST: remove Sole Sisters duplicate A
+// DELETE TEST: remove first Sole Sisters duplicate
 // ============================================================
-console.log("[8/12] DELETE: Sole Sisters duplicate A (b1197dc2)");
+// First listbox option (newest-first) is whichever duplicate has the
+// later created_at — currently 64302c3d. Capture the actual DELETE URL
+// from the response so the assertion matches reality regardless of
+// which duplicate was first.
+console.log("[8/12] DELETE: first Sole Sisters in listbox");
 await switcherBtn.click();
 await page.waitForTimeout(300);
 
-// Trash button for Sole Sisters row (first occurrence). aria-label="Delete Sole Sisters".
 const deleteBtn = page
   .getByRole("listbox", { name: /projects/i })
   .locator('[role="option"]')
@@ -281,19 +307,27 @@ const deleteBtn = page
   .getByRole("button", { name: /^Delete Sole Sisters$/i });
 await deleteBtn.click();
 
-// Confirm modal appears
 await page.waitForSelector("#delete-project-modal-title", { timeout: 5_000 });
 await page.screenshot({ path: "scripts/shots/tim2915-05-delete-confirm.png" });
 
+const deletePromise = page.waitForResponse(
+  (r) =>
+    /\/api\/projects\/[a-f0-9-]{36}$/.test(r.url()) &&
+    r.request().method() === "DELETE",
+  { timeout: 15_000 },
+);
 const confirmBtn = page.getByRole("button", { name: /^Delete$/ });
 await confirmBtn.click();
+const delResp = await deletePromise;
+const deletedUrl = delResp.url();
+const deletedId = deletedUrl.split("/").pop() || "";
+console.log(`       DELETE ${deletedUrl} → ${delResp.status()}`);
 
-// Wait for the modal to close + sidebar to refresh
 await page.waitForSelector("#delete-project-modal-title", {
   state: "detached",
   timeout: 10_000,
 });
-await page.waitForTimeout(1500);
+await page.waitForTimeout(1000);
 await page.screenshot({ path: "scripts/shots/tim2915-06-after-delete-a.png" });
 
 const afterDelete1Plans = await plansForTrent();
@@ -306,10 +340,17 @@ for (const p of afterDelete1Plans) {
     `         ${shortId(p.id)} ${p.plan_name} ${p.location_label ?? ""}`,
   );
 }
-if (afterDelete1Plans.find((p) => p.id === SOLE_A)) {
-  fail(`Sole Sisters A (${shortId(SOLE_A)}) still in DB after delete`);
+if (afterDelete1Plans.find((p) => p.id === deletedId)) {
+  fail(`Plan ${shortId(deletedId)} still in DB after DELETE 204`);
 } else {
-  pass(`Sole Sisters A (${shortId(SOLE_A)}) removed from DB`);
+  pass(`Plan ${shortId(deletedId)} removed from DB`);
+}
+if (afterDelete1Plans.length !== baselinePlans.length - 1) {
+  fail(
+    `Plan count did not decrease by 1: was ${baselinePlans.length}, now ${afterDelete1Plans.length}`,
+  );
+} else {
+  pass(`Plan count decreased by 1 (${baselinePlans.length} → ${afterDelete1Plans.length})`);
 }
 if (afterDelete1Active !== BEAVER_BEEF) {
   fail(
@@ -322,8 +363,12 @@ if (afterDelete1Active !== BEAVER_BEEF) {
 // ============================================================
 // OPTIONAL DELETE: second Sole Sisters duplicate B
 // ============================================================
-if (DELETE_BOTH && afterDelete1Plans.find((p) => p.id === SOLE_B)) {
-  console.log("[9/12] DELETE: Sole Sisters duplicate B (64302c3d)");
+const remainingSoleSisters = afterDelete1Plans.filter(
+  (p) => p.plan_name === "Sole Sisters",
+);
+if (DELETE_BOTH && remainingSoleSisters.length > 0) {
+  const targetSecond = remainingSoleSisters[0].id;
+  console.log(`[9/12] DELETE: second Sole Sisters duplicate (${shortId(targetSecond)})`);
   await switcherBtn.click();
   await page.waitForTimeout(300);
   const deleteBtn2 = page
@@ -332,25 +377,34 @@ if (DELETE_BOTH && afterDelete1Plans.find((p) => p.id === SOLE_B)) {
     .filter({ hasText: "Sole Sisters" })
     .first()
     .getByRole("button", { name: /^Delete Sole Sisters$/i });
+  const delPromise2 = page.waitForResponse(
+    (r) =>
+      /\/api\/projects\/[a-f0-9-]{36}$/.test(r.url()) &&
+      r.request().method() === "DELETE",
+    { timeout: 15_000 },
+  );
   await deleteBtn2.click();
   await page.waitForSelector("#delete-project-modal-title", { timeout: 5_000 });
   await page.getByRole("button", { name: /^Delete$/ }).click();
+  const delResp2 = await delPromise2;
+  const deletedId2 = (delResp2.url().split("/").pop() || "");
+  console.log(`       DELETE ${delResp2.url()} → ${delResp2.status()}`);
   await page.waitForSelector("#delete-project-modal-title", {
     state: "detached",
     timeout: 10_000,
   });
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(1000);
   await page.screenshot({ path: "scripts/shots/tim2915-07-after-delete-b.png" });
 
   const afterDelete2Plans = await plansForTrent();
-  if (afterDelete2Plans.find((p) => p.id === SOLE_B)) {
-    fail(`Sole Sisters B (${shortId(SOLE_B)}) still in DB after delete`);
+  if (afterDelete2Plans.find((p) => p.id === deletedId2)) {
+    fail(`Plan ${shortId(deletedId2)} still in DB after DELETE`);
   } else {
-    pass(`Sole Sisters B (${shortId(SOLE_B)}) removed from DB`);
+    pass(`Plan ${shortId(deletedId2)} removed from DB`);
   }
 } else {
   console.log(
-    "[9/12] SKIP: leaving second Sole Sisters duplicate in place (set TIM2915_DELETE_BOTH=1 to remove)",
+    "[9/12] SKIP: no additional duplicate to delete (set TIM2915_DELETE_BOTH=1 to opt in)",
   );
 }
 
