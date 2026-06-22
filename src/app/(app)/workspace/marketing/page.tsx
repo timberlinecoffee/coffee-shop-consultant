@@ -9,6 +9,7 @@ import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { normalizeMarketing, type MarketingDocument } from "@/lib/marketing";
 import { normalizeConceptV2 } from "@/lib/concept";
 import { MarketingWorkspace } from "./marketing-workspace";
+import { getActivePlanId } from "@/lib/plan-context";
 
 export const dynamic = "force-dynamic";
 
@@ -19,16 +20,14 @@ export default async function MarketingWorkspacePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, plan_name")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
+    .select("plan_name")
+    .eq("id", planId)
     .maybeSingle();
   if (!plan) redirect("/onboarding");
-
-  const planId = plan.id;
 
   const [
     { data: doc },

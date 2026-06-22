@@ -36,6 +36,7 @@ import {
   type OperationsRecipeCard,
 } from "@/lib/operations-recipes";
 import { PrintButton } from "./print-button";
+import { getActivePlanId } from "@/lib/plan-context";
 
 export const dynamic = "force-dynamic";
 
@@ -74,12 +75,12 @@ export default async function OperationsPlaybookPrintPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, plan_name")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
+    .select("plan_name")
+    .eq("id", planId)
     .maybeSingle();
   if (!plan) redirect("/onboarding");
 
@@ -87,10 +88,10 @@ export default async function OperationsPlaybookPrintPage({
     supabase
       .from("workspace_documents")
       .select("content, updated_at")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .eq("workspace_key", "operations_playbook")
       .maybeSingle(),
-    loadOperationsRecipeCards(supabase, plan.id),
+    loadOperationsRecipeCards(supabase, planId),
   ]);
 
   const stored = normalizeOperationsPlaybook(doc?.content);

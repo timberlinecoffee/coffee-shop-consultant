@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
 import type { VendorCandidate, VendorCustomCategory, VendorDecision } from "@/lib/suppliers";
 import { SuppliersWorkspace } from "./suppliers-workspace";
+import { getActivePlanId } from "@/lib/plan-context";
 
 export const dynamic = "force-dynamic";
 
@@ -16,33 +17,26 @@ export default async function SuppliersWorkspacePage() {
 
   if (!user) redirect("/login");
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!plan) redirect("/onboarding");
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
 
   const [candidatesRes, decisionsRes, customCatsRes, profileRes] = await Promise.all([
     supabase
       .from("vendor_candidates")
       .select("*")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .order("category", { ascending: true })
       .order("position", { ascending: true }),
     supabase
       .from("vendor_decisions")
       .select("*")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .eq("is_current", true)
       .order("created_at", { ascending: false }),
     supabase
       .from("vendor_custom_categories")
       .select("*")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .order("position", { ascending: true })
       .order("created_at", { ascending: true }),
     supabase
@@ -61,7 +55,7 @@ export default async function SuppliersWorkspacePage() {
 
   return (
     <SuppliersWorkspace
-      planId={plan.id}
+      planId={planId}
       canEdit={canEdit}
       initialCandidates={(candidatesRes.data ?? []) as VendorCandidate[]}
       initialDecisions={(decisionsRes.data ?? []) as VendorDecision[]}

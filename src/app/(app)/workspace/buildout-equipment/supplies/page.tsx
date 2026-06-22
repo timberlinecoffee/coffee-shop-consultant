@@ -7,6 +7,7 @@ import { isSubscriptionActive } from "@/lib/access";
 import { normalizeCurrencyCode } from "@/lib/currency";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import { SuppliesWorkspace } from "./supplies-workspace";
+import { getActivePlanId } from "@/lib/plan-context";
 
 export const dynamic = "force-dynamic";
 
@@ -24,33 +25,26 @@ export default async function SuppliesPage({
 
   if (!user) redirect("/login");
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!plan) redirect("/onboarding");
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
 
   const [suppliesResult, sectionsResult, modelResult, profileResult] = await Promise.all([
     supabase
       .from("buildout_supplies_items")
       .select("*")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .eq("archived", false)
       .order("position"),
     supabase
       .from("buildout_list_sections")
       .select("*")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .eq("list_type", "supplies")
       .order("position"),
     supabase
       .from("financial_models")
       .select("forecast_inputs")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .maybeSingle(),
     supabase
       .from("users")
@@ -73,7 +67,7 @@ export default async function SuppliesPage({
 
   return (
     <SuppliesWorkspace
-      planId={plan.id}
+      planId={planId}
       initialSupplies={supplies}
       initialSections={sections}
       canEdit={canEdit}

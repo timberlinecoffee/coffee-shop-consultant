@@ -8,6 +8,7 @@ import { normalizeCurrencyCode } from "@/lib/currency";
 import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
 import type { ListSection } from "@/types/buildout";
 import { BuildoutEquipmentWorkspace } from "./buildout-workspace";
+import { getActivePlanId } from "@/lib/plan-context";
 
 export const dynamic = "force-dynamic";
 
@@ -19,34 +20,27 @@ export default async function BuildoutEquipmentPage() {
 
   if (!user) redirect("/login");
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!plan) redirect("/onboarding");
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
 
   const [equipmentResult, sectionsResult, modelResult, profileResult] =
     await Promise.all([
       supabase
         .from("buildout_equipment_items")
         .select("*")
-        .eq("plan_id", plan.id)
+        .eq("plan_id", planId)
         .eq("archived", false)
         .order("position"),
       supabase
         .from("buildout_list_sections")
         .select("*")
-        .eq("plan_id", plan.id)
+        .eq("plan_id", planId)
         .eq("list_type", "equipment")
         .order("position"),
       supabase
         .from("financial_models")
         .select("updated_at, needs_review_at, forecast_inputs")
-        .eq("plan_id", plan.id)
+        .eq("plan_id", planId)
         .maybeSingle(),
       supabase
         .from("users")
@@ -70,7 +64,7 @@ export default async function BuildoutEquipmentPage() {
 
   return (
     <BuildoutEquipmentWorkspace
-      planId={plan.id}
+      planId={planId}
       initialEquipment={equipment}
       initialSections={sections}
       initialModelUpdatedAt={modelRow?.updated_at ?? null}
