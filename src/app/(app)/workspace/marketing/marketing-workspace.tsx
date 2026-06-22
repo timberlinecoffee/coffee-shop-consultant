@@ -307,8 +307,8 @@ export function MarketingWorkspace({
           },
         ],
         context: { workspace: "Marketing", section: sectionLabel },
-        onApply: async () => {
-          setDoc(body.content);
+        onApply: async (accepted) => {
+          await handleApplyMarketingSuggestions(accepted);
           setSavedAt(new Date().toISOString());
         },
       });

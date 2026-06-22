@@ -647,17 +647,7 @@ export async function POST(request: Request) {
     updated = { ...current, [section]: titleCaseSopCategory(merged) };
   }
 
-  const { error: upsertErr } = await supabase
-    .from("workspace_documents")
-    .upsert(
-      { plan_id: plan.id, workspace_key: "operations_playbook", content: updated },
-      { onConflict: "plan_id,workspace_key" },
-    );
-
-  if (upsertErr) {
-    console.error("[operations_playbook/generate] upsert error:", upsertErr);
-    return Response.json({ error: "Failed to save" }, { status: 500 });
-  }
-
+  // TIM-2924 Shape C fix: do not persist here. The review modal is the Accept
+  // gate; onApply writes via the existing autosave when the user confirms.
   return Response.json({ content: updated });
 }

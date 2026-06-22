@@ -43,6 +43,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     "cam_cents", "listing_url", "broker_contact", "status", "notes", "position",
     // TIM-1145: address autocomplete + geo
     "lat", "lng", "city", "postal_code", "country",
+    // TIM-2924: applied via review-modal onApply after user accepts area analysis
+    "area_analysis", "area_analysis_at",
   ] as const
 
   const patch: Record<string, unknown> = {}

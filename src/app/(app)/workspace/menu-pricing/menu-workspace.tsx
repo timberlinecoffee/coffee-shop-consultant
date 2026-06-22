@@ -3632,19 +3632,17 @@ export function MenuWorkspace({
         setRecipeError("Couldn't suggest a recipe. Try again in a moment.");
         return;
       }
+      // TIM-2924 Shape C fix: suggest-recipe now returns raw AI lines (no DB writes).
       const data = (await res.json()) as {
-        ingredients: MenuIngredient[];
-        lines: MenuItemIngredient[];
+        lines: Array<{ name: string; amount: number; unit: string }>;
       };
       // TIM-1561: route through review modal before applying.
+      // TIM-2924 Shape B fix: proposedValue holds structured raw lines so
+      // onApply can send accepted[0].finalValue to the apply route.
       const currentLines = itemIngredients.filter((ii) => ii.menu_item_id === item.id);
-      const currentLineNames = currentLines.map((ii) => {
+      const currentRawLines = currentLines.map((ii) => {
         const ing = ingredients.find((g) => g.id === ii.ingredient_id);
-        return ing?.name ?? ii.ingredient_id;
-      });
-      const proposedLineNames = data.lines.map((ii) => {
-        const ing = data.ingredients.find((g) => g.id === ii.ingredient_id);
-        return `${ing?.name ?? ii.ingredient_id} (${ii.amount} ${ii.unit})`;
+        return { name: ing?.name ?? ii.ingredient_id, amount: ii.amount, unit: ii.unit };
       });
       openAIReviewModal({
         suggestions: [
@@ -3652,17 +3650,25 @@ export function MenuWorkspace({
             id: `recipe-${item.id}`,
             fieldId: "recipe",
             fieldLabel: `${item.name} - Recipe`,
-            originalValue: JSON.stringify(currentLineNames),
-            proposedValue: JSON.stringify(proposedLineNames),
+            originalValue: JSON.stringify(currentRawLines),
+            proposedValue: JSON.stringify(data.lines),
             isStructured: true,
           },
         ],
         context: { workspace: "Menu & Pricing", section: item.name },
-        onApply: async () => {
-          setIngredients(data.ingredients);
+        onApply: async (accepted) => {
+          const lines = JSON.parse(accepted[0].finalValue) as Array<{ name: string; amount: number; unit: string }>;
+          const applyRes = await fetch("/api/workspaces/menu-pricing/suggest-recipe/apply", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ item_id: item.id, lines }),
+          });
+          if (!applyRes.ok) throw new Error("Failed to apply recipe");
+          const applied = await applyRes.json() as { ingredients: MenuIngredient[]; lines: MenuItemIngredient[] };
+          setIngredients(applied.ingredients);
           setItemIngredients((prev) => [
             ...prev.filter((ii) => ii.menu_item_id !== item.id),
-            ...data.lines,
+            ...applied.lines,
           ]);
           await refetchItems();
         },
@@ -3720,11 +3726,16 @@ export function MenuWorkspace({
           },
         ],
         context: { workspace: "Menu & Pricing", section: item.name },
-        onApply: async () => {
+        onApply: async (accepted) => {
+          const steps = JSON.parse(accepted[0].finalValue) as string[];
+          const patchRes = await fetch("/api/workspaces/menu-pricing/items", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: item.id, preparation_steps: steps }),
+          });
+          if (!patchRes.ok) throw new Error("Failed to save preparation steps");
           setItems((prev) =>
-            prev.map((i) =>
-              i.id === item.id ? { ...i, preparation_steps: data.steps } : i,
-            ),
+            prev.map((i) => i.id === item.id ? { ...i, preparation_steps: steps } : i),
           );
         },
       });

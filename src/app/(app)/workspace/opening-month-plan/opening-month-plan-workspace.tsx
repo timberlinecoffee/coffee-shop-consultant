@@ -931,14 +931,22 @@ export function OpeningMonthPlanWorkspace({
                     fieldId: "milestones",
                     fieldLabel: "Launch Milestones",
                     originalValue: JSON.stringify(milestones.map((m) => ({ title: m.title, target_date: m.target_date, track: m.track }))),
-                    proposedValue: JSON.stringify(proposedMilestones.map((m) => ({ title: m.title, target_date: m.target_date, track: m.track }))),
+                    proposedValue: JSON.stringify(proposedMilestones),
                     isStructured: true,
                   },
                 ],
                 context: { workspace: "Opening Month Plan", section: "Launch Milestones" },
-                onApply: async () => {
-                  setMilestones(proposedMilestones);
-                  setConfig((c) => ({ ...c, lastGeneratedAt: lastGeneratedAt ?? c.lastGeneratedAt }));
+                onApply: async (accepted) => {
+                  const specs = JSON.parse(accepted[0].finalValue) as Milestone[];
+                  const applyRes = await fetch("/api/opening-month-plan/milestones/apply", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ milestones: specs, lastGeneratedAt }),
+                  });
+                  if (!applyRes.ok) throw new Error("Failed to apply milestones");
+                  const applied = await applyRes.json() as { milestones: Milestone[]; lastGeneratedAt: string };
+                  setMilestones(applied.milestones);
+                  setConfig((c) => ({ ...c, lastGeneratedAt: applied.lastGeneratedAt }));
                   setStalesBannerDismissed(false);
                 },
               });
