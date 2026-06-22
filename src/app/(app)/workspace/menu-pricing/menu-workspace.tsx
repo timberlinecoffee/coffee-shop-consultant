@@ -122,6 +122,21 @@ function makeLocalId() {
   return "local_" + Math.random().toString(36).slice(2, 10);
 }
 
+// TIM-2921: extract the first dollar/currency amount from a free-text blob
+// (e.g. the AI price-suggestion proposedValue: "$5.50\n\nMarket range: ...").
+// Used when the founder edits the suggested price in the review modal — the
+// final value can be a bare number ("5.25"), a currency-prefixed string
+// ("$5.25"), or a multi-line edit that keeps the commentary; we read the first
+// numeric token. Returns null on unparseable input so the caller falls back to
+// the AI's original suggestion rather than writing NaN.
+function parseFirstAmountToCents(text: string): number | null {
+  const m = text.match(/-?\d+(?:[.,]\d{1,2})?/);
+  if (!m) return null;
+  const num = parseFloat(m[0].replace(",", "."));
+  if (!Number.isFinite(num) || num < 0) return null;
+  return Math.round(num * 100);
+}
+
 const inputCls =
   "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
@@ -3590,17 +3605,32 @@ export function MenuWorkspace({
             },
           ],
           context: { workspace: "Menu & Pricing", section: item.name },
+          // TIM-2921: the previous handler issued PATCH /items/${id} (no such
+          // route — items PATCH lives at the collection with id in the body)
+          // and wrote `data.suggested_price_cents` blindly. Both bugs meant
+          // Accept was silently lost on reload and any user-edit in the modal
+          // was discarded (TIM-1797 class). Now: route through the real
+          // endpoint, honor `accepted[0].finalValue` when the user edited,
+          // check the response, and refetch so server truth wins.
           onApply: async (accepted) => {
-            if (accepted.length > 0) {
-              await fetch(`/api/workspaces/menu-pricing/items/${item.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ price_cents: data.suggested_price_cents }),
-              });
-              setItems((prev) =>
-                prev.map((i) => i.id === item.id ? { ...i, price_cents: data.suggested_price_cents } : i)
-              );
+            if (accepted.length === 0) return;
+            const change = accepted[0]!;
+            const editedCents = change.wasEdited
+              ? parseFirstAmountToCents(change.finalValue)
+              : null;
+            const finalCents = editedCents ?? data.suggested_price_cents;
+            const res = await fetch("/api/workspaces/menu-pricing/items", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: item.id, price_cents: finalCents }),
+            });
+            if (!res.ok) {
+              throw new Error("Couldn't save the new price. Please try again.");
             }
+            setItems((prev) =>
+              prev.map((i) => i.id === item.id ? { ...i, price_cents: finalCents } : i)
+            );
+            await refetchItems();
           },
         });
       }
