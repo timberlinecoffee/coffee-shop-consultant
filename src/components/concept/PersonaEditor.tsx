@@ -18,6 +18,18 @@ import {
 } from "@/lib/concept";
 import { toTitleCase } from "@/lib/text";
 
+// TIM-2974: parent passes this to route per-field "Write with AI" into the
+// structured AIAssistCallout popup (apply-to-plan path) instead of opening
+// the chat companion. The `onApply` closure captures PersonaEditor's local
+// `setField` so accepted suggestions land in the draft persona.
+export type PersonaAIField = "whyTheyVisit" | "painPoints" | "typicalOrder";
+export type OpenPersonaWriteWithAi = (args: {
+  field: PersonaAIField;
+  label: string;
+  currentValue: string;
+  onApply: (newValue: string) => void;
+}) => void;
+
 interface PersonaEditorProps {
   persona: CustomerPersona;
   allPersonas: CustomerPersona[];
@@ -25,6 +37,9 @@ interface PersonaEditorProps {
   onSave: (updated: CustomerPersona, allPersonas: CustomerPersona[]) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
+  // TIM-2974: optional so callers without an AI-assist host (none today) still
+  // mount; without it the per-field "Write with AI" buttons hide.
+  onWriteWithAi?: OpenPersonaWriteWithAi;
 }
 
 export function PersonaEditor({
@@ -34,6 +49,7 @@ export function PersonaEditor({
   onSave,
   onDelete,
   onClose,
+  onWriteWithAi,
 }: PersonaEditorProps) {
   const [draft, setDraft] = useState<CustomerPersona>({ ...persona });
   const [aboutOpen, setAboutOpen] = useState(
@@ -71,27 +87,26 @@ export function PersonaEditor({
     });
   }
 
-  function triggerAI(field: "whyTheyVisit" | "painPoints" | "typicalOrder") {
-    const labelByField: Record<typeof field, string> = {
+  // TIM-2974: route per-field "Write with AI" into the structured AIAssistCallout
+  // popup (apply-to-plan flow) instead of dispatching `copilot:open-with-prompt`
+  // (which opened the chat companion — board flagged the inconsistency on TIM-2973).
+  // Supersedes TIM-2902's chat-transcript routing; the chat companion stays
+  // reachable via its own button on the workspace shell.
+  function triggerAI(field: PersonaAIField) {
+    if (!onWriteWithAi) return;
+    const labelByField: Record<PersonaAIField, string> = {
       whyTheyVisit: "Why they visit",
       painPoints: "Pain points",
       typicalOrder: "Typical order",
     };
     const label = labelByField[field];
-    const personaName = draft.name.trim() || "this persona";
-    const prompt =
-      field === "typicalOrder"
-        ? `Suggest what "${personaName}" typically orders at my coffee shop -- a real, specific order (drink + food/pastry) in plain language, not a generic drink list. Tie it to their visit habits and budget if you can.`
-        : `Help me describe the "${label}" for a customer persona named "${personaName}" at a coffee shop.`;
-    // TIM-2902: per-field AI buttons submit the prompt directly so it appears
-    // in the Scout transcript as a normal user message — without autoSubmit the
-    // prompt would sit in the composer and "disappear" once the user sends it
-    // (the assistant reply renders without any visible record of what was asked).
-    window.dispatchEvent(
-      new CustomEvent("copilot:open-with-prompt", {
-        detail: { prompt, focusLabel: label, autoSubmit: true },
-      })
-    );
+    const currentValue = (draft[field] ?? "") as string;
+    onWriteWithAi({
+      field,
+      label,
+      currentValue,
+      onApply: (newValue) => setField(field, newValue),
+    });
   }
 
   function validate(): boolean {
@@ -175,7 +190,7 @@ export function PersonaEditor({
               <label className="text-xs font-semibold text-[var(--foreground)]" htmlFor="persona-why">
                 Why they visit <span className="text-[var(--error)]">*</span>
               </label>
-              {canEdit && (
+              {canEdit && onWriteWithAi && (
                 <button
                   type="button"
                   onClick={() => triggerAI("whyTheyVisit")}
@@ -205,7 +220,7 @@ export function PersonaEditor({
               <label className="text-xs font-semibold text-[var(--foreground)]" htmlFor="persona-pain">
                 Pain points
               </label>
-              {canEdit && (
+              {canEdit && onWriteWithAi && (
                 <button
                   type="button"
                   onClick={() => triggerAI("painPoints")}
@@ -232,7 +247,7 @@ export function PersonaEditor({
               <label className="text-xs font-semibold text-[var(--foreground)]" htmlFor="persona-order">
                 What do they typically order?
               </label>
-              {canEdit && (
+              {canEdit && onWriteWithAi && (
                 <button
                   type="button"
                   onClick={() => triggerAI("typicalOrder")}
