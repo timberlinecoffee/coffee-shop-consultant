@@ -14,7 +14,6 @@ export function isProvidedString(value: unknown): value is string {
   return typeof value === 'string'
 }
 
-export type HiringRoleStatus = 'planned' | 'posted' | 'interviewing' | 'hired'
 export type CandidateStatus = 'applied' | 'screening' | 'interviewing' | 'offered' | 'hired' | 'rejected'
 export type OnboardingPhase = 'pre_boarding' | 'day_1' | 'week_1' | 'month_1' | 'month_2' | 'month_3'
 
@@ -25,7 +24,6 @@ export interface OrgRole {
   headcount: number
   start_date: string | null
   monthly_cost_cents: number | null
-  status: HiringRoleStatus
   notes: string | null
   parent_role_id: string | null
   jd_template_id: string | null
@@ -153,12 +151,6 @@ export const CANDIDATE_STATUS_CONFIG: Record<CandidateStatus, { label: string; c
   rejected:     { label: 'Rejected',     className: 'bg-rose-100 text-rose-600 border-rose-200' },
 }
 
-export const ROLE_STATUS_CONFIG: Record<HiringRoleStatus, { label: string; className: string }> = {
-  planned:      { label: 'Planned',      className: 'bg-slate-100 text-slate-600 border-slate-200' },
-  posted:       { label: 'Posted',       className: 'bg-sky-100 text-sky-700 border-sky-200' },
-  interviewing: { label: 'Interviewing', className: 'bg-amber-100 text-amber-700 border-amber-200' },
-  hired:        { label: 'Hired',        className: 'bg-teal-100 text-teal-800 border-teal-200' },
-}
 
 export const PHASE_LABELS: Record<OnboardingPhase, string> = {
   pre_boarding: 'Pre-Boarding',

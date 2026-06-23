@@ -2,7 +2,6 @@
 
 import { useLaunchPlanRows } from "./useLaunchPlanRows";
 import { totalLoadedMonthlyCents } from "./hiring-payroll";
-import type { HiringRoleStatus } from "@/types/supabase";
 import { useCurrency } from "@/components/CurrencyProvider";
 
 type HiringRole = {
@@ -18,26 +17,9 @@ type HiringRole = {
   // entries without a linked PersonnelLine fall back to DEFAULT_BENEFITS_PCT.
   benefits_pct?: number | null;
   benefits_fixed_cents?: number | null;
-  status: HiringRoleStatus;
   notes: string | null;
   created_at: string;
   updated_at: string;
-};
-
-const STATUS_OPTIONS: HiringRoleStatus[] = ["planned", "posted", "interviewing", "hired"];
-
-const STATUS_LABELS: Record<HiringRoleStatus, string> = {
-  planned: "Planned",
-  posted: "Posted",
-  interviewing: "Interviewing",
-  hired: "Hired",
-};
-
-const STATUS_PILL: Record<HiringRoleStatus, string> = {
-  planned: "bg-[var(--neutral-cool-150)] text-[var(--muted-foreground)]",
-  posted: "bg-[var(--teal-tint-200)] text-[var(--teal)]",
-  interviewing: "bg-[var(--warning-bg-2)] text-[var(--warning-text-3)]",
-  hired: "bg-[var(--success-bg-2)] text-[var(--success-medium)]",
 };
 
 
@@ -69,7 +51,6 @@ export function HiringPlanCard() {
       headcount: 1,
       start_date: null,
       monthly_cost_cents: null,
-      status: "planned",
       notes: null,
     });
   };
@@ -160,21 +141,7 @@ export function HiringPlanCard() {
                   placeholder="0"
                 />
               </label>
-              <label className="text-xs text-[var(--muted-foreground)] md:col-span-2">
-                <span className="block mb-1">Status</span>
-                <select
-                  value={row.status}
-                  onChange={(e) =>
-                    updateItem(row.id, { status: e.target.value as HiringRoleStatus })
-                  }
-                  className="w-full border border-[var(--neutral-cool-300)] rounded px-2 py-1 text-sm text-[var(--foreground)]"
-                >
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs text-[var(--muted-foreground)] md:col-span-1">
+              <label className="text-xs text-[var(--muted-foreground)] md:col-span-3">
                 <span className="block mb-1">Notes</span>
                 <input
                   type="text"
@@ -185,12 +152,7 @@ export function HiringPlanCard() {
                   className="w-full border border-[var(--neutral-cool-300)] rounded px-2 py-1 text-sm text-[var(--foreground)]"
                 />
               </label>
-              <div className="md:col-span-1 flex flex-col items-end justify-between gap-1">
-                <span
-                  className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${STATUS_PILL[row.status]}`}
-                >
-                  {STATUS_LABELS[row.status]}
-                </span>
+              <div className="md:col-span-1 flex flex-col items-end justify-end gap-1">
                 <button
                   type="button"
                   onClick={() => removeItem(row.id)}

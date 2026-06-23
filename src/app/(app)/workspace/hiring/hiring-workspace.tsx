@@ -57,7 +57,6 @@ import {
   type StaffCompetency,
   type StaffFile, // V2: per-staff files
   type CompetencyEvaluation, // V2: per-staff evaluations
-  type HiringRoleStatus,
   type CandidateStatus, // V2: candidate status
   type OnboardingPhase,
   type HiringCountry,
@@ -65,7 +64,6 @@ import {
   type HiringRequirementSet,
   CANDIDATE_STATUS_CONFIG, // V2: candidate status config
   CANDIDATE_STATUS_ORDER, // V2: candidate status ordering
-  ROLE_STATUS_CONFIG,
   PHASE_LABELS,
   PHASE_ORDER,
   DEFAULT_ONBOARDING_TASKS,
@@ -280,17 +278,6 @@ function CandidatePill({
   );
 }
 
-function RolePill({ status }: { status: HiringRoleStatus }) {
-  const cfg = ROLE_STATUS_CONFIG[status];
-  return (
-    <span
-      className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border ${cfg.className}`}
-    >
-      {cfg.label}
-    </span>
-  );
-}
-
 // ── Shared input styles ───────────────────────────────────────────────────────
 
 const inputCls =
@@ -355,7 +342,6 @@ function OrgChartNode({
           <span className="text-sm font-medium text-[var(--dark-grey)]">Unnamed role</span>
         )}
         <span className="text-xs text-[var(--muted-foreground)] shrink-0">×{role.headcount}</span>
-        <RolePill status={role.status} />
       </button>
       {hasChildren && (
         <>
@@ -489,7 +475,6 @@ function OrgTab({
       headcount: 1,
       start_date: null,
       monthly_cost_cents: null,
-      status: "planned",
       notes: null,
       parent_role_id: null,
       jd_template_id: null,
@@ -500,7 +485,7 @@ function OrgTab({
     const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan_id: planId, role_title: "", headcount: 1, status: "planned" }),
+      body: JSON.stringify({ plan_id: planId, role_title: "", headcount: 1 }),
     });
     if (res.ok) {
       const created = (await res.json()) as OrgRole;
@@ -966,7 +951,6 @@ function RoleRow({
             {parentTitle ? ` · Reports to ${parentTitle}` : ""}
           </span>
         </div>
-        <RolePill status={role.status} />
         <span className="text-[var(--dark-grey)] p-1 shrink-0" aria-hidden>
           {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </span>
@@ -1021,25 +1005,6 @@ function RoleRow({
                   }
                   disabled={!canEdit}
                 />
-              </div>
-              <div>
-                <label className={labelCls}>Status</label>
-                <select
-                  className={inputCls}
-                  value={role.status}
-                  onChange={(e) =>
-                    onUpdate({ status: e.target.value as HiringRoleStatus })
-                  }
-                  disabled={!canEdit}
-                >
-                  {(Object.keys(ROLE_STATUS_CONFIG) as HiringRoleStatus[]).map(
-                    (s) => (
-                      <option key={s} value={s}>
-                        {ROLE_STATUS_CONFIG[s].label}
-                      </option>
-                    )
-                  )}
-                </select>
               </div>
               <div>
                 <label className={labelCls}>Reports to</label>

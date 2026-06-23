@@ -16,7 +16,6 @@ import { formatMinorUnits } from "@/lib/currency"
 // ── Data types (mirror the row shapes from the DB tables) ────────────────────
 
 type LaunchItemStatus = "pending" | "in_progress" | "done" | "at_risk"
-type HiringRoleStatus = "planned" | "posted" | "interviewing" | "hired"
 
 export type TimelineItem = {
   id: string
@@ -53,7 +52,6 @@ export type HiringRole = {
   headcount: number
   start_date: string | null
   monthly_cost_cents: number | null
-  status: HiringRoleStatus
   notes: string | null
 }
 
@@ -94,12 +92,6 @@ const ITEM_STATUS_LABEL: Record<LaunchItemStatus, string> = {
   at_risk: "At risk",
 }
 
-const HIRING_STATUS_LABEL: Record<HiringRoleStatus, string> = {
-  planned: "Planned",
-  posted: "Posted",
-  interviewing: "Interviewing",
-  hired: "Hired",
-}
 
 const READINESS_LABEL: Record<ReadinessStatus, string> = {
   green: "Green: On track",
@@ -667,7 +659,6 @@ function HiringPlanSection({ content, brand, currencyCode }: { content: LaunchPl
     { key: "count", label: "#", width: 28, numeric: true },
     { key: "start_date", label: "Start date", width: 80 },
     { key: "monthly_cost", label: "Monthly cost", width: 90, currency: true },
-    { key: "status", label: "Status", width: 70 },
   ]
 
   const totalPayrollCents = content.hiring.reduce(
@@ -681,7 +672,6 @@ function HiringPlanSection({ content, brand, currencyCode }: { content: LaunchPl
     count: r.headcount,
     start_date: fmtDate(r.start_date),
     monthly_cost: r.monthly_cost_cents != null ? r.monthly_cost_cents * r.headcount : null,
-    status: HIRING_STATUS_LABEL[r.status],
   }))
 
   return (
@@ -849,7 +839,7 @@ async function loadLaunchPlanData(
         .order("launch_date", { ascending: true, nullsFirst: true }),
       supabase
         .from("hiring_plan_roles")
-        .select("id, role_title, headcount, start_date, monthly_cost_cents, status, notes")
+        .select("id, role_title, headcount, start_date, monthly_cost_cents, notes")
         .eq("plan_id", planId)
         .order("start_date", { ascending: true, nullsFirst: true }),
     ])

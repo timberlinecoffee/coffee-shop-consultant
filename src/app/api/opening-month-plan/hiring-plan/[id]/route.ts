@@ -46,7 +46,6 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       headcount: body.headcount as number | undefined,
       start_date: body.start_date as string | null | undefined,
       monthly_cost_cents: body.monthly_cost_cents as number | null | undefined,
-      status: body.status as "planned" | "posted" | "interviewing" | "hired" | undefined,
       notes: body.notes as string | null | undefined,
     })
     .eq("id", id)
