@@ -7,7 +7,7 @@
 
 import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Maximize2, X } from "lucide-react";
+import { Maximize2, RotateCw, X } from "lucide-react";
 import { useUiRevamp } from "@/hooks/useUiRevamp";
 
 // Context used by chart tooltip components to push their active data into the
@@ -159,6 +159,37 @@ function ChartDrawer({
   children: React.ReactNode;
 }) {
   const [tooltip, setTooltip] = useState<DrawerTooltipState | null>(null);
+  const [hintVisible, setHintVisible] = useState(false);
+
+  // TIM-2877: best-effort attempt to lock device to landscape. Browsers
+  // require fullscreen + the Screen Orientation API; iOS Safari and most
+  // desktops reject silently. When the lock can't run, surface the
+  // "rotate your device" inline hint so the icon remains useful.
+  const handleRotate = useCallback(async () => {
+    let locked = false;
+    try {
+      const orientation = (typeof screen !== "undefined" && screen.orientation) as
+        | (ScreenOrientation & { lock?: (o: string) => Promise<void> })
+        | undefined;
+      if (orientation?.lock) {
+        if (document.fullscreenElement == null && document.documentElement.requestFullscreen) {
+          try {
+            await document.documentElement.requestFullscreen();
+          } catch {
+            // ignore — many browsers reject without a user-gesture chain
+          }
+        }
+        await orientation.lock("landscape");
+        locked = true;
+      }
+    } catch {
+      // swallow — fall through to the visual hint
+    }
+    if (!locked) {
+      setHintVisible(true);
+      window.setTimeout(() => setHintVisible(false), 2400);
+    }
+  }, []);
 
   return (
     <DrawerTooltipContext.Provider value={setTooltip}>
@@ -177,17 +208,39 @@ function ChartDrawer({
         className="fixed bottom-0 left-0 right-0 z-50 flex h-[95dvh] flex-col rounded-t-2xl bg-white shadow-lg"
       >
         {/* Header */}
-        <div className="flex min-h-[48px] items-center justify-between border-b border-[var(--border)] px-4">
+        <div className="flex min-h-[48px] items-center justify-between gap-2 border-b border-[var(--border)] px-4">
           <p className="text-sm font-semibold text-[var(--foreground)]">{title}</p>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close chart"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
-          >
-            <X size={18} aria-hidden />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleRotate}
+              aria-label="Rotate to landscape"
+              title="Rotate your device for a wider view"
+              data-testid="chart-drawer-rotate-hint"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+            >
+              <RotateCw size={18} aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close chart"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+            >
+              <X size={18} aria-hidden />
+            </button>
+          </div>
         </div>
+
+        {hintVisible && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="border-b border-[var(--border)] bg-[var(--neutral-cool-100)] px-4 py-2 text-[12px] text-[var(--muted-foreground)]"
+          >
+            Rotate your device to landscape for a wider view.
+          </div>
+        )}
 
         {/* Chart content */}
         <div className="flex-1 overflow-hidden p-4">{children}</div>
