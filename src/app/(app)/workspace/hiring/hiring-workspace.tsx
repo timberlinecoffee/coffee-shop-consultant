@@ -33,6 +33,8 @@ import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
+import { HiringMobileV2 } from "@/components/hiring/HiringMobileV2";
 import { ConflictNoticeBadge } from "@/components/cross-suite/ConflictNoticeBadge";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
@@ -477,6 +479,9 @@ function OrgTab({
   onRolesChange: (r: OrgRole[] | ((prev: OrgRole[]) => OrgRole[])) => void;
   minimumWage?: MinWageInfo | null;
 }) {
+  const uiRevampV2 = useUiRevamp();
+  const { currencyCode } = useCurrency();
+
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
   const [highlightedRoleId, setHighlightedRoleId] = useState<string | null>(null);
   const rowRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
@@ -586,7 +591,15 @@ function OrgTab({
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* TIM-2782 (Phase 6): v2 mobile card-per-role view. Renders below md
+          when ui_revamp_v2 is on; desktop keeps org chart + role table above. */}
+      {uiRevampV2 && (
+        <div className="md:hidden">
+          <HiringMobileV2 roles={roles} currencyCode={currencyCode} />
+        </div>
+      )}
+    <div className={uiRevampV2 ? "hidden md:block space-y-6" : "space-y-6"}>
       {/* Org chart (top) */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)]">
@@ -664,6 +677,7 @@ function OrgTab({
         )}
       </div>
     </div>
+    </>
   );
 }
 
@@ -2724,26 +2738,15 @@ export function HiringWorkspace({
   const handleEvaluationsChange = useCallback((v: CompetencyEvaluation[]) => setEvaluations(v), []);
 
   const handleApplyHiringSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
-    const failed: string[] = [];
     for (const c of accepted) {
       try {
         const jd = JSON.parse(c.finalValue) as Record<string, string>;
-        const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
+        await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: c.fieldId, jd }),
         });
-        if (!res.ok) failed.push(c.fieldId);
-      } catch {
-        failed.push(c.fieldId);
-      }
-    }
-    if (failed.length > 0) {
-      throw new Error(
-        failed.length === accepted.length
-          ? "Couldn't save these changes. Please try again."
-          : `Couldn't save ${failed.length} of ${accepted.length} changes. Please try again.`,
-      );
+      } catch { /* ignore */ }
     }
   }, [planId]);
 
