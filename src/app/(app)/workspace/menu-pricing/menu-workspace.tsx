@@ -47,7 +47,7 @@ import { Illustration } from "@/components/illustrations/Illustration";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
-import { recipeIdForItemName } from "@/lib/illustrations/recipes";
+import { ItemPhotoUpload } from "./ItemPhotoUpload";
 import { TABLE_CELL_TEXT } from "@/lib/workspace-table";
 import { PaywallModal } from "@/components/paywall-modal";
 import { ProUpgradePrompt, type ProFeatureKey } from "@/components/pro-upgrade-prompt";
@@ -923,6 +923,7 @@ function ItemEditorPanel({
   benchmarkLoading,
   benchmarkResult,
   benchmarkError,
+  onPhotoChange,
 }: {
   item: MenuItemWithCogs;
   category: MenuCategory | undefined;
@@ -933,6 +934,7 @@ function ItemEditorPanel({
   targetGrossMargin: number;
   onClose: () => void;
   onUpdateItem: (patch: Partial<MenuItemWithCogs>) => Promise<void>;
+  onPhotoChange: (photoPath: string | null) => void;
   onAddRecipeLine: (
     ingredientId: string,
     amount: number,
@@ -1027,14 +1029,13 @@ function ItemEditorPanel({
   return (
     <div className="bg-white rounded-b-xl overflow-hidden flex flex-col">
       <div className="px-5 py-4 border-b border-[var(--border)] flex items-start gap-3">
-        {/* TIM-1585: Lane A recipe-card line-art for drinks we have curated art for
-            (e.g. flat white, espresso). Renders nothing for everything else. */}
-        {recipeIdForItemName(name) && (
-          <Illustration
-            recipeId={recipeIdForItemName(name)!}
-            className="w-24 h-32 rounded-lg border border-[var(--border)] object-cover shrink-0 bg-[var(--background)]"
-          />
-        )}
+        {/* TIM-2949: user-uploaded 4:5 photo replaces the curated illustration. */}
+        <ItemPhotoUpload
+          itemId={item.id}
+          photoPath={item.photo_path}
+          canEdit={canEdit}
+          onPhotoChange={onPhotoChange}
+        />
         <div className="flex-1 min-w-0">
           <input
             className={
@@ -2306,6 +2307,7 @@ interface MenuTabProps {
   onUpdateDefault: (id: string, patch: { amount?: number; unit?: IngredientUnit }) => Promise<void>;
   onDeleteDefault: (id: string) => Promise<void>;
   onApplyDefaults: (categoryId: string) => Promise<void>;
+  onPhotoChange: (itemId: string, photoPath: string | null) => void;
 }
 
 function MenuTab(props: MenuTabProps) {
@@ -2323,6 +2325,7 @@ function MenuTab(props: MenuTabProps) {
     onReorderItems,
     onAddCategory, onRenameCategory, onDeleteCategory,
     onAddDefault, onUpdateDefault, onDeleteDefault, onApplyDefaults,
+    onPhotoChange,
   } = props;
 
   const sensors = useSensors(
@@ -2514,6 +2517,9 @@ function MenuTab(props: MenuTabProps) {
                                 benchmarkLoading={benchmarkLoading}
                                 benchmarkResult={benchmarkResult}
                                 benchmarkError={benchmarkError}
+                                onPhotoChange={(path) =>
+                                  onPhotoChange(item.id, path)
+                                }
                               />
                             </div>
                           )}
@@ -3330,6 +3336,7 @@ export function MenuWorkspace({
       notes: null,
       recipe: {},
       preparation_steps: [],
+      photo_path: null,
       archived: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -4085,6 +4092,11 @@ export function MenuWorkspace({
             onUpdateDefault={updateDefault}
             onDeleteDefault={deleteDefault}
             onApplyDefaults={applyDefaults}
+            onPhotoChange={(itemId, photoPath) =>
+              setItems((prev) =>
+                prev.map((i) => (i.id === itemId ? { ...i, photo_path: photoPath } : i))
+              )
+            }
           />
         )}
 
