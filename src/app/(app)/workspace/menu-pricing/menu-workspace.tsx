@@ -904,6 +904,7 @@ function ItemEditorPanel({
   categories,
   ingredients,
   itemIngredients,
+  categoryDefaults,
   canEdit,
   targetGrossMargin,
   onClose,
@@ -929,6 +930,7 @@ function ItemEditorPanel({
   categories: MenuCategory[];
   ingredients: MenuIngredient[];
   itemIngredients: MenuItemIngredient[];
+  categoryDefaults: CategoryDefaultIngredient[];
   canEdit: boolean;
   targetGrossMargin: number;
   onClose: () => void;
@@ -966,6 +968,20 @@ function ItemEditorPanel({
   const { currencyCode } = useCurrency();
   const recipeLines = itemIngredients.filter(
     (ii) => ii.menu_item_id === item.id
+  );
+  // TIM-2950: ingredient ids that come from this item's category-default
+  // template — used to render a subtle "from category" badge on those rows.
+  // The recipe row data itself is unchanged: defaults were auto-copied into
+  // menu_item_ingredients on item create (TIM-1140), so they stay editable
+  // and removable like any other item ingredient.
+  const categoryDefaultIngredientIds = useMemo(
+    () =>
+      new Set(
+        categoryDefaults
+          .filter((d) => d.category_id === item.category_id)
+          .map((d) => d.ingredient_id)
+      ),
+    [categoryDefaults, item.category_id]
   );
 
   const computedCogs = useMemo(() => {
@@ -1106,6 +1122,7 @@ function ItemEditorPanel({
             ingredients={ingredients}
             recipeLines={recipeLines}
             availableIngredients={availableIngredients}
+            categoryDefaultIngredientIds={categoryDefaultIngredientIds}
             canEdit={canEdit}
             itemName={name}
             notes={notes}
@@ -1158,6 +1175,7 @@ function RecipeTabContent({
   ingredients,
   recipeLines,
   availableIngredients,
+  categoryDefaultIngredientIds,
   canEdit,
   itemName,
   notes,
@@ -1178,6 +1196,7 @@ function RecipeTabContent({
   ingredients: MenuIngredient[];
   recipeLines: MenuItemIngredient[];
   availableIngredients: MenuIngredient[];
+  categoryDefaultIngredientIds: Set<string>;
   canEdit: boolean;
   itemName: string;
   notes: string;
@@ -1270,6 +1289,7 @@ function RecipeTabContent({
                     ingredient={ing ?? null}
                     lineCost={lineCost}
                     canEdit={canEdit}
+                    isFromCategoryDefault={categoryDefaultIngredientIds.has(line.ingredient_id)}
                     onUpdate={(patch) => onUpdateRecipeLine(line.id, patch)}
                     onDelete={() => onDeleteRecipeLine(line.id)}
                   />
@@ -1283,16 +1303,38 @@ function RecipeTabContent({
           </p>
         )}
 
+        {/* TIM-2950: Add Ingredient control is ALWAYS visible — never hidden
+            when category defaults are present. When the catalog is exhausted
+            (or empty), show a clearly-labeled disabled affordance that points
+            the user to the Ingredients tab. Defaults render as normal item
+            rows (auto-copied at item create, TIM-1140) and additions append
+            to the same list. Cost roll-up already sums all recipe lines. */}
         {canEdit && availableIngredients.length > 0 && (
           <IngredientCombobox
             ingredients={availableIngredients}
             onSelect={onAddRecipeLine}
           />
         )}
-        {canEdit && availableIngredients.length === 0 && ingredients.length === 0 && (
-          <p className="text-xs text-[var(--dark-grey)]">
-            Add ingredients in the Ingredients tab first.
-          </p>
+        {canEdit && availableIngredients.length === 0 && (
+          <div>
+            <label className={labelCls}>Add Ingredient</label>
+            <div className="relative">
+              <Search
+                size={12}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--dark-grey)] pointer-events-none"
+              />
+              <input
+                type="text"
+                className={inputCls + " pl-8"}
+                disabled
+                placeholder={
+                  ingredients.length === 0
+                    ? "Add ingredients in the Ingredients tab first…"
+                    : "All catalog ingredients are in this recipe — add more in the Ingredients tab…"
+                }
+              />
+            </div>
+          </div>
         )}
       </section>
 
@@ -1681,6 +1723,7 @@ function RecipeLineRow({
   ingredient,
   lineCost,
   canEdit,
+  isFromCategoryDefault,
   onUpdate,
   onDelete,
 }: {
@@ -1688,6 +1731,9 @@ function RecipeLineRow({
   ingredient: MenuIngredient | null;
   lineCost: number | null;
   canEdit: boolean;
+  // TIM-2950: subtle "from category" badge on rows seeded from the
+  // category-default template — additions render without the badge.
+  isFromCategoryDefault?: boolean;
   onUpdate: (patch: { amount?: number; unit?: IngredientUnit }) => void;
   onDelete: () => void;
 }) {
@@ -1709,6 +1755,17 @@ function RecipeLineRow({
   // chip pointing the owner to the Ingredients tab instead.
   const needsCost = ingredient !== null && ingredient.package_cost_cents === 0;
 
+  // TIM-2950: subtle teal-tint chip mirroring the Category tag in the editor
+  // header (line ~1049) — same family of tokens, no new design language.
+  const fromCategoryChip = isFromCategoryDefault ? (
+    <span
+      className="text-[10px] font-medium uppercase tracking-wider text-[var(--teal)] bg-[var(--teal-tint-500)] border border-[var(--teal-tint)] rounded px-1.5 py-0.5 shrink-0"
+      title="Seeded from this category's default ingredients. Edit or remove like any other ingredient."
+    >
+      From Category
+    </span>
+  ) : null;
+
   if (!canEdit) {
     return (
       <div className="flex items-baseline gap-3 py-1.5">
@@ -1716,6 +1773,7 @@ function RecipeLineRow({
         <span className="flex-1 min-w-0 text-xs font-medium text-[var(--foreground)] break-words">
           {ingredient?.name ?? "Unknown"}
         </span>
+        {fromCategoryChip}
         <span className="text-xs text-[var(--muted-foreground)] shrink-0">
           {line.amount} {line.unit}
         </span>
@@ -1743,6 +1801,7 @@ function RecipeLineRow({
       <span className="flex-1 min-w-0 text-xs font-medium text-[var(--foreground)] break-words">
         {ingredient?.name ?? "Unknown"}
       </span>
+      {fromCategoryChip}
       <input
         type="number"
         className="w-16 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
@@ -2489,6 +2548,7 @@ function MenuTab(props: MenuTabProps) {
                                 categories={categories}
                                 ingredients={ingredients}
                                 itemIngredients={itemIngredients}
+                                categoryDefaults={categoryDefaults}
                                 canEdit={canEdit}
                                 targetGrossMargin={targetGrossMargin}
                                 onClose={() => onSelectItem(null)}
