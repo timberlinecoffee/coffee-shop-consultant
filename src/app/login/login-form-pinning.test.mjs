@@ -27,7 +27,7 @@ function indexOfFirst(needle) {
 test("handleGoogleSignIn calls supabase.auth.signOut({ scope: 'local' })", () => {
   assert.match(
     loginFormSrc,
-    /await supabase\.auth\.signOut\(\{\s*scope:\s*["']local["']\s*\}\)/,
+    /await supabase\.auth\.signOut\(\{\s*scope:\s*["']local["'][\s,]*\}\)/,
     "signOut({ scope: 'local' }) call missing — TIM-2961 fix regressed",
   );
 });
