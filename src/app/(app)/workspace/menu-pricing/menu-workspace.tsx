@@ -42,6 +42,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useCurrency } from "@/components/CurrencyProvider";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
+import { MenuMobileV2 } from "@/components/menu-pricing/MenuMobileV2";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { Illustration } from "@/components/illustrations/Illustration";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
@@ -2325,6 +2327,9 @@ function MenuTab(props: MenuTabProps) {
     onAddDefault, onUpdateDefault, onDeleteDefault, onApplyDefaults,
   } = props;
 
+  const uiRevampV2 = useUiRevamp();
+  const { currencyCode } = useCurrency();
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -2417,6 +2422,19 @@ function MenuTab(props: MenuTabProps) {
           button opens the cross-suite resolver. */}
       <MenuTicketReconciliationBanner origin="menu" />
 
+      {/* TIM-2780 (Phase 6): v2 mobile card-per-item view. Renders below md
+          when ui_revamp_v2 is on; desktop keeps the category accordion above. */}
+      {uiRevampV2 && (
+        <div className="md:hidden">
+          <MenuMobileV2
+            items={items}
+            categories={categories}
+            currencyCode={currencyCode}
+          />
+        </div>
+      )}
+
+      <div className={uiRevampV2 ? "hidden md:block space-y-4" : "space-y-4"}>
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         {categories.map((cat) => {
           const catItems = items
@@ -2538,6 +2556,7 @@ function MenuTab(props: MenuTabProps) {
           Add category
         </button>
       )}
+      </div>
     </div>
   );
 }

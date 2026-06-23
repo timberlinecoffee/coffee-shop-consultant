@@ -311,17 +311,7 @@ ${buildConceptBlock(seed)}
 
   const titled = titleCaseMarketingFromAI(merged);
 
-  const { error: upsertErr } = await supabase
-    .from("workspace_documents")
-    .upsert(
-      { plan_id: plan.id, workspace_key: "marketing", content: titled },
-      { onConflict: "plan_id,workspace_key" },
-    );
-
-  if (upsertErr) {
-    console.error("[marketing/generate] upsert error:", upsertErr);
-    return Response.json({ error: "Failed to save" }, { status: 500 });
-  }
-
+  // TIM-2924 Shape C fix: do not persist here. The review modal is the Accept
+  // gate; onApply writes via the existing autosave when the user confirms.
   return Response.json({ content: titled });
 }

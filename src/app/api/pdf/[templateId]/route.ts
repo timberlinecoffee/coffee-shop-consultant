@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive } from "@/lib/access"
+import { getActivePlanId } from "@/lib/plan-context"
 import { getTemplate } from "@/lib/pdf/registry"
 import "@/lib/pdf/templates" // Side-effect: registers all templates
 import { registerFonts, resolveBrand, type BrandConfig } from "@/lib/pdf/brand"
@@ -62,11 +63,15 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     )
   }
 
+  const activePlanId = await getActivePlanId(supabase, user.id)
+  if (!activePlanId) {
+    return Response.json({ error: "No plan found" }, { status: 404 })
+  }
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
     .select("id, plan_name")
-    .eq("user_id", user.id)
-    .single()
+    .eq("id", activePlanId)
+    .maybeSingle()
 
   if (!plan) {
     return Response.json({ error: "No plan found" }, { status: 404 })

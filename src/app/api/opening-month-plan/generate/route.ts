@@ -13,10 +13,9 @@ import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
-import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
+import { normalizeAIOutput } from "@/lib/normalize"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
-import { normalizeLaunchPlanConfig } from "@/lib/launch-plan"
 import { rateLimit } from "@/lib/rate-limit"
 import type { TrackKey } from "@/lib/launch-plan"
 import type { NextRequest } from "next/server"
@@ -253,88 +252,35 @@ export async function POST(request: NextRequest) {
           return
         }
 
+        // TIM-2924 Shape C fix: do not write to DB here. Build the proposed
+        // milestone specs and return them in the done event so the review modal
+        // can show them. The /milestones/apply route does the actual DB writes
+        // after the user accepts in the modal.
         const launch = new Date(targetLaunchDate)
+        const now = new Date().toISOString()
 
-        const userEditedIds = existingMilestones
-          .filter((m) => m.user_edited)
-          .map((m) => m.id)
-
-        const toDelete = existingMilestones
-          .filter((m) => !m.user_edited)
-          .map((m) => m.id)
-
-        if (toDelete.length > 0) {
-          await supabase
-            .from("launch_milestones")
-            .delete()
-            .in("id", toDelete)
-            .eq("plan_id", planId)
-        }
-
-        const inserts = parsed.map((m, idx) => {
+        const proposedSpecs = parsed.map((m) => {
           const targetDate = new Date(launch)
           targetDate.setDate(targetDate.getDate() - (m.days_before_launch ?? 0))
           return {
-            plan_id: planId,
             title: normalizeAIOutput(m.title ?? "Untitled Milestone"),
             description: m.description ? normalizeAIOutput(m.description) : null,
             track: m.track,
             target_date: targetDate.toISOString().slice(0, 10),
             status: "not_started" as const,
             estimated_duration_days: m.estimated_duration_days ?? null,
-            depends_on_milestone_ids: [],
             critical_path: m.critical_path ?? false,
             owner: m.owner ?? "founder",
             ai_notes: m.ai_notes ? normalizeAIOutput(m.ai_notes) : null,
-            user_edited: false,
-            source: "ai_generated" as const,
-            order_index: userEditedIds.length + idx,
           }
         })
 
-        console.log(`[launch-plan/generate] inserting ${inserts.length} milestones`)
-
-        const { data: inserted, error: insertErr } = await supabase
-          .from("launch_milestones")
-          .insert(inserts)
-          .select("*")
-
-        if (insertErr) {
-          console.error("[launch-plan/generate] insert error:", insertErr.message)
-          cleanup()
-          send(sse("error", { code: "db_error", message: "Couldn't save the plan. Try again or contact support." }))
-          send(sse("done", {}))
-          controller.close()
-          return
-        }
-
-        const now = new Date().toISOString()
-        const { data: existingDoc } = await supabase
-          .from("workspace_documents")
-          .select("content")
-          .eq("plan_id", planId)
-          .eq("workspace_key", "opening_month_plan")
-          .maybeSingle()
-
-        const config = normalizeLaunchPlanConfig(existingDoc?.content)
-        config.lastGeneratedAt = now
-        config.sourcesSnapshotAt = now
-
-        await supabase
-          .from("workspace_documents")
-          .upsert(
-            { plan_id: planId, workspace_key: "opening_month_plan", content: config },
-            { onConflict: "plan_id,workspace_key" }
-          )
-
-        console.log(`[launch-plan/generate] done inserted=${inserted?.length ?? 0} preserved=${userEditedIds.length}`)
+        console.log(`[launch-plan/generate] proposed ${proposedSpecs.length} milestones (not yet persisted)`)
 
         cleanup()
         send(sse("done", {
-          inserted: inserted?.length ?? 0,
-          preserved: userEditedIds.length,
           lastGeneratedAt: now,
-          milestones: inserted ?? [],
+          milestones: proposedSpecs,
         }))
         controller.close()
       } catch (err) {

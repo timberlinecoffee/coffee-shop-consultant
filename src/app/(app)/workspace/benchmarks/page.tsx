@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { effectivePlanForGating, isBetaWaived } from "@/lib/access";
 import { UpgradeGate } from "@/components/upgrade-gate";
 import { BenchmarksWorkspace } from "./benchmarks-workspace";
+import { getActivePlanId } from "@/lib/plan-context";
 
 export const dynamic = "force-dynamic";
 
@@ -19,15 +20,8 @@ export default async function BenchmarksPage() {
 
   if (!user) redirect("/login");
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!plan) redirect("/onboarding");
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
 
   const { data: profile } = await supabase
     .from("users")
@@ -71,7 +65,7 @@ export default async function BenchmarksPage() {
 
   return (
     <BenchmarksWorkspace
-      planId={plan.id}
+      planId={planId}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
     />
   );

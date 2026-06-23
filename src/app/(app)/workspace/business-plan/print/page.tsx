@@ -42,6 +42,7 @@ import {
 } from "@/lib/suppliers";
 import { PrintButton, SectionToggle } from "./print-button";
 import type { Metadata } from "next";
+import { getActivePlanId } from "@/lib/plan-context";
 
 export const dynamic = "force-dynamic";
 
@@ -131,16 +132,14 @@ export default async function BusinessPlanPrintPage({
   const settings = await getAccountSettings(supabase, user.id);
   const currencyCode = settings.currencyCode;
 
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, plan_name")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
+    .select("plan_name")
+    .eq("id", planId)
     .maybeSingle();
   if (!plan) redirect("/onboarding");
-
-  const planId = plan.id;
 
   const [
     { data: userProfile },
