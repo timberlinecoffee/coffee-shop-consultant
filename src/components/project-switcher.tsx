@@ -1,11 +1,15 @@
 // TIM-2378 2G-C: sidebar project switcher + add-project modal.
 // TIM-2915: per-plan delete control + reliable switching + toast on failure.
-//   Switch now navigates to /dashboard to force a clean unmount of any
-//   workspace page that has client-side state hydrated from the previous
-//   active plan; router.refresh() alone left form state stale across switch.
 //   Delete UI lives next to each non-active plan with a confirm modal;
 //   wires to existing DELETE /api/projects/[id] which fails-over the active
 //   pointer when the active plan is removed.
+// TIM-2962: switcher chrome + reliable swap. Selector trigger shows the title
+//   only (location moved to the dropdown row sub-label); trash icon is always
+//   visible; onCreated dedups by id so the "Open Project" flow doesn't list
+//   the same plan twice; switches/deletes/opens use window.location.assign so
+//   the page actually re-hydrates from the new active plan (router.push +
+//   refresh is a no-op when the user is already on /dashboard, which left
+//   HomeV2 client useState pinned to the previous plan).
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -30,7 +34,10 @@ interface ProjectSwitcherProps {
 type Toast = { kind: "success" | "error"; message: string } | null;
 
 export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
-  const router = useRouter();
+  // TIM-2962: navigation here is done via window.location.assign for the
+  // hard-reload semantics needed after a plan switch; we no longer use the
+  // Next router in this component. AddProjectModal keeps its own useRouter
+  // for the /pricing redirect and the "Stay Here" refresh.
   const [projects, setProjects] = useState<Project[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -103,15 +110,15 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
         kind: "success",
         message: target ? `Switched to ${target.name}` : "Project switched",
       });
-      // Hard-navigate to /dashboard so any workspace page that hydrated
-      // client state from the previous active plan unmounts. router.refresh()
-      // alone re-runs server components but leaves stale useState in client
-      // editors (concept, financials, etc).
-      router.push("/dashboard");
-      router.refresh();
-      // Reconcile in the background — if the optimistic update is wrong for
-      // any reason, the server response wins.
-      refetchProjects();
+      // TIM-2962: full-page navigation. router.push("/dashboard") + refresh
+      // is a no-op when the user is already on /dashboard (which is the case
+      // immediately after creating + opening a project), so server components
+      // re-render but client useState in HomeV2 / workspace editors survives
+      // and keeps showing the previous plan's data. window.location.assign
+      // forces a hard reload so every client component re-hydrates from the
+      // new active plan's server props. Background refetch is no longer
+      // needed because the next page load fetches /api/projects on mount.
+      window.location.assign("/dashboard");
     } catch {
       setToast({
         kind: "error",
@@ -136,14 +143,12 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
         aria-expanded={menuOpen}
         aria-haspopup="listbox"
       >
+        {/* TIM-2962: closed selector shows the plan title only. The dropdown
+            rows still surface name + location so users can tell duplicates
+            apart, but the trigger label should be the title. */}
         <span className="flex-1 min-w-0 text-sm font-medium text-[var(--foreground)] truncate">
           {activeProject?.name ?? "My Project"}
         </span>
-        {activeProject?.locationLabel && (
-          <span className="text-xs text-[var(--dark-grey)] truncate max-w-[80px]">
-            {activeProject.locationLabel}
-          </span>
-        )}
         <ChevronDown
           size={14}
           className={`flex-shrink-0 text-[var(--dark-grey)] transition-transform ${menuOpen ? "rotate-180" : ""}`}
@@ -205,10 +210,17 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onCreated={(project, activatedNow) => {
-          setProjects((prev) => [
-            { ...project, isActive: activatedNow },
-            ...prev.map((p) => ({ ...p, isActive: activatedNow ? false : p.isActive })),
-          ]);
+          // TIM-2962: dedup by id. The modal calls onCreated twice when the
+          // user clicks "Open Project" — once after POST creates the plan,
+          // once after PATCH activates it. Without filtering, the same plan
+          // appears twice in the selector list until refetchProjects() lands.
+          setProjects((prev) => {
+            const others = prev.filter((p) => p.id !== project.id);
+            return [
+              { ...project, isActive: activatedNow },
+              ...others.map((p) => ({ ...p, isActive: activatedNow ? false : p.isActive })),
+            ];
+          });
         }}
       />
       <ProUpgradePrompt
@@ -226,12 +238,11 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
             message: `Deleted ${deleted.name}`,
           });
           await refetchProjects();
-          // If the deleted project was the active one, the server picked a
-          // new active for us — push to /dashboard so any current workspace
-          // page (which was rendering the now-deleted plan) unmounts.
+          // TIM-2962: full reload when the deleted project was active so
+          // client state from the now-deleted plan unmounts. See switchProject
+          // for the rationale on window.location.assign vs router.push.
           if (deleted.isActive) {
-            router.push("/dashboard");
-            router.refresh();
+            window.location.assign("/dashboard");
           }
         }}
         onError={(msg) => {
@@ -321,7 +332,7 @@ function ProjectRow({
             e.stopPropagation();
             onDelete();
           }}
-          className="flex-shrink-0 p-2 mr-1 rounded-lg text-[var(--dark-grey)] hover:text-red-600 hover:bg-red-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+          className="flex-shrink-0 p-2 mr-1 rounded-lg text-[var(--dark-grey)] hover:text-red-600 hover:bg-red-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
           aria-label={`Delete ${project.name}`}
           title={`Delete ${project.name}`}
         >
@@ -581,10 +592,9 @@ function AddProjectModal({
       });
       onCreated(createdProject, true);
       onClose();
-      // TIM-2915: hard-navigate so any workspace page that loaded with the
-      // previous active plan's data unmounts.
-      router.push("/dashboard");
-      router.refresh();
+      // TIM-2962: full reload — router.push("/dashboard") is a no-op when the
+      // user is already on /dashboard, which leaves HomeV2 client state stale.
+      window.location.assign("/dashboard");
     } catch {
       setError("Could not switch to the new project. Try again.");
       setSwitching(false);
