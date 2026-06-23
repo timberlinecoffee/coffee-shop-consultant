@@ -3,17 +3,18 @@
 // readout in the Cost of Goods tab. Persisted on coffee_shop_plans so it can
 // be reused by other workspaces later (e.g. the Insights matrix).
 import { createClient } from "@/lib/supabase/server"
+import { getActivePlanId } from "@/lib/plan-context"
 import type { NextRequest } from "next/server"
 
 export const runtime = "nodejs"
 
 async function getPlan(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const planId = await getActivePlanId(supabase, userId)
+  if (!planId) return null
   const { data } = await supabase
     .from("coffee_shop_plans")
     .select("id, target_gross_margin")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
+    .eq("id", planId)
     .maybeSingle()
   return data
 }

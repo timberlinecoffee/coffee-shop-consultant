@@ -1,0 +1,34 @@
+name: CI structural guards (TIM-2926)
+
+# Blocks merge if any PR reintroduces the TIM-2921 bug class:
+#   • fetch(`/api/workspaces/.../items/${id}`, PATCH|DELETE) without a matching [id]/route.ts
+#   • onApply callback that calls a mutating endpoint but ignores accepted[].finalValue,
+#     skips res.ok, or swallows errors without throwing
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint-onapply-urls:
+    name: "Guard: no missing items/[id]/route.ts (TIM-2926)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Lint — forbid dynamic items URL without matching route
+        run: node scripts/lint-onapply-urls.mjs
+
+  lint-ai-review-modal:
+    name: "Guard: onApply handlers must read accepted + check res.ok + throw (TIM-2926)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Lint — AI review-modal Accept handler contract
+        run: node scripts/lint-ai-review-modal.mjs

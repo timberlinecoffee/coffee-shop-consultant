@@ -2724,15 +2724,26 @@ export function HiringWorkspace({
   const handleEvaluationsChange = useCallback((v: CompetencyEvaluation[]) => setEvaluations(v), []);
 
   const handleApplyHiringSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
+    const failed: string[] = [];
     for (const c of accepted) {
       try {
         const jd = JSON.parse(c.finalValue) as Record<string, string>;
-        await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
+        const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: c.fieldId, jd }),
         });
-      } catch { /* ignore */ }
+        if (!res.ok) failed.push(c.fieldId);
+      } catch {
+        failed.push(c.fieldId);
+      }
+    }
+    if (failed.length > 0) {
+      throw new Error(
+        failed.length === accepted.length
+          ? "Couldn't save these changes. Please try again."
+          : `Couldn't save ${failed.length} of ${accepted.length} changes. Please try again.`,
+      );
     }
   }, [planId]);
 

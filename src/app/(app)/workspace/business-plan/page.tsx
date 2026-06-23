@@ -26,6 +26,7 @@ import {
   type BpHiringRole,
   toBpMarketingPlanning,
 } from "@/lib/business-plan";
+import { getActivePlanId } from "@/lib/plan-context";
 
 export const dynamic = "force-dynamic";
 
@@ -37,17 +38,14 @@ export default async function BusinessPlanWorkspacePage() {
 
   if (!user) redirect("/login");
 
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, plan_name")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
+    .select("plan_name")
+    .eq("id", planId)
     .maybeSingle();
-
   if (!plan) redirect("/onboarding");
-
-  const planId = plan.id;
 
   const [
     { data: conceptDoc },

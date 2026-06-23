@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive } from "@/lib/access";
+import { getActivePlanId } from "@/lib/plan-context";
 import type { NextRequest } from "next/server";
 
 async function getAuthedPlanId() {
@@ -7,14 +8,10 @@ async function getAuthedPlanId() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { supabase, user: null, planId: null, error: "Unauthorized", status: 401 };
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+  const planId = await getActivePlanId(supabase, user.id);
 
-  if (!plan) return { supabase, user, planId: null, error: "No plan found", status: 404 };
-  return { supabase, user, planId: plan.id, error: null, status: 200 };
+  if (!planId) return { supabase, user, planId: null, error: "No plan found", status: 404 };
+  return { supabase, user, planId, error: null, status: 200 };
 }
 
 async function checkPaywall(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {

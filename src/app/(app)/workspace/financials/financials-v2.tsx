@@ -1226,7 +1226,7 @@ function ReportsTab({
 
       {/* Depreciation */}
       <section>
-        <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Asset &amp; Depreciation</h2>
+        <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Depreciation Schedule</h2>
         <DepreciationTab
           equipmentItems={liveEquipmentItems}
           slices={slices}
@@ -1248,7 +1248,7 @@ function ReportsTab({
 
       {/* Ratios */}
       <section>
-        <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Financial Ratios</h2>
+        <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Health Check</h2>
         <RatiosTab slices={slices} />
       </section>
     </div>

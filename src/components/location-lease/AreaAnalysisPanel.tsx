@@ -7,6 +7,7 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sparkles, AlertCircle, MapPin } from 'lucide-react'
+import { useAIReviewModal } from '@/hooks/useAIReviewModal'
 
 export function AreaAnalysisPanel({
   candidateId,
@@ -30,6 +31,8 @@ export function AreaAnalysisPanel({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal()
+
   async function run() {
     if (loading) return
     setError('')
@@ -42,10 +45,42 @@ export function AreaAnalysisPanel({
       const data = (await res.json()) as { text?: string; generatedAt?: string; error?: string }
       if (!res.ok) {
         setError(data.error ?? 'Area analysis failed.')
-      } else {
-        setText(data.text ?? '')
-        setGeneratedAt(data.generatedAt ?? new Date().toISOString())
+        return
       }
+      const proposedText = data.text ?? ''
+      const proposedAt = data.generatedAt ?? new Date().toISOString()
+      // TIM-2924 Shape B fix: route through review modal so the user can edit
+      // before the analysis is persisted. onApply calls PATCH /candidates/{id}.
+      openAIReviewModal({
+        suggestions: [
+          {
+            id: `area-analysis-${candidateId}`,
+            fieldId: 'area_analysis',
+            fieldLabel: 'Area Analysis',
+            originalValue: text,
+            proposedValue: proposedText,
+            isStructured: false,
+          },
+        ],
+        context: { workspace: 'Location & Lease', section: 'Area Analysis' },
+        onApply: async (accepted) => {
+          const finalText = accepted[0].finalValue
+          const patchRes = await fetch(
+            `/api/workspaces/location-lease/candidates/${candidateId}`,
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                area_analysis: finalText,
+                area_analysis_at: proposedAt,
+              }),
+            },
+          )
+          if (!patchRes.ok) throw new Error('Failed to save area analysis')
+          setText(finalText)
+          setGeneratedAt(proposedAt)
+        },
+      })
     } catch {
       setError('Connection error. Please try again.')
     } finally {
@@ -92,41 +127,44 @@ export function AreaAnalysisPanel({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground">
-            Area Analysis
-          </h4>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--neutral-cool-600)]">
-            We pull nearby businesses, transit stops, and parking from OpenStreetMap,
-            then ask the AI to read the block for your concept.
-          </p>
-        </div>
-        <Button size="sm" onClick={run} disabled={loading} className="shrink-0">
-          <Sparkles className="mr-1.5 size-3.5" />
-          {loading ? 'Analyzing…' : text ? 'Refresh' : 'Analyze The Area'}
-        </Button>
-      </div>
-
-      {error && (
-        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
-          <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-500" aria-hidden="true" />
-          <p className="text-xs text-red-700">{error}</p>
-        </div>
-      )}
-
-      {text && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-warm-50)]/40 px-4 py-4">
-          <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{text}</div>
-          {generatedAt && (
-            <p className="mt-3 text-[10px] italic text-[var(--neutral-cool-600)]">
-              Generated {formatWhen(generatedAt)}
+    <>
+      {AIReviewModalNode}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground">
+              Area Analysis
+            </h4>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--neutral-cool-600)]">
+              We pull nearby businesses, transit stops, and parking from OpenStreetMap,
+              then ask the AI to read the block for your concept.
             </p>
-          )}
+          </div>
+          <Button size="sm" onClick={run} disabled={loading} className="shrink-0">
+            <Sparkles className="mr-1.5 size-3.5" />
+            {loading ? 'Analyzing…' : text ? 'Refresh' : 'Analyze The Area'}
+          </Button>
         </div>
-      )}
-    </div>
+
+        {error && (
+          <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+            <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-500" aria-hidden="true" />
+            <p className="text-xs text-red-700">{error}</p>
+          </div>
+        )}
+
+        {text && (
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-warm-50)]/40 px-4 py-4">
+            <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{text}</div>
+            {generatedAt && (
+              <p className="mt-3 text-[10px] italic text-[var(--neutral-cool-600)]">
+                Generated {formatWhen(generatedAt)}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 

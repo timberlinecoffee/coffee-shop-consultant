@@ -26,6 +26,7 @@ import {
   type VendorDecision,
 } from "@/lib/suppliers";
 import { PrintButton } from "./print-button";
+import { getActivePlanId } from "@/lib/plan-context";
 
 export const dynamic = "force-dynamic";
 
@@ -40,33 +41,26 @@ export default async function ConceptPrintPage() {
 
   if (!user) redirect("/login");
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!plan) redirect("/onboarding");
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
 
   const [{ data: doc }, { data: decisionsData }, { data: customCatsData }] = await Promise.all([
     supabase
       .from("workspace_documents")
       .select("content, updated_at")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .eq("workspace_key", "concept")
       .maybeSingle(),
     supabase
       .from("vendor_decisions")
       .select("*")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .eq("is_current", true)
       .order("category", { ascending: true }),
     supabase
       .from("vendor_custom_categories")
       .select("*")
-      .eq("plan_id", plan.id)
+      .eq("plan_id", planId)
       .order("position", { ascending: true }),
   ]);
 
