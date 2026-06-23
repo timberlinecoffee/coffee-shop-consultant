@@ -5,8 +5,9 @@
 // silently failed entire seed rows — see TIM-2464 / TIM-2531).
 //
 // Country context is written to plan_hiring_settings.hiring_country (per-plan,
-// canonical location per TIM-1300). MX is excluded — not a valid HiringCountry
-// (US | GB | CA | AU); persona 6 gets null hiring_country.
+// canonical location per TIM-1300). HiringCountry covers US | GB | CA | AU | MX
+// (MX added in TIM-2551 — Mexico hiring requirements live in
+// hiring_requirement_sets with country_code='MX', is_system=true).
 //
 // Every DB mutation is explicitly asserted before continuing to the next persona
 // (Engineering Rule 5: errors must be loud, never silently swallowed).
@@ -48,7 +49,6 @@ const OUTPUT_PATH = "scripts/tim2459-seed-output.json";
 const TS = Date.now();
 
 // 6 personas matching TIM-2457 specification.
-// hiringCountry: null for MX — not a valid HiringCountry enum value (US|GB|CA|AU).
 // users.localization stores the raw country code so UI tests can read it if needed.
 const PERSONAS = [
   { n: 1, slug: "p1-seattle",   currency: "USD", hiringCountry: "US", shopName: "Pioneer Square Coffee Co.",  viewport: "desktop" },
@@ -56,7 +56,7 @@ const PERSONAS = [
   { n: 3, slug: "p3-calgary",   currency: "CAD", hiringCountry: "CA", shopName: "Foothills Drive-Thru Coffee", viewport: "desktop" },
   { n: 4, slug: "p4-toronto",   currency: "CAD", hiringCountry: "CA", shopName: "Queen West Co-Brew",          viewport: "desktop" },
   { n: 5, slug: "p5-melbourne", currency: "AUD", hiringCountry: "AU", shopName: "Fitzroy Single Origin",       viewport: "mobile" },
-  { n: 6, slug: "p6-mexico",    currency: "MXN", hiringCountry: null, shopName: "Roma Norte Tostaduría",       viewport: "mobile" },
+  { n: 6, slug: "p6-mexico",    currency: "MXN", hiringCountry: "MX", shopName: "Roma Norte Tostaduría",       viewport: "mobile" },
 ];
 
 function assert(condition, message) {
@@ -108,8 +108,7 @@ async function provisionPersona(persona) {
   const planId = planRow.id;
   console.log(`  [3/4] plan created: ${planId}`);
 
-  // Step 4: set plan_hiring_settings.hiring_country if country is a valid HiringCountry.
-  // MX is not in the enum (US|GB|CA|AU) so persona 6 skips this step.
+  // Step 4: set plan_hiring_settings.hiring_country (HiringCountry: US|GB|CA|AU|MX).
   if (persona.hiringCountry) {
     const { error: hErr } = await admin.from("plan_hiring_settings")
       .upsert({ plan_id: planId, hiring_country: persona.hiringCountry });
