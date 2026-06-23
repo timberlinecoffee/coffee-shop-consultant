@@ -289,7 +289,9 @@ export default async function BusinessPlanPrintPage({
                already provides a "Back to editing" link, so the workspace
                nav is redundant on this route. Hide in all media. */
             aside[aria-label="Workspace navigation"],
-            nav[aria-label="Workspace navigation"] { display: none !important; }
+            nav[aria-label="Workspace navigation"],
+            aside[aria-label="Main navigation"],
+            nav[aria-label="Main navigation"] { display: none !important; }
             /* Workspace layout puts the lg:pl-[224px] padding on the flex-1
                wrapper, not on <main>. With the sidebar hidden, undo that
                offset so the printable centers correctly on screen. */
