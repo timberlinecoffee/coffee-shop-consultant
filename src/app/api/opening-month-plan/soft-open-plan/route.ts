@@ -1,21 +1,13 @@
+// TIM-2965: switched off the inline `coffee_shop_plans.eq(user_id).single()`
+// resolver — that pattern 500s for any user with more than one plan because
+// `.single()` rejects multi-row results. Use the canonical `getActivePlanId`
+// (TIM-2377), which honors `users.current_plan_id` and falls back to the
+// latest plan. Sibling routes in this suite already use the latest-by-created
+// fallback; this aligns and goes one better by respecting active-project.
 import { createClient } from "@/lib/supabase/server";
+import { getActivePlanId } from "@/lib/plan-context";
 import { isSubscriptionActive } from "@/lib/access";
 import type { NextRequest } from "next/server";
-
-async function getAuthedPlanId() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null, planId: null, error: "Unauthorized", status: 401 };
-
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!plan) return { supabase, user, planId: null, error: "No plan found", status: 404 };
-  return { supabase, user, planId: plan.id, error: null, status: 200 };
-}
 
 async function checkPaywall(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data: profile } = await supabase
@@ -27,13 +19,17 @@ async function checkPaywall(supabase: Awaited<ReturnType<typeof createClient>>, 
 }
 
 export async function GET() {
-  const { supabase, planId, error, status } = await getAuthedPlanId();
-  if (error) return Response.json({ error }, { status });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 });
 
   const { data, error: dbErr } = await supabase
     .from("soft_open_plan_items")
     .select("*")
-    .eq("plan_id", planId!)
+    .eq("plan_id", planId)
     .order("day_offset", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -42,8 +38,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const { supabase, user, planId, error, status } = await getAuthedPlanId();
-  if (error || !user) return Response.json({ error }, { status });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 });
 
   if (!(await checkPaywall(supabase, user.id))) {
     return Response.json({ reason: "paywall", tier_required: "starter" }, { status: 402 });
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
   const { data, error: dbErr } = await supabase
     .from("soft_open_plan_items")
     .insert({
-      plan_id: planId!,
+      plan_id: planId,
       day_offset,
       task,
       owner: owner ?? null,
