@@ -9,7 +9,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Megaphone,
-  Sparkles,
   Plus,
   Trash2,
   ArrowUp,
@@ -434,10 +433,9 @@ function SectionBody(props: SectionBodyProps) {
           type="button"
           onClick={onGenerate}
           disabled={!canEdit || generating}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
+          className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
         >
-          <Sparkles className="w-3.5 h-3.5" />
-          {generating ? "Generating…" : "Generate with AI"}
+          {generating ? "Writing…" : "Write with AI"}
         </button>
       </div>
 
