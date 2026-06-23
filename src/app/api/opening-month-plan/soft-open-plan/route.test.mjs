@@ -42,18 +42,22 @@ for (const routePath of ROUTES) {
   });
 
   test(`${label}: does NOT use the broken .single() coffee_shop_plans resolver`, () => {
-    // The bug pattern: a single chained call ending in `.single()` against
-    // coffee_shop_plans with an .eq(user_id, ...) filter. Allow .maybeSingle()
-    // and .limit(1) escapes; reject only the bare `.single()` form.
-    const fromIdx = src.indexOf('.from("coffee_shop_plans")');
-    if (fromIdx === -1) return; // no coffee_shop_plans access at all is fine
-    const chunk = src.slice(fromIdx, fromIdx + 400);
-    const hasBareSingle = /\.single\s*\(\s*\)/.test(chunk);
-    const hasLimit = /\.limit\s*\(\s*1\s*\)/.test(chunk);
-    const hasMaybeSingle = /\.maybeSingle\s*\(\s*\)/.test(chunk);
-    assert.ok(
-      !hasBareSingle || hasLimit || hasMaybeSingle,
-      "route must not call .single() on coffee_shop_plans without .limit(1)/.maybeSingle() — that pattern 500s for users with multiple plans (TIM-2965)",
-    );
+    // Positive assertion: the file must contain NO chain of
+    // `.from(<quote>coffee_shop_plans<quote>)` followed (within 400 chars) by
+    // `.single()` without also having `.limit(1)` or `.maybeSingle()` nearby.
+    // Using a regex rather than indexOf so quote style (single/double) can't
+    // be used to evade the check (code-review Finding 2 on TIM-2965).
+    const FROM_PLANS = /\.from\s*\(\s*['"]coffee_shop_plans['"]\s*\)/g;
+    let match;
+    while ((match = FROM_PLANS.exec(src)) !== null) {
+      const chunk = src.slice(match.index, match.index + 400);
+      const hasBareSingle = /\.single\s*\(\s*\)/.test(chunk);
+      const hasLimit = /\.limit\s*\(\s*1\s*\)/.test(chunk);
+      const hasMaybeSingle = /\.maybeSingle\s*\(\s*\)/.test(chunk);
+      assert.ok(
+        !hasBareSingle || hasLimit || hasMaybeSingle,
+        "route must not call .single() on coffee_shop_plans without .limit(1)/.maybeSingle() — that pattern 500s for users with multiple plans (TIM-2965)",
+      );
+    }
   });
 }
