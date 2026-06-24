@@ -180,23 +180,12 @@ export const jobDescriptionTemplate: PdfTemplate<JdContent> = {
     }
 
     if (!role) {
-      // Fall back to first active role for the plan
+      // Fall back to first role alphabetically
       const { data } = await supabase
         .from("hiring_plan_roles")
         .select("*")
         .eq("plan_id", planId)
         .order("role_title", { ascending: true })
-        .limit(1)
-        .single()
-      role = data ?? null
-    }
-
-    if (!role) {
-      // Last resort: any role
-      const { data } = await supabase
-        .from("hiring_plan_roles")
-        .select("*")
-        .eq("plan_id", planId)
         .limit(1)
         .single()
       role = data ?? null

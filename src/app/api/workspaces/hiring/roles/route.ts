@@ -81,7 +81,7 @@ export async function PATCH(request: NextRequest) {
   let body: Record<string, unknown>
   try { body = await request.json() } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }) }
 
-  const { id, jd, ...rest } = body
+  const { id, jd, status: _dropStatus, ...rest } = body
   if (!id) return Response.json({ error: "Missing id" }, { status: 400 })
 
   // JD upsert: create or update the job_description_templates row for this role

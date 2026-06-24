@@ -51,7 +51,7 @@ const REGISTRY_FIXTURE = {
     { id: "E3", name: "Bunn Brewer",      cost_local: 1500,  category: "major", notes: null },
   ],
   hiringRoles: [
-    { id: "R1", role_title: "Opening-Key Barista", headcount: 1, start_date: null, monthly_cost_cents: 600000, status: "open" },
+    { id: "R1", role_title: "Opening-Key Barista", headcount: 1, start_date: null, monthly_cost_cents: 600000 },
   ],
   fundingSources: [
     { id: "F1", kind: "loan", label: "SBA 7(a) Loan" },
