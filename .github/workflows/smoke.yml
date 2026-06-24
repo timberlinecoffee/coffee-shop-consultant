@@ -89,16 +89,23 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Wait for app to be ready
-        run: npx wait-on http://localhost:3000 --timeout 60000
+        # TIM-2994: use TCP port check instead of HTTP GET. Next.js binds the
+        # port immediately but middleware 307-redirects unauthed root requests,
+        # which wait-on http://... treats as not-ready. 180s gives Next.js 16
+        # cold-start enough headroom.
+        run: npx wait-on tcp:3000 --timeout 180000
 
       - name: Run smoke tests
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
           PAPERCLIP_API_URL: ${{ secrets.PAPERCLIP_API_URL }}
           PAPERCLIP_API_KEY: ${{ secrets.PAPERCLIP_API_KEY }}
+          # TIM-2994 (Rule 3): pass PR body via env var, not ${{ }} template
+          # inlined into the shell. Backticks/$()/shell special chars in a PR
+          # description would otherwise execute as code.
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          PR_BODY="${{ github.event.pull_request.body }}"
-          ISSUE=$(echo "$PR_BODY" | grep -oP 'SMOKE_ISSUE=\K\S+' || true)
+          ISSUE=$(printf '%s' "$PR_BODY" | grep -oP 'SMOKE_ISSUE=\K\S+' || true)
           if [ -n "$ISSUE" ]; then
             export SMOKE_ISSUE="$ISSUE"
           fi
@@ -151,7 +158,9 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Wait for app to be ready
-        run: npx wait-on http://localhost:3000 --timeout 60000
+        # TIM-2994: matches playwright-smoke — tcp:3000 + 180s timeout for
+        # Next.js 16 cold-start.
+        run: npx wait-on tcp:3000 --timeout 180000
 
       - name: Run Lighthouse CI
         run: |
