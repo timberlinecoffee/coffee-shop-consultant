@@ -351,9 +351,10 @@ export function RegenerateAllButton({
     const failedTitles: string[] = [];
 
     const accept = async (accepted: ApprovedChange[]) => {
+      const failed: string[] = [];
       for (const a of accepted) {
         try {
-          await fetch(`/api/business-plan/sections/${a.fieldId}`, {
+          const res = await fetch(`/api/business-plan/sections/${a.fieldId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -361,10 +362,21 @@ export function RegenerateAllButton({
               estimated_claims_json: claimsByKey.get(a.fieldId) ?? [],
             }),
           });
-          onSectionApplied(a.fieldId, a.finalValue);
+          if (!res.ok) {
+            failed.push(titleByKey.get(a.fieldId) ?? a.fieldId);
+          } else {
+            onSectionApplied(a.fieldId, a.finalValue);
+          }
         } catch {
-          onError?.(`Failed to save ${titleByKey.get(a.fieldId) ?? a.fieldId}. Try again from the section card.`);
+          failed.push(titleByKey.get(a.fieldId) ?? a.fieldId);
         }
+      }
+      if (failed.length > 0) {
+        throw new Error(
+          failed.length === accepted.length
+            ? "Couldn't save these changes. Please try again."
+            : `Couldn't save ${failed.length} of ${accepted.length} changes. Please try again.`,
+        );
       }
     };
 
