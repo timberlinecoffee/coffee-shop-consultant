@@ -36,7 +36,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: node --experimental-strip-types --no-warnings --test --test-reporter=spec src/lib/normalize.test.mjs
+      # TIM-2994: GitHub Actions force-promoted Node 20→24, and Node 24 dropped
+      # --experimental-strip-types (type stripping is now default-on). The test
+      # file is plain .mjs with no TS to strip, so the flag was never needed.
+      - run: node --no-warnings --test --test-reporter=spec src/lib/normalize.test.mjs
 
   playwright-smoke:
     name: Playwright smoke (TIM-1357)

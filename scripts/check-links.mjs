@@ -19,6 +19,11 @@ const ROOT = resolve(__dirname, "..");
 const SRC = join(ROOT, "src");
 const APP = join(SRC, "app");
 
+// Known-pending stubs: hrefs that don't have a backing route yet but are
+// tracked in follow-up issues so they can't regress silently. Reported as
+// warnings (non-fatal) instead of fatal dead-links — see TIM-2999.
+const KNOWN_STUBS = new Set(["/trial", "/affiliates"]);
+
 // ── 1. Collect all .ts/.tsx source files ──────────────────────────────────
 function walk(dir, results = []) {
   for (const entry of readdirSync(dir)) {
@@ -107,13 +112,18 @@ function couldMatchDynamic(dir, segments) {
   if (existsSync(literal) && statSync(literal).isDirectory()) {
     if (couldMatchDynamic(literal, tail)) return true;
   }
-  // Try [dynamic] segments
+  // Try [dynamic] segments and (route-group) segments (TIM-2994).
+  // Next.js route groups — folders wrapped in parens, e.g. (app) — are
+  // excluded from the URL path, so a request for /workspace resolves
+  // through app/(app)/workspace/page.tsx without "(app)" appearing in
+  // the URL. Recurse into them with the same remaining segments.
   for (const entry of readdirSync(dir)) {
+    const child = join(dir, entry);
+    if (!statSync(child).isDirectory()) continue;
     if (entry.startsWith("[") && entry.endsWith("]")) {
-      const dynDir = join(dir, entry);
-      if (statSync(dynDir).isDirectory()) {
-        if (couldMatchDynamic(dynDir, tail)) return true;
-      }
+      if (couldMatchDynamic(child, tail)) return true;
+    } else if (entry.startsWith("(") && entry.endsWith(")")) {
+      if (couldMatchDynamic(child, segments)) return true;
     }
   }
   return false;
@@ -121,15 +131,27 @@ function couldMatchDynamic(dir, segments) {
 
 // ── 4. Report ────────────────────────────────────────────────────────────
 const dead = [];
+const knownStubs = [];
 for (const [href, files] of [...allHrefs].sort(([a], [b]) => a.localeCompare(b))) {
-  if (!isRoutable(href)) {
-    dead.push({ href, files });
+  if (isRoutable(href)) continue;
+  if (KNOWN_STUBS.has(href)) {
+    knownStubs.push({ href, files });
+    continue;
   }
+  dead.push({ href, files });
 }
 
-const ok = allHrefs.size - dead.length;
+const ok = allHrefs.size - dead.length - knownStubs.length;
 console.log(`\nLink check: ${allHrefs.size} unique internal hrefs scanned`);
 console.log(`  ✓ ${ok} routable`);
+
+if (knownStubs.length > 0) {
+  console.log(`  ⚠ ${knownStubs.length} known-pending stub(s) (non-fatal):`);
+  for (const { href, files } of knownStubs) {
+    console.log(`    STUB  ${href}`);
+    for (const f of files) console.log(`          referenced in ${f}`);
+  }
+}
 
 if (dead.length === 0) {
   console.log("  All links are valid.\n");
