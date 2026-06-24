@@ -6,6 +6,30 @@ on:
     branches: [main]
 
 jobs:
+  lock-consistency:
+    name: package-lock consistency (TIM-2994)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Verify package-lock.json matches package.json
+        run: |
+          set -e
+          if ! npm ci --ignore-scripts --dry-run --no-audit --no-fund > /tmp/npm-ci-dry.log 2>&1; then
+            echo "::error::package-lock.json is out of sync with package.json — npm ci would fail."
+            echo "::error::Run 'npm install --package-lock-only' locally, commit the updated package-lock.json, and push."
+            tail -50 /tmp/npm-ci-dry.log
+            exit 1
+          fi
+          if grep -iE "(missing|invalid|EUSAGE|need to update|out of sync)" /tmp/npm-ci-dry.log; then
+            echo "::error::npm ci --dry-run surfaced lock/package drift warnings (see above)."
+            exit 1
+          fi
+          echo "package-lock.json is consistent with package.json."
+
   link-check:
     name: Check internal links
     runs-on: ubuntu-latest
