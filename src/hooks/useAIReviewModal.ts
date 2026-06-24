@@ -31,6 +31,9 @@ export interface OpenAIReviewModalOptions {
   onApply: (accepted: ApprovedChange[]) => Promise<void>;
   isStreaming?: boolean;
   error?: string | null;
+  // TIM-3017: shows the unsaved-content warning banner while any section is
+  // pending review. Pass true when opening from the regenerate-all flow.
+  showUnsavedWarning?: boolean;
 }
 
 interface ModalState extends OpenAIReviewModalOptions {
@@ -69,6 +72,7 @@ export function useAIReviewModal() {
         context: state.context,
         isStreaming: state.isStreaming,
         error: state.error,
+        showUnsavedWarning: state.showUnsavedWarning,
       })
     : null;
 

@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, X, Pencil, Sparkles, AlertCircle, Link2 } from "lucide-react";
+import { RegeneratePreviewBanner } from "@/app/(app)/workspace/business-plan/regenerate-preview-banner";
 import { COPILOT_NAME } from "@/lib/copilot/branding";
 import {
   recomputeEquipmentLinked,
@@ -67,6 +68,9 @@ export interface AIReviewModalProps {
     workspace: string;
     section?: string;
   };
+  // TIM-3017: when true, shows the RegeneratePreviewBanner while any section
+  // is pending review. Cleared automatically once all sections are resolved.
+  showUnsavedWarning?: boolean;
 }
 
 // ── Internal card state ─────────────────────────────────────────────────────
@@ -477,6 +481,7 @@ export function AIReviewModal({
   isStreaming = false,
   error = null,
   context,
+  showUnsavedWarning = false,
 }: AIReviewModalProps) {
   const [cardStates, setCardStates] = useState<Map<string, CardState>>(new Map());
   const [isApplying, setIsApplying] = useState(false);
@@ -542,6 +547,16 @@ export function AIReviewModal({
   );
 
   const totalCount = actionable.length;
+
+  // TIM-3017: banner clears when every actionable section is accepted or rejected.
+  const hasPendingReview = useMemo(
+    () =>
+      actionable.some((s) => {
+        const status = cardStates.get(s.id)?.status;
+        return status === "unreviewed" || status === "editing";
+      }),
+    [actionable, cardStates],
+  );
 
   const statusLabel = acceptedCount === 0
     ? "None accepted yet"
@@ -771,6 +786,7 @@ export function AIReviewModal({
         />
         <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
           {header}
+          {showUnsavedWarning && hasPendingReview && <RegeneratePreviewBanner />}
           {cardList}
           {footer}
         </div>
@@ -804,6 +820,7 @@ export function AIReviewModal({
               <div className="w-10 h-1 rounded-full bg-[var(--border)]" />
             </div>
             {header}
+            {showUnsavedWarning && hasPendingReview && <RegeneratePreviewBanner />}
             {cardList}
             {footer}
           </motion.div>

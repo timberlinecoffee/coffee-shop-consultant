@@ -71,6 +71,7 @@ export interface RegenerateAllButtonProps {
     context: { workspace: string; section?: string };
     onApply: (accepted: ApprovedChange[]) => Promise<void>;
     error?: string | null;
+    showUnsavedWarning?: boolean;
   }) => void;
   /** Open the progress overlay (Phase 1 — during streaming). */
   openProgressOverlay: (opts: OpenProgressOverlayOptions) => void;
@@ -510,6 +511,7 @@ export function RegenerateAllButton({
       context: { workspace: "Business Plan", section: "Regenerate all" },
       onApply: accept,
       error: errorBanner,
+      showUnsavedWarning: true,
     });
   }, [
     pending,
