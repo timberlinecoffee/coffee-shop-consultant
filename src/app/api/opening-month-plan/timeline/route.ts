@@ -1,4 +1,10 @@
+// TIM-2980: Resolve via `getActivePlanId` so the timeline workspace operates
+// on the user's active plan, not the latest-by-created fallback. The pre-2980
+// inline resolver also used bare `.single()` on `coffee_shop_plans.eq(user_id)`
+// — same TIM-2965 500 bomb for any user with more than one plan. Mirrors the
+// canonical resolver introduced in TIM-2377.
 import { createClient } from "@/lib/supabase/server";
+import { getActivePlanId } from "@/lib/plan-context";
 import { isSubscriptionActive } from "@/lib/access";
 import type { NextRequest } from "next/server";
 
@@ -7,14 +13,9 @@ async function getAuthedPlanId() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { supabase, user: null, planId: null, error: "Unauthorized", status: 401 };
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!plan) return { supabase, user, planId: null, error: "No plan found", status: 404 };
-  return { supabase, user, planId: plan.id, error: null, status: 200 };
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) return { supabase, user, planId: null, error: "No plan found", status: 404 };
+  return { supabase, user, planId, error: null, status: 200 };
 }
 
 async function checkPaywall(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {

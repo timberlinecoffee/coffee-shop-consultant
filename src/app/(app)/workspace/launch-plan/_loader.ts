@@ -3,8 +3,14 @@
 // /workspace/opening-month-plan/page.tsx loader so the underlying workspace
 // component sees an identical Props payload regardless of which sub-page
 // rendered it.
+// TIM-2980: Resolve via `getActivePlanId` so the SSR loader picks the same
+// plan the workspace API routes (playbook, milestones, config, timeline,
+// hiring-plan, marketing-kickoff) now resolve. Without this the page renders
+// one plan's `initialMilestones` while the client API calls return another
+// plan's items for any user whose `users.current_plan_id` is non-latest.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getActivePlanId } from "@/lib/plan-context";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan";
 import type { Milestone } from "@/lib/launch-plan";
@@ -26,17 +32,9 @@ export async function loadLaunchPlanWorkspaceData(): Promise<LaunchPlanLoaderRes
 
   if (!user) redirect("/login");
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const planId = await getActivePlanId(supabase, user.id);
 
-  if (!plan) redirect("/onboarding");
-
-  const planId = plan.id;
+  if (!planId) redirect("/onboarding");
 
   const [
     { data: milestonesData },
