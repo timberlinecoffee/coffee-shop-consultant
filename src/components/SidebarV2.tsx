@@ -124,7 +124,12 @@ function useV2CategoryExpanded() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(V2_CATEGORY_COLLAPSED_KEY);
-      if (raw) setCollapsed(JSON.parse(raw) as V2CollapsedState);
+      if (!raw) return;
+      const parsed: unknown = JSON.parse(raw);
+      // Guard against "null", arrays, or non-objects written by other code paths.
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        setCollapsed(parsed as V2CollapsedState);
+      }
     } catch {
       // ignore
     }
@@ -144,7 +149,21 @@ function useV2CategoryExpanded() {
     });
   }, []);
 
-  return { isExpanded, toggle };
+  // Force-open a category without toggling (used when navigating directly to a sub-item URL).
+  const forceExpand = useCallback((key: string) => {
+    setCollapsed((prev) => {
+      if (!prev[key]) return prev; // already expanded — no-op, stable reference
+      const next = { ...prev, [key]: false };
+      try {
+        localStorage.setItem(V2_CATEGORY_COLLAPSED_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
+  return { isExpanded, toggle, forceExpand };
 }
 
 // ── Dark mode hook ─────────────────────────────────────────────────────────
@@ -441,7 +460,18 @@ function SidebarV2Content({
   firstLinkRef?: React.RefObject<HTMLAnchorElement | null>;
 }) {
   const pathname = usePathname();
-  const { isExpanded, toggle } = useV2CategoryExpanded();
+  const { isExpanded, toggle, forceExpand } = useV2CategoryExpanded();
+
+  // Auto-expand the category containing the current path so direct-URL navigation
+  // (bookmarks, deep links, CoPilot) never leaves the active sub-item hidden.
+  useEffect(() => {
+    for (const cat of NAV_CATEGORIES) {
+      if (cat.subItems?.some((sub) => pathname.startsWith(sub.href))) {
+        forceExpand(cat.key);
+        break;
+      }
+    }
+  }, [pathname, forceExpand]);
 
   return (
     <div className="flex flex-col h-full">
@@ -502,13 +532,21 @@ function SidebarV2Content({
 
             // Expandable category with sub-items
             const expanded = isExpanded(cat.key);
+            // Highlight the category header when collapsed + a sub-item is active,
+            // so the user always has a visual anchor even if the section is closed.
+            const anyCatSubActive = !expanded &&
+              (cat.subItems?.some((sub) => pathname.startsWith(sub.href)) ?? false);
             return (
               <li key={cat.key}>
                 <button
                   type="button"
                   onClick={() => toggle(cat.key)}
                   aria-expanded={expanded}
-                  className="flex items-center gap-2.5 px-3 py-2.5 w-full rounded-lg transition-colors text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
+                  className={`flex items-center gap-2.5 px-3 py-2.5 w-full rounded-lg transition-colors ${
+                    anyCatSubActive
+                      ? "border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
+                      : "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
+                  }`}
                 >
                   <Icon size={16} strokeWidth={1.75} aria-hidden />
                   <span className="text-sm flex-1 text-left">{cat.label}</span>
@@ -530,6 +568,7 @@ function SidebarV2Content({
                           <li key={sub.href}>
                             <Link
                               href={sub.href}
+                              tabIndex={expanded ? undefined : -1}
                               aria-current={subActive ? "page" : undefined}
                               onClick={onClose}
                               className={`flex items-center pr-3 py-2 rounded-lg transition-colors text-sm ${
