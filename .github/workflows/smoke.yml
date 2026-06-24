@@ -85,9 +85,13 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
           PAPERCLIP_API_URL: ${{ secrets.PAPERCLIP_API_URL }}
           PAPERCLIP_API_KEY: ${{ secrets.PAPERCLIP_API_KEY }}
+          # TIM-2994: pass PR body via env var, NOT ${{ }} template inlined
+          # into the shell. Inlining lets any backtick / $(...) / shell
+          # special char in a PR description execute as code — Rule 3
+          # (server-side validate all user input).
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          PR_BODY="${{ github.event.pull_request.body }}"
-          ISSUE=$(echo "$PR_BODY" | grep -oP 'SMOKE_ISSUE=\K\S+' || true)
+          ISSUE=$(printf '%s' "$PR_BODY" | grep -oP 'SMOKE_ISSUE=\K\S+' || true)
           if [ -n "$ISSUE" ]; then
             export SMOKE_ISSUE="$ISSUE"
           fi
