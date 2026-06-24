@@ -1,0 +1,19 @@
+name: Lockfile consistency (TIM-2994)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lockfile-consistency:
+    name: package-lock.json matches package.json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Verify npm ci can resolve every entry
+        run: npm ci --ignore-scripts --dry-run
