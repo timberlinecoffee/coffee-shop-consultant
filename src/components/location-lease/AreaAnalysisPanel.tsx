@@ -156,11 +156,35 @@ export function AreaAnalysisPanel({
         {text && (
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-warm-50)]/40 px-4 py-4">
             <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{text}</div>
-            {generatedAt && (
-              <p className="mt-3 text-[10px] italic text-[var(--neutral-cool-600)]">
-                Generated {formatWhen(generatedAt)}
-              </p>
-            )}
+            <div className="mt-3 flex items-center justify-between">
+              {generatedAt ? (
+                <p className="text-[10px] italic text-[var(--neutral-cool-600)]">
+                  Generated {formatWhen(generatedAt)}
+                </p>
+              ) : (
+                <span />
+              )}
+              {/* TIM-2383 D5: Explain in Scout */}
+              <button
+                type="button"
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent("copilot:open-with-prompt", {
+                      detail: {
+                        prompt: `Explain this area analysis and what it means for my coffee shop concept:\n\n${text}`,
+                        workspaceKey: "location_lease",
+                        focusLabel: "Area Analysis",
+                        action: "summarize_analysis",
+                      },
+                    }),
+                  )
+                }
+                className="flex items-center gap-1 text-[10px] font-medium text-[var(--teal)] hover:underline"
+              >
+                <Sparkles size={9} aria-hidden />
+                Explain in Scout
+              </button>
+            </div>
           </div>
         )}
       </div>

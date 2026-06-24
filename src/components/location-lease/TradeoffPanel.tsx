@@ -472,6 +472,29 @@ export function TradeoffPanel({
                     })}
                   </div>
                 </div>
+
+                {/* TIM-2383 D5: Explain in Scout */}
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new CustomEvent("copilot:open-with-prompt", {
+                          detail: {
+                            prompt: `Walk me through this trade-off analysis and help me decide which location is best for my coffee shop concept.`,
+                            workspaceKey: "location_lease",
+                            focusLabel: "Trade-off Analysis",
+                            action: "summarize_analysis",
+                          },
+                        }),
+                      )
+                    }
+                    className="flex items-center gap-1 text-[10px] font-medium text-[var(--teal)] hover:underline"
+                  >
+                    <Sparkles size={9} aria-hidden />
+                    Explain in Scout
+                  </button>
+                </div>
               </div>
             )}
           </div>

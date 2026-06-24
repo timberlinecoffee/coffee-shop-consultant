@@ -5,7 +5,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { Plus, Star, Sparkles, MessageCircle, CheckSquare, X } from 'lucide-react'
+import { Plus, Star, Sparkles, CheckSquare, X } from 'lucide-react'
 import {
   Card,
   CardHeader,
@@ -16,9 +16,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { LocationCard } from './LocationCard'
 import { TradeoffPanel } from './TradeoffPanel'
-import { CoPilotDrawer } from './CoPilotDrawer'
+import { CoPilotDrawer } from '@/components/copilot/CoPilotDrawer'
+import { AskScoutButton } from '@/components/workspace/AskScoutButton'
 import { useWorkspaceStatus } from '@/components/workspace/WorkspaceProgressProvider'
-import { COPILOT_NAME } from '@/lib/copilot/branding'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -78,7 +78,6 @@ export function CandidateListCard({
   useEffect(() => {
     if (candidates.length > 0) promoteOnEdit('location_lease')
   }, [candidates.length, promoteOnEdit])
-  const [drawerOpen, setDrawerOpen] = useState(false)
   const [tradeoffOpen, setTradeoffOpen] = useState(false)
   const [view, setView] = useState<ViewMode>('all')
   // TIM-1153: bulk-select mode for shortlist actions.
@@ -254,16 +253,7 @@ export function CandidateListCard({
                 {selectMode ? <X className="size-3.5" /> : <CheckSquare className="size-3.5" />}
                 <span className="hidden sm:inline ml-1">{selectMode ? 'Cancel' : 'Select'}</span>
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setDrawerOpen((p) => !p)}
-                className={cn(drawerOpen && 'ai-gradient-bg text-white')}
-                aria-label={`Toggle ${COPILOT_NAME}`}
-              >
-                <MessageCircle className="size-3.5" />
-                <span className="hidden sm:inline ml-1">{COPILOT_NAME}</span>
-              </Button>
+              <AskScoutButton workspaceKey="location_lease" />
               <Button size="sm" onClick={handleAdd} disabled={adding} aria-label="Add candidate">
                 <Plus className="size-3.5" />
                 <span className="hidden sm:inline ml-1">Add location</span>
@@ -446,13 +436,12 @@ export function CandidateListCard({
         aiCreditsRemaining={aiCreditsRemaining}
       />
 
-      {/* CoPilot drawer */}
+      {/* TIM-2383 Phase 3 D3: main CoPilotDrawer replaces the bespoke location-lease
+          drawer. Listens to copilot:open-with-prompt scoped to location_lease. */}
       <CoPilotDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        workspaceKey="location_lease"
         planId={planId}
-        aiCreditsRemaining={aiCreditsRemaining}
-        subscriptionTier={subscriptionTier}
+        currentFocus={{ label: "Location & Lease" }}
       />
     </>
   )

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Sparkles } from "lucide-react";
 import {
   type CustomerPersona,
   type PersonaValue,
@@ -18,10 +19,8 @@ import {
 } from "@/lib/concept";
 import { toTitleCase } from "@/lib/text";
 
-// TIM-2974: parent passes this to route per-field "Write with AI" into the
-// structured AIAssistCallout popup (apply-to-plan path) instead of opening
-// the chat companion. The `onApply` closure captures PersonaEditor's local
-// `setField` so accepted suggestions land in the draft persona.
+// TIM-2383: per-field "Ask Scout" buttons call onWriteWithAi which concept-editor
+// implements by dispatching copilot:open-with-prompt (same pattern as concept cards).
 export type PersonaAIField = "whyTheyVisit" | "painPoints" | "typicalOrder";
 export type OpenPersonaWriteWithAi = (args: {
   field: PersonaAIField;
@@ -37,8 +36,8 @@ interface PersonaEditorProps {
   onSave: (updated: CustomerPersona, allPersonas: CustomerPersona[]) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
-  // TIM-2974: optional so callers without an AI-assist host (none today) still
-  // mount; without it the per-field "Write with AI" buttons hide.
+  // TIM-2383: optional so callers without a chat host still mount;
+  // without it the per-field "Ask Scout" buttons hide.
   onWriteWithAi?: OpenPersonaWriteWithAi;
 }
 
@@ -87,11 +86,9 @@ export function PersonaEditor({
     });
   }
 
-  // TIM-2974: route per-field "Write with AI" into the structured AIAssistCallout
-  // popup (apply-to-plan flow) instead of dispatching `copilot:open-with-prompt`
-  // (which opened the chat companion — board flagged the inconsistency on TIM-2973).
-  // Supersedes TIM-2902's chat-transcript routing; the chat companion stays
-  // reachable via its own button on the workspace shell.
+  // TIM-2383 Phase 3 D2: per-field "Ask Scout" buttons dispatch copilot:open-with-prompt
+  // via the onWriteWithAi callback (concept-editor.tsx owns the dispatch). This
+  // brings persona fields onto the same pattern as concept component cards.
   function triggerAI(field: PersonaAIField) {
     if (!onWriteWithAi) return;
     const labelByField: Record<PersonaAIField, string> = {
@@ -194,9 +191,10 @@ export function PersonaEditor({
                 <button
                   type="button"
                   onClick={() => triggerAI("whyTheyVisit")}
-                  className="text-[10px] font-medium text-[var(--teal)] hover:underline"
+                  className="flex items-center gap-1 text-[10px] font-medium text-[var(--teal)] hover:underline"
                 >
-                  Write with AI
+                  <Sparkles size={9} aria-hidden />
+                  Ask Scout
                 </button>
               )}
             </div>
@@ -224,9 +222,10 @@ export function PersonaEditor({
                 <button
                   type="button"
                   onClick={() => triggerAI("painPoints")}
-                  className="text-[10px] font-medium text-[var(--teal)] hover:underline"
+                  className="flex items-center gap-1 text-[10px] font-medium text-[var(--teal)] hover:underline"
                 >
-                  Write with AI
+                  <Sparkles size={9} aria-hidden />
+                  Ask Scout
                 </button>
               )}
             </div>
@@ -241,7 +240,7 @@ export function PersonaEditor({
             />
           </div>
 
-          {/* TIM-1476: Typical order. TIM-2898: per-field Write with AI parity with whyTheyVisit/painPoints. */}
+          {/* TIM-1476: Typical order. TIM-2898 / TIM-2383: per-field Ask Scout parity with other fields. */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-semibold text-[var(--foreground)]" htmlFor="persona-order">
@@ -251,9 +250,10 @@ export function PersonaEditor({
                 <button
                   type="button"
                   onClick={() => triggerAI("typicalOrder")}
-                  className="text-[10px] font-medium text-[var(--teal)] hover:underline"
+                  className="flex items-center gap-1 text-[10px] font-medium text-[var(--teal)] hover:underline"
                 >
-                  Write with AI
+                  <Sparkles size={9} aria-hidden />
+                  Ask Scout
                 </button>
               )}
             </div>

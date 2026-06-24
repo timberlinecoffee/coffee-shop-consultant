@@ -1,16 +1,15 @@
 "use client";
 
-// TIM-834 / TIM-865 / TIM-881 / TIM-2859: Concept workspace v2 card layout + inline concept brief.
-// - Per-card "Write with AI" opens AIAssistCallout modal (TIM-2858 routes the result
-//   through the unified review modal mounted on the ConceptWorkspace parent).
+// TIM-834 / TIM-865 / TIM-881 / TIM-2859 / TIM-2383: Concept workspace v2 card layout + inline concept brief.
+// - TIM-2383 Phase 3: per-card "Ask Scout" buttons dispatch copilot:open-with-prompt
+//   (retired AIAssistCallout direct-SSE path; CoPilotDrawer is the single AI surface).
 // - TIM-2859: per-card "In doc / Skip" toggle removed; empty fields are implicitly
 //   skipped (no print inclusion, not counted toward progress, no unlock-gate penalty).
 //   The `included` flag in ConceptDocumentV2 is preserved on the wire (no schema change)
 //   but ignored at read time — content presence is the single signal.
 // - Autosaves on each change (debounced).
 // - Concept Brief section (TIM-865): inline rich document preview below input cards.
-// - TIM-893: per-field "Ask Co-pilot" buttons dispatch copilot:open-with-prompt and
-//   the drawer is mounted here so the listener fires on this page.
+// - CoPilotDrawer mounted here and listens to copilot:open-with-prompt events.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -18,8 +17,7 @@ import { useRouter } from "next/navigation";
 import { Lightbulb, Printer, Sparkles, X } from "lucide-react";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
-import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
-import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
+import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -82,18 +80,6 @@ export function ConceptWorkspace({
   // Cards the user has clicked into (reveals textarea even when empty)
   const [activatedCards, setActivatedCards] = useState<Set<ConceptComponentId>>(new Set());
 
-  // TIM-2974: AIAssistCallout is now shared between concept-component cards and
-  // persona per-field "Write with AI" buttons (PersonaEditor calls up via
-  // onWriteWithAi). `fieldKey` is what the backend `/api/copilot/improve` route
-  // sees in its prompt context; `onApply` lets the source (concept doc or
-  // persona draft) own how the accepted value lands.
-  const [aiAssistField, setAiAssistField] = useState<{
-    fieldKey: string;
-    label: string;
-    currentValue: string;
-    onApply: (newValue: string) => void;
-  } | null>(null);
-
   const [openExampleId, setOpenExampleId] = useState<ConceptComponentId | null>(null);
   const [exampleIdx, setExampleIdx] = useState(0);
 
@@ -109,11 +95,6 @@ export function ConceptWorkspace({
   const { promoteOnEdit } = useWorkspaceStatus();
   const uiRevamp = useUiRevamp();
   const router = useRouter();
-
-  // TIM-2858: lift unified review modal to the parent so it survives the
-  // AIAssistCallout draft-modal unmount (`onClose()` runs immediately after
-  // `openAIReviewModal()` when the stream completes).
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   const progress = useMemo(() => getConceptV2Progress(doc), [doc]);
   const complete = useMemo(() => isConceptV2Complete(doc), [doc]);
@@ -313,9 +294,8 @@ export function ConceptWorkspace({
           description="Shape the identity of your shop. Every other workspace builds on this."
           actions={
             <>
-              {/* TIM-2897: top-level "Improve with Scout" removed — per-field
-                  "Write with AI" controls (AIAssistCallout) on each card are
-                  the canonical AI surface on Concept now. */}
+              {/* TIM-2383: per-field "Ask Scout" buttons on each card are the
+                  AI surface — no page-level button needed. */}
               {/* TIM-2455: Print document moved from the page footer into the
                   canonical chrome action cluster. With a single secondary
                   utility the TIM-2413 0/1-threshold rule keeps it inline (no
@@ -455,24 +435,28 @@ export function ConceptWorkspace({
                       </button>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* TIM-881 + TIM-1408 + TIM-2899: Write with AI is hover/focus-revealed to reduce ambient noise.
-                          TIM-2859: shown on every non-Persona card (target_customer renders the
-                          PersonaSection editor below and has its own authoring flow). */}
+                      {/* TIM-2383 Phase 3 D1: per-field "Ask Scout" dispatches copilot:open-with-prompt
+                          so the main CoPilotDrawer opens scoped + focused on this field.
+                          Replaces the AIAssistCallout direct-SSE path (D4 complete). */}
                       {meta.id !== "target_customer" && (
                         <button
                           type="button"
                           onClick={() =>
-                            setAiAssistField({
-                              fieldKey: meta.id,
-                              label: meta.label,
-                              currentValue: latestDocRef.current.components[meta.id].content,
-                              onApply: (newValue) => updateContent(meta.id, newValue),
-                            })
+                            window.dispatchEvent(
+                              new CustomEvent("copilot:open-with-prompt", {
+                                detail: {
+                                  prompt: `Improve my ${meta.label}`,
+                                  workspaceKey: "concept",
+                                  focusLabel: meta.label,
+                                },
+                              }),
+                            )
                           }
                           disabled={!canEdit}
-                          className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                          className="flex items-center gap-1 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                         >
-                          Write with AI
+                          <Sparkles size={10} aria-hidden />
+                          Ask Scout
                         </button>
                       )}
                       {/* TIM-2859: per-card In doc / Skip toggle removed. Empty fields are
@@ -540,22 +524,19 @@ export function ConceptWorkspace({
                       personas={doc.personas ?? []}
                       canEdit={canEdit}
                       onUpdate={updatePersonas}
-                      // TIM-2974: route persona per-field "Write with AI" into
-                      // AIAssistCallout (apply-to-plan popup) instead of the
-                      // chat companion. `field` → snake_case fieldKey so the
-                      // backend prompt context reads "persona why they visit".
-                      onWriteWithAi={({ field, label, currentValue, onApply }) =>
-                        setAiAssistField({
-                          fieldKey:
-                            field === "whyTheyVisit"
-                              ? "persona_why_they_visit"
-                              : field === "painPoints"
-                              ? "persona_pain_points"
-                              : "persona_typical_order",
-                          label,
-                          currentValue,
-                          onApply,
-                        })
+                      // TIM-2383 Phase 3 D2: persona per-field "Ask Scout" dispatches
+                      // copilot:open-with-prompt, same as concept card fields.
+                      // Scout opens focused on the specific persona field.
+                      onWriteWithAi={({ label }) =>
+                        window.dispatchEvent(
+                          new CustomEvent("copilot:open-with-prompt", {
+                            detail: {
+                              prompt: `Improve the "${label}" field for this customer persona`,
+                              workspaceKey: "concept",
+                              focusLabel: `Customer Persona — ${label}`,
+                            },
+                          }),
+                        )
                       }
                     />
                   ) : showField ? (
@@ -648,28 +629,9 @@ export function ConceptWorkspace({
         variant="copilot_trial"
       />
 
-      {/* TIM-881: AIAssistCallout — per-field improvement modal.
-          TIM-2974: now also serves Persona per-field buttons; the active field
-          provides its own `onApply` (concept-component edits → updateContent;
-          persona drafts → PersonaEditor.setField via closure). */}
-      <AIAssistCallout
-        open={aiAssistField !== null}
-        onClose={() => setAiAssistField(null)}
-        fieldLabel={aiAssistField?.label ?? ""}
-        moduleLabel="Concept"
-        fieldKey={aiAssistField?.fieldKey ?? ""}
-        workspaceKey="concept"
-        planId={planId}
-        currentValue={aiAssistField?.currentValue ?? ""}
-        onApply={(newValue) => {
-          if (aiAssistField) aiAssistField.onApply(newValue);
-          setAiAssistField(null);
-        }}
-        openAIReviewModal={openAIReviewModal}
-      />
-
-      {/* TIM-880 / TIM-893: CoPilotDrawer handles both the WorkspaceTopBar button
-          and per-field "Ask Co-pilot" dispatch (copilot:open-with-prompt). */}
+      {/* TIM-880 / TIM-893: CoPilotDrawer handles the page-level Ask Scout button
+          and per-field "Ask Scout" dispatch (copilot:open-with-prompt).
+          TIM-2383 D4: AIAssistCallout direct-SSE path retired; chat covers all cases. */}
       <CoPilotDrawer
         planId={planId}
         workspaceKey="concept"
@@ -678,9 +640,6 @@ export function ConceptWorkspace({
         onApplySuggestions={handleApplyConceptSuggestions}
       />
 
-      {/* TIM-2858: unified AI review modal — owned here (not inside
-          AIAssistCallout) so it survives the draft modal closing. */}
-      {AIReviewModalNode}
     </div>
   );
 }
