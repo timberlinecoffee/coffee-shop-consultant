@@ -148,6 +148,24 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     setLoading(true);
     setError(null);
     const supabase = createClient();
+    // TIM-2961: when the user already has a Supabase session in the cookie
+    // jar (board's diag captured `auth_token_cookies=2` on the failure), the
+    // browser client's constructor-launched `initialize()` runs
+    // `_recoverAndRefresh()` in the background. If that refresh fails — stale
+    // refresh token, transient 4xx, cross-tab race — supabase-js calls
+    // `_removeSession()` which removes THREE storage keys including
+    // `${storageKey}-code-verifier`. `_handleProviderSignIn` does NOT take
+    // the storage lock and does NOT `await this.initializePromise`, so the
+    // verifier write inside `signInWithOAuth` races with `_removeSession`.
+    // When the race loses, /auth/callback finds no verifier and exchange
+    // fails with `AuthPKCECodeVerifierMissingError` — exactly the symptom in
+    // the board's screenshot. `signOut({ scope: "local" })` awaits the init
+    // promise, acquires the storage lock, clears local session + verifier
+    // slots inside the lock, then releases. After it returns: storage holds
+    // no session so the autoRefreshTicker is a no-op, and signInWithOAuth's
+    // verifier write is the ONLY thing touching the verifier slot for the
+    // rest of the flow.
+    await supabase.auth.signOut({ scope: "local" });
     setHandoffCookie("gw_oauth_signup_source", getSignupSource());
     const next = getNextParam();
     if (next) setHandoffCookie("gw_oauth_next", next);
