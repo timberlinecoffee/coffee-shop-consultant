@@ -34,10 +34,10 @@ const LINKS = [
     external: false,
   },
   {
-    label: "Email Trent",
-    href: "mailto:trentrollings@gmail.com",
+    label: "See Platform Features",
+    href: "/pricing?utm_source=instagram&utm_medium=bio&utm_campaign=linkinbio&utm_content=features",
     primary: false,
-    external: true,
+    external: false,
   },
 ] as const;
 
