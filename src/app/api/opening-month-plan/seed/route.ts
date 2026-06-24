@@ -1,8 +1,12 @@
 // TIM-1411: Seed a starter Opening Month Plan playbook into `soft_open_plan_items`.
 // Skips if the owner has already populated the workspace. Tasks are Title Case
 // at rest per the AGENTS.md title-case rule.
+// TIM-2980: Resolve via `getActivePlanId` so the seed lands in the active plan
+// (the one the rest of the suite reads/writes), not the latest-by-created one
+// (mirrors TIM-2965 / TIM-2377).
 
 import { createClient } from "@/lib/supabase/server";
+import { getActivePlanId } from "@/lib/plan-context";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import type { LaunchItemStatus } from "@/types/supabase";
 import { SEED_ROWS } from "./seed-data";
@@ -27,20 +31,13 @@ export async function POST() {
     return Response.json({ reason: "paywall", tier_required: "starter" }, { status: 402 });
   }
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 });
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 });
 
   const { count: existingCount, error: countErr } = await supabase
     .from("soft_open_plan_items")
     .select("id", { count: "exact", head: true })
-    .eq("plan_id", plan.id);
+    .eq("plan_id", planId);
 
   if (countErr) {
     return Response.json(
@@ -53,7 +50,7 @@ export async function POST() {
   }
 
   const inserts = SEED_ROWS.map((r) => ({
-    plan_id: plan.id,
+    plan_id: planId,
     day_offset: r.day_offset,
     task: r.task,
     owner: r.owner,
@@ -71,7 +68,7 @@ export async function POST() {
     // a missed CHECK widening like TIM-1518) shows up in server logs with
     // enough context to diagnose, instead of a generic 500.
     console.error("[opening-month-plan/seed] insert failed", {
-      plan_id: plan.id,
+      plan_id: planId,
       code: error.code,
       message: error.message,
       details: error.details,

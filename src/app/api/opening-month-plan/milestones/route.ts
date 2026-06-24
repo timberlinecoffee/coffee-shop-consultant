@@ -1,5 +1,11 @@
 // TIM-1040: Launch plan milestones — list and create.
+// TIM-2980: Resolve plan id via canonical `getActivePlanId` so a user whose
+// `users.current_plan_id` points to a non-latest plan sees the same plan here
+// as in the playbook (soft-open-plan), milestones/apply, and the SSR loader.
+// Without this the workspace silently splits: header/SSR pick the active plan
+// while this list/create resolves latest-by-created. See TIM-2965 / TIM-2377.
 import { createClient } from "@/lib/supabase/server"
+import { getActivePlanId } from "@/lib/plan-context"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 import type { NextRequest } from "next/server"
 import type { TrackKey, MilestoneStatus } from "@/lib/launch-plan"
@@ -9,16 +15,9 @@ async function getAuthedPlan() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { supabase, user: null, planId: null, error: "Unauthorized", status: 401 }
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!plan) return { supabase, user, planId: null, error: "No plan found", status: 404 }
-  return { supabase, user, planId: plan.id, error: null, status: 200 }
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return { supabase, user, planId: null, error: "No plan found", status: 404 }
+  return { supabase, user, planId, error: null, status: 200 }
 }
 
 export async function GET() {

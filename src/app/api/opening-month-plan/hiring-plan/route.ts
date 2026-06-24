@@ -1,4 +1,7 @@
+// TIM-2980: Resolve via `getActivePlanId`. Pre-2980 inline resolver used bare
+// `.single()` on `coffee_shop_plans.eq(user_id)` — the TIM-2965 500 bomb.
 import { createClient } from "@/lib/supabase/server";
+import { getActivePlanId } from "@/lib/plan-context";
 import { isSubscriptionActive } from "@/lib/access";
 import { normalizeMonthlyProjections } from "@/lib/financial-projection";
 import type { NextRequest } from "next/server";
@@ -7,12 +10,8 @@ async function getAuthedPlanId() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { supabase, user: null, planId: null };
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-  return { supabase, user, planId: plan?.id ?? null };
+  const planId = await getActivePlanId(supabase, user.id);
+  return { supabase, user, planId };
 }
 
 async function checkPaywall(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {

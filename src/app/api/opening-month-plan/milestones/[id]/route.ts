@@ -1,5 +1,8 @@
 // TIM-1040: Launch plan milestone — update and delete by ID.
+// TIM-2980: Resolve via `getActivePlanId` so update/delete operate on the same
+// plan the rest of the launch-plan suite sees (mirrors TIM-2965 / TIM-2377).
 import { createClient } from "@/lib/supabase/server"
+import { getActivePlanId } from "@/lib/plan-context"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 import type { NextRequest } from "next/server"
 
@@ -10,15 +13,8 @@ async function getAuthedPlan() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { supabase, user: null, planId: null }
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  return { supabase, user, planId: plan?.id ?? null }
+  const planId = await getActivePlanId(supabase, user.id)
+  return { supabase, user, planId }
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteCtx) {
