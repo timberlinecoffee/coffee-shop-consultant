@@ -73,7 +73,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Wait for app to be ready
-        run: npx wait-on http://localhost:3000 --timeout 60000
+        # TIM-2994: bumped 60s → 180s. Next.js 16 cold-start in CI was
+        # taking ~69s and timing out at the old 60s ceiling; previous lock-
+        # drift failures masked this because the build never reached here.
+        run: npx wait-on http://localhost:3000 --timeout 180000
 
       - name: Run smoke tests
         env:
@@ -135,7 +138,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Wait for app to be ready
-        run: npx wait-on http://localhost:3000 --timeout 60000
+        # TIM-2994: bumped 60s → 180s. Next.js 16 cold-start in CI was
+        # taking ~69s and timing out at the old 60s ceiling; previous lock-
+        # drift failures masked this because the build never reached here.
+        run: npx wait-on http://localhost:3000 --timeout 180000
 
       - name: Run Lighthouse CI
         run: |
