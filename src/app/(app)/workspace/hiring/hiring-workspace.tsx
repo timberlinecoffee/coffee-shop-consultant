@@ -72,7 +72,14 @@ import {
   DEFAULT_ONBOARDING_TASKS,
   HIRING_COUNTRY_OPTIONS,
 } from "@/lib/hiring";
-import { OrgHierarchyList } from "./org-hierarchy-list";
+import dynamic from "next/dynamic";
+
+// TIM-3048: load OrgHierarchyList client-only — @dnd-kit relies on DOM APIs
+// that can fault during SSR under Next.js 16 / React 19 streaming.
+const OrgHierarchyList = dynamic(
+  () => import("./org-hierarchy-list").then((m) => ({ default: m.OrgHierarchyList })),
+  { ssr: false }
+);
 
 type Tab = "org" | "interview" | "onboarding" | "competency" | "requirements";
 

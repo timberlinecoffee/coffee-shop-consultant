@@ -29,7 +29,6 @@ export async function GET(request: NextRequest) {
     .from("hiring_plan_roles")
     .select("*")
     .eq("plan_id", planId)
-    .order("order_index")
     .order("created_at")
 
   if (error) return Response.json({ error: "Failed to fetch roles" }, { status: 500 })
