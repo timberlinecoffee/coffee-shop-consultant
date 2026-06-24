@@ -13,6 +13,7 @@ import { createServiceClient } from "@/lib/supabase/service"
 import type { NextRequest } from "next/server"
 import { toTitleCase } from "@/lib/text"
 import { normalizeAIOutput } from "@/lib/normalize"
+import { enforceRateLimit } from "@/lib/rate-limit"
 // TIM-2868: getActivePlanId() — see candidates/route.ts header.
 import { getActivePlanId } from "@/lib/plan-context"
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite"
@@ -156,6 +157,15 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "location-lease:tradeoff",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  })
+  if (rateLimited) return rateLimited
 
   const { data: profile } = await supabase
     .from("users")

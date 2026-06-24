@@ -20,6 +20,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   CONCEPT_COMPONENTS_V2,
   formatConceptV2ForAI,
@@ -45,6 +46,15 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "concept:review",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   let body: { planId?: string; content?: unknown };
   try {

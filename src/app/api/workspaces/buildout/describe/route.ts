@@ -14,6 +14,7 @@ import { toTitleCase } from "@/lib/text";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { applyExplicitPrices } from "@/lib/buildout-explicit-price";
 import { normalizeConceptV2, formatConceptV2ForAI } from "@/lib/concept";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
 import type { ParsedRow } from "../import/route";
 
@@ -38,6 +39,15 @@ export async function POST(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "buildout:describe",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   const { data: profile } = await supabase
     .from("users")

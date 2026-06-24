@@ -13,6 +13,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
 
 const TTFT_MS = 8_000;
@@ -28,6 +29,15 @@ export async function POST(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "business-plan:improve",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   const { data: profile } = await supabase
     .from("users")

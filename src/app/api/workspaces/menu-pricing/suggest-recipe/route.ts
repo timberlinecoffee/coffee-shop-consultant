@@ -8,6 +8,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { enforceRateLimit } from "@/lib/rate-limit"
 import { parseRecipeResponse } from "@/lib/recipe-suggest"
 
 export const runtime = "nodejs"
@@ -26,6 +27,15 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "menu:suggest-recipe",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  })
+  if (rateLimited) return rateLimited
 
   const { data: profile } = await supabase
     .from("users")
