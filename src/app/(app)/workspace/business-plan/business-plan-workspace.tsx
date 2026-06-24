@@ -419,7 +419,7 @@ export function BusinessPlanWorkspace({
             context: { workspace: "Business Plan", section: sectionMeta?.title },
             onApply: async () => {
               // Inline save (avoids hoisting issue with handleSaveAfterImprove ref)
-              await fetch(`/api/business-plan/sections/${sectionKey}`, {
+              const res = await fetch(`/api/business-plan/sections/${sectionKey}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -427,6 +427,7 @@ export function BusinessPlanWorkspace({
                   estimated_claims_json: estimatedClaims,
                 }),
               });
+              if (!res.ok) throw new Error("Couldn't save this change. Please try again.");
               setSections((prev) =>
                 prev.map((s) => {
                   if (s.key !== sectionKey) return s;
