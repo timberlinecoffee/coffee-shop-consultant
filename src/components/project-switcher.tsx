@@ -139,11 +139,6 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
         <span className="flex-1 min-w-0 text-sm font-medium text-[var(--foreground)] truncate">
           {activeProject?.name ?? "My Project"}
         </span>
-        {activeProject?.locationLabel && (
-          <span className="text-xs text-[var(--dark-grey)] truncate max-w-[80px]">
-            {activeProject.locationLabel}
-          </span>
-        )}
         <ChevronDown
           size={14}
           className={`flex-shrink-0 text-[var(--dark-grey)] transition-transform ${menuOpen ? "rotate-180" : ""}`}
@@ -205,10 +200,18 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onCreated={(project, activatedNow) => {
-          setProjects((prev) => [
-            { ...project, isActive: activatedNow },
-            ...prev.map((p) => ({ ...p, isActive: activatedNow ? false : p.isActive })),
-          ]);
+          // TIM-2962: upsert by id. AddProjectModal calls onCreated twice for
+          // the same project — once on create (activatedNow=false) and again
+          // on "Open Project" (activatedNow=true). Unconditional prepend left
+          // two visible entries for one DB row. Strip any prior entry for
+          // this id before prepending so the row appears exactly once.
+          setProjects((prev) => {
+            const others = prev.filter((p) => p.id !== project.id);
+            return [
+              { ...project, isActive: activatedNow },
+              ...others.map((p) => ({ ...p, isActive: activatedNow ? false : p.isActive })),
+            ];
+          });
         }}
       />
       <ProUpgradePrompt
@@ -300,14 +303,7 @@ function ProjectRow({
             : "text-[var(--foreground)] cursor-pointer"
         }`}
       >
-        <span className="flex-1 min-w-0">
-          <span className="block truncate">{project.name}</span>
-          {project.locationLabel && (
-            <span className="block text-xs text-[var(--dark-grey)] truncate mt-0.5">
-              {project.locationLabel}
-            </span>
-          )}
-        </span>
+        <span className="flex-1 min-w-0 truncate">{project.name}</span>
         {project.isActive && (
           <span className="flex-shrink-0 text-[11px] font-medium text-[var(--teal)] bg-[var(--teal)]/10 px-1.5 py-0.5 rounded-full">
             Active
@@ -321,7 +317,7 @@ function ProjectRow({
             e.stopPropagation();
             onDelete();
           }}
-          className="flex-shrink-0 p-2 mr-1 rounded-lg text-[var(--dark-grey)] hover:text-red-600 hover:bg-red-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+          className="flex-shrink-0 p-2 mr-1 rounded-lg text-[var(--dark-grey)] hover:text-red-600 hover:bg-red-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 opacity-100"
           aria-label={`Delete ${project.name}`}
           title={`Delete ${project.name}`}
         >
