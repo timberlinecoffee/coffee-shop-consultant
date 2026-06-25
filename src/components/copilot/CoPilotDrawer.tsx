@@ -39,7 +39,6 @@ import { useAIReviewModal, type ApprovedChange, type SuggestionPayload } from "@
 import { parseEquipmentCostFieldId } from "@/lib/cross-workspace-apply";
 import { parseFactValue } from "@/lib/cross-workspace-sync";
 import {
-  BenchmarkPanel,
   CheckPanel,
   ModeStrip,
   type CompanionMode,
@@ -475,14 +474,11 @@ export function CoPilotDrawer({
 }: CoPilotDrawerProps) {
   const [open, setOpen] = useState(false);
   // TIM-2416 — companion mode state. Coach mode keeps the existing chat UX;
-  // Check + Benchmark render finding-card panels.
+  // Check renders finding-card panels.
   const [activeMode, setActiveMode] = useState<CompanionMode>(defaultMode);
   const [checkReport, setCheckReport] = useState<AuditReport | null>(null);
   const [checkScanning, setCheckScanning] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
-  const [benchmarkReport, setBenchmarkReport] = useState<AuditReport | null>(null);
-  const [benchmarkScanning, setBenchmarkScanning] = useState(false);
-  const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
   const [trialMessagesUsed, setTrialMessagesUsed] = useState(initialTrialMessagesUsed);
   const [trialModalOpen, setTrialModalOpen] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false); // TIM-1687
@@ -715,7 +711,7 @@ export function CoPilotDrawer({
     setConsistencyConflicts(null);
   }, []);
 
-  // ── TIM-2416: Check + Benchmark scan handlers. ─────────────────────────────
+  // ── TIM-2416: Check scan handler. ──────────────────────────────────────────
 
   const runCheckScan = useCallback(async () => {
     setCheckError(null);
@@ -740,30 +736,7 @@ export function CoPilotDrawer({
     }
   }, []);
 
-  const runBenchmarkScan = useCallback(async (scope: ConversationScope) => {
-    setBenchmarkError(null);
-    setBenchmarkScanning(true);
-    try {
-      const res = await fetch("/api/companion/benchmark", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ scope }),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error ?? `Benchmark failed (${res.status})`);
-      }
-      const data = (await res.json()) as { report: AuditReport | null };
-      setBenchmarkReport(data.report);
-    } catch (err) {
-      setBenchmarkError(err instanceof Error ? err.message : "Benchmark failed");
-    } finally {
-      setBenchmarkScanning(false);
-    }
-  }, []);
-
-  // TIM-2416 — Apply suggestion for a finding (Check or Benchmark). Routes
+  // TIM-2416 — Apply suggestion for a finding (Check mode). Routes
   // through the unified AI review modal; never auto-applies (platform rule).
   const handleApplyFinding = useCallback(
     (finding: AuditFinding) => {
@@ -827,9 +800,8 @@ export function CoPilotDrawer({
     }
   }, []);
 
-  // TIM-2416 — open-in-mode external trigger. Inline benchmark deltas and the
-  // BP regen pre-flight "Fix first" branch dispatch this event so opening the
-  // companion in a specific mode + scope is a one-call path.
+  // TIM-2416 — open-in-mode external trigger. External surfaces dispatch this
+  // event to open the companion in a specific mode + scope as a one-call path.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
@@ -1058,6 +1030,8 @@ export function CoPilotDrawer({
         if (detail.autoSubmit && performSendRef.current) {
           // TIM-2902: force Coach mode so the user message bubble actually
           // renders — Check/Benchmark/Import modes don't show the transcript.
+          // TIM-2902: force Coach mode so the user message bubble actually
+          // renders — Check/Import modes don't show the transcript.
           setActiveMode("coach");
           void performSendRef.current(detail.prompt);
         } else {
@@ -1249,14 +1223,13 @@ export function CoPilotDrawer({
   }, [isExpanded, panelWidth, viewportWidth]);
 
   // TIM-2416 — per UX spec §5, scope header wording is mode-aware. Coach uses
-  // "Asking about", Check uses "Checking", Benchmark uses "Comparing".
+  // "Asking about", Check uses "Checking".
   const scopeNoun =
     activeScope === null
       ? "your whole plan"
       : `your ${WORKSPACE_LABELS[activeScope]}`;
   const scopeHeaderLabel = (() => {
     if (activeMode === "check") return `Checking ${scopeNoun}`;
-    if (activeMode === "benchmark") return `Comparing ${scopeNoun} to industry averages`;
     return `Asking about ${scopeNoun}`;
   })();
 
@@ -1472,22 +1445,6 @@ export function CoPilotDrawer({
                   onOpenCrossSuite={handleOpenCrossSuiteResolver}
                 />
               )}
-              {/* TIM-2416 — Benchmark mode panel. Scope label is the same
-                  wording used in the header so the user sees one consistent
-                  scope line on the empty/zero states. */}
-              {activeMode === "benchmark" && (
-                <BenchmarkPanel
-                  scopeLabel={scopeHeaderLabel}
-                  report={benchmarkReport}
-                  isScanning={benchmarkScanning}
-                  error={benchmarkError}
-                  onRun={() => void runBenchmarkScan(activeScope)}
-                  onApply={handleApplyFinding}
-                  onGoToSource={handleGoToFindingSource}
-                  resolverConflictIdFor={resolverConflictIdFor}
-                  onOpenCrossSuite={handleOpenCrossSuiteResolver}
-                />
-              )}
               {/* TIM-2434: Document Import mode. Reuses the unified
                   AIReviewModal so accepted changes flow through the same
                   review surface as every other AI proposal. */}
@@ -1611,7 +1568,7 @@ export function CoPilotDrawer({
               )}
             </div>
 
-            {/* TIM-2416 — the chat input is Coach-only. Check + Benchmark
+            {/* TIM-2416 — the chat input is Coach-only. Check/Import
                 modes are driven by their own buttons, not a text prompt. */}
             {activeMode === "coach" && (
             <motion.div

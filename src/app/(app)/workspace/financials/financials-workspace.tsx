@@ -2620,7 +2620,7 @@ export function FinancialsWorkspace({
                 window.dispatchEvent(
                   new CustomEvent("copilot:open-in-mode", {
                     detail: {
-                      mode: "benchmark",
+                      mode: "check",
                       scope: "financials",
                       focus: { metricId, metricLabel },
                     },

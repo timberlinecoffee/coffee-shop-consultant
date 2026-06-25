@@ -4207,7 +4207,7 @@ export function MenuWorkspace({
                 window.dispatchEvent(
                   new CustomEvent("copilot:open-in-mode", {
                     detail: {
-                      mode: "benchmark",
+                      mode: "check",
                       scope: "menu_pricing",
                       focus: { metricId, metricLabel },
                     },

@@ -466,7 +466,7 @@ export function OperationsPlaybookWorkspace({
                 window.dispatchEvent(
                   new CustomEvent("copilot:open-in-mode", {
                     detail: {
-                      mode: "benchmark",
+                      mode: "check",
                       scope: "operations_playbook",
                       focus: { metricId, metricLabel },
                     },

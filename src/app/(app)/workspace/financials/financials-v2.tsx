@@ -1483,7 +1483,7 @@ export function FinancialsV2({
               if (typeof window !== "undefined") {
                 window.dispatchEvent(
                   new CustomEvent("copilot:open-in-mode", {
-                    detail: { mode: "benchmark", scope: "financials", focus: { metricId, metricLabel } },
+                    detail: { mode: "check", scope: "financials", focus: { metricId, metricLabel } },
                   })
                 );
               }
