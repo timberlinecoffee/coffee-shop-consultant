@@ -82,10 +82,16 @@ export function ConceptWorkspace({
   // Cards the user has clicked into (reveals textarea even when empty)
   const [activatedCards, setActivatedCards] = useState<Set<ConceptComponentId>>(new Set());
 
+  // TIM-2974: AIAssistCallout is now shared between concept-component cards and
+  // persona per-field "Write with AI" buttons (PersonaEditor calls up via
+  // onWriteWithAi). `fieldKey` is what the backend `/api/copilot/improve` route
+  // sees in its prompt context; `onApply` lets the source (concept doc or
+  // persona draft) own how the accepted value lands.
   const [aiAssistField, setAiAssistField] = useState<{
-    id: ConceptComponentId;
+    fieldKey: string;
     label: string;
     currentValue: string;
+    onApply: (newValue: string) => void;
   } | null>(null);
 
   const [openExampleId, setOpenExampleId] = useState<ConceptComponentId | null>(null);
@@ -457,9 +463,10 @@ export function ConceptWorkspace({
                           type="button"
                           onClick={() =>
                             setAiAssistField({
-                              id: meta.id,
+                              fieldKey: meta.id,
                               label: meta.label,
                               currentValue: latestDocRef.current.components[meta.id].content,
+                              onApply: (newValue) => updateContent(meta.id, newValue),
                             })
                           }
                           disabled={!canEdit}
@@ -533,6 +540,23 @@ export function ConceptWorkspace({
                       personas={doc.personas ?? []}
                       canEdit={canEdit}
                       onUpdate={updatePersonas}
+                      // TIM-2974: route persona per-field "Write with AI" into
+                      // AIAssistCallout (apply-to-plan popup) instead of the
+                      // chat companion. `field` → snake_case fieldKey so the
+                      // backend prompt context reads "persona why they visit".
+                      onWriteWithAi={({ field, label, currentValue, onApply }) =>
+                        setAiAssistField({
+                          fieldKey:
+                            field === "whyTheyVisit"
+                              ? "persona_why_they_visit"
+                              : field === "painPoints"
+                              ? "persona_pain_points"
+                              : "persona_typical_order",
+                          label,
+                          currentValue,
+                          onApply,
+                        })
+                      }
                     />
                   ) : showField ? (
                     meta.multiline ? (
@@ -624,18 +648,21 @@ export function ConceptWorkspace({
         variant="copilot_trial"
       />
 
-      {/* TIM-881: AIAssistCallout — per-field improvement modal */}
+      {/* TIM-881: AIAssistCallout — per-field improvement modal.
+          TIM-2974: now also serves Persona per-field buttons; the active field
+          provides its own `onApply` (concept-component edits → updateContent;
+          persona drafts → PersonaEditor.setField via closure). */}
       <AIAssistCallout
         open={aiAssistField !== null}
         onClose={() => setAiAssistField(null)}
         fieldLabel={aiAssistField?.label ?? ""}
         moduleLabel="Concept"
-        fieldKey={aiAssistField?.id ?? ""}
+        fieldKey={aiAssistField?.fieldKey ?? ""}
         workspaceKey="concept"
         planId={planId}
         currentValue={aiAssistField?.currentValue ?? ""}
         onApply={(newValue) => {
-          if (aiAssistField) updateContent(aiAssistField.id, newValue);
+          if (aiAssistField) aiAssistField.onApply(newValue);
           setAiAssistField(null);
         }}
         openAIReviewModal={openAIReviewModal}

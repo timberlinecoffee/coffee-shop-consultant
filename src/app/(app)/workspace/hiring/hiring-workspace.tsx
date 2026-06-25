@@ -3,6 +3,7 @@
 // TIM-965: Hiring & Onboarding Suite — multi-tab workspace.
 // Backed by row-level DB tables; no autosave JSONB blob — all mutations hit
 // dedicated API routes directly with optimistic local state updates.
+// TIM-2968: OrgTab upgraded with drag-and-drop hierarchy list.
 
 import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
 import {
@@ -69,6 +70,14 @@ import {
   DEFAULT_ONBOARDING_TASKS,
   HIRING_COUNTRY_OPTIONS,
 } from "@/lib/hiring";
+import dynamic from "next/dynamic";
+
+// TIM-3048: load OrgHierarchyList client-only — @dnd-kit relies on DOM APIs
+// that can fault during SSR under Next.js 16 / React 19 streaming.
+const OrgHierarchyList = dynamic(
+  () => import("./org-hierarchy-list").then((m) => ({ default: m.OrgHierarchyList })),
+  { ssr: false }
+);
 
 type Tab = "org" | "interview" | "onboarding" | "competency" | "requirements";
 
@@ -478,6 +487,7 @@ function OrgTab({
       notes: null,
       parent_role_id: null,
       jd_template_id: null,
+      order_index: roles.filter((r) => !r.parent_role_id).length,
     };
     onRolesChange((prev) => [...prev, optimistic]);
     setExpandedRoleId(optimistic.id);
@@ -572,12 +582,12 @@ function OrgTab({
 
   return (
     <div className="space-y-6">
-      {/* Org chart (top) */}
-      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+      {/* Org chart — read-only visual preview (TIM-1900 fit-to-width preserved) */}
+      <div className="hidden sm:block rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-1">
             <p className="text-sm font-semibold text-[var(--foreground)]">Org Chart</p>
-            <SectionHelp title="Org Chart">Set &quot;Reports to&quot; on each role to build the hierarchy. Click a node to open its row.</SectionHelp>
+            <SectionHelp title="Org Chart">Visual preview. Use the hierarchy list below to drag and reorder roles.</SectionHelp>
           </div>
         </div>
         <div className="px-5 py-6">
@@ -587,7 +597,7 @@ function OrgTab({
             </p>
           ) : rootRoles.length === 0 ? (
             <p className="text-sm text-[var(--dark-grey)]">
-              No top-level roles. Set &quot;Reports to&quot; on roles to build the chart.
+              No top-level roles yet.
             </p>
           ) : (
             <OrgChartFit
@@ -599,12 +609,14 @@ function OrgTab({
         </div>
       </div>
 
-      {/* Role rows (in tree order) */}
+      {/* Role Hierarchy — drag-and-drop edit surface (TIM-2968) */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
           <div className="flex items-center gap-1">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Roles</p>
-            <SectionHelp title="Roles">Define every role you plan to hire for.</SectionHelp>
+            <p className="text-sm font-semibold text-[var(--foreground)]">Role Hierarchy</p>
+            <SectionHelp title="Role Hierarchy">
+              Drag rows to reorder. Drag right to nest under a parent. Use the Edit button to fill in role details below.
+            </SectionHelp>
           </div>
           {canEdit && (
             <WorkspaceActionButton
@@ -617,11 +629,45 @@ function OrgTab({
           )}
         </div>
 
-        {orderedRoles.length === 0 ? (
-          <div className="py-10 text-center">
-            <p className="text-sm text-[var(--dark-grey)]">No roles yet. Add your first role above.</p>
+        {roles.length === 0 ? (
+          <div className="py-10 text-center space-y-3">
+            <p className="text-sm text-[var(--dark-grey)]">No roles yet.</p>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={addRole}
+                className="text-sm text-[var(--teal)] hover:underline font-medium"
+              >
+                Add your first role →
+              </button>
+            )}
           </div>
         ) : (
+          <OrgHierarchyList
+            planId={planId}
+            roles={roles}
+            canEdit={canEdit}
+            onRolesChange={(updated) => onRolesChange(updated)}
+            onEditRole={(id) => {
+              setExpandedRoleId(id);
+              setHighlightedRoleId(id);
+              requestAnimationFrame(() => {
+                const node = rowRefs.current.get(id);
+                if (node) node.scrollIntoView({ behavior: "smooth", block: "center" });
+              });
+              window.setTimeout(() => setHighlightedRoleId((c) => (c === id ? null : c)), 600);
+            }}
+            onDeleteRole={deleteRole}
+          />
+        )}
+      </div>
+
+      {/* Role detail cards — shown below the hierarchy list (expandable) */}
+      {orderedRoles.length > 0 && (
+        <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--border)]">
+            <p className="text-sm font-semibold text-[var(--foreground)]">Role Details</p>
+          </div>
           <div className="divide-y divide-[var(--neutral-cool-100)]">
             {orderedRoles.map((role) => (
               <RoleRow
@@ -646,8 +692,8 @@ function OrgTab({
               />
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2689,15 +2735,26 @@ export function HiringWorkspace({
   const handleEvaluationsChange = useCallback((v: CompetencyEvaluation[]) => setEvaluations(v), []);
 
   const handleApplyHiringSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
+    const failed: string[] = [];
     for (const c of accepted) {
       try {
         const jd = JSON.parse(c.finalValue) as Record<string, string>;
-        await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
+        const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: c.fieldId, jd }),
         });
-      } catch { /* ignore */ }
+        if (!res.ok) failed.push(c.fieldId);
+      } catch {
+        failed.push(c.fieldId);
+      }
+    }
+    if (failed.length > 0) {
+      throw new Error(
+        failed.length === accepted.length
+          ? "Couldn't save these changes. Please try again."
+          : `Couldn't save ${failed.length} of ${accepted.length} changes. Please try again.`,
+      );
     }
   }, [planId]);
 

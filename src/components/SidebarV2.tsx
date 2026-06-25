@@ -1,12 +1,16 @@
 "use client";
 
-// TIM-2590: SidebarV2 — 5 flat nav items + ProfileMenu popover.
+// TIM-2590: SidebarV2 — category nav with expandable sub-items + ProfileMenu popover.
 // Rendered when ui_revamp_v2 flag is on. Existing app-sidebar.tsx untouched.
+// TIM-3014: expanded from 5 flat items to category+sub-item groups per TIM-3013 IA mapping.
 //
 // Groundwork UI Consistency Protocol (TIM-1536/TIM-1538):
-//   Style-guide section: Design Tokens, Nav components, Profile popover
-//   Reference: src/components/app-sidebar.tsx — active-state pattern
-//     (border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5)
+//   Style-guide sections: Design Tokens, Nav components, Profile popover
+//   References:
+//     src/components/app-sidebar.tsx — category expand/collapse pattern
+//       (gridTemplateRows animation, useSyncExternalStore, ChevronIcon)
+//     src/components/app-sidebar.tsx — active-state pattern
+//       (border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5)
 //   All values from existing token set: --teal, --background, --foreground,
 //     --border, --muted-foreground, --surface-warm-100, --dark-grey, --card
 //   Voice Mandate: no em dashes, no "unlock/leverage/embark/elevate/delve"
@@ -39,55 +43,128 @@ export interface SidebarV2UserInfo {
   isPro: boolean;
 }
 
-// ── Nav item definitions ───────────────────────────────────────────────────
+// ── Nav category definitions ───────────────────────────────────────────────
+// TIM-3014: IA mapping from TIM-3013 — every workspace nested under its category.
 
-interface V2NavItem {
+type V2Icon = React.ComponentType<{ size?: number; strokeWidth?: number; "aria-hidden"?: boolean }>;
+
+interface V2SubItem {
   label: string;
   href: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; "aria-hidden"?: boolean }>;
-  matchPrefixes: string[];
 }
 
-const NAV_ITEMS: V2NavItem[] = [
+interface V2NavCategory {
+  key: string;
+  label: string;
+  icon: V2Icon;
+  href?: string;         // direct link (Home only — no sub-items)
+  subItems?: V2SubItem[]; // expandable categories
+}
+
+const NAV_CATEGORIES: V2NavCategory[] = [
   {
+    key: "home",
     label: "Home",
     href: "/dashboard",
     icon: LayoutDashboard,
-    matchPrefixes: ["/dashboard"],
   },
   {
+    key: "plan",
     label: "Plan",
-    href: "/workspace/concept",
     icon: FileText,
-    matchPrefixes: ["/workspace/concept", "/workspace/business-plan"],
-  },
-  {
-    label: "Build",
-    href: "/workspace/launch-plan",
-    icon: Layers,
-    matchPrefixes: [
-      "/workspace/build",
-      "/workspace/buildout-equipment",
-      "/workspace/location-lease",
-      "/workspace/menu-pricing",
-      "/workspace/suppliers",
-      "/workspace/hiring",
-      "/workspace/launch-plan",
+    subItems: [
+      { label: "Concept", href: "/workspace/concept" },
+      { label: "Business Plan", href: "/workspace/business-plan" },
     ],
   },
   {
-    label: "Financials",
-    href: "/workspace/financials",
-    icon: BarChart2,
-    matchPrefixes: ["/workspace/financials", "/workspace/benchmarks"],
+    key: "build",
+    label: "Build",
+    icon: Layers,
+    subItems: [
+      { label: "Location & Lease", href: "/workspace/location-lease" },
+      { label: "Menu & Pricing", href: "/workspace/menu-pricing" },
+      { label: "Equipment & Supplies", href: "/workspace/buildout-equipment" },
+      { label: "Suppliers & Vendors", href: "/workspace/suppliers" },
+      { label: "Hiring & Onboarding", href: "/workspace/hiring" },
+      { label: "Launch Plan", href: "/workspace/launch-plan" },
+    ],
   },
   {
+    key: "financials",
+    label: "Financials",
+    icon: BarChart2,
+    subItems: [
+      { label: "Financials", href: "/workspace/financials" },
+      { label: "Benchmarks", href: "/workspace/benchmarks" },
+    ],
+  },
+  {
+    key: "run",
     label: "Run",
-    href: "/workspace/operations-playbook",
     icon: ClipboardList,
-    matchPrefixes: ["/workspace/operations-playbook", "/workspace/marketing"],
+    subItems: [
+      { label: "Operations Playbook", href: "/workspace/operations-playbook" },
+      { label: "Marketing", href: "/workspace/marketing" },
+    ],
   },
 ];
+
+// ── Category expand/collapse state ─────────────────────────────────────────
+// Default: all categories expanded. A category is expanded unless explicitly
+// collapsed by the user. Persisted per-browser via localStorage.
+
+const V2_CATEGORY_COLLAPSED_KEY = "tcs-v2-nav-collapsed-v1";
+
+type V2CollapsedState = Partial<Record<string, boolean>>;
+
+function useV2CategoryExpanded() {
+  const [collapsed, setCollapsed] = useState<V2CollapsedState>({});
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(V2_CATEGORY_COLLAPSED_KEY);
+      if (!raw) return;
+      const parsed: unknown = JSON.parse(raw);
+      // Guard against "null", arrays, or non-objects written by other code paths.
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        setCollapsed(parsed as V2CollapsedState);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const isExpanded = useCallback((key: string) => !collapsed[key], [collapsed]);
+
+  const toggle = useCallback((key: string) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem(V2_CATEGORY_COLLAPSED_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
+  // Force-open a category without toggling (used when navigating directly to a sub-item URL).
+  const forceExpand = useCallback((key: string) => {
+    setCollapsed((prev) => {
+      if (!prev[key]) return prev; // already expanded — no-op, stable reference
+      const next = { ...prev, [key]: false };
+      try {
+        localStorage.setItem(V2_CATEGORY_COLLAPSED_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
+  return { isExpanded, toggle, forceExpand };
+}
 
 // ── Dark mode hook ─────────────────────────────────────────────────────────
 
@@ -351,6 +428,26 @@ function CloseIcon() {
   );
 }
 
+function ChevronDownIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="transition-transform duration-150 text-[var(--muted-foreground)]"
+      style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)" }}
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
 // ── Sidebar content ────────────────────────────────────────────────────────
 
 function SidebarV2Content({
@@ -363,10 +460,18 @@ function SidebarV2Content({
   firstLinkRef?: React.RefObject<HTMLAnchorElement | null>;
 }) {
   const pathname = usePathname();
+  const { isExpanded, toggle, forceExpand } = useV2CategoryExpanded();
 
-  function isActive(item: V2NavItem): boolean {
-    return item.matchPrefixes.some((prefix) => pathname.startsWith(prefix));
-  }
+  // Auto-expand the category containing the current path so direct-URL navigation
+  // (bookmarks, deep links, CoPilot) never leaves the active sub-item hidden.
+  useEffect(() => {
+    for (const cat of NAV_CATEGORIES) {
+      if (cat.subItems?.some((sub) => pathname.startsWith(sub.href))) {
+        forceExpand(cat.key);
+        break;
+      }
+    }
+  }, [pathname, forceExpand]);
 
   return (
     <div className="flex flex-col h-full">
@@ -400,24 +505,86 @@ function SidebarV2Content({
         {/* TIM-2378: project switcher above main nav */}
         <ProjectSwitcher isPro={userInfo.isPro} />
         <ul role="list" className="space-y-0.5">
-          {NAV_ITEMS.map((item) => {
-            const active = isActive(item);
-            const Icon = item.icon;
+          {NAV_CATEGORIES.map((cat) => {
+            const Icon = cat.icon;
+
+            // Home — single direct link, no sub-items
+            if (cat.href && !cat.subItems) {
+              const active = pathname.startsWith(cat.href);
+              return (
+                <li key={cat.key}>
+                  <Link
+                    href={cat.href}
+                    aria-current={active ? "page" : undefined}
+                    onClick={onClose}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors ${
+                      active
+                        ? "border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
+                        : "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
+                    }`}
+                  >
+                    <Icon size={16} strokeWidth={1.75} aria-hidden />
+                    <span className="text-sm">{cat.label}</span>
+                  </Link>
+                </li>
+              );
+            }
+
+            // Expandable category with sub-items
+            const expanded = isExpanded(cat.key);
+            // Highlight the category header when collapsed + a sub-item is active,
+            // so the user always has a visual anchor even if the section is closed.
+            const anyCatSubActive = !expanded &&
+              (cat.subItems?.some((sub) => pathname.startsWith(sub.href)) ?? false);
             return (
-              <li key={item.label}>
-                <Link
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  onClick={onClose}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors ${
-                    active
+              <li key={cat.key}>
+                <button
+                  type="button"
+                  onClick={() => toggle(cat.key)}
+                  aria-expanded={expanded}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 w-full rounded-lg transition-colors ${
+                    anyCatSubActive
                       ? "border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
                       : "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
                   }`}
                 >
                   <Icon size={16} strokeWidth={1.75} aria-hidden />
-                  <span className="text-sm">{item.label}</span>
-                </Link>
+                  <span className="text-sm flex-1 text-left">{cat.label}</span>
+                  <ChevronDownIcon open={expanded} />
+                </button>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateRows: expanded ? "1fr" : "0fr",
+                    transition: "grid-template-rows 150ms ease-out",
+                  }}
+                  aria-hidden={!expanded}
+                >
+                  <div style={{ overflow: "hidden" }}>
+                    <ul className="space-y-0.5 mt-0.5 pb-0.5">
+                      {cat.subItems?.map((sub) => {
+                        const subActive = pathname.startsWith(sub.href);
+                        return (
+                          <li key={sub.href}>
+                            <Link
+                              href={sub.href}
+                              tabIndex={expanded ? undefined : -1}
+                              aria-current={subActive ? "page" : undefined}
+                              onClick={onClose}
+                              className={`flex items-center pr-3 py-2 rounded-lg transition-colors text-sm ${
+                                subActive
+                                  ? "border-l-2 border-[var(--teal)] pl-[34px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
+                                  : "pl-9 text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
+                              }`}
+                            >
+                              {sub.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                </div>
               </li>
             );
           })}

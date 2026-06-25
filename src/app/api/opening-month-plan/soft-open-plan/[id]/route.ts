@@ -1,20 +1,11 @@
+// TIM-2965: same multi-plan resolver swap as the parent route — drop the
+// inline `.single()` resolver in favor of canonical `getActivePlanId`.
 import { createClient } from "@/lib/supabase/server";
+import { getActivePlanId } from "@/lib/plan-context";
 import { isSubscriptionActive } from "@/lib/access";
 import type { NextRequest } from "next/server";
 
 type RouteContext = { params: Promise<{ id: string }> };
-
-async function getAuthedPlanId() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null, planId: null };
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-  return { supabase, user, planId: plan?.id ?? null };
-}
 
 async function checkPaywall(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data: profile } = await supabase
@@ -27,8 +18,10 @@ async function checkPaywall(supabase: Awaited<ReturnType<typeof createClient>>, 
 
 export async function PUT(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
-  const { supabase, user, planId } = await getAuthedPlanId();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const planId = await getActivePlanId(supabase, user.id);
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 });
   if (!(await checkPaywall(supabase, user.id))) {
     return Response.json({ reason: "paywall", tier_required: "starter" }, { status: 402 });
@@ -59,8 +52,10 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
-  const { supabase, user, planId } = await getAuthedPlanId();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const planId = await getActivePlanId(supabase, user.id);
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 });
   if (!(await checkPaywall(supabase, user.id))) {
     return Response.json({ reason: "paywall", tier_required: "starter" }, { status: 402 });

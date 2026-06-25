@@ -27,6 +27,7 @@ export interface OrgRole {
   notes: string | null
   parent_role_id: string | null
   jd_template_id: string | null
+  order_index: number
 }
 
 export interface JobDescriptionTemplate {

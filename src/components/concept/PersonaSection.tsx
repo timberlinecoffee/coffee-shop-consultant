@@ -11,7 +11,7 @@ import {
   PERSONA_SPEND_LABELS,
 } from "@/lib/concept";
 import { PersonaCard } from "./PersonaCard";
-import { PersonaEditor } from "./PersonaEditor";
+import { PersonaEditor, type OpenPersonaWriteWithAi } from "./PersonaEditor";
 
 const NEW_PERSONA_ID = "__new__";
 const EXAMPLE_PERSONA_ID = "__example__";
@@ -45,9 +45,12 @@ interface PersonaSectionProps {
   personas: CustomerPersona[];
   canEdit: boolean;
   onUpdate: (personas: CustomerPersona[]) => void;
+  // TIM-2974: parent (ConceptWorkspace) owns the AIAssistCallout and forwards
+  // a handler so per-field "Write with AI" buttons open the structured popup.
+  onWriteWithAi?: OpenPersonaWriteWithAi;
 }
 
-export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionProps) {
+export function PersonaSection({ personas, canEdit, onUpdate, onWriteWithAi }: PersonaSectionProps) {
   // expandedId: a persona id, NEW_PERSONA_ID, EXAMPLE_PERSONA_ID, or null
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [newDraft, setNewDraft] = useState<CustomerPersona | null>(null);
@@ -153,6 +156,7 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
               onSave={handleSave}
               onDelete={handleDelete}
               onClose={closeExpansion}
+              onWriteWithAi={onWriteWithAi}
             />
           </div>
         )}
@@ -206,6 +210,7 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
                   onSave={handleSave}
                   onDelete={handleDelete}
                   onClose={closeExpansion}
+                  onWriteWithAi={onWriteWithAi}
                 />
               )}
             </div>
@@ -224,6 +229,7 @@ export function PersonaSection({ personas, canEdit, onUpdate }: PersonaSectionPr
               onSave={handleSave}
               onDelete={handleDelete}
               onClose={closeExpansion}
+              onWriteWithAi={onWriteWithAi}
             />
           </div>
         )}
