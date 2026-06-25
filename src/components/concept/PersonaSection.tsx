@@ -45,8 +45,6 @@ interface PersonaSectionProps {
   personas: CustomerPersona[];
   canEdit: boolean;
   onUpdate: (personas: CustomerPersona[]) => void;
-  // TIM-2974: parent (ConceptWorkspace) owns the AIAssistCallout and forwards
-  // a handler so per-field "Write with AI" buttons open the structured popup.
   onWriteWithAi?: OpenPersonaWriteWithAi;
 }
 
