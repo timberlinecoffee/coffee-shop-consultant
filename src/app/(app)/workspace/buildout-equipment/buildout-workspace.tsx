@@ -8,7 +8,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import { Wrench, X, Settings2, FileSpreadsheet, MessageSquare, Eye } from "lucide-react";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
@@ -547,13 +546,6 @@ export function BuildoutEquipmentWorkspace({
       )}
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />
-      <CoPilotDrawer
-        planId={planId}
-        workspaceKey="buildout_equipment"
-        currentFocus={{ label: "Equipment & Supplies: Equipment" }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-        onApplySuggestions={handleAIApplySuggestions}
-      />
     </div>
   );
 }

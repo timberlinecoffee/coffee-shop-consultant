@@ -19,8 +19,7 @@ import {
   Plus, RefreshCw, AlertTriangle, Pencil, Trash2, Info, ClipboardList,
   CheckCircle, Circle, Minus,
 } from "lucide-react";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
-import { LaunchPlanSubNav, type LaunchPlanTab } from "@/components/launch-plan/LaunchPlanSubNav";
+import { LaunchPlanSubNav } from "@/components/launch-plan/LaunchPlanSubNav";
 import {
   WorkspaceSubNav,
   type WorkspaceSubNavTab,
@@ -1579,14 +1578,6 @@ export function OpeningMonthPlanWorkspace({
         </div>
       </div>
 
-      {/* CoPilot */}
-      <CoPilotDrawer
-        workspaceKey="opening_month_plan"
-        planId={planId}
-        currentFocus={{ anchor: "opening_month_plan", label: coPilotFocusLabel }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-        onApplySuggestions={handleApplyOpeningMonthSuggestions}
-      />
 
       {/* Edit modal */}
       {editModal && (

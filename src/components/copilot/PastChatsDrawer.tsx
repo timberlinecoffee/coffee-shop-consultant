@@ -31,7 +31,7 @@ export interface PastChatsDrawerProps {
   planId: string;
   activeScope: ConversationScope;
   activeThreadId: string | null;
-  currentWorkspaceKey: WorkspaceKey;
+  currentWorkspaceKey: WorkspaceKey | null;
   onSelectThread: (item: ThreadBrowserItem) => void;
   onNewThread: (scope: ConversationScope) => void;
   onRenameThread?: (threadId: string, newTitle: string) => void;

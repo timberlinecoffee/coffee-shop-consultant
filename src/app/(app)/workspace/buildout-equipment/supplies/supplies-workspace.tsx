@@ -10,7 +10,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Package, X, Eye } from "lucide-react";
 import { formatCurrencyAmount } from "@/lib/currency";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
@@ -368,12 +367,6 @@ export function SuppliesWorkspace({
       </div>
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />
-      <CoPilotDrawer
-        planId={planId}
-        workspaceKey="buildout_equipment"
-        currentFocus={{ label: "Equipment & Supplies: Supplies" }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-      />
     </div>
   );
 }

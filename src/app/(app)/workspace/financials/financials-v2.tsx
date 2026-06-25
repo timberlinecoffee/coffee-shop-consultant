@@ -53,7 +53,6 @@ import {
   fiscalYearMonthLabels,
 } from "@/lib/financial-projection";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import type { CritiqueResult } from "@/lib/financials";
 import type { MinWageInfo } from "@/lib/wages/minimum-wage";
 import type { OpeningRunwayResult } from "@/lib/business-plan/opening-runway";
@@ -1508,12 +1507,6 @@ export function FinancialsV2({
       </div>
 
       <PaywallModal open={paywallOpen} onClose={onPaywallClose} variant="copilot_trial" />
-      <CoPilotDrawer
-        planId={planId}
-        workspaceKey="financials"
-        currentFocus={{ label: "Financials" }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-      />
     </div>
   );
 }

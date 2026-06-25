@@ -11,7 +11,7 @@
 // Threshold (§10.2): show the trigger only when there are >=2 secondary
 // actions. Workspaces with 0 or 1 secondaries render inline.
 
-import { MoreHorizontal, Check } from "lucide-react";
+import { MoreHorizontal, Check, Sparkles } from "lucide-react";
 import {
   forwardRef,
   useCallback,
@@ -125,6 +125,16 @@ export function WorkspaceActionMenu({
           onKeyDown={handleMenuKeyDown}
           className="absolute top-[calc(100%+4px)] right-0 z-30 w-[220px] bg-white border border-[var(--border)] rounded-xl shadow-md py-1 overflow-y-auto max-h-80"
         >
+          <WorkspaceActionMenuItem
+            Icon={Sparkles}
+            label="Open Advisor"
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent("copilot:open-in-mode", { detail: { mode: "coach" } }),
+              );
+              closeMenu();
+            }}
+          />
           {children({ closeMenu })}
         </div>
       )}

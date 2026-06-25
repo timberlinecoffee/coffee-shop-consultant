@@ -42,7 +42,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useCurrency } from "@/components/CurrencyProvider";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { Illustration } from "@/components/illustrations/Illustration";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -4262,12 +4261,6 @@ export function MenuWorkspace({
         feature={proPromptFeature ?? "generic"}
       />
 
-      <CoPilotDrawer
-        planId={planId}
-        workspaceKey="menu_pricing"
-        currentFocus={{ label: "Menu & Pricing" }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-      />
     </div>
     </>
   );

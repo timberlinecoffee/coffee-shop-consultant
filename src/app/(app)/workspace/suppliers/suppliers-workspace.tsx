@@ -17,7 +17,6 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Truck, Plus, Sparkles, Trash2, GripHorizontal, MoreVertical, Pencil } from "lucide-react";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
@@ -893,12 +892,6 @@ export function SuppliersWorkspace({
 
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="save" />
 
-      <CoPilotDrawer
-        planId={planId}
-        workspaceKey="suppliers"
-        currentFocus={{ label: `Suppliers: ${labelFor(activeCategory)}` }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-      />
     </div>
     </>
   );

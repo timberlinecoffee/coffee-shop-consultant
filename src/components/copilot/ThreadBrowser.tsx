@@ -77,7 +77,7 @@ export interface ThreadBrowserProps {
   /** Bump this number from the parent (after a successful send) to force a refresh. */
   refreshKey?: number
   /** The workspace the drawer was opened from. Drives the "+ New here" button. */
-  currentWorkspaceKey: WorkspaceKey
+  currentWorkspaceKey: WorkspaceKey | null
   /** "inline" (default): border-b + max-h-60 list. "fill": fills parent height, no cap. */
   variant?: "inline" | "fill"
 }
@@ -337,7 +337,7 @@ export function ThreadBrowser({
             type="button"
             onClick={() => onNewThread(currentWorkspaceKey)}
             className="text-xs font-semibold text-[var(--teal)] hover:underline"
-            title={`New conversation in ${WORKSPACE_LABELS[currentWorkspaceKey]}`}
+            title={`New conversation in ${scopeLabel(currentWorkspaceKey)}`}
           >
             This Page
           </button>

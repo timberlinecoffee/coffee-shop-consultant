@@ -23,7 +23,6 @@ import {
   Circle,
   Minus,
 } from "lucide-react";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
@@ -497,13 +496,6 @@ export function OperationsPlaybookWorkspace({
         )}
       </div>
 
-      <CoPilotDrawer
-        planId={planId}
-        workspaceKey="operations_playbook"
-        currentFocus={{ label: activeView === "how-you-compare" ? "How You Compare" : "Playbook" }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-        onApplySuggestions={handleApplyPlaybookSuggestions}
-      />
 
       <PaywallModal
         open={paywallReason !== null}

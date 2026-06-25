@@ -16,7 +16,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lightbulb, Printer, Sparkles, X } from "lucide-react";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
@@ -666,16 +665,6 @@ export function ConceptWorkspace({
           setAiAssistField(null);
         }}
         openAIReviewModal={openAIReviewModal}
-      />
-
-      {/* TIM-880 / TIM-893: CoPilotDrawer handles both the WorkspaceTopBar button
-          and per-field "Ask Co-pilot" dispatch (copilot:open-with-prompt). */}
-      <CoPilotDrawer
-        planId={planId}
-        workspaceKey="concept"
-        currentFocus={{ label: "Concept" }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-        onApplySuggestions={handleApplyConceptSuggestions}
       />
 
       {/* TIM-2858: unified AI review modal — owned here (not inside

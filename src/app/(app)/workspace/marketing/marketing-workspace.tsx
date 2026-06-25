@@ -20,7 +20,6 @@ import {
   Circle,
   Minus,
 } from "lucide-react";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import {
@@ -390,14 +389,6 @@ export function MarketingWorkspace({
             })}
           </div>
         </div>
-
-        <CoPilotDrawer
-          planId={planId}
-          workspaceKey="marketing"
-          currentFocus={{ label: "Marketing" }}
-          initialTrialMessagesUsed={initialTrialMessagesUsed}
-          onApplySuggestions={handleApplyMarketingSuggestions}
-        />
 
         <PaywallModal
           open={paywallReason !== null}

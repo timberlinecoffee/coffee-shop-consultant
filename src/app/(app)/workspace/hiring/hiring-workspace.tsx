@@ -30,7 +30,6 @@ import {
   Download,
 } from "lucide-react";
 import { useCurrency } from "@/components/CurrencyProvider";
-import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -2846,13 +2845,6 @@ export function HiringWorkspace({
         variant="copilot_trial"
       />
 
-      <CoPilotDrawer
-        planId={planId}
-        workspaceKey="hiring"
-        currentFocus={{ label: "Hiring & Onboarding" }}
-        initialTrialMessagesUsed={initialTrialMessagesUsed}
-        onApplySuggestions={handleApplyHiringSuggestions}
-      />
     </div>
   );
 }
