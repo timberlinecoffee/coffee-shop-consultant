@@ -123,3 +123,34 @@ The reopen comment contains the exact `gh pr create` / `git merge` command. Run 
 - **`scripts/done-gate.sh`** — run before PATCHing a ship issue to `done`. Asserts merge + prod-200 + Playwright smoke.
 - **`scripts/safe-delete-branch.sh`** — wraps `git branch -d`; refuses delete if branch has unmerged commits (TIM-987).
 <!-- END:pillar1-pillar4-docs -->
+
+<!-- BEGIN:standing-approvals -->
+# Standing approvals — self-apply, don't file board cards (TIM-2894)
+
+Authoritative policy docs live on [TIM-2894](/TIM/issues/TIM-2894). Always check current state before relying on a memory.
+
+Active standing approvals as of **2026-06-25**:
+
+- **SA-1** — auto-merge agent-authored PRs to `main`. Conditions in [`policy-sa-1`](/TIM/issues/TIM-2894#document-policy-sa-1). Excludes migrations / deps / env / billing / legal / auth / payment / stripe / oauth files.
+- **SA-2** — auto-flip feature flags to default-true after the gate issue closes. Conditions in [`policy-sa-2`](/TIM/issues/TIM-2894#document-policy-sa-2).
+- **SA-Stripe** — CTO self-applies Stripe live-mode flips when the test-mode equivalent was board-approved on a prior issue. Conditions in [`policy-sa-stripe`](/TIM/issues/TIM-2894#document-policy-sa-stripe). Authorized via [TIM-3053](/TIM/issues/TIM-3053) on 2026-06-25.
+- **SA-OAuth** — CTO self-applies OAuth redirect URL changes when the eTLD+1 is already on the provider's whitelist. Conditions in [`policy-sa-oauth`](/TIM/issues/TIM-2894#document-policy-sa-oauth). Authorized via [TIM-3053](/TIM/issues/TIM-3053) on 2026-06-25.
+
+Naming note: original SA-3 (hosting/tooling spend cap) was declined on 2026-06-22. To avoid id reuse confusion, Stripe-related and OAuth-related approvals are named SA-Stripe and SA-OAuth instead of SA-3/SA-4.
+
+If a change matches a standing approval but you cannot meet the audit-line requirement, fall back to the per-issue `request_confirmation` card — do not self-apply without the audit.
+<!-- END:standing-approvals -->
+
+<!-- BEGIN:weekly-batch-review -->
+# Weekly board batch-review session (TIM-2894 / TIM-3053)
+
+Board reviews open `request_confirmation` and `request_checkbox_confirmation` cards in a single ~30-min weekly sitting instead of per-card. CEO prepares the digest the morning of.
+
+If your card is filed and waiting:
+
+- Do NOT re-ping the board per-card (anti-pattern from [TIM-3053](/TIM/issues/TIM-3053)).
+- Verify it shows up on the next CEO digest. If not, comment on the source issue with the interaction id; do not file a duplicate card.
+- Cards covered by an active SA (above) should not have been filed at all — self-apply with the audit line.
+
+Full policy: [`policy-weekly-batch-review`](/TIM/issues/TIM-2894#document-policy-weekly-batch-review).
+<!-- END:weekly-batch-review -->
