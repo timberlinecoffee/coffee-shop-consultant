@@ -102,7 +102,7 @@ export async function GET() {
       .order("order_index"),
     supabase
       .from("hiring_plan_roles")
-      .select("id, role_title, headcount, start_date, monthly_cost_cents, status")
+      .select("id, role_title, headcount, start_date, monthly_cost_cents")
       .eq("plan_id", planId)
       .order("created_at"),
     supabase

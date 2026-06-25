@@ -126,7 +126,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete, minimum
     <div className="border border-[var(--border)] rounded-xl bg-white">
       <div className="px-3 py-2.5 space-y-2.5">
         {/* Row A: role + designation + delete */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
@@ -145,12 +145,15 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete, minimum
             value={line.role}
             onChange={(e) => onChange({ ...line, role: e.target.value })}
             disabled={!canEdit}
-            className={`${inputCls} flex-1 min-w-0 font-medium`}
+            className={`${inputCls} flex-1 min-w-[120px] font-medium`}
             aria-label="Role or title"
             placeholder="Role or person"
           />
+          {/* Force select + delete to their own row on narrow screens */}
+          <span className="w-full sm:hidden h-0" aria-hidden="true" />
+          <div className="flex items-center gap-2 pl-5 sm:pl-0 sm:ml-auto">
           <select
-            className={`${inputCls} shrink-0 w-44 py-1`}
+            className={`${inputCls} shrink-0 w-36 sm:w-44 py-1`}
             value={line.cost_category}
             disabled={!canEdit}
             onChange={(e) =>
@@ -171,6 +174,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete, minimum
           >
             <Trash2 size={14} />
           </button>
+          </div>
         </div>
 
         {/* Row B: headcount + pay basis + pay amount (+ hours) + benefits */}
@@ -373,7 +377,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete, minimum
               </span>
             </label>
             {line.ramp?.enabled && (
-              <div className="ml-6 mt-2 grid grid-cols-3 gap-3 max-w-md">
+              <div className="ml-6 mt-2 grid grid-cols-2 md:grid-cols-3 gap-3 max-w-md">
                 <div>
                   {/* TIM-1477: helper one-liner moved into a "?" popup beside
                       the question label, matching the Financial Suite pattern. */}

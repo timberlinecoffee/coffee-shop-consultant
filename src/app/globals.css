@@ -350,6 +350,9 @@ body {
   color: var(--foreground);
   font-family: 'Poppins', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* TIM-2828: contain horizontal overflow so any escaping child clips here
+     rather than widening the scroll box on mobile. */
+  overflow-x: hidden;
 }
 
 * {

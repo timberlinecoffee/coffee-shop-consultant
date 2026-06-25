@@ -1,8 +1,10 @@
 // TIM-776 / TIM-620-B: Update + soft-archive a location candidate.
 // TIM-1115: Title-case name + neighborhood on patch.
+// TIM-2868: getActivePlanId() — see candidates/route.ts header.
 import { createClient } from "@/lib/supabase/server"
 import type { NextRequest } from "next/server"
 import { toTitleCase } from "@/lib/text"
+import { getActivePlanId } from "@/lib/plan-context"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -13,13 +15,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
-
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   // Ownership check: candidate must belong to the user's plan.
   const { data: existing } = await supabase
@@ -29,7 +26,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     .maybeSingle()
 
   if (!existing) return Response.json({ error: "Candidate not found" }, { status: 404 })
-  if (existing.plan_id !== plan.id) return Response.json({ error: "Forbidden" }, { status: 403 })
+  if (existing.plan_id !== planId) return Response.json({ error: "Forbidden" }, { status: 403 })
 
   let body: Record<string, unknown>
   try {
@@ -43,6 +40,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     "cam_cents", "listing_url", "broker_contact", "status", "notes", "position",
     // TIM-1145: address autocomplete + geo
     "lat", "lng", "city", "postal_code", "country",
+    // TIM-2924: applied via review-modal onApply after user accepts area analysis
+    "area_analysis", "area_analysis_at",
   ] as const
 
   const patch: Record<string, unknown> = {}
@@ -90,13 +89,8 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
-
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const { data: existing } = await supabase
     .from("location_candidates")
@@ -105,7 +99,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
     .maybeSingle()
 
   if (!existing) return Response.json({ error: "Candidate not found" }, { status: 404 })
-  if (existing.plan_id !== plan.id) return Response.json({ error: "Forbidden" }, { status: 403 })
+  if (existing.plan_id !== planId) return Response.json({ error: "Forbidden" }, { status: 403 })
 
   const { error } = await supabase
     .from("location_candidates")

@@ -682,7 +682,8 @@ function ForecastTab({
         help="Estimated customers per open day. Closed days are excluded from revenue calculations."
       >
         <div id="tour-customer-flow" className="rounded-xl border border-[var(--border)] bg-white p-4">
-          <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${openDays.length || 7}, minmax(0, 1fr))` }}>
+          <div className="overflow-x-auto -mx-1 px-1 pb-1">
+          <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${openDays.length || 7}, minmax(52px, 1fr))`, minWidth: `${(openDays.length || 7) * 60}px` }}>
             {DAY_KEYS.map((day) => {
               const isOpen = mp.weekly_schedule[day].open;
               if (!isOpen) return null;
@@ -715,6 +716,7 @@ function ForecastTab({
                 </div>
               );
             })}
+          </div>
           </div>
           {openDays.length === 0 && (
             <p className="text-xs text-[var(--dark-grey)] text-center py-4">No open days selected.</p>
@@ -968,7 +970,7 @@ function ForecastTab({
                 Average sales per day {avgCustomersPerDay > 0 ? `(at ~${avgCustomersPerDay} customers/day)` : ""}
               </p>
               {avgCustomersPerDay > 0 ? (
-                <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                   <div>
                     <span className="text-[var(--muted-foreground)]">Beverage</span>
                     <p className="font-semibold text-[var(--foreground)]">
@@ -1463,7 +1465,7 @@ function ForecastTab({
                   Per-month growth % after ramp ends. Month 1 is the first post-ramp month.
                 </InfoTip>
               </div>
-              <div className="grid grid-cols-6 gap-2">
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                 {Array.from({ length: 12 }).map((_, i) => {
                   const val = (mp.growth_custom_monthly ?? [])[i] ?? (mp.growth_monthly_pct ?? 0);
                   return (
@@ -1619,8 +1621,8 @@ function PayrollSummaryChart({
     overhead_labor: s.labor_cents ?? 0,
   }));
   const series = [
-    { key: "service_labor", label: "Service Labor (COGS)", color: CHART_COLORS.warning },
-    { key: "overhead_labor", label: "Overhead Labor", color: CHART_COLORS.primary },
+    { key: "service_labor", label: "Barista Wages", color: CHART_COLORS.warning },
+    { key: "overhead_labor", label: "Management Wages", color: CHART_COLORS.primary },
   ];
   return (
     <div className="mb-6">
@@ -1709,22 +1711,22 @@ function ProjectionsTab({
       />
 
       {/* KPI summary tiles */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
           {
-            label: "Year 1 GM",
+            label: "Year 1 Gross Margin",
             value: fmtIntegerPct(y1.gross_margin_pct / 100),
             sub: "Gross margin",
             ok: y1.gross_margin_pct >= 60,
           },
           {
-            label: "Year 1 Op. Income",
+            label: "Year 1 Operating Profit",
             value: formatCurrency(y1.operating_income, currencyCode),
             sub: y1.revenue > 0 ? `${fmtIntegerPct(y1.operating_income / y1.revenue)} margin` : "n/a",
             ok: y1.operating_income >= 0,
           },
           {
-            label: "Year 5 Net",
+            label: "Year 5 Net Income",
             value: formatCurrency(y5.net_income, currencyCode),
             sub: "Net income",
             ok: y5.net_income >= 0,
@@ -1811,7 +1813,7 @@ function ProjectionsTab({
           </ul>
         ) : !canEdit ? null : (
           <p className="px-5 py-4 text-sm text-[var(--dark-grey)]">
-            Run an assessment to get benchmarked feedback on your projections.
+            Run an assessment to get feedback on your projections.
           </p>
         )}
         {localAssessment?.generated_at && (
@@ -2368,16 +2370,16 @@ export function FinancialsWorkspace({
   }
 
   const tabs: { id: Tab; label: string; badge?: number }[] = [
-    { id: "forecast", label: "Forecast Inputs" },
+    { id: "forecast", label: "Budget Inputs" },
     { id: "personnel", label: "Salaries" },
     { id: "funding", label: "Funding" },
-    { id: "projections", label: "P&L" },
+    { id: "projections", label: "Profit & Loss" },
     { id: "balance-sheet", label: "Balance Sheet" },
     { id: "cash-flow", label: "Cash Flow" },
     { id: "break-even", label: "Break-Even" },
-    { id: "ratios", label: "Ratios" },
+    { id: "ratios", label: "Health Check" },
     { id: "startup", label: "Startup Costs" },
-    { id: "depreciation", label: "Asset & Depreciation" },
+    { id: "depreciation", label: "Depreciation Schedule" },
     { id: "how-you-compare", label: "How You Compare", badge: benchmarkYellowCount || undefined },
   ];
 
@@ -2386,7 +2388,7 @@ export function FinancialsWorkspace({
 
   return (
     <div className="bg-[var(--background)] min-h-screen" style={brandStyle}>
-      <div className="w-full px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1745 / TIM-1894 / TIM-1937: action toolbar (Guided setup /
             Export PDF / Export Excel / SaveStatusAndButton) lives top-right on
             the same band as the title via the canonical WorkspaceHeader.
@@ -2617,7 +2619,7 @@ export function FinancialsWorkspace({
                 window.dispatchEvent(
                   new CustomEvent("copilot:open-in-mode", {
                     detail: {
-                      mode: "benchmark",
+                      mode: "check",
                       scope: "financials",
                       focus: { metricId, metricLabel },
                     },

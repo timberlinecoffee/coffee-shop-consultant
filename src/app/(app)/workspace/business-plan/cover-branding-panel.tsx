@@ -344,7 +344,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
           {/* Template picker */}
           <div>
             <p className="text-xs text-[var(--gray-medium)] mb-2">Template</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {COVER_TEMPLATES.map((t) => {
                 const active = template === t.id;
                 return (

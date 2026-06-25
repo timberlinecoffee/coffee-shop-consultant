@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
   }
 
   // TIM-2246: per-user cap on AI-improve to bound paid-API spend on a
-  // runaway-loop client (improve fires on every "Improve with AI" click).
+  // runaway-loop client (improve fires on every "Write with AI" click).
   const rl = await rateLimit({ bucket: "copilot:improve", id: user.id, limit: 30, windowSec: 60 });
   if (!rl.ok) {
     return new Response(

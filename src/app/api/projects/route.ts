@@ -9,7 +9,16 @@ import type { NextRequest } from "next/server"
 const CreateBody = z.object({
   name: z.string().min(1).max(200),
   locationLabel: z.string().max(200).optional(),
+  // TIM-2865: client-generated per-form-mount UUID. Server uses it to dedup
+  // rapid double-submits from the same modal instance. Header takes priority
+  // when both are present (matches Stripe convention).
+  idempotencyKey: z.string().min(8).max(128).optional(),
 })
+
+// TIM-2865: dedup window for near-simultaneous duplicate POSTs from the same
+// user with matching name+location. Narrow enough to avoid blocking a real
+// intentional second project with the same name minutes later.
+const IDEMPOTENCY_WINDOW_SECONDS = 60
 
 export async function GET() {
   const supabase = await createClient()
@@ -83,6 +92,45 @@ export async function POST(request: NextRequest) {
     if ((count ?? 0) >= 1) {
       return Response.json({ code: "pro_required", error: "Upgrade to Pro to create multiple projects" }, { status: 402 })
     }
+  }
+
+  // TIM-2865: server-side dedup. Catches the case where two POSTs land
+  // before the client ref guard can fire (slow network + rage-click on the
+  // same modal mount, or a navigation interleave). Looks for a plan this
+  // user just created with the same name + location_label in the last 60s.
+  // Not race-free without a unique index (filed as follow-up), but covers
+  // the actual incident pattern: two POSTs ~100ms apart, first commits
+  // ~200ms before second arrives → second SELECT sees it and returns 200.
+  const sinceIso = new Date(Date.now() - IDEMPOTENCY_WINDOW_SECONDS * 1000).toISOString()
+  let dedupQuery = supabase
+    .from("coffee_shop_plans")
+    .select("id, plan_name, location_label, created_at")
+    .eq("user_id", user.id)
+    .eq("plan_name", name)
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false })
+    .limit(1)
+  if (locationLabel) {
+    dedupQuery = dedupQuery.eq("location_label", locationLabel)
+  } else {
+    dedupQuery = dedupQuery.is("location_label", null)
+  }
+  const { data: recentMatches } = await dedupQuery
+  const existing = recentMatches?.[0]
+  if (existing) {
+    return Response.json(
+      {
+        project: {
+          id: existing.id,
+          name: existing.plan_name,
+          locationLabel: existing.location_label ?? null,
+          createdAt: existing.created_at,
+          isActive: false,
+        },
+        deduplicated: true,
+      },
+      { status: 200 },
+    )
   }
 
   const { data: plan, error } = await supabase

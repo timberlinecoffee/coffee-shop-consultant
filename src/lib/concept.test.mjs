@@ -87,7 +87,10 @@ test("formatConceptForAI returns empty marker when nothing is filled", () => {
 // These pin the exact counting logic so both surfaces (main page and sidebar)
 // can be proven to use the same source of truth.
 
-test("getConceptV2Progress counts only included components toward total", () => {
+// TIM-2859: per-card Skip toggle removed; deferrable components with content
+// count toward total + filled regardless of `included` flag (the user's act of
+// typing IS the implicit "in doc" signal). Empty deferrables stay skipped.
+test("getConceptV2Progress: deferrable with content counts; deferrable empty is skipped", () => {
   const doc = {
     ...EMPTY_CONCEPT_V2,
     components: {
@@ -95,14 +98,14 @@ test("getConceptV2Progress counts only included components toward total", () => 
       vision:          { content: "",              included: true },
       target_customer: { content: "commuters",     included: true },
       differentiation: { content: "direct-trade",  included: true },
-      brand_voice:     { content: "warm",           included: true },
-      location:        { content: "downtown",       included: false },
-      offering:        { content: "",               included: false },
+      brand_voice:     { content: "warm",          included: true },
+      location:        { content: "downtown",      included: false }, // content present → counts
+      offering:        { content: "",              included: false }, // empty → skipped
     },
   };
   const p = getConceptV2Progress(doc);
-  assert.equal(p.total, 5);
-  assert.equal(p.filled, 4);
+  assert.equal(p.total, 6);
+  assert.equal(p.filled, 5);
 });
 
 test("getConceptV2Progress treats whitespace-only content as unfilled", () => {

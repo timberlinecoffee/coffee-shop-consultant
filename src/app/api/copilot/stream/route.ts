@@ -69,6 +69,13 @@ const STABLE_COACHING_STYLE = `## Coaching Style
 - You know coffee deeply; use that knowledge to challenge and refine their thinking.
 - If their plan conflicts with their budget or location, say so directly but kindly.
 
+## What You Can Do (apply tools across workspaces)
+You have apply tools that send structured proposals to a review modal where the owner accepts, edits, or rejects before anything saves. NEVER tell the owner "I can't" for one of these -- when they ask, draft it and call the tool.
+- Draft or improve workspace content (Concept, Business Plan, Menu & Pricing, Marketing, Operations, Hiring, Opening Month, Equipment, etc.).
+- Propose a new menu item with a recipe.
+- Propose an equipment cost change (flows into Financials).
+- Add a new Target Customer Persona to the Concept workspace (name, demographics, why they visit, typical order, values, visit frequency, spend per visit). When the owner asks something like "add a persona", "draft a persona", "create a customer persona", offer "I can draft one -- want me to?" then call the \`add_persona\` tool. Do not say you cannot edit Concept.
+
 ## Problem -- Recommendation Rule (always)
 Whenever you flag a problem, risk, weakness, or gap, you MUST also give:
 1. **A recommendation** -- what to change to fix or mitigate it. Concrete, with numbers when possible. No vague verbs ("consider", "explore", "look into").
@@ -554,6 +561,130 @@ function shouldOfferSuggestTool(
   )
 }
 
+// ── add_persona tool (TIM-2901) ──────────────────────────────────────────────
+// Scout-callable apply action for adding a Target Customer Persona to the
+// Concept workspace. Routes through the unified review modal -- never auto-
+// applies. Offered when the user expresses persona-add intent on any
+// workspace; the apply path always writes to the concept workspace document.
+
+const ADD_PERSONA_DIRECTIVE = `## Adding Target Customer Personas (use add_persona tool -- do NOT describe in text)
+You have an \`add_persona\` tool. When the owner asks you to add, draft, create, design, write, or come up with a Target Customer Persona for their shop -- including phrasings like "add a persona", "draft a persona for the morning crowd", "create a customer persona", "make me a persona" -- you MUST call this tool. Do NOT write a text-only persona description and claim it was added. The tool emits a structured proposal the owner reviews and accepts, edits, or rejects in the review modal before anything is saved.
+
+### How to use it
+- Draft a concrete, vivid persona grounded in the owner's plan (shop concept, location, segment, target customer language already in the Concept workspace). Name a real-sounding occupation and a real-sounding daily anchor (commute, school, gym, second shift) -- never "young professional" or "coffee lover".
+- ALWAYS include \`name\` and \`whyTheyVisit\`. Fill every other field you can reason about from the plan. Empty optional fields are only fine when you truly cannot infer them; otherwise populate.
+- Cover every one of these five dimensions in the structured fields. A persona that only nails motivation but leaves purchasing behaviour blank is a draft, not a persona.
+  1. **Motivations** (\`whyTheyVisit\`): 2-3 sentences on the deeper job the visit does for them -- the ritual, the headspace, the social signal -- not just "good coffee". Show *why* they chose this shop over the alternatives.
+  2. **Purchasing behaviour** (\`typicalOrder\` + \`visitFrequency\` + \`spendPerVisit\`): a real, specific order in their voice ("Oat Milk Cortado plus a butter croissant Tuesday through Thursday"), including weekday vs weekend variation and what they explicitly will NOT order. Match \`spendPerVisit\` to the order you described -- don't say "$15+ visit" then describe a $4 drip.
+  3. **Day-in-the-life** (\`dailyContext\` + \`occupation\`): where they're coming from, what time, where they're going next, what frequency the visit slots into their week. Name the anchor (commute, school dropoff, lunch break, after-shift).
+  4. **Decision drivers** (\`painPoints\` + \`values\`): what specifically frustrates them about the alternatives within walking distance -- name the failure mode (impersonal chain, slow precious specialty, mobile orders queue-jumping the bar) -- and pick 2-4 \`values\` that are actually load-bearing for this persona, not seven values "they care about everything".
+  5. **Price sensitivity** (\`incomeRange\` + the spend bucket): make the income range consistent with the spend bucket and the occupation. If you call them a barista they don't sit in the \`over-120k\` bucket; if you call them a partner at a law firm they're not in the \`under-6\` spend bucket.
+- After calling the tool, in 1-2 sentences explain the choices you made (which dimension you anchored on, what evidence in the plan you used) and offer to draft a second persona if it fits.
+- If the owner already has 5 personas (the cap), do not call the tool -- tell them the cap and offer to refine an existing one instead.`
+
+const ADD_PERSONA_TOOL: Anthropic.Tool = {
+  name: "add_persona",
+  description:
+    "Propose a new Target Customer Persona to add to the owner's Concept workspace. " +
+    "Call this when the owner asks you to add, draft, create, or design a customer " +
+    "persona -- including from any workspace (the apply path writes to Concept). " +
+    "Do NOT call this for general discussion of who the shop is for. The tool emits " +
+    "a structured proposal that the owner reviews and accepts in the review modal; " +
+    "nothing auto-applies. After calling the tool, briefly explain your choices.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      name: {
+        type: "string",
+        description:
+          "Persona name in Title Case (e.g. 'The Morning Regular', 'Saturday Studier'). " +
+          "Use an evocative, specific label, not a generic demographic ('Coffee Drinker').",
+      },
+      ageRange: {
+        type: ["string", "null"],
+        enum: ["18-25", "25-35", "35-50", "50+", null],
+        description: "Age range bucket. Omit (null) only if genuinely unknown.",
+      },
+      occupation: {
+        type: ["string", "null"],
+        description:
+          "Specific occupation/role -- name an actual job or institution where you can ('Product designer at a downtown software firm', 'ER nurse at Henry Ford', 'Cass Tech English teacher'). Avoid generic labels like 'professional' or 'creative'.",
+      },
+      incomeRange: {
+        type: ["string", "null"],
+        enum: ["under-40k", "40k-80k", "80k-120k", "over-120k", null],
+        description:
+          "Annual income bucket. Must be consistent with the occupation AND the spendPerVisit you describe -- a barista isn't in over-120k; a senior engineer isn't in under-40k. Omit (null) if genuinely unknown.",
+      },
+      dailyContext: {
+        type: ["string", "null"],
+        description:
+          "2-3 sentences on the day-in-the-life around the visit: where they're coming from, the time window, where they're going next, and how the visit fits into their week (commute days vs weekend, post-shift, school dropoff, etc.). Avoid one-line throwaways.",
+      },
+      whyTheyVisit: {
+        type: "string",
+        description:
+          "2-3 sentences on the deeper motivation: the ritual, headspace, social signal, or specific craft promise that pulls them to THIS shop over the alternatives. Not 'they like good coffee'. Show why they chose you, not the chain across the street.",
+      },
+      painPoints: {
+        type: ["string", "null"],
+        description:
+          "1-2 sentences naming the SPECIFIC failure modes of the alternatives within reach -- 'chain espresso tastes burnt and the line moves but the cup is forgettable', 'specialty shops nearby treat espresso like a lecture'. Avoid generic 'too expensive' or 'too slow'.",
+      },
+      typicalOrder: {
+        type: ["string", "null"],
+        description:
+          "A concrete, vivid order in their voice -- drink + food/pastry, with weekday vs weekend variation if it exists and explicit dealbreakers if relevant. Tie the order to spendPerVisit (don't describe a $4 drip and put them in the $10-15 bucket). " +
+          "Good: 'Oat Milk Cortado plus a butter croissant Tuesday through Thursday (around $9). Saturday is a single-origin pour-over and an almond croissant in-house ($11). Won't touch anything blended or syruped.' " +
+          "Bad: 'Coffee and a pastry.'",
+      },
+      values: {
+        type: "array",
+        description: "What they care about. Choose 2-4 values from the enum.",
+        items: {
+          type: "string",
+          enum: ["price", "speed", "atmosphere", "craft", "community", "convenience", "consistency"],
+        },
+      },
+      visitFrequency: {
+        type: ["string", "null"],
+        enum: ["daily", "several-per-week", "weekly", "occasional", null],
+        description: "How often they come.",
+      },
+      spendPerVisit: {
+        type: ["string", "null"],
+        enum: ["under-6", "6-10", "10-15", "over-15", null],
+        description: "Typical spend bucket per visit.",
+      },
+      isPrimary: {
+        type: ["boolean", "null"],
+        description:
+          "Whether this should be the primary persona. If the owner already has personas " +
+          "this defaults to false; if they have none, the apply path always sets the first " +
+          "persona as primary regardless of this value.",
+      },
+    },
+    required: ["name", "whyTheyVisit"],
+  },
+}
+
+// Persona-add intent detection. Broad on purpose: the apply tool only emits a
+// proposal the owner reviews, so a false positive costs them one extra modal
+// click; a false negative costs Scout's credibility (the credibility blocker
+// the board flagged on TIM-2857 / TIM-2901). Works regardless of current
+// workspace -- Scout-as-hub means the ask can land from any page.
+function shouldOfferAddPersonaTool(
+  messages: Array<{ role: string; content: string }>,
+): boolean {
+  const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? ""
+  // verb (add / create / draft / write / design / make / come up with / propose / generate / suggest)
+  //   + (a / another / one / second / third / new) (optional)
+  //   + (customer)? (optional) + persona(s)
+  return /\b(add|create|draft|write|design|make|come up with|propose|generate|suggest|build|sketch)\b[^.?!\n]{0,60}\bpersonas?\b/i.test(
+    lastUser,
+  )
+}
+
 // TIM-1670: detect questions that need real web research (competitors, local market,
 // suppliers, current prices/benchmarks) so we (a) route to the stronger model and
 // (b) lengthen the no-data watchdog while web_search runs server-side.
@@ -866,12 +997,18 @@ export async function POST(request: NextRequest) {
     workspaceKey === "buildout_equipment" &&
     equipmentItems.length > 0 &&
     shouldOfferEquipmentChangeTool(messages)
+  // TIM-2901: persona-add tool. Detected by message intent (verb + "persona"),
+  // not by workspace -- Scout-as-hub means the ask can land from any page; the
+  // apply path always writes to the concept workspace document.
+  const offerAddPersonaTool = shouldOfferAddPersonaTool(messages)
   // TIM-2381: generic workspace-change tool. Not offered when other workspace-specific
-  // tools already cover the intent (propose_item, propose_equipment_change) — those
-  // carry tighter schemas and shouldn't be overridden by the generic one.
+  // tools already cover the intent (propose_item, propose_equipment_change,
+  // add_persona) — those carry tighter schemas and shouldn't be overridden by
+  // the generic one.
   const offerSuggestTool =
     !offerProposeItemTool &&
     !offerEquipmentChangeTool &&
+    !offerAddPersonaTool &&
     shouldOfferSuggestTool(messages, workspaceKey)
   // TIM-1897: board directive — all platform AI runs on Claude Haiku, no Sonnet routing.
   const modelId = PLATFORM_AI_MODEL
@@ -987,6 +1124,8 @@ export async function POST(request: NextRequest) {
               isResearchAllowed ? RESEARCH_DIRECTIVE : null,
               offerProposeItemTool ? PROPOSE_ITEM_DIRECTIVE : null,
               offerEquipmentChangeTool ? EQUIPMENT_CHANGE_DIRECTIVE : null,
+              // TIM-2901: directive presence ⟺ tool presence, always.
+              offerAddPersonaTool ? ADD_PERSONA_DIRECTIVE : null,
               // TIM-2381: directive presence ⟺ tool presence, always.
               offerSuggestTool ? SUGGEST_WORKSPACE_CHANGES_DIRECTIVE : null,
             ].filter(Boolean).join("\n\n"),
@@ -1064,6 +1203,8 @@ export async function POST(request: NextRequest) {
           ...(offerProposeItemTool ? [PROPOSE_ITEM_TOOL] : []),
           // TIM-1798: propose_equipment_change — coordinated cross-workspace cost change.
           ...(offerEquipmentChangeTool ? [PROPOSE_EQUIPMENT_CHANGE_TOOL] : []),
+          // TIM-2901: add_persona — Scout-callable apply action for Concept personas.
+          ...(offerAddPersonaTool ? [ADD_PERSONA_TOOL] : []),
           // TIM-2381: generic workspace-change proposal tool (Scout-as-hub Phase 1).
           ...(offerSuggestTool ? [SUGGEST_WORKSPACE_CHANGES_TOOL] : []),
         ]
@@ -1255,6 +1396,51 @@ export async function POST(request: NextRequest) {
                       context: proposal.context,
                     }))
                   }
+                }
+              } catch {
+                /* malformed tool JSON — skip silently */
+              }
+              activeToolName = null
+              toolInputBuffer = ""
+            } else if (activeToolName === "add_persona" && toolInputBuffer) {
+              // TIM-2901: emit a structured persona proposal for the Concept
+              // workspace. The proposedValue is the canonical JSON the apply
+              // path on the client parses; the fieldLabel carries the persona
+              // name so the modal header is human-readable. Workspace=concept
+              // routes the apply to applyConceptPersonaProposal regardless of
+              // which workspace the user was in when they asked.
+              try {
+                const toolInput = JSON.parse(toolInputBuffer) as {
+                  name?: string
+                  ageRange?: string | null
+                  occupation?: string | null
+                  incomeRange?: string | null
+                  dailyContext?: string | null
+                  whyTheyVisit?: string
+                  painPoints?: string | null
+                  typicalOrder?: string | null
+                  values?: string[]
+                  visitFrequency?: string | null
+                  spendPerVisit?: string | null
+                  isPrimary?: boolean | null
+                }
+                if (toolInput.name && toolInput.whyTheyVisit) {
+                  send(sse("suggestions", {
+                    suggestions: [
+                      {
+                        id: `propose-persona-${crypto.randomUUID()}`,
+                        fieldId: "new_persona",
+                        fieldLabel: `New Persona: ${toolInput.name}`,
+                        originalValue: "",
+                        proposedValue: JSON.stringify(toolInput),
+                        isStructured: false,
+                      },
+                    ],
+                    context: {
+                      workspace: "concept",
+                      section: "Target Customer Personas",
+                    },
+                  }))
                 }
               } catch {
                 /* malformed tool JSON — skip silently */

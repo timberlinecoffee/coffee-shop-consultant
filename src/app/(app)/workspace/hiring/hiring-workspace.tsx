@@ -3,6 +3,7 @@
 // TIM-965: Hiring & Onboarding Suite — multi-tab workspace.
 // Backed by row-level DB tables; no autosave JSONB blob — all mutations hit
 // dedicated API routes directly with optimistic local state updates.
+// TIM-2968: OrgTab upgraded with drag-and-drop hierarchy list.
 
 import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
 import {
@@ -56,7 +57,6 @@ import {
   type StaffCompetency,
   type StaffFile, // V2: per-staff files
   type CompetencyEvaluation, // V2: per-staff evaluations
-  type HiringRoleStatus,
   type CandidateStatus, // V2: candidate status
   type OnboardingPhase,
   type HiringCountry,
@@ -64,12 +64,19 @@ import {
   type HiringRequirementSet,
   CANDIDATE_STATUS_CONFIG, // V2: candidate status config
   CANDIDATE_STATUS_ORDER, // V2: candidate status ordering
-  ROLE_STATUS_CONFIG,
   PHASE_LABELS,
   PHASE_ORDER,
   DEFAULT_ONBOARDING_TASKS,
   HIRING_COUNTRY_OPTIONS,
 } from "@/lib/hiring";
+import dynamic from "next/dynamic";
+
+// TIM-3048: load OrgHierarchyList client-only — @dnd-kit relies on DOM APIs
+// that can fault during SSR under Next.js 16 / React 19 streaming.
+const OrgHierarchyList = dynamic(
+  () => import("./org-hierarchy-list").then((m) => ({ default: m.OrgHierarchyList })),
+  { ssr: false }
+);
 
 type Tab = "org" | "interview" | "onboarding" | "competency" | "requirements";
 
@@ -279,17 +286,6 @@ function CandidatePill({
   );
 }
 
-function RolePill({ status }: { status: HiringRoleStatus }) {
-  const cfg = ROLE_STATUS_CONFIG[status];
-  return (
-    <span
-      className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border ${cfg.className}`}
-    >
-      {cfg.label}
-    </span>
-  );
-}
-
 // ── Shared input styles ───────────────────────────────────────────────────────
 
 const inputCls =
@@ -354,7 +350,6 @@ function OrgChartNode({
           <span className="text-sm font-medium text-[var(--dark-grey)]">Unnamed role</span>
         )}
         <span className="text-xs text-[var(--muted-foreground)] shrink-0">×{role.headcount}</span>
-        <RolePill status={role.status} />
       </button>
       {hasChildren && (
         <>
@@ -488,10 +483,10 @@ function OrgTab({
       headcount: 1,
       start_date: null,
       monthly_cost_cents: null,
-      status: "planned",
       notes: null,
       parent_role_id: null,
       jd_template_id: null,
+      order_index: roles.filter((r) => !r.parent_role_id).length,
     };
     onRolesChange((prev) => [...prev, optimistic]);
     setExpandedRoleId(optimistic.id);
@@ -499,7 +494,7 @@ function OrgTab({
     const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan_id: planId, role_title: "", headcount: 1, status: "planned" }),
+      body: JSON.stringify({ plan_id: planId, role_title: "", headcount: 1 }),
     });
     if (res.ok) {
       const created = (await res.json()) as OrgRole;
@@ -586,12 +581,12 @@ function OrgTab({
 
   return (
     <div className="space-y-6">
-      {/* Org chart (top) */}
-      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+      {/* Org chart — read-only visual preview (TIM-1900 fit-to-width preserved) */}
+      <div className="hidden sm:block rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-1">
             <p className="text-sm font-semibold text-[var(--foreground)]">Org Chart</p>
-            <SectionHelp title="Org Chart">Set &quot;Reports to&quot; on each role to build the hierarchy. Click a node to open its row.</SectionHelp>
+            <SectionHelp title="Org Chart">Visual preview. Use the hierarchy list below to drag and reorder roles.</SectionHelp>
           </div>
         </div>
         <div className="px-5 py-6">
@@ -601,7 +596,7 @@ function OrgTab({
             </p>
           ) : rootRoles.length === 0 ? (
             <p className="text-sm text-[var(--dark-grey)]">
-              No top-level roles. Set &quot;Reports to&quot; on roles to build the chart.
+              No top-level roles yet.
             </p>
           ) : (
             <OrgChartFit
@@ -613,12 +608,14 @@ function OrgTab({
         </div>
       </div>
 
-      {/* Role rows (in tree order) */}
+      {/* Role Hierarchy — drag-and-drop edit surface (TIM-2968) */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
           <div className="flex items-center gap-1">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Roles</p>
-            <SectionHelp title="Roles">Define every role you plan to hire for.</SectionHelp>
+            <p className="text-sm font-semibold text-[var(--foreground)]">Role Hierarchy</p>
+            <SectionHelp title="Role Hierarchy">
+              Drag rows to reorder. Drag right to nest under a parent. Use the Edit button to fill in role details below.
+            </SectionHelp>
           </div>
           {canEdit && (
             <WorkspaceActionButton
@@ -631,11 +628,45 @@ function OrgTab({
           )}
         </div>
 
-        {orderedRoles.length === 0 ? (
-          <div className="py-10 text-center">
-            <p className="text-sm text-[var(--dark-grey)]">No roles yet. Add your first role above.</p>
+        {roles.length === 0 ? (
+          <div className="py-10 text-center space-y-3">
+            <p className="text-sm text-[var(--dark-grey)]">No roles yet.</p>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={addRole}
+                className="text-sm text-[var(--teal)] hover:underline font-medium"
+              >
+                Add your first role →
+              </button>
+            )}
           </div>
         ) : (
+          <OrgHierarchyList
+            planId={planId}
+            roles={roles}
+            canEdit={canEdit}
+            onRolesChange={(updated) => onRolesChange(updated)}
+            onEditRole={(id) => {
+              setExpandedRoleId(id);
+              setHighlightedRoleId(id);
+              requestAnimationFrame(() => {
+                const node = rowRefs.current.get(id);
+                if (node) node.scrollIntoView({ behavior: "smooth", block: "center" });
+              });
+              window.setTimeout(() => setHighlightedRoleId((c) => (c === id ? null : c)), 600);
+            }}
+            onDeleteRole={deleteRole}
+          />
+        )}
+      </div>
+
+      {/* Role detail cards — shown below the hierarchy list (expandable) */}
+      {orderedRoles.length > 0 && (
+        <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--border)]">
+            <p className="text-sm font-semibold text-[var(--foreground)]">Role Details</p>
+          </div>
           <div className="divide-y divide-[var(--neutral-cool-100)]">
             {orderedRoles.map((role) => (
               <RoleRow
@@ -660,8 +691,8 @@ function OrgTab({
               />
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -965,7 +996,6 @@ function RoleRow({
             {parentTitle ? ` · Reports to ${parentTitle}` : ""}
           </span>
         </div>
-        <RolePill status={role.status} />
         <span className="text-[var(--dark-grey)] p-1 shrink-0" aria-hidden>
           {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </span>
@@ -1020,25 +1050,6 @@ function RoleRow({
                   }
                   disabled={!canEdit}
                 />
-              </div>
-              <div>
-                <label className={labelCls}>Status</label>
-                <select
-                  className={inputCls}
-                  value={role.status}
-                  onChange={(e) =>
-                    onUpdate({ status: e.target.value as HiringRoleStatus })
-                  }
-                  disabled={!canEdit}
-                >
-                  {(Object.keys(ROLE_STATUS_CONFIG) as HiringRoleStatus[]).map(
-                    (s) => (
-                      <option key={s} value={s}>
-                        {ROLE_STATUS_CONFIG[s].label}
-                      </option>
-                    )
-                  )}
-                </select>
               </div>
               <div>
                 <label className={labelCls}>Reports to</label>
@@ -2051,7 +2062,7 @@ function OnboardingTab({
                           return (
                             <div key={t.id} className="px-5 py-3 space-y-2">
                               {/* Task row */}
-                              <div className="flex items-start gap-3">
+                              <div className="flex flex-wrap items-start gap-3">
                                 <button
                                   type="button"
                                   onClick={() => canEdit && toggleTask(t)}
@@ -2067,7 +2078,7 @@ function OnboardingTab({
                                   )}
                                 </button>
 
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-[140px]">
                                   <input
                                     className={`w-full text-sm bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus-visible:outline-none py-0.5 disabled:hover:border-transparent ${
                                       t.completed_at
@@ -2084,7 +2095,7 @@ function OnboardingTab({
                                 </div>
 
                                 {/* Due day input + computed calendar date */}
-                                <div className="flex items-center gap-1.5 shrink-0">
+                                <div className="flex items-center gap-1.5 shrink-0 pl-7 sm:pl-0">
                                   <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
                                     <span className="whitespace-nowrap">Due: Day</span>
                                     <input
@@ -2723,21 +2734,32 @@ export function HiringWorkspace({
   const handleEvaluationsChange = useCallback((v: CompetencyEvaluation[]) => setEvaluations(v), []);
 
   const handleApplyHiringSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
+    const failed: string[] = [];
     for (const c of accepted) {
       try {
         const jd = JSON.parse(c.finalValue) as Record<string, string>;
-        await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
+        const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: c.fieldId, jd }),
         });
-      } catch { /* ignore */ }
+        if (!res.ok) failed.push(c.fieldId);
+      } catch {
+        failed.push(c.fieldId);
+      }
+    }
+    if (failed.length > 0) {
+      throw new Error(
+        failed.length === accepted.length
+          ? "Couldn't save these changes. Please try again."
+          : `Couldn't save ${failed.length} of ${accepted.length} changes. Please try again.`,
+      );
     }
   }, [planId]);
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-4xl mx-auto px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         <WorkspaceHeader
           Icon={Users}
           title="Hiring & Onboarding"

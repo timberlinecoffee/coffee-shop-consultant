@@ -18,10 +18,10 @@ export type WorkspaceKey =
   | 'operations_playbook'
   | 'benchmarks'
   | 'business_plan'
+  | 'dashboard'
 
 export type LaunchItemStatus = 'pending' | 'in_progress' | 'done' | 'at_risk'
 
-export type HiringRoleStatus = 'planned' | 'posted' | 'interviewing' | 'hired'
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 

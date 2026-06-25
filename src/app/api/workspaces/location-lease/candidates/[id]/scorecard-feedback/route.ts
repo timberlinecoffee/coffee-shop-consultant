@@ -14,6 +14,8 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeAIOutput } from "@/lib/normalize"
 import type { NextRequest } from "next/server"
+// TIM-2868: getActivePlanId() — see candidates/route.ts header.
+import { getActivePlanId } from "@/lib/plan-context"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -90,12 +92,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   // Ownership + candidate load
   const { data: candidate } = await supabase
@@ -104,7 +102,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     .eq("id", candidateId)
     .maybeSingle()
   if (!candidate) return Response.json({ error: "Candidate not found" }, { status: 404 })
-  if (candidate.plan_id !== plan.id) return Response.json({ error: "Forbidden" }, { status: 403 })
+  if (candidate.plan_id !== planId) return Response.json({ error: "Forbidden" }, { status: 403 })
 
   // Load scorecard scores
   const { data: scoreRows } = await supabase

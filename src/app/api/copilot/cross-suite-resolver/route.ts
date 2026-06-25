@@ -104,7 +104,7 @@ async function readAll(
       .select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")
       .eq("plan_id", planId).order("position"),
     supabase.from("hiring_plan_roles")
-      .select("id, role_title, headcount, start_date, monthly_cost_cents, status")
+      .select("id, role_title, headcount, start_date, monthly_cost_cents")
       .eq("plan_id", planId).order("created_at"),
     supabase.from("workspace_documents")
       .select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),

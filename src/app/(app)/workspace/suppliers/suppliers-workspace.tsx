@@ -577,7 +577,7 @@ export function SuppliersWorkspace({
     <>
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-6xl mx-auto px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1787 / TIM-1894: canonical WorkspaceHeader — icon+title+description
             on the left, chosen-vendor summary in the top-right actions slot. */}
         <WorkspaceHeader

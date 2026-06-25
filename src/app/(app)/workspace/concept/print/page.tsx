@@ -85,9 +85,11 @@ export default async function ConceptPrintPage() {
 
   const personas = conceptDoc.personas ?? [];
 
+  // TIM-2859: content presence is the single signal for inclusion in the print
+  // brief. The `included` flag is preserved on the wire (no schema change) but
+  // ignored at read time — empty fields are implicitly skipped.
   const sections = CONCEPT_COMPONENTS_V2.filter((meta) => {
     const comp = conceptDoc.components[meta.id];
-    if (!comp.included) return false;
     if (meta.id === "target_customer") {
       return personas.length > 0 || comp.content.trim().length > 0;
     }
@@ -109,10 +111,20 @@ export default async function ConceptPrintPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Print media stylesheet — preserves rich layout on Cmd+P */}
+      {/* TIM-2784: hide workspace chrome (sidebar + topbar) so this route
+          renders as a content-only document on screen and in print.
+          Targets both v1 AppSidebar and v2 SidebarV2 by aria-label.
+          Pattern mirrors business-plan/print (TIM-2333). */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
+            aside[aria-label="Workspace navigation"],
+            nav[aria-label="Workspace navigation"],
+            aside[aria-label="Main navigation"],
+            nav[aria-label="Main navigation"] { display: none !important; }
+            @media (min-width: 1024px) {
+              div.flex.min-h-screen > div.flex-1 { padding-left: 0 !important; }
+            }
             @media print {
               .no-print { display: none !important; }
               body { margin: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }

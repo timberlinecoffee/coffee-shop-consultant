@@ -8,8 +8,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
-import { parseRecipeResponse, defaultPackageSize } from "@/lib/recipe-suggest"
-import type { MenuIngredient, MenuItemIngredient, IngredientUnit } from "@/lib/menu"
+import { parseRecipeResponse } from "@/lib/recipe-suggest"
 
 export const runtime = "nodejs"
 export const maxDuration = 30
@@ -130,121 +129,8 @@ Rules: no emojis, no AI language, no commentary outside the JSON. Quantities mus
     return Response.json({ error: "Could not generate a recipe for this item" }, { status: 422 })
   }
 
-  // ── TIM-1409: Resolve every suggested line to a library ingredient row.
-  //    Either link to an existing match (case-insensitive on the trimmed name,
-  //    per the Title-Case rule in TIM-1002) or create a new row with the
-  //    suggested unit and a $0 cost so the owner can price it. Never persist
-  //    an unlinked recipe line — if resolution or insert fails for any reason,
-  //    surface the error rather than silently writing an orphan row. ─────────
-  const { data: existingIngredients, error: existingErr } = await supabase
-    .from("menu_ingredients")
-    .select("*")
-    .eq("plan_id", planId)
-  if (existingErr) {
-    console.error("suggest-recipe ingredient read error:", existingErr)
-    return Response.json({ error: "Failed to load ingredient library" }, { status: 500 })
-  }
-  const byName = new Map<string, MenuIngredient>()
-  for (const ing of (existingIngredients ?? []) as MenuIngredient[]) {
-    byName.set(ing.name.trim().toLowerCase(), ing)
-  }
-
-  // Create the ingredients that don't exist yet. Recipe line unit follows the
-  // ingredient's package unit (matching the existing combobox add flow), so
-  // the COGS math (amount × cost-per-package-unit) stays coherent.
-  const toCreate = lines.filter((l) => !byName.has(l.name.toLowerCase()))
-  if (toCreate.length > 0) {
-    const rows = toCreate.map((l) => ({
-      plan_id: planId,
-      name: l.name, // already Title Case from the parser
-      package_size: defaultPackageSize(l.unit),
-      package_unit: l.unit,
-      package_cost_cents: 0,
-    }))
-    const { data: created, error: createErr } = await supabase
-      .from("menu_ingredients")
-      .insert(rows)
-      .select()
-    if (createErr) {
-      console.error("suggest-recipe ingredient insert error:", createErr)
-      return Response.json({ error: "Failed to create ingredients" }, { status: 500 })
-    }
-    for (const ing of (created ?? []) as MenuIngredient[]) {
-      byName.set(ing.name.trim().toLowerCase(), ing)
-    }
-  }
-
-  // Hard invariant: every suggested line must now resolve to an ingredient
-  // row. If any don't, abort — the alternative is an orphan recipe row that
-  // breaks the COGS contract.
-  const resolved: { line: typeof lines[number]; ingredient: MenuIngredient }[] = []
-  const unresolved: string[] = []
-  for (const l of lines) {
-    const ing = byName.get(l.name.toLowerCase())
-    if (ing) resolved.push({ line: l, ingredient: ing })
-    else unresolved.push(l.name)
-  }
-  if (unresolved.length > 0) {
-    console.error("suggest-recipe unresolved lines:", unresolved)
-    return Response.json(
-      { error: `Couldn't link these ingredients: ${unresolved.join(", ")}` },
-      { status: 500 }
-    )
-  }
-
-  // Skip ingredients already on this item so we don't duplicate or clobber
-  // owner-edited rows. These still count as "linked" for acceptance — the
-  // pre-existing row is the linkage.
-  const { data: existingLines, error: existingLinesErr } = await supabase
-    .from("menu_item_ingredients")
-    .select("ingredient_id")
-    .eq("menu_item_id", body.item_id)
-  if (existingLinesErr) {
-    console.error("suggest-recipe item-ingredient read error:", existingLinesErr)
-    return Response.json({ error: "Failed to load existing recipe lines" }, { status: 500 })
-  }
-  const alreadyOnItem = new Set(
-    ((existingLines ?? []) as { ingredient_id: string }[]).map((r) => r.ingredient_id)
-  )
-
-  const lineRows: {
-    menu_item_id: string
-    ingredient_id: string
-    amount: number
-    unit: IngredientUnit
-  }[] = []
-  for (const r of resolved) {
-    if (alreadyOnItem.has(r.ingredient.id)) continue
-    lineRows.push({
-      menu_item_id: body.item_id,
-      ingredient_id: r.ingredient.id,
-      amount: r.line.amount,
-      unit: r.ingredient.package_unit, // follow package unit (no unit conversion in COGS)
-    })
-    alreadyOnItem.add(r.ingredient.id)
-  }
-
-  if (lineRows.length > 0) {
-    const { error: lineErr } = await supabase
-      .from("menu_item_ingredients")
-      .insert(lineRows)
-    if (lineErr) {
-      console.error("suggest-recipe item-ingredient insert error:", lineErr)
-      return Response.json({ error: "Failed to attach recipe lines" }, { status: 500 })
-    }
-  }
-
-  // Return fresh state so the client can update without extra round-trips:
-  // the full ingredient list (incl. new ones) and every line for this item.
-  const [{ data: ingredients }, { data: itemLines }] = await Promise.all([
-    supabase.from("menu_ingredients").select("*").eq("plan_id", planId).order("name"),
-    supabase.from("menu_item_ingredients").select("*").eq("menu_item_id", body.item_id).order("created_at"),
-  ])
-
-  return Response.json({
-    suggested_count: lines.length,
-    added_count: lineRows.length,
-    ingredients: (ingredients ?? []) as MenuIngredient[],
-    lines: (itemLines ?? []) as MenuItemIngredient[],
-  })
+  // TIM-2924 Shape C fix: do not create ingredients or recipe lines here.
+  // The review modal is the Accept gate; the /apply sub-route does the DB
+  // writes after the user confirms in the modal.
+  return Response.json({ lines })
 }

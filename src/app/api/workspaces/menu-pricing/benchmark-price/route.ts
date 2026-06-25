@@ -1,35 +1,35 @@
 // TIM-1471: AI benchmark — "Benchmark against cafés in my area."
-// Takes an item name + current price + the owner's location/concept and returns
-// a typical price range comparable shops charge, plus a verdict on whether the
-// current price is below / within / above the band. Lean v1: text response.
-// Sibling of /suggest-price; that one recommends a price, this one positions
-// the current one against local market reality.
-// TIM-1692: Also captures anonymized price data to menu_price_aggregates for
-// future cross-user percentile calculations.
-// TIM-1698: Checks curated public industry dataset first; falls back to AI only
-// when no industry record exists for the item. Returns source:"industry_benchmark"
-// for items covered by the dataset, "ai_estimated" otherwise.
-// TIM-2361: route flipped from PLATFORM_AI_MODEL (Haiku) to RESEARCH_AI_MODEL
-// (Sonnet 4.6). This is the Coffee Shop World pricing benchmark — multi-source
-// synthesis of (concept context + location + item) into a defensible local
-// range; Haiku tended to drift to national averages. Credit charge scales 2x
-// per output token via modelTier: "complex" in computeCreditCost.
+// TIM-2922: Real local-cafe research with country/city awareness.
+//
+// Resolves the workspace's structured geo (plan_hiring_settings.hiring_country
+// then signed/active location_candidate) via resolvePlanGeo. The actual
+// web-search-backed range computation lives in `src/lib/menu-pricing/
+// local-cafe-range.ts` so the engine can be reused from /suggest-price
+// without a cross-route import.
+//
+// Pre-TIM-2922 history: TIM-1692 menu_price_aggregates capture, TIM-1698
+// curated industry dataset fallback, TIM-2361 model flip to Sonnet 4.6. The
+// industry dataset still ships as a SECONDARY reference panel; it never
+// replaces the local-cafe primary range.
+import type Anthropic from "@anthropic-ai/sdk"
 import { RESEARCH_AI_MODEL } from "@/lib/ai/models"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
-import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { createServiceClient } from "@/lib/supabase/service"
-import { normalizeAIOutput } from "@/lib/normalize"
 import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/lib/access"
 import { lookupIndustryBenchmark } from "@/lib/menu-pricing/industry-benchmarks"
+import { resolvePlanGeo } from "@/lib/wages/resolve-plan-geo"
+import { enforceRateLimit } from "@/lib/rate-limit"
+import { computeLocalCafeRange } from "@/lib/menu-pricing/local-cafe-range"
 
 const ROUTE_PATH = "/api/workspaces/menu-pricing/benchmark-price"
 
 export const runtime = "nodejs"
-export const maxDuration = 30
-
-const anthropic = new Anthropic()
+// TIM-2922: bumped from 30s. web_search up to 5 calls + Sonnet output can
+// easily exceed 30s; 120s leaves margin without flirting with the Vercel
+// Pro 300s ceiling.
+export const maxDuration = 120
 
 interface ConceptContext {
   shop_identity?: string
@@ -46,23 +46,28 @@ function normalizeItemName(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, " ")
 }
 
-// TIM-1692: Derive a coarse region bucket from a free-text location string.
-// Best-effort only; returns null if the location is absent or unrecognized.
-function deriveRegionBucket(location?: string): string | null {
-  if (!location) return null
-  const loc = location.toLowerCase()
-  if (loc.match(/\b(seattle|portland|vancouver|tacoma|olympia)\b/)) return "Pacific Northwest"
-  if (loc.match(/\b(san francisco|los angeles|san diego|oakland|berkeley|sacramento)\b/)) return "California"
-  if (loc.match(/\b(new york|brooklyn|manhattan|queens|bronx|jersey city)\b/)) return "New York Metro"
-  if (loc.match(/\b(chicago|milwaukee|minneapolis)\b/)) return "Midwest"
-  if (loc.match(/\b(denver|boulder|fort collins|salt lake)\b/)) return "Mountain West"
-  if (loc.match(/\b(austin|dallas|houston|san antonio)\b/)) return "Texas"
-  if (loc.match(/\b(miami|orlando|tampa|atlanta|charlotte|raleigh)\b/)) return "Southeast"
-  if (loc.match(/\b(boston|cambridge|providence|new haven)\b/)) return "New England"
-  if (loc.match(/\b(phoenix|tucson|albuquerque|las vegas)\b/)) return "Southwest"
-  if (loc.match(/\b(london|uk|england|scotland|ireland)\b/)) return "UK"
-  if (loc.match(/\b(australia|sydney|melbourne|brisbane)\b/)) return "Australia"
-  if (loc.match(/\b(canada|toronto|montreal|calgary|vancouver bc)\b/)) return "Canada"
+// TIM-2922: Translate ISO-2 country to the coarse region bucket the curated
+// industry dataset knows about. Used only for the secondary
+// industry-comparison panel — the primary range comes from real-cafe research.
+function regionBucketFromCountry(country: string | null, city: string | null): string | null {
+  if (!country) return null
+  const c = country.toUpperCase()
+  const cityLower = (city ?? "").toLowerCase()
+  if (c === "CA") return "Canada"
+  if (c === "GB" || c === "IE") return "UK"
+  if (c === "AU" || c === "NZ") return "Australia"
+  if (c === "US") {
+    if (/(seattle|portland|tacoma|olympia)/.test(cityLower)) return "Pacific Northwest"
+    if (/(san francisco|los angeles|san diego|oakland|berkeley|sacramento)/.test(cityLower)) return "California"
+    if (/(new york|brooklyn|manhattan|queens|bronx|jersey city)/.test(cityLower)) return "New York Metro"
+    if (/(chicago|milwaukee|minneapolis)/.test(cityLower)) return "Midwest"
+    if (/(denver|boulder|salt lake)/.test(cityLower)) return "Mountain West"
+    if (/(austin|dallas|houston|san antonio)/.test(cityLower)) return "Texas"
+    if (/(miami|orlando|tampa|atlanta|charlotte|raleigh)/.test(cityLower)) return "Southeast"
+    if (/(boston|cambridge|providence)/.test(cityLower)) return "New England"
+    if (/(phoenix|tucson|las vegas)/.test(cityLower)) return "Southwest"
+    return "Other"
+  }
   return "Other"
 }
 
@@ -82,11 +87,17 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
+  // Rule 4: rate-limit a route that calls a paid API (Anthropic + web_search).
+  const rateLimited = await enforceRateLimit({
+    bucket: "menu-benchmark",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  })
+  if (rateLimited) return rateLimited
+
   const { data: profile } = await supabase
     .from("users")
-    // TIM-1955: paused_from_tier intentionally omitted — column lands with
-    // the TIM-1923 migration backlog; effectiveTierForRead treats it as
-    // optional (paused users fall back to subscription_tier).
     .select(
       "subscription_status, subscription_tier, trial_ends_at, beta_waiver_until",
     )
@@ -101,10 +112,6 @@ export async function POST(request: Request) {
     return Response.json({ error: "Subscription required" }, { status: 402 })
   }
 
-  // TIM-1955: Coffee Shop World (cross-shop benchmarking) is a Pro feature.
-  // Trialists are Pro per effectivePlanForGating (TIM-1902). Beta-waived
-  // accounts bypass like every other gate. Starter clients render an upgrade
-  // prompt against this 402 (TIM-1956).
   if (
     !isBetaWaived(profile.beta_waiver_until) &&
     effectivePlanForGating(profile) !== "pro"
@@ -134,7 +141,6 @@ export async function POST(request: Request) {
     return Response.json({ error: "Name the item before running a benchmark" }, { status: 400 })
   }
 
-  // Verify the item belongs to this plan and check aggregate opt-in.
   const { data: menuItem } = await supabase
     .from("menu_items")
     .select("id")
@@ -143,7 +149,6 @@ export async function POST(request: Request) {
     .maybeSingle()
   if (!menuItem) return Response.json({ error: "Menu item not found" }, { status: 404 })
 
-  // TIM-1692: Check if this plan is opted in to aggregate capture.
   const { data: planRow } = await supabase
     .from("coffee_shop_plans")
     .select("aggregate_opt_in")
@@ -151,108 +156,46 @@ export async function POST(request: Request) {
     .maybeSingle()
   const aggregateOptIn = planRow?.aggregate_opt_in !== false
 
+  // TIM-2922: resolve structured geo (country/city) — NOT the free-text concept blob.
+  const geo = await resolvePlanGeo(supabase, planId)
+  const country = geo.countryCode
+  const city = geo.city
   const ctx = body.concept_context ?? {}
-  const regionBucket = deriveRegionBucket(ctx.location)
 
   const currentCents = typeof body.current_price_cents === "number" && body.current_price_cents > 0
     ? body.current_price_cents
     : 0
 
-  // TIM-1698: Check curated industry dataset before falling back to AI.
+  // TIM-1698 retained: the curated industry dataset (NCA/SCA/Square/BLS) is
+  // computed and returned as a SECONDARY panel labelled "industry comparison".
+  // It never replaces the primary local-cafe range.
+  const regionBucket = regionBucketFromCountry(country, city)
   const industryData = lookupIndustryBenchmark(itemName, regionBucket)
-  if (industryData) {
-    // Capture aggregate data even for industry-benchmarked items — this builds
-    // the cross-user dataset for future platform_data percentiles.
-    if (aggregateOptIn && currentCents > 0) {
-      const serviceClient = createServiceClient()
-      serviceClient
-        .from("menu_price_aggregates")
-        .insert({
-          item_name_normalized: normalizeItemName(itemName),
-          price_cents: currentCents,
-          region_bucket: regionBucket,
-        })
-        .then(({ error }) => {
-          if (error) console.warn("menu_price_aggregates insert failed:", error.message)
-        })
-    }
 
-    const regionNote = regionBucket && regionBucket !== "Other"
-      ? ` adjusted for the ${regionBucket} market`
-      : ""
-    const verdictText = currentCents > 0
-      ? deriveVerdict(currentCents, industryData.low_cents, industryData.high_cents)
-      : "unknown"
-    const lowDollars = (industryData.low_cents / 100).toFixed(2)
-    const highDollars = (industryData.high_cents / 100).toFixed(2)
-    let commentary = `Industry data from ${industryData.source_label.replace("_", " ")} shows ${itemName} typically priced between $${lowDollars} and $${highDollars} at independent specialty cafés${regionNote}.`
-    if (currentCents > 0) {
-      const currentDollars = (currentCents / 100).toFixed(2)
-      if (verdictText === "below") {
-        commentary += ` At $${currentDollars}, your price is below the typical range — consider whether a modest increase would hurt volume or help margins.`
-      } else if (verdictText === "above") {
-        commentary += ` At $${currentDollars}, your price is above the typical range — make sure your quality, positioning, and shop experience justify the premium.`
-      } else {
-        commentary += ` At $${currentDollars}, you are in line with where most established shops land.`
-      }
-    }
-
-    return Response.json({
-      low_cents: industryData.low_cents,
-      high_cents: industryData.high_cents,
-      current_price_cents: currentCents,
-      verdict: verdictText,
-      commentary,
-      source: "industry_benchmark" as const,
-      source_label: industryData.source_label,
-      source_note: industryData.source_note,
-    })
+  // Aggregate capture is unchanged from TIM-1692.
+  if (aggregateOptIn && currentCents > 0) {
+    const serviceClient = createServiceClient()
+    serviceClient
+      .from("menu_price_aggregates")
+      .insert({
+        item_name_normalized: normalizeItemName(itemName),
+        price_cents: currentCents,
+        region_bucket: regionBucket,
+      })
+      .then(({ error }) => {
+        if (error) console.warn("menu_price_aggregates insert failed:", error.message)
+      })
   }
 
-  // Fallback: no industry record for this item — use AI estimate.
-  const conceptLines: string[] = []
-  if (ctx.shop_identity) conceptLines.push(`Shop: ${ctx.shop_identity}`)
-  if (ctx.location) conceptLines.push(`Location: ${ctx.location}`)
-  if (ctx.target_customer) conceptLines.push(`Target customer: ${ctx.target_customer}`)
-  if (ctx.vision) conceptLines.push(`Vision: ${ctx.vision}`)
-  const conceptSummary = conceptLines.length > 0
-    ? conceptLines.join("\n")
-    : "A specialty independent café."
-
-  const currentDollars = currentCents > 0
-    ? `$${(currentCents / 100).toFixed(2)}`
-    : "no price set yet"
-
-  const prompt = `You are a coffee shop pricing consultant. The shop owner wants to know how their current price compares to cafés in their area.
-
-SHOP CONTEXT:
-${conceptSummary}
-
-ITEM:
-- Name: ${itemName}
-- Current price: ${currentDollars}
-
-YOUR TASK:
-Estimate the typical price range comparable cafés in this area charge for ${itemName}. Then compare the owner's current price to that range.
-
-Return a JSON object with these exact fields:
-- low_cents: integer, low end of the typical local range in cents
-- high_cents: integer, high end of the typical local range in cents
-- commentary: string, 2–4 sentences. Reference the specific location and shop positioning. Say whether the current price reads low, fair, or premium, and give the owner one concrete recommendation. No em dashes, no jargon, no AI language.
-
-Return ONLY the JSON object.`
-
   try {
-    const message = await anthropic.messages.create({
-      model: RESEARCH_AI_MODEL,
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
+    const local = await computeLocalCafeRange({
+      itemName,
+      currentCents,
+      country,
+      city,
+      ctx,
     })
 
-    // TIM-2361: record the turn to ai_turn_metrics. Awaited (not fire-and-forget)
-    // because Vercel serverless freezes pending work the moment the response is
-    // sent — a `void` here loses the row. The helper swallows insert errors
-    // internally so a logging failure still cannot tank the user response.
     const telemetryClient = createServiceClient()
     await recordTurnMetric(
       {
@@ -263,56 +206,62 @@ Return ONLY the JSON object.`
       {
         route: ROUTE_PATH,
         model: RESEARCH_AI_MODEL,
-        usage: message.usage,
-        webSearchRequests: 0,
+        usage: local.usage as Anthropic.Messages.Usage,
+        webSearchRequests: local.web_search_requests,
         toolCalls: 0,
         userId: user.id,
         planTier: resolvePlanTier(profile),
       },
     )
 
-    const rawText = message.content[0]?.type === "text" ? message.content[0].text : ""
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      return Response.json({ error: "No JSON in AI response" }, { status: 500 })
+    const industryPanel = industryData
+      ? {
+          low_cents: industryData.low_cents,
+          high_cents: industryData.high_cents,
+          source_label: industryData.source_label,
+          source_note: industryData.source_note,
+          currency: "USD" as const,
+        }
+      : null
+
+    // TIM-2922 (hardening): local research can come back empty when the
+    // model refuses (country/city mismatch, no usable JSON, etc.). Don't
+    // 500 — surface a 200 with source=local_cafes_unavailable so the UI
+    // can render the industry panel as a temporary fallback with an
+    // explicit "couldn't pull live cafes" note.
+    if (local.citations.length === 0) {
+      const fallbackLow = industryData?.low_cents ?? 0
+      const fallbackHigh = industryData?.high_cents ?? 0
+      return Response.json({
+        low_cents: fallbackLow,
+        high_cents: fallbackHigh,
+        current_price_cents: currentCents,
+        verdict: deriveVerdict(currentCents, fallbackLow, fallbackHigh),
+        commentary: local.commentary || "Could not pull live cafe prices for this market right now. Industry reference data is shown below as a temporary backstop.",
+        source: "local_cafes_unavailable" as const,
+        citations: [],
+        country_used: local.country_used,
+        city_used: local.city_used,
+        industry_comparison: industryPanel,
+      })
     }
 
-    const parsed = JSON.parse(jsonMatch[0]) as {
-      low_cents?: unknown
-      high_cents?: unknown
-      commentary?: unknown
-    }
-
-    const low = Math.max(0, Math.round(Number(parsed.low_cents)))
-    const high = Math.max(low, Math.round(Number(parsed.high_cents)))
-    if (!Number.isFinite(low) || !Number.isFinite(high) || high <= 0) {
-      return Response.json({ error: "AI returned no usable range" }, { status: 500 })
-    }
-
-    // TIM-1692: Capture anonymized price data for future cross-user percentiles.
-    // Fire-and-forget; failure must not block the benchmark response.
-    if (aggregateOptIn && currentCents > 0) {
-      const serviceClient = createServiceClient()
-      serviceClient
-        .from("menu_price_aggregates")
-        .insert({
-          item_name_normalized: normalizeItemName(itemName),
-          price_cents: currentCents,
-          region_bucket: regionBucket,
-        })
-        .then(({ error }) => {
-          if (error) console.warn("menu_price_aggregates insert failed:", error.message)
-        })
-    }
+    const verdict = deriveVerdict(currentCents, local.low_cents, local.high_cents)
 
     return Response.json({
-      low_cents: low,
-      high_cents: high,
+      // Primary local-cafe range — derived from real cited cafes in the same country.
+      low_cents: local.low_cents,
+      high_cents: local.high_cents,
       current_price_cents: currentCents,
-      verdict: deriveVerdict(currentCents, low, high),
-      commentary: normalizeAIOutput(String(parsed.commentary ?? "")),
-      // TIM-1698: "ai_estimated" only when the item is not in the industry dataset.
-      source: "ai_estimated" as const,
+      verdict,
+      commentary: local.commentary,
+      source: "local_cafes" as const,
+      citations: local.citations,
+      country_used: local.country_used,
+      city_used: local.city_used,
+      // Secondary industry comparison (labelled, optional). UI renders this
+      // as a small "for reference" subline — never as the headline.
+      industry_comparison: industryPanel,
     })
   } catch (err) {
     console.error("benchmark-price error:", err)

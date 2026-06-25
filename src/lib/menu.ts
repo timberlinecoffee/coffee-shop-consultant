@@ -41,6 +41,9 @@ export type MenuItem = {
   // TIM-1471: ordered prep instructions shown in the Recipe tab. Owner-editable,
   // AI-seedable. Always an array (DB default '{}').
   preparation_steps: string[]
+  // TIM-2949: user-uploaded 4:5 photo storage path in the menu-item-photos bucket.
+  // null = no photo. Replaces the curated illustration treatment.
+  photo_path: string | null
   archived: boolean
   created_at: string
   updated_at: string

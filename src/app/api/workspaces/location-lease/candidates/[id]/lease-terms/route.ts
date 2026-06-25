@@ -1,6 +1,8 @@
 // TIM-776 / TIM-620-B: Upsert lease terms for a location candidate (1:1 per candidate).
+// TIM-2868: getActivePlanId() — see candidates/route.ts header.
 import { createClient } from "@/lib/supabase/server"
 import type { NextRequest } from "next/server"
+import { getActivePlanId } from "@/lib/plan-context"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -11,13 +13,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
-
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   // Ownership check: candidate must belong to the user's plan.
   const { data: candidate } = await supabase
@@ -27,7 +24,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     .maybeSingle()
 
   if (!candidate) return Response.json({ error: "Candidate not found" }, { status: 404 })
-  if (candidate.plan_id !== plan.id) return Response.json({ error: "Forbidden" }, { status: 403 })
+  if (candidate.plan_id !== planId) return Response.json({ error: "Forbidden" }, { status: 403 })
 
   let body: Record<string, unknown>
   try {

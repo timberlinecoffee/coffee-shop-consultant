@@ -108,7 +108,6 @@ export async function POST(request: NextRequest) {
         role_title,
         headcount,
         monthly_cost_cents,
-        status: "planned",
       });
     }
   }

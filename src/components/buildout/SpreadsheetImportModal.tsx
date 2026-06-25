@@ -197,7 +197,7 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="relative mt-10 mb-10 mx-4 w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col"
+        className="relative mt-10 mb-10 mx-4 w-full max-w-5xl bg-background rounded-2xl shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

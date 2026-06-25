@@ -18,6 +18,7 @@ import type {
   AuditReport,
   AuditFinding,
 } from "@/lib/business-plan/audit";
+import { getActivePlanId } from "@/lib/plan-context";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -295,15 +296,17 @@ export async function loadPlanOverview(
   supabase: SupabaseClient,
   userId: string
 ): Promise<PlanOverview> {
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id, updated_at, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const planId = plan?.id ?? null;
+  // TIM-2962: resolve the active plan via users.current_plan_id, not the
+  // newest plan by created_at. Otherwise switching back to an older plan
+  // leaves the dashboard rendering the newest plan's overview.
+  const planId = await getActivePlanId(supabase, userId);
+  const { data: plan } = planId
+    ? await supabase
+        .from("coffee_shop_plans")
+        .select("updated_at, created_at")
+        .eq("id", planId)
+        .maybeSingle()
+    : { data: null };
 
   const statusByKey = new Map<string, WorkspaceStatus>();
   let statusRows: CountedStatusRow[] = [];

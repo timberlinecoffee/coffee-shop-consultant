@@ -39,7 +39,6 @@ import { useAIReviewModal, type ApprovedChange, type SuggestionPayload } from "@
 import { parseEquipmentCostFieldId } from "@/lib/cross-workspace-apply";
 import { parseFactValue } from "@/lib/cross-workspace-sync";
 import {
-  BenchmarkPanel,
   CheckPanel,
   ModeStrip,
   type CompanionMode,
@@ -167,6 +166,135 @@ async function applyMenuPricingProposal(accepted: ApprovedChange[]): Promise<voi
       });
     }
   }
+}
+
+// TIM-2901: write an accepted add_persona proposal to the Concept workspace.
+// Fetches the current concept document, merges the new persona into
+// doc.personas (capped at MAX_PERSONAS=5), and PATCHes the workspace document.
+// Each accepted change carries a JSON-serialized persona in finalValue;
+// per-change parse errors are silent. Throws on a non-OK API response so the
+// modal stays open for retry (TIM-1653 pattern).
+async function applyConceptPersonaProposal(accepted: ApprovedChange[]): Promise<void> {
+  if (accepted.length === 0) return;
+
+  const MAX_PERSONAS = 5;
+  const VALID_AGE = new Set(["18-25", "25-35", "35-50", "50+"]);
+  const VALID_INCOME = new Set(["under-40k", "40k-80k", "80k-120k", "over-120k"]);
+  const VALID_FREQ = new Set(["daily", "several-per-week", "weekly", "occasional"]);
+  const VALID_SPEND = new Set(["under-6", "6-10", "10-15", "over-15"]);
+  const VALID_VALUES = new Set([
+    "price", "speed", "atmosphere", "craft", "community", "convenience", "consistency",
+  ]);
+
+  function newPersonaId(): string {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    return `persona-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  // 1. Fetch current concept doc.
+  const getRes = await fetch("/api/workspaces/concept", { credentials: "same-origin" });
+  if (!getRes.ok) throw new Error("Couldn't load your Concept workspace. Please try again.");
+  const { content } = (await getRes.json()) as { content: unknown };
+
+  // Start from the existing doc, or an empty v2 shell so we don't clobber other
+  // workspaces -- defaults match EMPTY_CONCEPT_V2 in src/lib/concept.ts.
+  type ConceptShape = {
+    version?: number;
+    components?: Record<string, { content: string; included: boolean }>;
+    personas?: Array<{ id: string; name: string; isPrimary: boolean; [k: string]: unknown }>;
+    [k: string]: unknown;
+  };
+  const baseDoc: ConceptShape =
+    content && typeof content === "object"
+      ? (content as ConceptShape)
+      : {
+          version: 2,
+          components: {
+            shop_identity:   { content: "", included: true },
+            vision:          { content: "", included: true },
+            target_customer: { content: "", included: true },
+            differentiation: { content: "", included: true },
+            brand_voice:     { content: "", included: true },
+            location:        { content: "", included: false },
+            offering:        { content: "", included: false },
+          },
+          personas: [],
+        };
+
+  const personas = Array.isArray(baseDoc.personas) ? [...baseDoc.personas] : [];
+  if (personas.length >= MAX_PERSONAS) {
+    throw new Error(
+      `You already have ${MAX_PERSONAS} personas. Remove one in Concept before adding a new one.`,
+    );
+  }
+
+  // 2. Build merged persona list from accepted changes.
+  for (const change of accepted) {
+    let payload: {
+      name?: string;
+      ageRange?: string | null;
+      occupation?: string | null;
+      incomeRange?: string | null;
+      dailyContext?: string | null;
+      whyTheyVisit?: string;
+      painPoints?: string | null;
+      typicalOrder?: string | null;
+      values?: string[];
+      visitFrequency?: string | null;
+      spendPerVisit?: string | null;
+      isPrimary?: boolean | null;
+    };
+    try {
+      payload = JSON.parse(change.finalValue) as typeof payload;
+    } catch {
+      continue;
+    }
+    const name = (payload.name ?? "").trim();
+    const whyTheyVisit = (payload.whyTheyVisit ?? "").trim();
+    if (!name || !whyTheyVisit) continue;
+    if (personas.length >= MAX_PERSONAS) break;
+
+    const now = new Date().toISOString();
+    const isFirst = personas.length === 0;
+    const persona: Record<string, unknown> = {
+      id: newPersonaId(),
+      name,
+      isPrimary: isFirst ? true : Boolean(payload.isPrimary),
+      createdAt: now,
+      updatedAt: now,
+      whyTheyVisit,
+    };
+    if (payload.ageRange && VALID_AGE.has(payload.ageRange)) persona.ageRange = payload.ageRange;
+    if (payload.occupation && payload.occupation.trim()) persona.occupation = payload.occupation.trim();
+    if (payload.incomeRange && VALID_INCOME.has(payload.incomeRange)) persona.incomeRange = payload.incomeRange;
+    if (payload.dailyContext && payload.dailyContext.trim()) persona.dailyContext = payload.dailyContext.trim();
+    if (payload.painPoints && payload.painPoints.trim()) persona.painPoints = payload.painPoints.trim();
+    if (payload.typicalOrder && payload.typicalOrder.trim()) persona.typicalOrder = payload.typicalOrder.trim();
+    if (Array.isArray(payload.values)) {
+      const valid = payload.values.filter((v) => typeof v === "string" && VALID_VALUES.has(v));
+      if (valid.length > 0) persona.values = valid;
+    }
+    if (payload.visitFrequency && VALID_FREQ.has(payload.visitFrequency)) persona.visitFrequency = payload.visitFrequency;
+    if (payload.spendPerVisit && VALID_SPEND.has(payload.spendPerVisit)) persona.spendPerVisit = payload.spendPerVisit;
+    personas.push(persona as ConceptShape["personas"] extends Array<infer T> ? T : never);
+  }
+
+  // If nothing parseable came through, no-op (don't blow away the user's doc).
+  if (personas.length === (Array.isArray(baseDoc.personas) ? baseDoc.personas.length : 0)) {
+    return;
+  }
+
+  // 3. PATCH back. Preserve all other fields on the concept doc.
+  const merged: ConceptShape = { ...baseDoc, personas };
+  const patchRes = await fetch("/api/workspaces/concept", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ content: merged }),
+  });
+  if (!patchRes.ok) throw new Error("Couldn't add the persona to your Concept workspace. Please try again.");
 }
 
 // TIM-1798: write accepted cross-workspace equipment-cost changes. The equipment
@@ -346,14 +474,11 @@ export function CoPilotDrawer({
 }: CoPilotDrawerProps) {
   const [open, setOpen] = useState(false);
   // TIM-2416 — companion mode state. Coach mode keeps the existing chat UX;
-  // Check + Benchmark render finding-card panels.
+  // Check renders finding-card panels.
   const [activeMode, setActiveMode] = useState<CompanionMode>(defaultMode);
   const [checkReport, setCheckReport] = useState<AuditReport | null>(null);
   const [checkScanning, setCheckScanning] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
-  const [benchmarkReport, setBenchmarkReport] = useState<AuditReport | null>(null);
-  const [benchmarkScanning, setBenchmarkScanning] = useState(false);
-  const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
   const [trialMessagesUsed, setTrialMessagesUsed] = useState(initialTrialMessagesUsed);
   const [trialModalOpen, setTrialModalOpen] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false); // TIM-1687
@@ -420,6 +545,12 @@ export function CoPilotDrawer({
     trialRemaining,
     pendingSuggestions,
     clearSuggestions,
+    // TIM-2900: turn-id-keyed render guard. The streaming bubble must only
+    // render while `streamingTurnId !== null`; we call `commitTurn(turnId)`
+    // the same tick we append the assistant message to `messages`, so React
+    // batches both updates and the bubble swaps cleanly with no overlap.
+    streamingTurnId,
+    commitTurn,
     send,
     abort,
     reset,
@@ -580,7 +711,7 @@ export function CoPilotDrawer({
     setConsistencyConflicts(null);
   }, []);
 
-  // ── TIM-2416: Check + Benchmark scan handlers. ─────────────────────────────
+  // ── TIM-2416: Check scan handler. ──────────────────────────────────────────
 
   const runCheckScan = useCallback(async () => {
     setCheckError(null);
@@ -605,30 +736,7 @@ export function CoPilotDrawer({
     }
   }, []);
 
-  const runBenchmarkScan = useCallback(async (scope: ConversationScope) => {
-    setBenchmarkError(null);
-    setBenchmarkScanning(true);
-    try {
-      const res = await fetch("/api/companion/benchmark", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ scope }),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error ?? `Benchmark failed (${res.status})`);
-      }
-      const data = (await res.json()) as { report: AuditReport | null };
-      setBenchmarkReport(data.report);
-    } catch (err) {
-      setBenchmarkError(err instanceof Error ? err.message : "Benchmark failed");
-    } finally {
-      setBenchmarkScanning(false);
-    }
-  }, []);
-
-  // TIM-2416 — Apply suggestion for a finding (Check or Benchmark). Routes
+  // TIM-2416 — Apply suggestion for a finding (Check mode). Routes
   // through the unified AI review modal; never auto-applies (platform rule).
   const handleApplyFinding = useCallback(
     (finding: AuditFinding) => {
@@ -692,9 +800,8 @@ export function CoPilotDrawer({
     }
   }, []);
 
-  // TIM-2416 — open-in-mode external trigger. Inline benchmark deltas and the
-  // BP regen pre-flight "Fix first" branch dispatch this event so opening the
-  // companion in a specific mode + scope is a one-call path.
+  // TIM-2416 — open-in-mode external trigger. External surfaces dispatch this
+  // event to open the companion in a specific mode + scope as a one-call path.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
@@ -704,7 +811,8 @@ export function CoPilotDrawer({
       }>).detail;
       if (!detail) return;
       openDrawer();
-      if (detail.mode) setActiveMode(detail.mode);
+      const VALID_MODES: CompanionMode[] = ["coach", "check", "import"];
+      if (detail.mode && VALID_MODES.includes(detail.mode)) setActiveMode(detail.mode);
       if (detail.scope !== undefined) setActiveScope(detail.scope);
     };
     window.addEventListener("copilot:open-in-mode", handler);
@@ -815,6 +923,11 @@ export function CoPilotDrawer({
       };
       const finalMessages = [...nextHistory, assistantMessage];
       setMessages(finalMessages);
+      // TIM-2900: clear the streaming bubble in the SAME tick we commit the
+      // assistant message. React 18 batches these into one render — the
+      // streaming bubble disappears exactly when the committed bubble appears,
+      // so the same response can never render twice.
+      commitTurn(result.turnId);
       setPendingRetry(null);
       if (result.threadId !== activeThreadId) {
         setActiveThreadId(result.threadId);
@@ -841,6 +954,7 @@ export function CoPilotDrawer({
     [
       activeThreadId,
       activeScope,
+      commitTurn,
       isStreaming,
       maybeRequestTitle,
       messages,
@@ -878,12 +992,21 @@ export function CoPilotDrawer({
     }
   }, [messages, assistantBuffer, isThinking, error]);
 
-  // External "Ask AI" hook (TIM-619): per-field buttons in workspace editors
+  // External "Write with AI" hook (TIM-619, renamed TIM-2899): per-field buttons in workspace editors
   // dispatch `copilot:open-with-prompt` to open the drawer with a seeded prompt
   // so the user can refine a Concept field without retyping context.
   // TIM-2381: extended to accept workspaceKey so AskScoutButton can scope the
   // chat to "This Page" before the first message — no flash of unscoped chat.
+  // TIM-2902: extended to accept autoSubmit. Per-field buttons set it so the
+  // seeded prompt is sent as a real user turn (appearing in the transcript as a
+  // normal user message) instead of sitting silently in the composer.
   const [externalFocusLabel, setExternalFocusLabel] = useState<string | null>(null);
+  // Hold the latest performSend in a ref so the listener doesn't re-subscribe
+  // on every messages/state change.
+  const performSendRef = useRef<((prompt: string) => Promise<void>) | null>(null);
+  useEffect(() => {
+    performSendRef.current = performSend;
+  }, [performSend]);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
@@ -892,6 +1015,7 @@ export function CoPilotDrawer({
         focusLabel?: string;
         workspaceKey?: WorkspaceKey;
         action?: string;
+        autoSubmit?: boolean;
       }>).detail;
       if (!detail) return;
       openDrawer();
@@ -904,7 +1028,14 @@ export function CoPilotDrawer({
         setActiveScope(detail.workspaceKey);
       }
       if (typeof detail.prompt === "string" && detail.prompt.trim().length > 0) {
-        setInput(detail.prompt);
+        if (detail.autoSubmit && performSendRef.current) {
+          // TIM-2902: force Coach mode so the user message bubble actually
+          // renders — Check/Import modes don't show the transcript.
+          setActiveMode("coach");
+          void performSendRef.current(detail.prompt);
+        } else {
+          setInput(detail.prompt);
+        }
       }
     };
     window.addEventListener("copilot:open-with-prompt", handler);
@@ -1091,14 +1222,13 @@ export function CoPilotDrawer({
   }, [isExpanded, panelWidth, viewportWidth]);
 
   // TIM-2416 — per UX spec §5, scope header wording is mode-aware. Coach uses
-  // "Asking about", Check uses "Checking", Benchmark uses "Comparing".
+  // "Asking about", Check uses "Checking".
   const scopeNoun =
     activeScope === null
       ? "your whole plan"
       : `your ${WORKSPACE_LABELS[activeScope]}`;
   const scopeHeaderLabel = (() => {
     if (activeMode === "check") return `Checking ${scopeNoun}`;
-    if (activeMode === "benchmark") return `Comparing ${scopeNoun} to industry averages`;
     return `Asking about ${scopeNoun}`;
   })();
 
@@ -1314,22 +1444,6 @@ export function CoPilotDrawer({
                   onOpenCrossSuite={handleOpenCrossSuiteResolver}
                 />
               )}
-              {/* TIM-2416 — Benchmark mode panel. Scope label is the same
-                  wording used in the header so the user sees one consistent
-                  scope line on the empty/zero states. */}
-              {activeMode === "benchmark" && (
-                <BenchmarkPanel
-                  scopeLabel={scopeHeaderLabel}
-                  report={benchmarkReport}
-                  isScanning={benchmarkScanning}
-                  error={benchmarkError}
-                  onRun={() => void runBenchmarkScan(activeScope)}
-                  onApply={handleApplyFinding}
-                  onGoToSource={handleGoToFindingSource}
-                  resolverConflictIdFor={resolverConflictIdFor}
-                  onOpenCrossSuite={handleOpenCrossSuiteResolver}
-                />
-              )}
               {/* TIM-2434: Document Import mode. Reuses the unified
                   AIReviewModal so accepted changes flow through the same
                   review surface as every other AI proposal. */}
@@ -1376,7 +1490,16 @@ export function CoPilotDrawer({
                 <MessageBubble key={idx} role={msg.role} content={msg.content} />
               ))}
 
-              {activeMode === "coach" && (assistantBuffer || isThinking) && (
+              {/* TIM-2900: turn-id-keyed render guard. The streaming bubble
+                  must only render while a turn is in-flight or in-error
+                  (streamingTurnId still set). The instant we commit the
+                  assistant message to `messages`, commitTurn() clears
+                  streamingTurnId AND the buffer in the same React batch, so
+                  the streaming bubble swaps cleanly to the committed bubble
+                  with no overlap. Without this guard, a stale buffer plus a
+                  freshly-committed assistant message render two identical
+                  bubbles (the original TIM-2900 regression). */}
+              {activeMode === "coach" && streamingTurnId !== null && (assistantBuffer || isThinking) && (
                 <div className="space-y-2">
                   {isThinking && (
                     <div
@@ -1444,7 +1567,7 @@ export function CoPilotDrawer({
               )}
             </div>
 
-            {/* TIM-2416 — the chat input is Coach-only. Check + Benchmark
+            {/* TIM-2416 — the chat input is Coach-only. Check/Import
                 modes are driven by their own buttons, not a text prompt. */}
             {activeMode === "coach" && (
             <motion.div
@@ -1482,13 +1605,23 @@ export function CoPilotDrawer({
                             if (equipmentCost.length > 0) {
                               await applyEquipmentCostChanges(equipmentCost);
                             }
+                            // TIM-2901: add_persona proposals always target the
+                            // Concept workspace (the proposal carries fieldId
+                            // "new_persona" regardless of which workspace
+                            // Scout was invoked from). Split them out before
+                            // dispatching the remaining changes by workspace.
+                            const personaProposals = rest.filter((c) => c.fieldId === "new_persona");
+                            const nonPersona = rest.filter((c) => c.fieldId !== "new_persona");
+                            if (personaProposals.length > 0) {
+                              await applyConceptPersonaProposal(personaProposals);
+                            }
                             // TIM-2381: business_plan proposals write to sections API.
                             if (context.workspace === "business_plan") {
-                              await applyBusinessPlanChanges(rest);
+                              await applyBusinessPlanChanges(nonPersona);
                             } else if (context.workspace === "menu_pricing") {
-                              await applyMenuPricingProposal(rest);
-                            } else if (onApplySuggestions && rest.length > 0) {
-                              await onApplySuggestions(rest);
+                              await applyMenuPricingProposal(nonPersona);
+                            } else if (onApplySuggestions && nonPersona.length > 0) {
+                              await onApplySuggestions(nonPersona);
                             }
                             clearSuggestions();
                           },
@@ -1668,8 +1801,16 @@ function MessageBubble({
   streaming?: boolean;
 }) {
   const isUser = role === "user";
+  // TIM-2900: stable testids so the duplicate-bubble regression guard can
+  // count assistant bubbles (committed vs streaming) without coupling to
+  // class names that drift with the style guide.
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div
+      className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+      data-testid="copilot-bubble"
+      data-role={role}
+      data-streaming={streaming ? "true" : "false"}
+    >
       {isUser ? (
         <div className="max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap bg-[var(--teal)] text-white rounded-br-sm">
           {content}

@@ -29,7 +29,7 @@ export function AIChatMockup() {
       ],
     },
     {
-      role: "benchmark" as const,
+      role: "check" as const,
       text: "Your current estimate of $142k is within the healthy range for this market size.",
     },
     {
@@ -63,7 +63,7 @@ export function AIChatMockup() {
             Scout — AI Coffee Planning Assistant
           </p>
           <p style={{ color: "var(--neutral-500)", fontSize: "11px" }}>
-            Specialty-specific planning support, benchmarked
+            Specialty-specific planning support
           </p>
         </div>
         <div className="ml-auto w-2 h-2 rounded-full" style={{ background: "var(--success-text)", flexShrink: 0 }} />
@@ -73,7 +73,7 @@ export function AIChatMockup() {
       <div className="p-4 space-y-3" style={{ background: "var(--neutral-50)" }}>
         {messages.map((msg, i) => (
           <div key={i}>
-            {msg.role === "benchmark" ? (
+            {msg.role === "check" ? (
               <div
                 className="flex items-center gap-2 rounded-xl px-3 py-2.5"
                 style={{

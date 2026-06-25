@@ -176,7 +176,6 @@ export interface BpHiringRole {
   headcount: number;
   start_date: string | null;
   monthly_cost_cents: number | null;
-  status: string;
 }
 
 // TIM-1417: Marketing inputs come from the planning document
@@ -270,6 +269,15 @@ export function assembleTargetMarket(conceptContent: unknown): string {
       if (p.spendPerVisit) tags.push(`${p.spendPerVisit}/visit`);
       const desc = p.dailyContext ?? p.notes ?? "";
       lines.push(`- ${p.name || "Persona"}${tags.length ? ` (${tags.join(", ")})` : ""}${desc ? `: ${desc}` : ""}`);
+      // TIM-2898: surface motivation + purchasing behaviour in the business
+      // plan customer profiles so investors/lenders/landlords see the depth
+      // the owner did on the Concept page, not just demographics.
+      if (p.whyTheyVisit?.trim()) {
+        lines.push(`    Why they visit: ${p.whyTheyVisit.trim()}`);
+      }
+      if (p.typicalOrder?.trim()) {
+        lines.push(`    Typical order: ${p.typicalOrder.trim()}`);
+      }
     }
   }
 
@@ -462,7 +470,7 @@ export function assembleTeamHiring(roles: BpHiringRole[], currencyCode = "USD"):
   for (const role of roles) {
     const cost = role.monthly_cost_cents ? ` — ${centsToCurrency(role.monthly_cost_cents, currencyCode)}/mo` : "";
     const date = role.start_date ? ` (start ${new Date(role.start_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })})` : "";
-    lines.push(`- ${role.role_title} ×${role.headcount}${cost}${date} [${role.status}]`);
+    lines.push(`- ${role.role_title} ×${role.headcount}${cost}${date}`);
   }
 
   return lines.join("\n").trim();

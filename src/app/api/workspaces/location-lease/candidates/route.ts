@@ -1,26 +1,26 @@
 // TIM-776 / TIM-620-B: List + create location candidates for the user's plan.
 // TIM-1115: Title-case candidate name + neighborhood at the API boundary.
+// TIM-2868: Resolve active plan via getActivePlanId() — the prior
+// `.eq("user_id", user.id).single()` chain 404'd for multi-plan users after
+// TIM-1953 shipped multi-project, which silently broke the "Add new location"
+// button. Same fix class as TIM-2860.
 import { createClient } from "@/lib/supabase/server"
 import type { NextRequest } from "next/server"
 import { toTitleCase } from "@/lib/text"
+import { getActivePlanId } from "@/lib/plan-context"
 
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
-
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const { data, error } = await supabase
     .from("location_candidates")
     .select("*")
-    .eq("plan_id", plan.id)
+    .eq("plan_id", planId)
     .eq("archived", false)
     .order("position")
 
@@ -37,13 +37,8 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
-
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   let body: Record<string, unknown>
   try {
@@ -60,7 +55,7 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from("location_candidates")
     .insert({
-      plan_id: plan.id,
+      plan_id: planId,
       name: toTitleCase(body.name),
       address: (body.address as string | undefined) ?? null,
       neighborhood: rawNeighborhood ? toTitleCase(rawNeighborhood) : null,

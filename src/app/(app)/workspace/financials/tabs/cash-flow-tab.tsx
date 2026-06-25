@@ -320,6 +320,9 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
           </ChartCard>
         </div>
       ) : (
+      <>
+      {/* TIM-2831: Year 1 cash flow highlights — mobile only */}
+      <CashFlowMobileSummary slices={slices} currencyCode={currencyCode} />
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-x-auto">
         <table className="w-full border-collapse text-xs">
           <thead>
@@ -365,6 +368,7 @@ export function CashFlowTab({ slices, fiscalYearStartMonth = 1, currencyCode = "
           </tbody>
         </table>
       </div>
+      </>
       )}
 
       <div className="mt-4 rounded-xl border border-[var(--teal-tint-400)] bg-[var(--teal-tint-100)] px-5 py-4">
@@ -494,6 +498,35 @@ function CashFlowCritique({
       {lines.map((line, i) => (
         <p key={i} className="text-sm text-[var(--teal-deeper)] leading-relaxed">{line}</p>
       ))}
+    </div>
+  );
+}
+
+// TIM-2831: Year 1 cash flow highlights — mobile only, above the scrollable table.
+function CashFlowMobileSummary({ slices, currencyCode }: { slices: MonthlySlice[]; currencyCode: string }) {
+  const y1 = slices.filter((s) => s.year === 1);
+  if (y1.length === 0) return null;
+  const summed = sumSlices(y1);
+  const endingCash = y1[y1.length - 1]?.cash_cents ?? 0;
+  const cf = deriveCF({ ...summed, cash_cents: endingCash });
+  return (
+    <div className="sm:hidden grid grid-cols-2 gap-3 mb-4">
+      <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Operating CF (Yr 1)</p>
+        <p className={`text-xl font-bold ${cf.net_cash_operating < 0 ? "text-red-600" : "text-[var(--foreground)]"}`}>{fmt(cf.net_cash_operating, currencyCode)}</p>
+      </div>
+      <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Investing CF (Yr 1)</p>
+        <p className={`text-xl font-bold ${cf.net_cash_investing < 0 ? "text-red-600" : "text-[var(--foreground)]"}`}>{fmt(cf.net_cash_investing, currencyCode)}</p>
+      </div>
+      <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Net Change (Yr 1)</p>
+        <p className={`text-xl font-bold ${cf.net_change < 0 ? "text-red-600" : "text-[var(--foreground)]"}`}>{fmt(cf.net_change, currencyCode)}</p>
+      </div>
+      <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-0.5">Ending Cash (Yr 1)</p>
+        <p className={`text-xl font-bold ${endingCash < 0 ? "text-red-600" : "text-[var(--foreground)]"}`}>{fmt(endingCash, currencyCode)}</p>
+      </div>
     </div>
   );
 }

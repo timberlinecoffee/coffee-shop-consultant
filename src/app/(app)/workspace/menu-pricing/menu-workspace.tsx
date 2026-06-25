@@ -46,7 +46,7 @@ import { Illustration } from "@/components/illustrations/Illustration";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
-import { recipeIdForItemName } from "@/lib/illustrations/recipes";
+import { ItemPhotoUpload } from "./ItemPhotoUpload";
 import { TABLE_CELL_TEXT } from "@/lib/workspace-table";
 import { PaywallModal } from "@/components/paywall-modal";
 import { ProUpgradePrompt, type ProFeatureKey } from "@/components/pro-upgrade-prompt";
@@ -104,21 +104,79 @@ interface Props {
 
 // TIM-1471: "Benchmark against cafés in my area" — AI compares current price
 // to the local market band and tells the owner where they sit.
+// TIM-2922: now ships citations (real cafes in the same country) as the
+// primary range; the curated industry dataset moves to a secondary panel.
+type BenchmarkCitation = {
+  name: string;
+  url: string;
+  price_cents: number;
+  city?: string | null;
+};
 type BenchmarkResult = {
   low_cents: number;
   high_cents: number;
   current_price_cents: number;
   verdict: "below" | "in_band" | "above" | "unknown";
   commentary: string;
-  // TIM-1698: "industry_benchmark" = curated public dataset (NCA/SCA/Square/BLS).
-  // "platform_data" = cross-user aggregate (future, needs scale).
-  // "ai_estimated" = fallback when no industry record exists for the item.
-  source?: "ai_estimated" | "platform_data" | "industry_benchmark";
+  // TIM-2922: post-rewrite, primary source is always "local_cafes" (real
+  // cited cafes via web_search). Old values kept for backwards-compat reads
+  // of any cached responses during the deploy window.
+  source?: "local_cafes" | "ai_estimated" | "platform_data" | "industry_benchmark";
   source_note?: string;
+  // TIM-2922: real cafe citations powering the primary range.
+  citations?: BenchmarkCitation[];
+  country_used?: string | null;
+  city_used?: string | null;
+  // TIM-2922: secondary industry comparison panel (was the primary source
+  // pre-rewrite). Rendered as a labelled "for reference" panel, never the
+  // headline.
+  industry_comparison?: {
+    low_cents: number;
+    high_cents: number;
+    source_label: string;
+    source_note: string;
+    // TIM-2922 review fix: industry dataset is USD; carry the currency so
+    // the UI does not silently relabel as the workspace currency.
+    currency?: string;
+  } | null;
 };
+
+// TIM-2922: ISO-2 to display name for header rendering. Mirrors the small
+// table on the server but only the codes we care about for UI labelling.
+const COUNTRY_DISPLAY: Record<string, string> = {
+  US: "United States",
+  CA: "Canada",
+  GB: "United Kingdom",
+  AU: "Australia",
+  NZ: "New Zealand",
+  IE: "Ireland",
+  DE: "Germany",
+  FR: "France",
+  NL: "Netherlands",
+  MX: "Mexico",
+};
+function humaniseCountry(code: string | null | undefined): string {
+  if (!code) return "";
+  return COUNTRY_DISPLAY[code.toUpperCase()] ?? code.toUpperCase();
+}
 
 function makeLocalId() {
   return "local_" + Math.random().toString(36).slice(2, 10);
+}
+
+// TIM-2921: extract the first dollar/currency amount from a free-text blob
+// (e.g. the AI price-suggestion proposedValue: "$5.50\n\nMarket range: ...").
+// Used when the founder edits the suggested price in the review modal — the
+// final value can be a bare number ("5.25"), a currency-prefixed string
+// ("$5.25"), or a multi-line edit that keeps the commentary; we read the first
+// numeric token. Returns null on unparseable input so the caller falls back to
+// the AI's original suggestion rather than writing NaN.
+function parseFirstAmountToCents(text: string): number | null {
+  const m = text.match(/-?\d+(?:[.,]\d{1,2})?/);
+  if (!m) return null;
+  const num = parseFloat(m[0].replace(",", "."));
+  if (!Number.isFinite(num) || num < 0) return null;
+  return Math.round(num * 100);
 }
 
 const inputCls =
@@ -146,6 +204,20 @@ type PriceSuggestion = {
   high_cents: number;
   margin_pct: number;
   commentary: string;
+  // TIM-2922: when suggestion sits outside the live local cafe band the
+  // server surfaces the reason here instead of silently disagreeing.
+  disagreement_reason?: string | null;
+  local_range?: {
+    low_cents: number;
+    high_cents: number;
+    citations: { name: string; url: string; price_cents: number; city?: string | null }[];
+  } | null;
+  // TIM-2922 review fix: distinct top-level signal — set when the live local
+  // research call failed. Lets the UI say "couldn't check local market" instead
+  // of "reason for going outside the band" (there's no band to be outside of).
+  local_range_unavailable?: string | null;
+  country_used?: string | null;
+  city_used?: string | null;
 };
 
 // TIM-1323: an AI-suggested candidate menu item the owner can add in one tap.
@@ -668,6 +740,24 @@ function IngredientsTab({
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<IngredientSortKey>("name");
   const [sortDir, setSortDir] = useState<IngredientSortDir>("asc");
+  // TIM-2832: right-edge fade affordance for the horizontally scrollable ingredient grid.
+  const ingScrollRef = useRef<HTMLDivElement>(null);
+  const [showIngFade, setShowIngFade] = useState(false);
+  useEffect(() => {
+    const el = ingScrollRef.current;
+    if (!el) return;
+    function update() {
+      setShowIngFade(el!.scrollLeft < el!.scrollWidth - el!.clientWidth - 1);
+    }
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
 
   function toggleSort(key: IngredientSortKey) {
     if (key === sortKey) {
@@ -741,7 +831,14 @@ function IngredientsTab({
             <p className="text-sm text-[var(--dark-grey)]">No ingredients yet.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative">
+            {showIngFade && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-10 bg-gradient-to-l from-white to-transparent"
+              />
+            )}
+            <div className="overflow-x-auto" ref={ingScrollRef}>
             <div className="min-w-[640px]">
               <div
                 className={
@@ -788,6 +885,7 @@ function IngredientsTab({
 
               {canEdit && <QuickAddRow onAdd={onAddIngredient} />}
             </div>
+            </div>
           </div>
         )}
       </div>
@@ -805,6 +903,7 @@ function ItemEditorPanel({
   categories,
   ingredients,
   itemIngredients,
+  categoryDefaults,
   canEdit,
   targetGrossMargin,
   onClose,
@@ -824,16 +923,19 @@ function ItemEditorPanel({
   benchmarkLoading,
   benchmarkResult,
   benchmarkError,
+  onPhotoChange,
 }: {
   item: MenuItemWithCogs;
   category: MenuCategory | undefined;
   categories: MenuCategory[];
   ingredients: MenuIngredient[];
   itemIngredients: MenuItemIngredient[];
+  categoryDefaults: CategoryDefaultIngredient[];
   canEdit: boolean;
   targetGrossMargin: number;
   onClose: () => void;
   onUpdateItem: (patch: Partial<MenuItemWithCogs>) => Promise<void>;
+  onPhotoChange: (photoPath: string | null) => void;
   onAddRecipeLine: (
     ingredientId: string,
     amount: number,
@@ -867,6 +969,20 @@ function ItemEditorPanel({
   const { currencyCode } = useCurrency();
   const recipeLines = itemIngredients.filter(
     (ii) => ii.menu_item_id === item.id
+  );
+  // TIM-2950: ingredient ids that come from this item's category-default
+  // template — used to render a subtle "from category" badge on those rows.
+  // The recipe row data itself is unchanged: defaults were auto-copied into
+  // menu_item_ingredients on item create (TIM-1140), so they stay editable
+  // and removable like any other item ingredient.
+  const categoryDefaultIngredientIds = useMemo(
+    () =>
+      new Set(
+        categoryDefaults
+          .filter((d) => d.category_id === item.category_id)
+          .map((d) => d.ingredient_id)
+      ),
+    [categoryDefaults, item.category_id]
   );
 
   const computedCogs = useMemo(() => {
@@ -928,14 +1044,13 @@ function ItemEditorPanel({
   return (
     <div className="bg-white rounded-b-xl overflow-hidden flex flex-col">
       <div className="px-5 py-4 border-b border-[var(--border)] flex items-start gap-3">
-        {/* TIM-1585: Lane A recipe-card line-art for drinks we have curated art for
-            (e.g. flat white, espresso). Renders nothing for everything else. */}
-        {recipeIdForItemName(name) && (
-          <Illustration
-            recipeId={recipeIdForItemName(name)!}
-            className="w-24 h-32 rounded-lg border border-[var(--border)] object-cover shrink-0 bg-[var(--background)]"
-          />
-        )}
+        {/* TIM-2949: user-uploaded 4:5 photo replaces the curated illustration. */}
+        <ItemPhotoUpload
+          itemId={item.id}
+          photoPath={item.photo_path}
+          canEdit={canEdit}
+          onPhotoChange={onPhotoChange}
+        />
         <div className="flex-1 min-w-0">
           <input
             className={
@@ -1007,6 +1122,7 @@ function ItemEditorPanel({
             ingredients={ingredients}
             recipeLines={recipeLines}
             availableIngredients={availableIngredients}
+            categoryDefaultIngredientIds={categoryDefaultIngredientIds}
             canEdit={canEdit}
             itemName={name}
             notes={notes}
@@ -1059,6 +1175,7 @@ function RecipeTabContent({
   ingredients,
   recipeLines,
   availableIngredients,
+  categoryDefaultIngredientIds,
   canEdit,
   itemName,
   notes,
@@ -1079,6 +1196,7 @@ function RecipeTabContent({
   ingredients: MenuIngredient[];
   recipeLines: MenuItemIngredient[];
   availableIngredients: MenuIngredient[];
+  categoryDefaultIngredientIds: Set<string>;
   canEdit: boolean;
   itemName: string;
   notes: string;
@@ -1171,6 +1289,7 @@ function RecipeTabContent({
                     ingredient={ing ?? null}
                     lineCost={lineCost}
                     canEdit={canEdit}
+                    isFromCategoryDefault={categoryDefaultIngredientIds.has(line.ingredient_id)}
                     onUpdate={(patch) => onUpdateRecipeLine(line.id, patch)}
                     onDelete={() => onDeleteRecipeLine(line.id)}
                   />
@@ -1184,16 +1303,38 @@ function RecipeTabContent({
           </p>
         )}
 
+        {/* TIM-2950: Add Ingredient control is ALWAYS visible — never hidden
+            when category defaults are present. When the catalog is exhausted
+            (or empty), show a clearly-labeled disabled affordance that points
+            the user to the Ingredients tab. Defaults render as normal item
+            rows (auto-copied at item create, TIM-1140) and additions append
+            to the same list. Cost roll-up already sums all recipe lines. */}
         {canEdit && availableIngredients.length > 0 && (
           <IngredientCombobox
             ingredients={availableIngredients}
             onSelect={onAddRecipeLine}
           />
         )}
-        {canEdit && availableIngredients.length === 0 && ingredients.length === 0 && (
-          <p className="text-xs text-[var(--dark-grey)]">
-            Add ingredients in the Ingredients tab first.
-          </p>
+        {canEdit && availableIngredients.length === 0 && (
+          <div>
+            <label className={labelCls}>Add Ingredient</label>
+            <div className="relative">
+              <Search
+                size={12}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--dark-grey)] pointer-events-none"
+              />
+              <input
+                type="text"
+                className={inputCls + " pl-8"}
+                disabled
+                placeholder={
+                  ingredients.length === 0
+                    ? "Add ingredients in the Ingredients tab first…"
+                    : "All catalog ingredients are in this recipe — add more in the Ingredients tab…"
+                }
+              />
+            </div>
+          </div>
         )}
       </section>
 
@@ -1456,12 +1597,28 @@ function CostOfGoodsTabContent({
             <div className="mt-3 rounded-lg border border-[var(--teal-bg-750)] bg-[var(--teal-bg-f0f8)] p-4 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-[var(--muted-foreground)]">
-                  Local range for{" "}
-                  <span className="font-medium text-[var(--foreground)]">{item.name}</span>:{" "}
+                  {/* TIM-2922: header surfaces the resolved city/country so the geo is auditable at a glance.
+                      Country codes are humanised ("Canada" not "CA") so the parenthetical reads naturally. */}
+                  Local cafe range for{" "}
+                  <span className="font-medium text-[var(--foreground)]">{item.name}</span>
+                  {benchmarkResult.city_used
+                    ? ` in ${benchmarkResult.city_used}`
+                    : benchmarkResult.country_used
+                      ? ` (${humaniseCountry(benchmarkResult.country_used)})`
+                      : ""}
+                  :{" "}
                   <span className="font-semibold text-[var(--foreground)]">
                     {formatMinorExact(benchmarkResult.low_cents, currencyCode)} to {formatMinorExact(benchmarkResult.high_cents, currencyCode)}
                   </span>
                 </p>
+                {benchmarkResult.source === "local_cafes" && (
+                  <span
+                    className="shrink-0 text-[10px] font-medium text-[var(--teal)] border border-[var(--teal-bg-750)] rounded px-1.5 py-0.5 leading-none cursor-default"
+                    title={`Range derived from ${benchmarkResult.citations?.length ?? 0} real cafe citations in ${benchmarkResult.country_used ?? "your country"}.`}
+                  >
+                    Local cafes
+                  </span>
+                )}
                 {benchmarkResult.source === "industry_benchmark" && (
                   <span
                     className="shrink-0 text-[10px] font-medium text-[var(--teal)] border border-[var(--teal-bg-750)] rounded px-1.5 py-0.5 leading-none cursor-default"
@@ -1504,6 +1661,55 @@ function CostOfGoodsTabContent({
               <p className="text-xs text-[var(--gray-1150)] italic leading-relaxed">
                 {benchmarkResult.commentary}
               </p>
+              {/* TIM-2922: citation list — the actual cafes powering the range. */}
+              {benchmarkResult.citations && benchmarkResult.citations.length > 0 && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-[11px] font-medium text-[var(--teal)] hover:text-[var(--teal-deep)]">
+                    Cited cafes ({benchmarkResult.citations.length})
+                  </summary>
+                  <ul className="mt-1.5 space-y-1 text-[11px]">
+                    {benchmarkResult.citations.map((c, idx) => (
+                      <li key={`${c.url}-${idx}`} className="flex items-baseline justify-between gap-2">
+                        <a
+                          href={c.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[var(--teal)] hover:underline truncate"
+                          title={c.url}
+                        >
+                          {c.name}
+                          {c.city ? <span className="text-[var(--muted-foreground)]"> · {c.city}</span> : null}
+                        </a>
+                        <span className="shrink-0 tabular-nums text-[var(--foreground)] font-medium">
+                          {formatMinorExact(c.price_cents, currencyCode)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {/* TIM-2922: industry-body figures (SCA/NCA/Square/BLS) — secondary panel, never the headline.
+                  Currency is the industry dataset's own (USD), NOT the workspace currency — labelling
+                  with the workspace currency would silently mislabel ($ vs CA$) for non-US shops. */}
+              {benchmarkResult.industry_comparison && (
+                <div className="mt-2 pt-2 border-t border-[var(--teal-bg-750)] text-[11px] text-[var(--muted-foreground)]">
+                  <span className="font-medium">For reference</span>
+                  <span className="ml-1">
+                    ({benchmarkResult.industry_comparison.source_label.replace(/_/g, " ")}):{" "}
+                  </span>
+                  <span className="text-[var(--foreground)]">
+                    {formatMinorExact(
+                      benchmarkResult.industry_comparison.low_cents,
+                      benchmarkResult.industry_comparison.currency ?? "USD",
+                    )}{" "}
+                    to{" "}
+                    {formatMinorExact(
+                      benchmarkResult.industry_comparison.high_cents,
+                      benchmarkResult.industry_comparison.currency ?? "USD",
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -1517,6 +1723,7 @@ function RecipeLineRow({
   ingredient,
   lineCost,
   canEdit,
+  isFromCategoryDefault,
   onUpdate,
   onDelete,
 }: {
@@ -1524,6 +1731,9 @@ function RecipeLineRow({
   ingredient: MenuIngredient | null;
   lineCost: number | null;
   canEdit: boolean;
+  // TIM-2950: subtle "from category" badge on rows seeded from the
+  // category-default template — additions render without the badge.
+  isFromCategoryDefault?: boolean;
   onUpdate: (patch: { amount?: number; unit?: IngredientUnit }) => void;
   onDelete: () => void;
 }) {
@@ -1545,6 +1755,17 @@ function RecipeLineRow({
   // chip pointing the owner to the Ingredients tab instead.
   const needsCost = ingredient !== null && ingredient.package_cost_cents === 0;
 
+  // TIM-2950: subtle teal-tint chip mirroring the Category tag in the editor
+  // header (line ~1049) — same family of tokens, no new design language.
+  const fromCategoryChip = isFromCategoryDefault ? (
+    <span
+      className="text-[10px] font-medium uppercase tracking-wider text-[var(--teal)] bg-[var(--teal-tint-500)] border border-[var(--teal-tint)] rounded px-1.5 py-0.5 shrink-0"
+      title="Seeded from this category's default ingredients. Edit or remove like any other ingredient."
+    >
+      From Category
+    </span>
+  ) : null;
+
   if (!canEdit) {
     return (
       <div className="flex items-baseline gap-3 py-1.5">
@@ -1552,6 +1773,7 @@ function RecipeLineRow({
         <span className="flex-1 min-w-0 text-xs font-medium text-[var(--foreground)] break-words">
           {ingredient?.name ?? "Unknown"}
         </span>
+        {fromCategoryChip}
         <span className="text-xs text-[var(--muted-foreground)] shrink-0">
           {line.amount} {line.unit}
         </span>
@@ -1579,6 +1801,7 @@ function RecipeLineRow({
       <span className="flex-1 min-w-0 text-xs font-medium text-[var(--foreground)] break-words">
         {ingredient?.name ?? "Unknown"}
       </span>
+      {fromCategoryChip}
       <input
         type="number"
         className="w-16 text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-transparent transition-colors"
@@ -1631,7 +1854,6 @@ function SortableMenuItemRow({
   isSelected,
   canEdit,
   onSelect,
-  onUpdate,
   onDelete,
   isOverlay,
 }: {
@@ -1640,7 +1862,6 @@ function SortableMenuItemRow({
   isSelected: boolean;
   canEdit: boolean;
   onSelect: () => void;
-  onUpdate: (patch: Partial<MenuItemWithCogs>) => void;
   onDelete: () => void;
   isOverlay?: boolean;
 }) {
@@ -1660,14 +1881,6 @@ function SortableMenuItemRow({
         transition,
         opacity: isDragging ? 0.4 : 1,
       };
-
-  const [editingName, setEditingName] = useState(false);
-  const [name, setName] = useState(item.name);
-
-  function handleNameBlur() {
-    setEditingName(false);
-    if (name !== item.name) onUpdate({ name });
-  }
 
   const cogs =
     item.computed_cogs_cents > 0
@@ -1707,43 +1920,22 @@ function SortableMenuItemRow({
       {/* TIM-1674: name + (price/COGS + actions) reflow to two stacked rows on
           mobile so nothing crowds or overlaps; collapse to one row from sm: up. */}
       <div className="flex-1 min-w-0 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-      <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-        {editingName ? (
-          <input
-            autoFocus
-            className="text-sm font-medium text-[var(--foreground)] border-0 border-b border-[var(--teal)] focus-visible:outline-none bg-transparent w-full"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={handleNameBlur}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleNameBlur();
-              if (e.key === "Escape") {
-                setName(item.name);
-                setEditingName(false);
-              }
-            }}
-          />
-        ) : (
-          <div onClick={onSelect}>
-            {/* TIM-1409: sidebar shows the full item name. Long names wrap to
-                additional lines instead of being ellipsized — the owner needs
-                to recognize the item without hovering. */}
-            <span className="text-sm font-medium text-[var(--foreground)] break-words block">
-              {item.name || (
-                <span className="text-[var(--dark-grey)] font-normal">Unnamed item</span>
-              )}
-            </span>
-            {/* TIM-1140: explicit "Category:" tag on the row so it isn't
-                mistakable for a subtitle. */}
-            <span className="text-[10px] text-[var(--dark-grey)] uppercase tracking-wider mt-0.5 flex items-center gap-1 min-w-0">
-              <Tag size={9} className="shrink-0" />
-              <span className="shrink-0">Category:</span>
-              <span className="text-[var(--muted-foreground)] font-medium normal-case tracking-normal truncate">
-                {category?.name ?? "—"}
-              </span>
-            </span>
-          </div>
-        )}
+      {/* TIM-2923: row click is the single edit affordance — it opens
+          ItemEditorPanel (the card editor) where name + recipe + price +
+          COGS all live. The pencil button below also routes here. */}
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-medium text-[var(--foreground)] break-words block">
+          {item.name || (
+            <span className="text-[var(--dark-grey)] font-normal">Unnamed item</span>
+          )}
+        </span>
+        <span className="text-[10px] text-[var(--dark-grey)] uppercase tracking-wider mt-0.5 flex items-center gap-1 min-w-0">
+          <Tag size={9} className="shrink-0" />
+          <span className="shrink-0">Category:</span>
+          <span className="text-[var(--muted-foreground)] font-medium normal-case tracking-normal truncate">
+            {category?.name ?? "—"}
+          </span>
+        </span>
       </div>
 
       <div className="flex items-center justify-between gap-3 shrink-0 sm:justify-end">
@@ -1773,12 +1965,16 @@ function SortableMenuItemRow({
 
       {canEdit && (
         <div className="flex items-center gap-1 shrink-0">
+          {/* TIM-2923: pencil opens the same card editor as row click — single
+              canonical edit path, not an inline name-only field. */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setEditingName(true);
+              onSelect();
             }}
+            aria-label="Edit item"
+            title="Edit item"
             className="text-[var(--neutral-cool-350)] hover:text-[var(--teal)] transition-colors"
           >
             <Edit2 size={12} />
@@ -2169,6 +2365,7 @@ interface MenuTabProps {
   onUpdateDefault: (id: string, patch: { amount?: number; unit?: IngredientUnit }) => Promise<void>;
   onDeleteDefault: (id: string) => Promise<void>;
   onApplyDefaults: (categoryId: string) => Promise<void>;
+  onPhotoChange: (itemId: string, photoPath: string | null) => void;
 }
 
 function MenuTab(props: MenuTabProps) {
@@ -2186,6 +2383,7 @@ function MenuTab(props: MenuTabProps) {
     onReorderItems,
     onAddCategory, onRenameCategory, onDeleteCategory,
     onAddDefault, onUpdateDefault, onDeleteDefault, onApplyDefaults,
+    onPhotoChange,
   } = props;
 
   const sensors = useSensors(
@@ -2342,7 +2540,6 @@ function MenuTab(props: MenuTabProps) {
                             onSelect={() =>
                               onSelectItem(isExpanded ? null : item.id)
                             }
-                            onUpdate={(patch) => onUpdateItem(item.id, patch)}
                             onDelete={() => onDeleteItem(item.id)}
                           />
                           {isExpanded && (
@@ -2353,6 +2550,7 @@ function MenuTab(props: MenuTabProps) {
                                 categories={categories}
                                 ingredients={ingredients}
                                 itemIngredients={itemIngredients}
+                                categoryDefaults={categoryDefaults}
                                 canEdit={canEdit}
                                 targetGrossMargin={targetGrossMargin}
                                 onClose={() => onSelectItem(null)}
@@ -2378,6 +2576,9 @@ function MenuTab(props: MenuTabProps) {
                                 benchmarkLoading={benchmarkLoading}
                                 benchmarkResult={benchmarkResult}
                                 benchmarkError={benchmarkError}
+                                onPhotoChange={(path) =>
+                                  onPhotoChange(item.id, path)
+                                }
                               />
                             </div>
                           )}
@@ -3194,6 +3395,7 @@ export function MenuWorkspace({
       notes: null,
       recipe: {},
       preparation_steps: [],
+      photo_path: null,
       archived: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -3551,6 +3753,18 @@ export function MenuWorkspace({
         const currentDollars = item.price_cents > 0
           ? `${symbol}${(item.price_cents / 100).toFixed(2)}`
           : "Not set";
+        // TIM-2922: surface the live local cafe band + any disagreement_reason
+        // so the owner sees both the suggestion AND its reconciliation with the
+        // benchmark engine in the same modal. When the local range couldn't be
+        // fetched at all, label it as such — never as "outside the band".
+        const localRangeLine = data.local_range
+          ? `\nLive local cafe band${data.city_used ? ` (${data.city_used})` : data.country_used ? ` (${humaniseCountry(data.country_used)})` : ""}: ${symbol}${(data.local_range.low_cents / 100).toFixed(2)} – ${symbol}${(data.local_range.high_cents / 100).toFixed(2)} from ${data.local_range.citations.length} cited cafes.`
+          : data.local_range_unavailable
+            ? `\nLocal cafe band: could not check (${data.local_range_unavailable}).`
+            : "";
+        const disagreementLine = data.local_range && data.disagreement_reason
+          ? `\n\nReason for going outside the local band: ${data.disagreement_reason}`
+          : "";
         openAIReviewModal({
           suggestions: [
             {
@@ -3558,22 +3772,37 @@ export function MenuWorkspace({
               fieldId: "price_cents",
               fieldLabel: `${item.name} - Retail Price`,
               originalValue: currentDollars,
-              proposedValue: `${symbol}${suggestedDollars}\n\nMarket range: ${symbol}${(data.low_cents / 100).toFixed(2)} – ${symbol}${(data.high_cents / 100).toFixed(2)}\nMargin at suggested price: ${data.margin_pct.toFixed(1)}%\n\n${data.commentary}`,
+              proposedValue: `${symbol}${suggestedDollars}\n\nMarket range: ${symbol}${(data.low_cents / 100).toFixed(2)} – ${symbol}${(data.high_cents / 100).toFixed(2)}\nMargin at suggested price: ${(data.margin_pct * 100).toFixed(1)}%${localRangeLine}\n\n${data.commentary}${disagreementLine}`,
               isStructured: false,
             },
           ],
           context: { workspace: "Menu & Pricing", section: item.name },
+          // TIM-2921: the previous handler issued PATCH /items/${id} (no such
+          // route — items PATCH lives at the collection with id in the body)
+          // and wrote `data.suggested_price_cents` blindly. Both bugs meant
+          // Accept was silently lost on reload and any user-edit in the modal
+          // was discarded (TIM-1797 class). Now: route through the real
+          // endpoint, honor `accepted[0].finalValue` when the user edited,
+          // check the response, and refetch so server truth wins.
           onApply: async (accepted) => {
-            if (accepted.length > 0) {
-              await fetch(`/api/workspaces/menu-pricing/items/${item.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ price_cents: data.suggested_price_cents }),
-              });
-              setItems((prev) =>
-                prev.map((i) => i.id === item.id ? { ...i, price_cents: data.suggested_price_cents } : i)
-              );
+            if (accepted.length === 0) return;
+            const change = accepted[0]!;
+            const editedCents = change.wasEdited
+              ? parseFirstAmountToCents(change.finalValue)
+              : null;
+            const finalCents = editedCents ?? data.suggested_price_cents;
+            const res = await fetch("/api/workspaces/menu-pricing/items", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: item.id, price_cents: finalCents }),
+            });
+            if (!res.ok) {
+              throw new Error("Couldn't save the new price. Please try again.");
             }
+            setItems((prev) =>
+              prev.map((i) => i.id === item.id ? { ...i, price_cents: finalCents } : i)
+            );
+            await refetchItems();
           },
         });
       }
@@ -3605,19 +3834,17 @@ export function MenuWorkspace({
         setRecipeError("Couldn't suggest a recipe. Try again in a moment.");
         return;
       }
+      // TIM-2924 Shape C fix: suggest-recipe now returns raw AI lines (no DB writes).
       const data = (await res.json()) as {
-        ingredients: MenuIngredient[];
-        lines: MenuItemIngredient[];
+        lines: Array<{ name: string; amount: number; unit: string }>;
       };
       // TIM-1561: route through review modal before applying.
+      // TIM-2924 Shape B fix: proposedValue holds structured raw lines so
+      // onApply can send accepted[0].finalValue to the apply route.
       const currentLines = itemIngredients.filter((ii) => ii.menu_item_id === item.id);
-      const currentLineNames = currentLines.map((ii) => {
+      const currentRawLines = currentLines.map((ii) => {
         const ing = ingredients.find((g) => g.id === ii.ingredient_id);
-        return ing?.name ?? ii.ingredient_id;
-      });
-      const proposedLineNames = data.lines.map((ii) => {
-        const ing = data.ingredients.find((g) => g.id === ii.ingredient_id);
-        return `${ing?.name ?? ii.ingredient_id} (${ii.amount} ${ii.unit})`;
+        return { name: ing?.name ?? ii.ingredient_id, amount: ii.amount, unit: ii.unit };
       });
       openAIReviewModal({
         suggestions: [
@@ -3625,17 +3852,25 @@ export function MenuWorkspace({
             id: `recipe-${item.id}`,
             fieldId: "recipe",
             fieldLabel: `${item.name} - Recipe`,
-            originalValue: JSON.stringify(currentLineNames),
-            proposedValue: JSON.stringify(proposedLineNames),
+            originalValue: JSON.stringify(currentRawLines),
+            proposedValue: JSON.stringify(data.lines),
             isStructured: true,
           },
         ],
         context: { workspace: "Menu & Pricing", section: item.name },
-        onApply: async () => {
-          setIngredients(data.ingredients);
+        onApply: async (accepted) => {
+          const lines = JSON.parse(accepted[0].finalValue) as Array<{ name: string; amount: number; unit: string }>;
+          const applyRes = await fetch("/api/workspaces/menu-pricing/suggest-recipe/apply", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ item_id: item.id, lines }),
+          });
+          if (!applyRes.ok) throw new Error("Failed to apply recipe");
+          const applied = await applyRes.json() as { ingredients: MenuIngredient[]; lines: MenuItemIngredient[] };
+          setIngredients(applied.ingredients);
           setItemIngredients((prev) => [
             ...prev.filter((ii) => ii.menu_item_id !== item.id),
-            ...data.lines,
+            ...applied.lines,
           ]);
           await refetchItems();
         },
@@ -3693,11 +3928,16 @@ export function MenuWorkspace({
           },
         ],
         context: { workspace: "Menu & Pricing", section: item.name },
-        onApply: async () => {
+        onApply: async (accepted) => {
+          const steps = JSON.parse(accepted[0].finalValue) as string[];
+          const patchRes = await fetch("/api/workspaces/menu-pricing/items", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: item.id, preparation_steps: steps }),
+          });
+          if (!patchRes.ok) throw new Error("Failed to save preparation steps");
           setItems((prev) =>
-            prev.map((i) =>
-              i.id === item.id ? { ...i, preparation_steps: data.steps } : i,
-            ),
+            prev.map((i) => i.id === item.id ? { ...i, preparation_steps: steps } : i),
           );
         },
       });
@@ -3861,7 +4101,7 @@ export function MenuWorkspace({
     <>
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-4xl mx-auto px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1894: canonical WorkspaceHeader (title-only — no page-level actions). */}
         <WorkspaceHeader
           Icon={Utensils}
@@ -3922,6 +4162,11 @@ export function MenuWorkspace({
             onUpdateDefault={updateDefault}
             onDeleteDefault={deleteDefault}
             onApplyDefaults={applyDefaults}
+            onPhotoChange={(itemId, photoPath) =>
+              setItems((prev) =>
+                prev.map((i) => (i.id === itemId ? { ...i, photo_path: photoPath } : i))
+              )
+            }
           />
         )}
 
@@ -3961,7 +4206,7 @@ export function MenuWorkspace({
                 window.dispatchEvent(
                   new CustomEvent("copilot:open-in-mode", {
                     detail: {
-                      mode: "benchmark",
+                      mode: "check",
                       scope: "menu_pricing",
                       focus: { metricId, metricLabel },
                     },

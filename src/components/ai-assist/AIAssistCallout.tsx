@@ -4,13 +4,16 @@
 // States: draft → streaming → review → quota | error
 // Reuses consumeSseFrames from the copilot SSE parser.
 // Does NOT create a thread; calls /api/copilot/improve directly.
+// TIM-2858: `openAIReviewModal` is owned by the parent (concept-editor) so the
+// unified review modal survives this component's unmount when the stream
+// completes and we close the draft modal.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import type { WorkspaceKey } from "@/types/supabase";
 import { consumeSseFrames } from "@/components/copilot/sse";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import type { OpenAIReviewModalOptions } from "@/hooks/useAIReviewModal";
 
 export interface AIAssistCalloutProps {
   open: boolean;
@@ -22,6 +25,7 @@ export interface AIAssistCalloutProps {
   planId: string;
   currentValue: string;
   onApply: (newValue: string) => void;
+  openAIReviewModal: (opts: OpenAIReviewModalOptions) => void;
 }
 
 type Phase =
@@ -40,13 +44,12 @@ export function AIAssistCallout({
   planId,
   currentValue,
   onApply,
+  openAIReviewModal,
 }: AIAssistCalloutProps) {
   const [phase, setPhase] = useState<Phase>({ kind: "draft" });
   const [instruction, setInstruction] = useState("");
   const [draft, setDraft] = useState(currentValue);
   const abortRef = useRef<AbortController | null>(null);
-
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   // Reset to draft state when modal opens with a new value.
   useEffect(() => {
@@ -233,8 +236,6 @@ export function AIAssistCallout({
   const isStreaming = phase.kind === "streaming";
 
   return (
-    <>
-    {AIReviewModalNode}
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
@@ -327,7 +328,7 @@ export function AIAssistCallout({
                   onClick={() => void startStream("write")}
                   className="flex-1 border border-[var(--teal)] text-[var(--teal)] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal)]/5 transition-colors"
                 >
-                  Write this for me
+                  Write with AI
                 </button>
               </div>
             </div>
@@ -441,6 +442,5 @@ export function AIAssistCallout({
         </div>
       </div>
     </div>
-    </>
   );
 }

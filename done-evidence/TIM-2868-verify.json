@@ -1,0 +1,19 @@
+{
+  "timestamp_utc_iso": "2026-06-21T12:08:24Z",
+  "site": "https://groundwork.cafe",
+  "issue": "TIM-2868",
+  "postResults": [
+    {
+      "url": "https://groundwork.cafe/api/workspaces/location-lease/candidates",
+      "status": 201,
+      "body": "{\"id\":\"aa6c827b-f107-460e-b2cd-d8cff5cf7e1a\",\"plan_id\":\"37f5d270-8c43-4ab2-b96c-e54ac504c893\",\"position\":4,\"name\":\"New Location\",\"address\":null,\"neighborhood\":null,\"sq_ft\":null,\"asking_rent_cents\":null,\"cam_cents\":null,\"listing_url\":null,\"broker_contact\":null,\"status\":\"shortlisted\",\"notes\":null,\"archived\":false,\"created_at\":\"2026-06-21T12:08:22.962105+00:00\",\"updated_at\":\"2026-06-21T12:08:22.962105+00:00\",\"lat\":null,\"lng\":null,\"city\":null,\"postal_code\":null,\"country\":null,\"area_analysis\":null,\"a"
+    }
+  ],
+  "domHitsBefore": 0,
+  "domHitsAfter": 0,
+  "shots": [
+    "tim2868-before.png",
+    "tim2868-after.png"
+  ],
+  "pass": true
+}

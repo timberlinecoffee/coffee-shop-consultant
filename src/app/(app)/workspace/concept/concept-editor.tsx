@@ -1,8 +1,13 @@
 "use client";
 
-// TIM-834 / TIM-865 / TIM-881: Concept workspace v2 card layout + inline concept brief.
-// - Component cards with include/exclude toggle, "Improve with AI" opens AIAssistCallout modal.
-// - Autosaves on each change (debounced). Toggle persists in ConceptDocumentV2 jsonb.
+// TIM-834 / TIM-865 / TIM-881 / TIM-2859: Concept workspace v2 card layout + inline concept brief.
+// - Per-card "Write with AI" opens AIAssistCallout modal (TIM-2858 routes the result
+//   through the unified review modal mounted on the ConceptWorkspace parent).
+// - TIM-2859: per-card "In doc / Skip" toggle removed; empty fields are implicitly
+//   skipped (no print inclusion, not counted toward progress, no unlock-gate penalty).
+//   The `included` flag in ConceptDocumentV2 is preserved on the wire (no schema change)
+//   but ignored at read time — content presence is the single signal.
+// - Autosaves on each change (debounced).
 // - Concept Brief section (TIM-865): inline rich document preview below input cards.
 // - TIM-893: per-field "Ask Co-pilot" buttons dispatch copilot:open-with-prompt and
 //   the drawer is mounted here so the listener fires on this page.
@@ -13,12 +18,12 @@ import { useRouter } from "next/navigation";
 import { Lightbulb, Printer, Sparkles, X } from "lucide-react";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
-import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { useUiRevamp } from "@/hooks/useUiRevamp";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import {
   WorkspaceActionButton,
@@ -76,10 +81,16 @@ export function ConceptWorkspace({
   // Cards the user has clicked into (reveals textarea even when empty)
   const [activatedCards, setActivatedCards] = useState<Set<ConceptComponentId>>(new Set());
 
+  // TIM-2974: AIAssistCallout is now shared between concept-component cards and
+  // persona per-field "Write with AI" buttons (PersonaEditor calls up via
+  // onWriteWithAi). `fieldKey` is what the backend `/api/copilot/improve` route
+  // sees in its prompt context; `onApply` lets the source (concept doc or
+  // persona draft) own how the accepted value lands.
   const [aiAssistField, setAiAssistField] = useState<{
-    id: ConceptComponentId;
+    fieldKey: string;
     label: string;
     currentValue: string;
+    onApply: (newValue: string) => void;
   } | null>(null);
 
   const [openExampleId, setOpenExampleId] = useState<ConceptComponentId | null>(null);
@@ -95,7 +106,13 @@ export function ConceptWorkspace({
   const latestDocRef = useRef<ConceptDocumentV2>(initialDoc);
 
   const { promoteOnEdit } = useWorkspaceStatus();
+  const uiRevamp = useUiRevamp();
   const router = useRouter();
+
+  // TIM-2858: lift unified review modal to the parent so it survives the
+  // AIAssistCallout draft-modal unmount (`onClose()` runs immediately after
+  // `openAIReviewModal()` when the stream completes).
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
   const progress = useMemo(() => getConceptV2Progress(doc), [doc]);
   const complete = useMemo(() => isConceptV2Complete(doc), [doc]);
@@ -248,21 +265,6 @@ export function ConceptWorkspace({
     });
   }
 
-  function toggleIncluded(id: ConceptComponentId) {
-    if (!canEdit) return;
-    setDoc((prev) => {
-      const next: ConceptDocumentV2 = {
-        ...prev,
-        components: {
-          ...prev.components,
-          [id]: { ...prev.components[id], included: !prev.components[id].included },
-        },
-      };
-      scheduleSave(next);
-      return next;
-    });
-  }
-
   function activateCard(id: ConceptComponentId) {
     setActivatedCards((prev) => {
       const next = new Set(prev);
@@ -294,11 +296,11 @@ export function ConceptWorkspace({
   const showTrialWarning = initialTrialMessagesUsed !== undefined && trialRemaining <= 1;
 
   return (
-    <div className="bg-[var(--background)]">
-      <div className="max-w-3xl mx-auto px-6 pt-8 pb-12">
+    <div className="bg-[var(--background)] min-h-screen">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-2455: canonical WorkspaceHeader (matches Financials / Equipment /
-            Hiring chrome). Action cluster: [Primary: Ask Scout] [Print
-            document] [SaveStatusAndButton]. Replaces the bespoke ring + bar
+            Hiring chrome). Action cluster (TIM-2897): [Print document]
+            [SaveStatusAndButton]. Replaces the bespoke ring + bar
             "100% into 100%" progress duo and the page-footer Print CTA the
             board flagged on TIM-2451. The page-level workspace status still
             promotes through `useWorkspaceStatus` on first edit — that's the
@@ -310,17 +312,9 @@ export function ConceptWorkspace({
           description="Shape the identity of your shop. Every other workspace builds on this."
           actions={
             <>
-              {/* TIM-2382: Scout-as-hub — replaces the bespoke "Review with AI"
-                  WorkspaceActionButton with AskScoutButton so concept review
-                  routes through the chat narration + AIReviewModal path
-                  ([[feedback_ai_never_auto_apply]]). */}
-              {canEdit && (
-                <AskScoutButton
-                  workspaceKey="concept"
-                  focusLabel="concept"
-                  hasContent={progress.filled > 0}
-                />
-              )}
+              {/* TIM-2897: top-level "Improve with Scout" removed — per-field
+                  "Write with AI" controls (AIAssistCallout) on each card are
+                  the canonical AI surface on Concept now. */}
               {/* TIM-2455: Print document moved from the page footer into the
                   canonical chrome action cluster. With a single secondary
                   utility the TIM-2413 0/1-threshold rule keeps it inline (no
@@ -349,10 +343,37 @@ export function ConceptWorkspace({
             </>
           }
         />
-        {shopName && (
-          <p className="mb-6 text-xs text-[var(--dark-grey)]">
-            {shopName} · {progress.filled} of {progress.total} sections filled
-          </p>
+        {uiRevamp ? (
+          progress.total > 0 && (
+            <div className="mb-6 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  {shopName ? <>{shopName} — </> : null}
+                  {progress.filled} of {progress.total} sections
+                </span>
+                <span className="text-xs font-semibold text-[var(--teal)]">
+                  {Math.round((progress.filled / progress.total) * 100)}%
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[var(--teal)] transition-all duration-300"
+                  style={{ width: `${Math.round((progress.filled / progress.total) * 100)}%` }}
+                  role="progressbar"
+                  aria-valuenow={progress.filled}
+                  aria-valuemin={0}
+                  aria-valuemax={progress.total}
+                  aria-label="Concept completion"
+                />
+              </div>
+            </div>
+          )
+        ) : (
+          shopName && (
+            <p className="mb-6 text-xs text-[var(--dark-grey)]">
+              {shopName} · {progress.filled} of {progress.total} sections filled
+            </p>
+          )
         )}
 
         {/* Read-only banner */}
@@ -395,8 +416,7 @@ export function ConceptWorkspace({
             const comp = doc.components[meta.id];
             const isEmpty = !comp.content.trim();
             const isActivated = activatedCards.has(meta.id);
-            // TIM-1476: showField no longer factors in comp.included; the
-            // In doc / Skip toggle only affects print inclusion, not the editor.
+            // TIM-2859: every field is always editable; empty is implicitly skipped.
             const showField = !isEmpty || isActivated;
 
             return (
@@ -434,39 +454,28 @@ export function ConceptWorkspace({
                       </button>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* TIM-881 + TIM-1408: Improve with AI is hover/focus-revealed to reduce ambient noise */}
-                      {meta.multiline && (
+                      {/* TIM-881 + TIM-1408 + TIM-2899: Write with AI is hover/focus-revealed to reduce ambient noise.
+                          TIM-2859: shown on every non-Persona card (target_customer renders the
+                          PersonaSection editor below and has its own authoring flow). */}
+                      {meta.id !== "target_customer" && (
                         <button
                           type="button"
                           onClick={() =>
                             setAiAssistField({
-                              id: meta.id,
+                              fieldKey: meta.id,
                               label: meta.label,
                               currentValue: latestDocRef.current.components[meta.id].content,
+                              onApply: (newValue) => updateContent(meta.id, newValue),
                             })
                           }
                           disabled={!canEdit}
                           className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                         >
-                          Improve with AI
+                          Write with AI
                         </button>
                       )}
-                      {/* TIM-1408: per-card "Ask Co-pilot" merged into the single global Co-pilot beacon */}
-                      {/* Include/exclude toggle — only on deferrable components */}
-                      {meta.deferrable && (
-                        <button
-                          type="button"
-                          onClick={() => toggleIncluded(meta.id)}
-                          disabled={!canEdit}
-                          className={`text-xs font-medium rounded-full px-3 py-1 border transition-colors disabled:cursor-not-allowed whitespace-nowrap ${
-                            comp.included
-                              ? "bg-[var(--teal)]/10 text-[var(--teal)] border-[var(--teal)]/20 hover:bg-[var(--teal)]/15"
-                              : "bg-[var(--surface-warm-200)] text-[var(--muted-foreground)] border-[var(--border-medium)] hover:bg-[var(--border)]"
-                          }`}
-                        >
-                          {comp.included ? "In doc" : "Skip"}
-                        </button>
-                      )}
+                      {/* TIM-2859: per-card In doc / Skip toggle removed. Empty fields are
+                          implicitly skipped (not printed, not counted toward unlock). */}
                     </div>
                   </div>
 
@@ -530,6 +539,23 @@ export function ConceptWorkspace({
                       personas={doc.personas ?? []}
                       canEdit={canEdit}
                       onUpdate={updatePersonas}
+                      // TIM-2974: route persona per-field "Write with AI" into
+                      // AIAssistCallout (apply-to-plan popup) instead of the
+                      // chat companion. `field` → snake_case fieldKey so the
+                      // backend prompt context reads "persona why they visit".
+                      onWriteWithAi={({ field, label, currentValue, onApply }) =>
+                        setAiAssistField({
+                          fieldKey:
+                            field === "whyTheyVisit"
+                              ? "persona_why_they_visit"
+                              : field === "painPoints"
+                              ? "persona_pain_points"
+                              : "persona_typical_order",
+                          label,
+                          currentValue,
+                          onApply,
+                        })
+                      }
                     />
                   ) : showField ? (
                     meta.multiline ? (
@@ -621,22 +647,29 @@ export function ConceptWorkspace({
         variant="copilot_trial"
       />
 
-      {/* TIM-881: AIAssistCallout — per-field improvement modal */}
+      {/* TIM-881: AIAssistCallout — per-field improvement modal.
+          TIM-2974: now also serves Persona per-field buttons; the active field
+          provides its own `onApply` (concept-component edits → updateContent;
+          persona drafts → PersonaEditor.setField via closure). */}
       <AIAssistCallout
         open={aiAssistField !== null}
         onClose={() => setAiAssistField(null)}
         fieldLabel={aiAssistField?.label ?? ""}
         moduleLabel="Concept"
-        fieldKey={aiAssistField?.id ?? ""}
+        fieldKey={aiAssistField?.fieldKey ?? ""}
         workspaceKey="concept"
         planId={planId}
         currentValue={aiAssistField?.currentValue ?? ""}
         onApply={(newValue) => {
-          if (aiAssistField) updateContent(aiAssistField.id, newValue);
+          if (aiAssistField) aiAssistField.onApply(newValue);
           setAiAssistField(null);
         }}
+        openAIReviewModal={openAIReviewModal}
       />
 
+      {/* TIM-2858: unified AI review modal — owned here (not inside
+          AIAssistCallout) so it survives the draft modal closing. */}
+      {AIReviewModalNode}
     </div>
   );
 }
@@ -688,10 +721,12 @@ function ConceptBriefInline({
 }) {
   const [expanded, setExpanded] = useState(true);
 
+  // TIM-2859: content presence is the single signal for inclusion in the brief.
+  // The `included` flag is preserved on the wire (no schema change) but ignored
+  // at read time — empty fields are implicitly skipped.
   const briefSections = CONCEPT_COMPONENTS_V2.filter((meta) => {
     if (meta.id === "shop_identity") return false;
     const comp = doc.components[meta.id];
-    if (!comp.included) return false;
     if (meta.id === "target_customer") {
       return (doc.personas && doc.personas.length > 0) || comp.content.trim().length > 0;
     }

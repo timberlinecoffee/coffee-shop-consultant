@@ -2,7 +2,7 @@
 // Rename → inline PATCH, delete → typed-name confirm → DELETE.
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,18 @@ function DeleteConfirmModal({
   const [typed, setTyped] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dependentRowCount, setDependentRowCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/projects/${project.id}/stats`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (typeof data.dependentRowCount === "number") {
+          setDependentRowCount(data.dependentRowCount);
+        }
+      })
+      .catch(() => {/* fall back to generic copy */});
+  }, [project.id]);
 
   const confirmed = typed.trim() === project.name.trim();
 
@@ -91,8 +103,14 @@ function DeleteConfirmModal({
           This will permanently delete{" "}
           <span className="font-semibold text-[var(--foreground)]">
             {project.name}
-          </span>{" "}
-          and all of its data. This cannot be undone.
+          </span>
+          {" "}
+          {!dependentRowCount
+            ? "and all of its data"
+            : `and its ${dependentRowCount} saved ${
+                dependentRowCount === 1 ? "record" : "records"
+              }`}
+          . This cannot be undone.
         </p>
         <div className="mb-4">
           <label

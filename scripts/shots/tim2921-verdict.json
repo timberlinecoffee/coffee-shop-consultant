@@ -1,0 +1,16 @@
+{
+  "patchRequestCount": 1,
+  "patchResponseOk": true,
+  "correctEndpoint": true,
+  "patchedCents": 700,
+  "patchResponses": [
+    {
+      "url": "https://groundwork.cafe/api/workspaces/menu-pricing/items",
+      "status": 200
+    }
+  ],
+  "beforeCents": 500,
+  "afterCents": 700,
+  "persistedChange": true,
+  "dbMatchesPatch": true
+}
