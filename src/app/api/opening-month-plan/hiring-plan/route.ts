@@ -5,7 +5,6 @@ import { getActivePlanId } from "@/lib/plan-context";
 import { isSubscriptionActive } from "@/lib/access";
 import { normalizeMonthlyProjections } from "@/lib/financial-projection";
 import type { NextRequest } from "next/server";
-
 async function checkPaywall(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data: profile } = await supabase
     .from("users")
