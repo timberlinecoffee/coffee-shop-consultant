@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { isSubscriptionActive } from "@/lib/access"
+import { getActivePlanId } from "@/lib/plan-context"
 import { getTemplate } from "@/lib/pdf/registry"
 import "@/lib/pdf/templates" // Side-effect: registers all templates
 import { registerFonts, resolveBrand, type BrandConfig } from "@/lib/pdf/brand"
@@ -62,15 +63,18 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     )
   }
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id, plan_name")
-    .eq("user_id", user.id)
-    .single()
-
-  if (!plan) {
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) {
     return Response.json({ error: "No plan found" }, { status: 404 })
   }
+
+  const { data: planMeta } = await supabase
+    .from("coffee_shop_plans")
+    .select("plan_name")
+    .eq("id", planId)
+    .maybeSingle()
+
+  const plan = { id: planId, plan_name: planMeta?.plan_name ?? null }
 
   // TIM-2336: export gate for business_plan_full. Runs Pass 1 numeric
   // reconciliation against plan_state; blocks the PDF when any narrative
