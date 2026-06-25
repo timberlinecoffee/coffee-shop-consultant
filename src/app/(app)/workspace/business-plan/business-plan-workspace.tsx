@@ -1184,14 +1184,7 @@ function SectionCard({
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <h2 className="text-xl font-semibold text-[var(--foreground)] truncate">{section.title}</h2>
-                  {/* TIM-3112: ? tooltip — InfoTip with blurb, visible when expanded.
-                      InfoTip uses e.stopPropagation() internally so it won't fire the toggle. */}
-                  {section.isExpanded && blurb && (
-                    <InfoTip label={section.title}>{blurb}</InfoTip>
-                  )}
-                </div>
+                <h2 className="text-xl font-semibold text-[var(--foreground)] truncate">{section.title}</h2>
                 {!section.isExpanded && <StatusChip section={section} />}
               </div>
               {section.isExpanded ? (
@@ -1206,6 +1199,12 @@ function SectionCard({
               </span>
             )}
           </button>
+
+          {/* TIM-3112: ? tooltip — InfoTip placed OUTSIDE the toggle button to avoid
+              nested <button> invalid HTML. Sibling in the flex row, visible when expanded. */}
+          {section.isExpanded && blurb && (
+            <InfoTip label={section.title}>{blurb}</InfoTip>
+          )}
 
           <div className="flex items-center gap-2 shrink-0">
             {/* TIM-3112: Write with AI — hover-only on desktop, matches Concept workspace pattern.
