@@ -91,12 +91,11 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { role_title, headcount, start_date, monthly_cost_cents, status: itemStatus, notes } = body as {
+  const { role_title, headcount, start_date, monthly_cost_cents, notes } = body as {
     role_title?: string;
     headcount?: number;
     start_date?: string | null;
     monthly_cost_cents?: number | null;
-    status?: string;
     notes?: string | null;
   };
 
@@ -112,7 +111,6 @@ export async function POST(request: NextRequest) {
       headcount: headcount ?? 1,
       start_date: start_date ?? null,
       monthly_cost_cents: monthly_cost_cents ?? null,
-      status: (itemStatus as "planned" | "posted" | "interviewing" | "hired") ?? "planned",
       notes: notes ?? null,
     })
     .select("*")

@@ -115,7 +115,7 @@ function JobDescriptionPdf({
       >
         <Text style={styles.roleTitle}>{jd?.title || role.role_title || "Untitled Role"}</Text>
         <Text style={styles.roleMeta}>
-          {shopName ?? "Your Coffee Shop"} · {role.headcount} headcount · Status: {role.status}
+          {shopName ?? "Your Coffee Shop"} · {role.headcount} headcount
         </Text>
         <View style={styles.rule} />
 
@@ -180,24 +180,12 @@ export const jobDescriptionTemplate: PdfTemplate<JdContent> = {
     }
 
     if (!role) {
-      // Fall back to first active role for the plan
+      // Fall back to first role alphabetically
       const { data } = await supabase
         .from("hiring_plan_roles")
         .select("*")
         .eq("plan_id", planId)
-        .in("status", ["planned", "posted", "interviewing"])
         .order("role_title", { ascending: true })
-        .limit(1)
-        .single()
-      role = data ?? null
-    }
-
-    if (!role) {
-      // Last resort: any role
-      const { data } = await supabase
-        .from("hiring_plan_roles")
-        .select("*")
-        .eq("plan_id", planId)
         .limit(1)
         .single()
       role = data ?? null

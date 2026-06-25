@@ -74,7 +74,6 @@ export async function POST(request: NextRequest) {
       headcount: (body.headcount as number | undefined) ?? 1,
       start_date: (body.start_date as string | undefined) ?? null,
       monthly_cost_cents: (body.monthly_cost_cents as number | undefined) ?? null,
-      status: (body.status as string | undefined) ?? "planned",
       notes: (body.notes as string | undefined) ?? null,
       parent_role_id: parentId,
       jd_template_id: (body.jd_template_id as string | undefined) ?? null,
@@ -147,7 +146,8 @@ export async function PATCH(request: NextRequest) {
     return Response.json(updates.map((u) => u.data))
   }
 
-  const { id, jd, ...rest } = body
+  // TIM-2970: drop status from rest so stale clients can't write a removed column.
+  const { id, jd, status: _dropStatus, ...rest } = body
   if (!id) return Response.json({ error: "Missing id" }, { status: 400 })
 
   // JD upsert: create or update the job_description_templates row for this role
