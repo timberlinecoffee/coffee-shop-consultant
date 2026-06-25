@@ -5,7 +5,7 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Eye, EyeOff, Wand2, RotateCcw, Download, ChevronDown, ChevronUp, BookOpen, X, Circle, CheckCircle, Loader2 } from "lucide-react";
+import { FileText, Eye, EyeOff, RotateCcw, Download, ChevronDown, ChevronUp, X, Circle, CheckCircle, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -15,7 +15,8 @@ import type {
   BusinessPlanGroupKey,
 } from "@/lib/business-plan";
 import { BUSINESS_PLAN_GROUPS, BUSINESS_PLAN_SECTIONS } from "@/lib/business-plan";
-import { SUMMIT_STREET_EXAMPLES } from "@/lib/business-plan-examples";
+import { BP_FIELD_EXAMPLES, type BPFieldExample, type BPFieldExampleKey } from "@/lib/business-plan-field-examples";
+import { InfoTip } from "@/components/ui/info-tip";
 import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
 import { FinancialDocumentsPanel, type FinancialDocumentState } from "./financial-documents-panel";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -900,6 +901,8 @@ export function BusinessPlanWorkspace({
             });
           }}
           onResetToAuto={(key) => saveSection(key, null)}
+          onGenerateExec={handleGenerate}
+          onImprove={handleImprove}
         />
       </div>
     </div>
@@ -944,12 +947,29 @@ function SectionTree(props: SectionTreeProps) {
 
   function renderCard(section: SectionState) {
     const blurb = sectionMetaByKey.get(section.key)?.blurb ?? "";
+    const bpExamples = BP_FIELD_EXAMPLES[section.key as BPFieldExampleKey] ?? [];
+    const displayContent = section.userContent ?? section.autoContent;
+    const hasPlaceholderContent =
+      !displayContent ||
+      displayContent.includes("workspace to populate") ||
+      displayContent.includes("Click Generate") ||
+      displayContent.includes("Complete the other") ||
+      displayContent.includes("Complete the Marketing") ||
+      displayContent.includes("click the text field");
+    const hasRealContent = Boolean(displayContent?.trim()) && !hasPlaceholderContent;
+    const onWriteWithAi =
+      props.canEdit && (props.onGenerateExec || props.onImprove)
+        ? () => {
+            if (hasRealContent && props.onImprove) props.onImprove!(section.key);
+            else if (props.onGenerateExec) props.onGenerateExec!(section.key);
+          }
+        : undefined;
     return (
       <SectionCard
         key={section.key}
         section={section}
         canEdit={props.canEdit}
-        exampleContent={SUMMIT_STREET_EXAMPLES[section.key] ?? null}
+        bpExamples={bpExamples}
         isStreaming={props.streamingKey === section.key}
         blurb={blurb}
         onToggleVisible={() => props.onToggleVisibility(section.key, section.isVisible)}
@@ -959,8 +979,7 @@ function SectionTree(props: SectionTreeProps) {
         onEditSave={() => props.onEditSave(section.key, section.editBuffer)}
         onEditCancel={() => props.onEditCancel(section.key, section.userContent ?? section.autoContent)}
         onResetToAuto={() => props.onResetToAuto(section.key)}
-        onGenerateExec={props.onGenerateExec ? () => props.onGenerateExec!(section.key) : undefined}
-        onImprove={props.onImprove ? () => props.onImprove!(section.key) : undefined}
+        onWriteWithAi={onWriteWithAi}
       />
     );
   }
@@ -1035,7 +1054,7 @@ function SectionTree(props: SectionTreeProps) {
 interface SectionCardProps {
   section: SectionState;
   canEdit: boolean;
-  exampleContent: string | null;
+  bpExamples: BPFieldExample[];
   isStreaming: boolean;
   blurb: string;
   onToggleVisible: () => void;
@@ -1045,8 +1064,7 @@ interface SectionCardProps {
   onEditSave: () => void;
   onEditCancel: () => void;
   onResetToAuto: () => void;
-  onGenerateExec?: () => void;
-  onImprove?: () => void;
+  onWriteWithAi?: () => void;
 }
 
 // ── MarkdownContent ───────────────────────────────────────────────────────────
@@ -1105,7 +1123,7 @@ function StatusChip({ section }: { section: SectionState }) {
 function SectionCard({
   section,
   canEdit,
-  exampleContent,
+  bpExamples,
   isStreaming,
   blurb,
   onToggleVisible,
@@ -1115,32 +1133,35 @@ function SectionCard({
   onEditSave,
   onEditCancel,
   onResetToAuto,
-  onGenerateExec,
-  onImprove,
+  onWriteWithAi,
 }: SectionCardProps) {
-  const [showExample, setShowExample] = useState(false);
+  const [openExample, setOpenExample] = useState(false);
+  const [exampleIdx, setExampleIdx] = useState(0);
   const hasUserOverride = section.userContent !== null;
   const displayContent = section.isEditing
     ? section.editBuffer
     : (section.userContent ?? section.autoContent);
 
+  // TIM-3112: also treat the legacy summary-field placeholder as a non-content state
+  // so Write with AI triggers generate rather than improve on those fields.
   const isPlaceholder =
     !displayContent ||
     displayContent.includes("workspace to populate") ||
     displayContent.includes("Click Generate") ||
     displayContent.includes("Complete the other") ||
     displayContent.includes("Complete the Marketing") ||
-    displayContent.includes("complete the");
+    displayContent.includes("click the text field");
 
   return (
     <div
-      className={`rounded-xl border bg-white transition-opacity ${
+      className={`group rounded-xl border bg-white transition-opacity ${
         section.isVisible ? "border-[var(--border)] opacity-100" : "border-[var(--neutral-cool-200)] opacity-60"
       }`}
     >
-      {/* Header — TIM-1679: outer wrapper so AI chips reflow to a second row at <640px */}
+      {/* Header */}
       <div className="px-4 sm:px-5 py-4">
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Toggle button — chevron + title row */}
           <button
             onClick={onToggleExpand}
             className="flex-1 flex items-center gap-2 text-left min-w-0"
@@ -1169,29 +1190,23 @@ function SectionCard({
             )}
           </button>
 
+          {/* TIM-3112: ? tooltip — InfoTip placed OUTSIDE the toggle button to avoid
+              nested <button> invalid HTML. Sibling in the flex row, visible when expanded. */}
+          {section.isExpanded && blurb && (
+            <InfoTip label={section.title}>{blurb}</InfoTip>
+          )}
+
           <div className="flex items-center gap-2 shrink-0">
-            {/* AI chips — inline from sm: up only; mobile row rendered below */}
-            {canEdit && section.isExpanded && !section.isEditing && !isStreaming && (
-              <div className="hidden sm:flex items-center gap-2">
-                {onGenerateExec && (
-                  <button
-                    onClick={onGenerateExec}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
-                  >
-                    <Wand2 className="w-3 h-3" />
-                    Generate
-                  </button>
-                )}
-                {onImprove && (
-                  <button
-                    onClick={onImprove}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
-                  >
-                    <Wand2 className="w-3 h-3" />
-                    Improve
-                  </button>
-                )}
-              </div>
+            {/* TIM-3112: Write with AI — hover-only on desktop, matches Concept workspace pattern.
+                Replaces the old Generate/Improve chips. */}
+            {canEdit && section.isExpanded && !section.isEditing && !isStreaming && onWriteWithAi && (
+              <button
+                type="button"
+                onClick={onWriteWithAi}
+                className="hidden sm:inline-flex text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                Write with AI
+              </button>
             )}
 
             {canEdit && hasUserOverride && !section.isEditing && section.isExpanded && (
@@ -1201,20 +1216,6 @@ function SectionCard({
                 className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-            )}
-
-            {exampleContent && section.isExpanded && (
-              <button
-                onClick={() => setShowExample((v) => !v)}
-                title={showExample ? "Hide example" : "See a worked example"}
-                className={`p-1.5 rounded-xl transition-colors ${
-                  showExample
-                    ? "text-[var(--teal)] bg-[var(--teal-50,#f0fdfa)]"
-                    : "text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)]"
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
               </button>
             )}
 
@@ -1232,25 +1233,31 @@ function SectionCard({
           </div>
         </div>
 
-        {/* TIM-1679: AI chips second row — mobile (<640px) only, mirrors Menu Suite CategoryHeader pattern */}
-        {canEdit && section.isExpanded && !section.isEditing && !isStreaming && (onGenerateExec || onImprove) && (
-          <div className="sm:hidden flex flex-wrap items-center gap-2 mt-2 pl-6">
-            {onGenerateExec && (
+        {/* TIM-3112: "See an example" text link + mobile Write with AI — below the title row when expanded */}
+        {section.isExpanded && (
+          <div className="flex items-center justify-between pl-6 mt-1">
+            {bpExamples.length > 0 ? (
               <button
-                onClick={onGenerateExec}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
+                type="button"
+                onClick={() => {
+                  setOpenExample((v) => !v);
+                  if (!openExample) setExampleIdx(0);
+                }}
+                className="text-xs text-[var(--teal)] font-medium hover:underline focus-visible:outline-none focus:underline"
               >
-                <Wand2 className="w-3 h-3" />
-                Generate
+                {openExample ? "Hide example" : "See an example"}
               </button>
+            ) : (
+              <span />
             )}
-            {onImprove && (
+            {/* Mobile Write with AI — always visible on touch screens */}
+            {canEdit && !section.isEditing && !isStreaming && onWriteWithAi && (
               <button
-                onClick={onImprove}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-medium text-[var(--teal)] border border-[var(--teal)] hover:bg-[var(--teal)] hover:text-white transition-colors"
+                type="button"
+                onClick={onWriteWithAi}
+                className="sm:hidden text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all"
               >
-                <Wand2 className="w-3 h-3" />
-                Improve
+                Write with AI
               </button>
             )}
           </div>
@@ -1260,6 +1267,59 @@ function SectionCard({
       {/* Body */}
       {section.isExpanded && (
         <div className="px-5 pb-5">
+          {/* TIM-3112: multi-shop example panel — matches Concept workspace styling exactly */}
+          {openExample && bpExamples.length > 0 && (() => {
+            const ex = bpExamples[exampleIdx % Math.max(bpExamples.length, 1)];
+            if (!ex) return null;
+            return (
+              <div
+                className="mb-4 bg-[var(--warm-250)] border border-[var(--warm-800)] rounded-xl p-4"
+                role="region"
+                aria-label="Sample answer from a fictional coffee shop"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="text-[10px] font-semibold text-[var(--teal)] uppercase tracking-[0.1em] leading-none">
+                      {ex.shopName}
+                    </p>
+                    <p className="text-[10px] text-[var(--muted-foreground)] italic mt-0.5">
+                      {ex.shopType}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOpenExample(false)}
+                    aria-label="Close example"
+                    className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus-visible:outline-none ml-2 shrink-0"
+                  >
+                    <X size={13} aria-hidden="true" />
+                  </button>
+                </div>
+                <p className="text-sm text-[var(--gray-1200)] leading-relaxed italic border-l-2 border-[var(--warm-950)] pl-3">
+                  {ex.answer}
+                </p>
+                <div className="flex items-center justify-between mt-3">
+                  {bpExamples.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setExampleIdx((i) => (i + 1) % bpExamples.length)}
+                      className="text-xs text-[var(--teal)] hover:underline focus-visible:outline-none focus:text-[var(--teal-dark)]"
+                    >
+                      See another shop
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setOpenExample(false)}
+                    className="text-xs font-medium text-[var(--foreground)] hover:text-[var(--teal)] transition-colors focus-visible:outline-none ml-auto"
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="border-t border-[var(--neutral-cool-150)] pt-4">
             {isStreaming && !section.editBuffer && (
               <div className="flex items-center gap-2 mb-3" role="status">
@@ -1311,45 +1371,14 @@ function SectionCard({
                 }`}
                 title={canEdit && !isPlaceholder ? "Click to edit" : undefined}
               >
-                {displayContent ? (
-                  isPlaceholder ? (
-                    <p className="text-sm text-[var(--dark-grey)] italic leading-relaxed">{displayContent}</p>
-                  ) : (
-                    <MarkdownContent content={displayContent} />
-                  )
+                {displayContent && !isPlaceholder ? (
+                  <MarkdownContent content={displayContent} />
                 ) : (
-                  <span className="text-[var(--dark-grey)] italic text-sm">No content yet.</span>
+                  <span className="text-[var(--dark-grey)] italic text-sm">No content yet. Use Write with AI to generate this section.</span>
                 )}
               </div>
             )}
           </div>
-
-          {/* Worked example panel */}
-          {showExample && exampleContent && (
-            <div className="mt-4 rounded-xl border border-[var(--neutral-cool-200)] bg-[var(--neutral-cool-50,#f9fafb)] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--neutral-cool-200)] bg-[var(--neutral-cool-100,#f3f4f6)]">
-                <div className="flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-[var(--neutral-cool-600)]" aria-hidden="true" />
-                  <span className="text-xs font-semibold text-[var(--neutral-cool-700,#374151)]">
-                    Summit Street Coffee
-                  </span>
-                  <span className="text-[10px] text-[var(--neutral-cool-500,#6b7280)] font-normal">
-                    (sample plan)
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowExample(false)}
-                  className="p-0.5 rounded text-[var(--neutral-cool-500)] hover:text-[var(--foreground)] transition-colors"
-                  aria-label="Close example"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="px-4 py-3">
-                <MarkdownContent content={exampleContent} />
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
