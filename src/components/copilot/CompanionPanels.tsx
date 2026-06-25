@@ -1,12 +1,13 @@
 "use client";
 
-// TIM-2416 — AI Companion v3: mode strip + Check + Benchmark panels.
+// TIM-2416 — AI Companion v3: mode strip + Check panel.
+// TIM-3072 — Benchmark mode removed (duplicate of Check per board observation).
 //
-// The drawer hosts three modes — Coach / Check / Benchmark. Coach renders
-// the existing chat surface in `CoPilotDrawer`. Check and Benchmark render
+// The drawer hosts two primary modes — Coach / Check. Coach renders
+// the existing chat surface in `CoPilotDrawer`. Check renders
 // audit-style finding cards (Issue / Why it matters / Suggested fix) in the
 // narrow drawer panel. This file owns the slim card variant and the empty /
-// scanning / populated states for both scan modes.
+// scanning / populated states for the Check scan mode.
 //
 // Card adjustments vs the Business-Plan Quality Check panel (UX spec §4):
 //   - chip + title row is `flex-wrap` so long issue strings don't compress
@@ -15,12 +16,13 @@
 //   - card container is `bg-white rounded-xl border px-3 py-3 space-y-2`.
 
 import { useCallback, useMemo, useState } from "react";
-import { ArrowRight, BarChart2, ExternalLink, ShieldCheck } from "lucide-react";
+import { ArrowRight, ExternalLink, ShieldCheck } from "lucide-react";
 import type { AuditFinding, AuditReport, AuditSeverity } from "@/lib/business-plan/audit";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
 
 // TIM-2434: "import" mode added for the document-import companion surface.
-export type CompanionMode = "coach" | "check" | "benchmark" | "import";
+// TIM-3072: "benchmark" removed — Check covers the same surface.
+export type CompanionMode = "coach" | "check" | "import";
 
 const SEVERITY_CONFIG: Readonly<Record<AuditSeverity, { label: string; className: string }>> = {
   critical: {
@@ -182,7 +184,6 @@ interface ModeStripProps {
 const MODE_LABEL: Record<CompanionMode, string> = {
   coach: "Coach",
   check: "Check",
-  benchmark: "Benchmark",
   import: "Import",
 };
 
@@ -194,7 +195,7 @@ export function ModeStrip({ activeMode, onSelect }: ModeStripProps) {
         aria-label="Companion mode"
         className="flex items-center gap-1 bg-white border border-[var(--border)] rounded-xl p-1"
       >
-        {(["coach", "check", "benchmark", "import"] as const).map((mode) => {
+        {(["coach", "check", "import"] as const).map((mode) => {
           const active = activeMode === mode;
           return (
             <button
@@ -413,137 +414,3 @@ export function CheckPanel({
   );
 }
 
-// ── Benchmark mode panel. ────────────────────────────────────────────────────
-
-export interface BenchmarkPanelProps {
-  scopeLabel: string;
-  report: AuditReport | null;
-  isScanning: boolean;
-  error: string | null;
-  onRun: () => void;
-  onApply: (finding: AuditFinding) => void;
-  onGoToSource: (finding: AuditFinding) => void;
-  // TIM-2453: same hook the Check panel uses — benchmark-mode cross-suite
-  // findings (none registered today, but the API is symmetrical so the next
-  // pair plugs in without touching this signature).
-  resolverConflictIdFor?: (finding: AuditFinding) => string | null;
-  onOpenCrossSuite?: (conflictId: string) => void;
-}
-
-export function BenchmarkPanel({
-  scopeLabel,
-  report,
-  isScanning,
-  error,
-  onRun,
-  onApply,
-  onGoToSource,
-  resolverConflictIdFor,
-  onOpenCrossSuite,
-}: BenchmarkPanelProps) {
-  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
-  const handleDismiss = useCallback((id: string) => {
-    setDismissed((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-  }, []);
-  const visibleFindings = useMemo(() => {
-    if (!report) return [] as AuditFinding[];
-    return report.findings.filter((f) => !dismissed.has(f.id));
-  }, [report, dismissed]);
-
-  if (isScanning) {
-    return (
-      <div className="flex flex-col items-center justify-center text-center py-10 px-4">
-        <div
-          className="w-8 h-8 rounded-full border-2 border-[var(--teal)] border-t-transparent animate-spin mb-4"
-          aria-hidden="true"
-        />
-        <p className="text-sm font-medium text-[var(--foreground)] mb-1">
-          Running benchmark...
-        </p>
-        <p className="text-sm text-[var(--muted-foreground)]">
-          Comparing your numbers now.
-        </p>
-      </div>
-    );
-  }
-
-  if (!report) {
-    return (
-      <div className="flex flex-col items-center justify-center text-center py-10 px-4">
-        <div className="w-12 h-12 rounded-2xl bg-[var(--teal)]/10 flex items-center justify-center mb-4">
-          <BarChart2 className="w-6 h-6 text-[var(--teal)]" aria-hidden="true" />
-        </div>
-        <p className="text-sm font-semibold text-[var(--foreground)] mb-1">
-          Compare your numbers to other shops
-        </p>
-        <p className="text-sm text-[var(--muted-foreground)] mb-2 max-w-[260px] leading-relaxed">
-          See how your projections stack up against coffee shops at a similar stage.
-        </p>
-        <p className="text-xs text-[var(--muted-foreground)] mb-6">{scopeLabel}</p>
-        {error && (
-          <p className="text-xs text-red-700 mb-4 max-w-[260px]">{error}</p>
-        )}
-        <button
-          type="button"
-          onClick={onRun}
-          className="bg-[var(--teal)] text-white rounded-xl px-5 py-2.5 text-sm font-semibold hover:bg-[var(--teal-dark)] transition-colors"
-        >
-          Run Benchmark
-        </button>
-      </div>
-    );
-  }
-
-  if (visibleFindings.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center text-center py-10 px-4">
-        <div className="w-12 h-12 rounded-2xl bg-[var(--teal)]/10 flex items-center justify-center mb-4">
-          <BarChart2 className="w-6 h-6 text-[var(--teal)]" aria-hidden="true" />
-        </div>
-        <p className="text-sm font-semibold text-[var(--foreground)] mb-1">
-          Your numbers are in range
-        </p>
-        <p className="text-sm text-[var(--muted-foreground)] mb-2 max-w-[260px] leading-relaxed">
-          Nothing stood out against industry benchmarks for this scope.
-        </p>
-        <p className="text-xs text-[var(--muted-foreground)] mb-6">{scopeLabel}</p>
-        <button
-          type="button"
-          onClick={onRun}
-          className="text-xs font-semibold text-[var(--teal)] hover:underline"
-        >
-          Run again
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between pb-3">
-        <p className="text-[11px] text-[var(--muted-foreground)]">
-          {visibleFindings.length} {visibleFindings.length === 1 ? "item" : "items"} found
-        </p>
-        <button
-          type="button"
-          onClick={onRun}
-          className="text-[11px] font-semibold text-[var(--teal)] hover:underline"
-        >
-          Re-run
-        </button>
-      </div>
-      <FindingList
-        findings={visibleFindings}
-        onApply={onApply}
-        onGoToSource={onGoToSource}
-        onDismiss={handleDismiss}
-        resolverConflictIdFor={resolverConflictIdFor}
-        onOpenCrossSuite={onOpenCrossSuite}
-      />
-    </div>
-  );
-}

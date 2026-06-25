@@ -289,7 +289,7 @@ function RatioCard({ ratio }: { ratio: Ratio }) {
     if (typeof window === "undefined") return;
     window.dispatchEvent(
       new CustomEvent("copilot:open-in-mode", {
-        detail: { mode: "benchmark", scope: "financials" },
+        detail: { mode: "check", scope: "financials" },
       }),
     );
   };
