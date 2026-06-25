@@ -11,7 +11,12 @@ import {
   isSupabaseAuthCookie,
 } from "@/lib/auth/remember-me";
 import { resolveNext } from "@/lib/safe-next";
-import { deleteAllVerifierVariants, verifierPresentInDocumentCookie } from "./clear-stale-verifier";
+import {
+  defaultPurgeEnv,
+  deleteAllVerifierVariants,
+  purgeAllSupabaseCookies,
+  verifierPresentInDocumentCookie,
+} from "./clear-stale-verifier";
 import { newCorrId } from "@/lib/oauth-diag";
 
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -166,6 +171,18 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     // verifier write is the ONLY thing touching the verifier slot for the
     // rest of the flow.
     await supabase.auth.signOut({ scope: "local" });
+    // TIM-2327 (2026-06-25): zombie-cookie purge. Board screenshot diag
+    // captured `stale_verifiers=400` with `verifier_cookies=0` at callback —
+    // 400 verifier cookies accumulated under historic Path/Domain attrs that
+    // supabase-ssr's signOut and the per-verifier deletion below could not
+    // match. With the jar that bloated, Chrome's ~180-per-domain cap evicted
+    // supabase-js's fresh verifier between pre-nav and callback. The purge
+    // here uses the Cookie Store API to delete each cookie at its EXACT
+    // attributes (no Path/Domain guessing) plus a broader document.cookie
+    // blast as fallback for Firefox/Safari. Covers sb-*-auth-token zombies
+    // too — they overflow the same jar even when only the verifier matters
+    // for this round-trip.
+    const purgeResult = await purgeAllSupabaseCookies(defaultPurgeEnv());
     setHandoffCookie("gw_oauth_signup_source", getSignupSource());
     const next = getNextParam();
     if (next) setHandoffCookie("gw_oauth_next", next);
@@ -216,6 +233,12 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     // verifier write has landed in document.cookie) but BEFORE the manual nav,
     // so they're in the jar when /auth/callback runs on the round-trip back.
     setHandoffCookie("gw_oauth_stale_verifiers", String(staleVerifierCount));
+    // TIM-2327 (2026-06-25): expose the purge outcome so the callback diag can
+    // show whether the new zombie-cookie cleanup actually ran on this attempt.
+    // method=dom-fallback means Cookie Store API wasn't available (Firefox /
+    // Safari); cookie-store-api or +dom-fallback means it ran.
+    setHandoffCookie("gw_oauth_purge_method", purgeResult.method);
+    setHandoffCookie("gw_oauth_purge_total", String(purgeResult.deleted));
     setHandoffCookie(
       "gw_oauth_verifier_pre_nav",
       typeof document !== "undefined" && verifierPresentInDocumentCookie(document.cookie) ? "1" : "0"

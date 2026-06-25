@@ -22,6 +22,9 @@ const HANDOFF_COOKIES = [
   "gw_oauth_verifier_pre_nav",
   "gw_oauth_stale_verifiers",
   "gw_oauth_corr_id",
+  // TIM-2327 (2026-06-25): zombie-cookie purge telemetry. See login-form.tsx.
+  "gw_oauth_purge_method",
+  "gw_oauth_purge_total",
 ] as const;
 
 function clearHandoffCookies(res: NextResponse) {
@@ -91,6 +94,14 @@ export async function GET(request: Request) {
   // was load-bearing for the user (a stale sibling at a different Path/Domain
   // would have shadowed the fresh write and broken the round-trip).
   const staleVerifiers = cookieStore.get("gw_oauth_stale_verifiers")?.value;
+  // TIM-2327 (2026-06-25): purge telemetry from login-form. method tells us
+  // whether Cookie Store API ran (= cookies deleted by exact attribute) or
+  // we fell back to the document.cookie blast (= attribute-guessing). total
+  // is the count of cookies the purge asked to clear. On the next failure
+  // diag, `purge_method=cookie-store-api*` + `verifier_cookies=0` rules out
+  // the zombie-overflow hypothesis and points us at a different root cause.
+  const purgeMethod = cookieStore.get("gw_oauth_purge_method")?.value;
+  const purgeTotal = cookieStore.get("gw_oauth_purge_total")?.value;
   const userAgent = request.headers.get("user-agent") ?? "";
   const browserHint = browserHintFromUA(userAgent);
 
@@ -117,6 +128,8 @@ export async function GET(request: Request) {
     verifier_chunks: verifierChunked.length,
     verifier_pre_nav: verifierPreNav ?? "absent",
     stale_verifiers: staleVerifiers ?? "absent",
+    purge_method: purgeMethod ?? "absent",
+    purge_total: purgeTotal ?? "absent",
     auth_token_cookies: authTokenCookies.length,
     handoff_cookies: handoffPresent,
     remember_me: rememberMeRaw ?? "absent",
@@ -199,6 +212,8 @@ export async function GET(request: Request) {
       verifier_chunks: verifierChunked.length,
       verifier_pre_nav: verifierPreNav ?? "absent",
       stale_verifiers: staleVerifiers ?? "absent",
+      purge_method: purgeMethod ?? "absent",
+      purge_total: purgeTotal ?? "absent",
       auth_token_cookies: authTokenCookies.length,
       handoff_cookies: handoffPresent,
       browser: browserHint,
@@ -213,6 +228,8 @@ export async function GET(request: Request) {
       verifier_chunks: verifierChunked.length,
       verifier_pre_nav: verifierPreNav ?? "absent",
       stale_verifiers: staleVerifiers ?? "absent",
+      purge_method: purgeMethod ?? "absent",
+      purge_total: purgeTotal ?? "absent",
       auth_token_cookies: authTokenCookies.length,
       handoff_cookies: handoffPresent,
       remember_me: rememberMeRaw ?? "absent",

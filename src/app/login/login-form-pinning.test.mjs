@@ -58,3 +58,42 @@ test("re-entry guard (googleInFlightRef) still gates handler before signOut (TIM
     "re-entry guard must be set synchronously BEFORE any await — a double-click that fires two signOuts is still a race",
   );
 });
+
+// TIM-2327 (2026-06-25): pin the zombie-cookie purge between signOut and
+// signInWithOAuth. Board screenshot showed `stale_verifiers=400` with
+// `verifier_cookies=0` at callback — the user had 400 verifier-named cookies
+// the prior per-verifier deletion could not clear because Path/Domain attrs
+// did not match any tried variant. The cookie-jar overflow evicted the fresh
+// verifier between pre-nav and callback. purgeAllSupabaseCookies sits in the
+// gap to clear ALL sb-* zombies (verifier + auth-token) at exact attrs via
+// Cookie Store API, with a broader DOM blast as fallback.
+test("handleGoogleSignIn calls purgeAllSupabaseCookies(defaultPurgeEnv()) after signOut, before signInWithOAuth", () => {
+  assert.match(
+    loginFormSrc,
+    /await purgeAllSupabaseCookies\(defaultPurgeEnv\(\)\)/,
+    "purgeAllSupabaseCookies call missing — TIM-2327 zombie-cookie fix regressed",
+  );
+  const signOutIdx = indexOfFirst("supabase.auth.signOut");
+  const purgeIdx = indexOfFirst("purgeAllSupabaseCookies(");
+  const signInIdx = indexOfFirst("supabase.auth.signInWithOAuth");
+  assert.ok(
+    signOutIdx < purgeIdx && purgeIdx < signInIdx,
+    `purge at ${purgeIdx} must sit between signOut at ${signOutIdx} and signInWithOAuth at ${signInIdx}`,
+  );
+});
+
+test("purge telemetry is handed off to the callback diag (purge_method + purge_total)", () => {
+  // The handoff cookies surface in /auth/callback's exchange_failed diag so
+  // the next failure shows whether the purge ran and what method (Cookie
+  // Store API vs DOM blast). Without this, a recurrence is unobservable.
+  assert.match(
+    loginFormSrc,
+    /setHandoffCookie\("gw_oauth_purge_method",\s*purgeResult\.method\)/,
+    "gw_oauth_purge_method handoff missing — diag would not show whether new purge ran",
+  );
+  assert.match(
+    loginFormSrc,
+    /setHandoffCookie\("gw_oauth_purge_total",\s*String\(purgeResult\.deleted\)\)/,
+    "gw_oauth_purge_total handoff missing",
+  );
+});
