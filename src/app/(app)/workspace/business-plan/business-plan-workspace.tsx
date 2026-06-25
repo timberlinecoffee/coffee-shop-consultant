@@ -963,7 +963,6 @@ function SectionTree(props: SectionTreeProps) {
       displayContent.includes("Click Generate") ||
       displayContent.includes("Complete the other") ||
       displayContent.includes("Complete the Marketing") ||
-      displayContent.includes("complete the") ||
       displayContent.includes("click the text field");
     const hasRealContent = Boolean(displayContent?.trim()) && !hasPlaceholderContent;
     const onWriteWithAi =
@@ -1159,7 +1158,6 @@ function SectionCard({
     displayContent.includes("Click Generate") ||
     displayContent.includes("Complete the other") ||
     displayContent.includes("Complete the Marketing") ||
-    displayContent.includes("complete the") ||
     displayContent.includes("click the text field");
 
   return (
