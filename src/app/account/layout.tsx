@@ -7,6 +7,7 @@ import {
   isWorkspaceStatus,
   type WorkspaceStatus,
 } from "@/lib/workspace-status";
+import { getActivePlanId } from "@/lib/plan-context";
 import { CurrencyProvider } from "@/components/CurrencyProvider";
 import { UiRevampProvider } from "@/components/UiRevampProvider";
 import { getAccountSettings } from "@/lib/account-settings";
@@ -45,19 +46,16 @@ export default async function AccountLayout({
 
   const initialStatuses: Record<string, WorkspaceStatus> = {};
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // TIM-3070: use canonical getActivePlanId so the sidebar badges on /account
+  // match the active plan (users.current_plan_id), not latest-by-created_at —
+  // same fix as WorkspaceStatusBootstrap (TIM-2962) and the API writer.
+  const activePlanId = await getActivePlanId(supabase, user.id);
 
-  if (plan?.id) {
+  if (activePlanId) {
     const { data: rows } = await supabase
       .from("workspace_status")
       .select("component_key, status")
-      .eq("plan_id", plan.id);
+      .eq("plan_id", activePlanId);
 
     for (const row of rows ?? []) {
       if (isWorkspaceStatus(row.status)) {

@@ -15,6 +15,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarV2, type SidebarV2UserInfo } from "@/components/SidebarV2";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
@@ -58,6 +59,7 @@ export function WorkspaceProgressProvider({
   children: React.ReactNode;
 }) {
   const uiRevamp = useUiRevamp();
+  const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [statusByKey, setStatusByKey] = useState<Map<string, WorkspaceStatus>>(
     () => new Map(Object.entries(initialStatuses).filter(([, v]) => isWorkspaceStatus(v)))
@@ -113,6 +115,12 @@ export function WorkspaceProgressProvider({
           body: JSON.stringify({ componentKey, status, mode: "set" }),
         });
         if (!res.ok) throw new Error(`status ${res.status}`);
+        // TIM-3070: invalidate the Next.js Router Cache so the dashboard
+        // progress tracker (and any other server-rendered surface that reads
+        // workspace_status) refetches on next navigation. Without this, marking
+        // Concept Complete from the workspace top-right doesn't show up on
+        // /dashboard until a hard reload.
+        router.refresh();
       } catch (err) {
         // Rollback on failure.
         setStatusByKey((prev) => {
@@ -125,7 +133,7 @@ export function WorkspaceProgressProvider({
         console.warn("Failed to update workspace status", err);
       }
     },
-    [initialStatuses]
+    [initialStatuses, router]
   );
 
   // De-dupe promote-on-edit fire-and-forgets in a single session.
