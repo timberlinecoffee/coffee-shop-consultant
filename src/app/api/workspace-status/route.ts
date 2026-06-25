@@ -6,8 +6,17 @@
 // Auto-promotion: clients fire-and-forget POST with mode='promote_on_edit'
 // when a workspace receives its first edit; the server promotes
 // `not_started` → `in_progress` only, never overrides `complete`.
+//
+// TIM-3070: plan lookup uses the canonical getActivePlanId resolver so writes
+// land on users.current_plan_id, matching the read paths in
+// WorkspaceStatusBootstrap (TIM-2962) and dashboard/plan-overview. The
+// previous latest-by-created_at resolver caused writes to land on a different
+// plan than the one being read for multi-plan users, so the Concept (and any)
+// workspace appeared to revert on reload and the dashboard never reflected
+// the change.
 
 import { createClient } from "@/lib/supabase/server";
+import { getActivePlanId } from "@/lib/plan-context";
 import {
   isWorkspaceStatus,
   type WorkspaceStatus,
@@ -22,16 +31,9 @@ async function loadPlanId(supabase: Awaited<ReturnType<typeof createClient>>) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Unauthorized" as const, status: 401 };
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!plan?.id) return { error: "No plan found" as const, status: 404 };
-  return { planId: plan.id as string };
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) return { error: "No plan found" as const, status: 404 };
+  return { planId };
 }
 
 export async function GET() {
