@@ -811,7 +811,8 @@ export function CoPilotDrawer({
       }>).detail;
       if (!detail) return;
       openDrawer();
-      if (detail.mode) setActiveMode(detail.mode);
+      const VALID_MODES: CompanionMode[] = ["coach", "check", "import"];
+      if (detail.mode && VALID_MODES.includes(detail.mode)) setActiveMode(detail.mode);
       if (detail.scope !== undefined) setActiveScope(detail.scope);
     };
     window.addEventListener("copilot:open-in-mode", handler);
@@ -1028,8 +1029,6 @@ export function CoPilotDrawer({
       }
       if (typeof detail.prompt === "string" && detail.prompt.trim().length > 0) {
         if (detail.autoSubmit && performSendRef.current) {
-          // TIM-2902: force Coach mode so the user message bubble actually
-          // renders — Check/Benchmark/Import modes don't show the transcript.
           // TIM-2902: force Coach mode so the user message bubble actually
           // renders — Check/Import modes don't show the transcript.
           setActiveMode("coach");

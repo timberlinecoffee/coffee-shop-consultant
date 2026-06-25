@@ -1814,7 +1814,7 @@ function ProjectionsTab({
           </ul>
         ) : !canEdit ? null : (
           <p className="px-5 py-4 text-sm text-[var(--dark-grey)]">
-            Run an assessment to get benchmarked feedback on your projections.
+            Run an assessment to get feedback on your projections.
           </p>
         )}
         {localAssessment?.generated_at && (
