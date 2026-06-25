@@ -1,30 +1,19 @@
 // TIM-1040: Launch plan milestone — update and delete by ID.
+// TIM-2980: switched off inline latest-by-created plan resolver — use canonical
+// getActivePlanId (TIM-2377) so plan ID agrees with users.current_plan_id.
 import { createClient } from "@/lib/supabase/server"
+import { getActivePlanId } from "@/lib/plan-context"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 import type { NextRequest } from "next/server"
 
 type RouteCtx = { params: Promise<{ id: string }> }
 
-async function getAuthedPlan() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { supabase, user: null, planId: null }
-
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  return { supabase, user, planId: plan?.id ?? null }
-}
-
 export async function PATCH(request: NextRequest, { params }: RouteCtx) {
   const { id } = await params
-  const { supabase, user, planId } = await getAuthedPlan()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const { data: profile } = await supabase
@@ -78,8 +67,10 @@ export async function PATCH(request: NextRequest, { params }: RouteCtx) {
 
 export async function DELETE(_request: NextRequest, { params }: RouteCtx) {
   const { id } = await params
-  const { supabase, user, planId } = await getAuthedPlan()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+  const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const { data: profile } = await supabase

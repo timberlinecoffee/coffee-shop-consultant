@@ -1,16 +1,10 @@
+// TIM-2980: switched off inline .single() plan resolver — use canonical
+// getActivePlanId (TIM-2377) so plan ID agrees with users.current_plan_id.
 import { createClient } from "@/lib/supabase/server";
+import { getActivePlanId } from "@/lib/plan-context";
 import { isSubscriptionActive } from "@/lib/access";
 import { normalizeMonthlyProjections } from "@/lib/financial-projection";
-import { getActivePlanId } from "@/lib/plan-context";
 import type { NextRequest } from "next/server";
-
-async function getAuthedPlanId() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null, planId: null };
-  const planId = await getActivePlanId(supabase, user.id);
-  return { supabase, user, planId };
-}
 
 async function checkPaywall(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data: profile } = await supabase
@@ -22,8 +16,10 @@ async function checkPaywall(supabase: Awaited<ReturnType<typeof createClient>>, 
 }
 
 export async function GET() {
-  const { supabase, user, planId } = await getAuthedPlanId();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const planId = await getActivePlanId(supabase, user.id);
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 });
 
   const { data, error } = await supabase
@@ -75,8 +71,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const { supabase, user, planId } = await getAuthedPlanId();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const planId = await getActivePlanId(supabase, user.id);
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 });
 
   if (!(await checkPaywall(supabase, user.id))) {

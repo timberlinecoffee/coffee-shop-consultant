@@ -3,7 +3,10 @@
 // /workspace/opening-month-plan/page.tsx loader so the underlying workspace
 // component sees an identical Props payload regardless of which sub-page
 // rendered it.
+// TIM-2980: switched off inline latest-by-created plan resolver — use canonical
+// getActivePlanId (TIM-2377) so SSR planId agrees with users.current_plan_id.
 import { createClient } from "@/lib/supabase/server";
+import { getActivePlanId } from "@/lib/plan-context";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan";
@@ -26,17 +29,8 @@ export async function loadLaunchPlanWorkspaceData(): Promise<LaunchPlanLoaderRes
 
   if (!user) redirect("/login");
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!plan) redirect("/onboarding");
-
-  const planId = plan.id;
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) redirect("/onboarding");
 
   const [
     { data: milestonesData },
