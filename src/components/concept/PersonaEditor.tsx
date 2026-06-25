@@ -185,7 +185,13 @@ export function PersonaEditor({
           </div>
 
           {/* Why they visit */}
-          <div>
+          {/* TIM-2972: per-field "Write with AI" hidden until field hover/focus.
+              Canonical pattern: opacity-0 + group-hover/group-focus-within
+              (mirrors concept-editor card chrome). focus-within keeps the
+              button reachable for keyboard users tabbing through the field
+              and revealed on touch surfaces where the textarea is tapped to
+              focus. */}
+          <div className="group">
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-semibold text-[var(--foreground)]" htmlFor="persona-why">
                 Why they visit <span className="text-[var(--error)]">*</span>
@@ -194,7 +200,7 @@ export function PersonaEditor({
                 <button
                   type="button"
                   onClick={() => triggerAI("whyTheyVisit")}
-                  className="text-[10px] font-medium text-[var(--teal)] hover:underline"
+                  className="text-[10px] font-medium text-[var(--teal)] hover:underline opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity"
                 >
                   Write with AI
                 </button>
@@ -215,7 +221,7 @@ export function PersonaEditor({
           </div>
 
           {/* Pain points */}
-          <div>
+          <div className="group">
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-semibold text-[var(--foreground)]" htmlFor="persona-pain">
                 Pain points
@@ -224,7 +230,7 @@ export function PersonaEditor({
                 <button
                   type="button"
                   onClick={() => triggerAI("painPoints")}
-                  className="text-[10px] font-medium text-[var(--teal)] hover:underline"
+                  className="text-[10px] font-medium text-[var(--teal)] hover:underline opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity"
                 >
                   Write with AI
                 </button>
@@ -242,7 +248,7 @@ export function PersonaEditor({
           </div>
 
           {/* TIM-1476: Typical order. TIM-2898: per-field Write with AI parity with whyTheyVisit/painPoints. */}
-          <div>
+          <div className="group">
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-semibold text-[var(--foreground)]" htmlFor="persona-order">
                 What do they typically order?
@@ -251,7 +257,7 @@ export function PersonaEditor({
                 <button
                   type="button"
                   onClick={() => triggerAI("typicalOrder")}
-                  className="text-[10px] font-medium text-[var(--teal)] hover:underline"
+                  className="text-[10px] font-medium text-[var(--teal)] hover:underline opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity"
                 >
                   Write with AI
                 </button>
