@@ -17,16 +17,13 @@ import {
   Sparkles,
   ExternalLink,
   Printer,
-  TrendingUp,
   ChevronDown,
   CheckCircle,
   Circle,
   Minus,
 } from "lucide-react";
 import { PaywallModal } from "@/components/paywall-modal";
-import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
-import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -214,7 +211,7 @@ interface Props {
 }
 
 type GeneratableSection = SopCategoryKey | "roles" | "vendor_contacts" | "training";
-type OperationsView = "playbook" | "how-you-compare";
+type OperationsView = "playbook";
 
 export function OperationsPlaybookWorkspace({
   planId,
@@ -230,14 +227,10 @@ export function OperationsPlaybookWorkspace({
     "no_subscription" | "paused" | "expired" | null
   >(null);
   const [generating, setGenerating] = useState<GeneratableSection | null>(null);
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
-  const { openAIReviewModal: openBenchmarkAIReviewModal, AIReviewModalNode: benchmarkAIReviewModalNode } = useAIReviewModal();
   const [activeView, setActiveView] = useState<OperationsView>("playbook");
-  const [benchmarkYellowCount, setBenchmarkYellowCount] = useState(0);
 
-  const opsTabs: { id: OperationsView; label: string; Icon?: typeof TrendingUp; badge?: number }[] = [
+  const opsTabs: { id: OperationsView; label: string }[] = [
     { id: "playbook", label: "Playbook" },
-    { id: "how-you-compare", label: "How You Compare", Icon: TrendingUp, badge: benchmarkYellowCount || undefined },
   ];
 
   const { promoteOnEdit } = useWorkspaceStatus();
@@ -297,33 +290,6 @@ export function OperationsPlaybookWorkspace({
     [],
   );
 
-  // TIM-1561: routes AI result through unified review modal before applying.
-  // TIM-2382: apply Scout suggest_workspace_changes proposals for operations playbook.
-  // fieldId = "sectionKey" (full section JSON replacement) or "sectionKey.intro"
-  // (intro text only). Doc autosaves via useEffect watcher.
-  const handleApplyPlaybookSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
-    setDoc((prev) => {
-      let next = { ...prev };
-      for (const c of accepted) {
-        const dotIdx = c.fieldId.indexOf(".");
-        const section = dotIdx === -1 ? c.fieldId : c.fieldId.slice(0, dotIdx);
-        const subField = dotIdx === -1 ? "" : c.fieldId.slice(dotIdx + 1);
-        if (subField === "intro") {
-          const s = next[section as keyof OperationsPlaybookDocument] as { intro: string };
-          if (s && typeof s === "object" && "intro" in s) {
-            next = { ...next, [section]: { ...s, intro: c.finalValue } };
-          }
-        } else {
-          try {
-            const val = JSON.parse(c.finalValue) as OperationsPlaybookDocument[keyof OperationsPlaybookDocument];
-            next = { ...next, [section as keyof OperationsPlaybookDocument]: val };
-          } catch { /* ignore non-JSON */ }
-        }
-      }
-      return next;
-    });
-  }, []);
-
   // Section statuses for progress bar
   const statuses = OPERATIONS_SECTION_KEYS.map((key) =>
     getSectionStatus(doc, key, initialRecipeCards.length),
@@ -331,8 +297,6 @@ export function OperationsPlaybookWorkspace({
 
   return (
     <>
-    {AIReviewModalNode}
-    {benchmarkAIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1894: canonical WorkspaceHeader — description in the left column
@@ -376,10 +340,10 @@ export function OperationsPlaybookWorkspace({
           }
         />
 
-        {/* TIM-2472: top-level view switcher — Playbook vs How You Compare */}
+        {/* TIM-2472: top-level view switcher — Playbook */}
         <div className="mb-5">
           <WorkspaceSubNav
-            tabs={opsTabs.map((t) => ({ key: t.id, label: t.label, Icon: t.Icon, badge: t.badge }))}
+            tabs={opsTabs.map((t) => ({ key: t.id, label: t.label }))}
             active={activeView}
             onSelect={setActiveView}
             ariaLabel="Operations Playbook views"
@@ -454,46 +418,6 @@ export function OperationsPlaybookWorkspace({
           </div>
         )}
 
-        {activeView === "how-you-compare" && (
-          <BenchmarkDashboard
-            workspaceSlug="operations-playbook"
-            onYellowCountChange={setBenchmarkYellowCount}
-            onAskBenchmark={(metricId, metricLabel) => {
-              // TIM-2450: hand off to the Scout drawer in Benchmark mode with
-              // the metric in scope.
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(
-                  new CustomEvent("copilot:open-in-mode", {
-                    detail: {
-                      mode: "check",
-                      scope: "operations_playbook",
-                      focus: { metricId, metricLabel },
-                    },
-                  }),
-                );
-              }
-            }}
-            onApplySuggestion={(drilldown) => {
-              const proposed = drilldown.proposedFormatted ?? drilldown.userValue;
-              openBenchmarkAIReviewModal({
-                suggestions: [
-                  {
-                    id: `bench:${drilldown.metricId}`,
-                    fieldId: drilldown.metricId,
-                    fieldLabel: drilldown.metricLabel,
-                    originalValue: drilldown.userValue,
-                    proposedValue: proposed,
-                  },
-                ],
-                context: { workspace: "operations_playbook", section: "How You Compare" },
-                onApply: async () => {
-                  // Phase 3: review-modal-only path; per-metric write paths
-                  // follow in a child issue.
-                },
-              });
-            }}
-          />
-        )}
       </div>
 
 

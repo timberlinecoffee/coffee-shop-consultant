@@ -1,8 +1,18 @@
 // TIM-1140: CRUD for menu_categories (per-plan, user-editable).
+// TIM-3247: PATCH also accepts target_cogs_low_pct / target_cogs_high_pct for the preset picker.
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { toTitleCase } from "@/lib/text"
+import { z } from "zod"
 import type { NextRequest } from "next/server"
+
+// TIM-3247: Standing Rule 3 — server-side Zod validation for COGS range fields.
+const CogsRangePatchSchema = z.object({
+  target_cogs_low_pct: z.number().min(0).max(100),
+  target_cogs_high_pct: z.number().min(0).max(100),
+}).refine((v) => v.target_cogs_low_pct < v.target_cogs_high_pct, {
+  message: "Low must be less than high",
+})
 
 export const runtime = "nodejs"
 
@@ -146,6 +156,24 @@ export async function PATCH(request: NextRequest) {
   }
   if ("position" in rest && typeof rest.position === "number") {
     allowed.position = rest.position
+  }
+
+  // TIM-3247: COGS range update — Zod-validated pair (both fields required together).
+  if ("target_cogs_low_pct" in rest || "target_cogs_high_pct" in rest) {
+    const parsed = CogsRangePatchSchema.safeParse({
+      target_cogs_low_pct: rest.target_cogs_low_pct,
+      target_cogs_high_pct: rest.target_cogs_high_pct,
+    })
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid COGS range" },
+        { status: 400 },
+      )
+    }
+    // Safety gate: never overwrite a range that is already set unless the caller
+    // explicitly passes both values (the picker always does — this is belt-and-braces).
+    allowed.target_cogs_low_pct  = parsed.data.target_cogs_low_pct
+    allowed.target_cogs_high_pct = parsed.data.target_cogs_high_pct
   }
 
   const { data, error } = await supabase

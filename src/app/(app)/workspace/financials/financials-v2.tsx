@@ -24,7 +24,6 @@ import { PersonnelEditor } from "./personnel-editor";
 import { OrgSyncPanel } from "./org-sync-panel";
 import { ForecastLinesEditor } from "./forecast-lines-editor";
 import { PaywallModal } from "@/components/paywall-modal";
-import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { LabelWithHint } from "@/components/ui/label-with-hint";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -52,7 +51,6 @@ import {
   manualOverrideCountsByLine,
   fiscalYearMonthLabels,
 } from "@/lib/financial-projection";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import type { CritiqueResult } from "@/lib/financials";
 import type { MinWageInfo } from "@/lib/wages/minimum-wage";
 import type { OpeningRunwayResult } from "@/lib/business-plan/opening-runway";
@@ -60,7 +58,7 @@ import type { EquipmentItem } from "./financials-workspace";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type V2Tab = "inputs" | "reports" | "compare";
+type V2Tab = "inputs" | "reports";
 type SectionStatus = "complete" | "in_progress" | "empty";
 
 // ── Shared day constants ───────────────────────────────────────────────────────
@@ -257,8 +255,6 @@ export interface FinancialsV2Props {
   minimumWage: MinWageInfo | null;
   paywallOpen: boolean;
   onPaywallClose: () => void;
-  benchmarkYellowCount: number;
-  onBenchmarkYellowCountChange: (n: number) => void;
   onOpenWizard: () => void;
   initialTrialMessagesUsed?: number;
 }
@@ -1290,14 +1286,10 @@ export function FinancialsV2({
   minimumWage,
   paywallOpen,
   onPaywallClose,
-  benchmarkYellowCount,
-  onBenchmarkYellowCountChange,
   onOpenWizard,
   initialTrialMessagesUsed,
 }: FinancialsV2Props) {
   const [activeTab, setActiveTab] = useState<V2Tab>("inputs");
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
-
   const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
   const currencyCode = mp.currency_code ?? "USD";
   const manualLines = mp.manual_lines ?? [];
@@ -1313,7 +1305,6 @@ export function FinancialsV2({
   const tabs: { id: V2Tab; label: string; badge?: number }[] = [
     { id: "inputs", label: "Inputs" },
     { id: "reports", label: "Reports" },
-    { id: "compare", label: "Compare", badge: benchmarkYellowCount || undefined },
   ];
 
   const lastSavedAt =
@@ -1321,7 +1312,6 @@ export function FinancialsV2({
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      {AIReviewModalNode}
       <div className="w-full px-6 pt-8 pb-16">
         <WorkspaceHeader
           Icon={BarChart2}
@@ -1473,37 +1463,6 @@ export function FinancialsV2({
           />
         )}
 
-        {/* ── Compare tab ───────────────────────────────────────────────────── */}
-        {activeTab === "compare" && (
-          <BenchmarkDashboard
-            workspaceSlug="financials"
-            onYellowCountChange={onBenchmarkYellowCountChange}
-            onAskBenchmark={(metricId, metricLabel) => {
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(
-                  new CustomEvent("copilot:open-in-mode", {
-                    detail: { mode: "check", scope: "financials", focus: { metricId, metricLabel } },
-                  })
-                );
-              }
-            }}
-            onApplySuggestion={(drilldown) => {
-              openAIReviewModal({
-                suggestions: [
-                  {
-                    id: `bench:${drilldown.metricId}`,
-                    fieldId: drilldown.metricId,
-                    fieldLabel: drilldown.metricLabel,
-                    originalValue: drilldown.userValue,
-                    proposedValue: drilldown.proposedFormatted ?? drilldown.userValue,
-                  },
-                ],
-                context: { workspace: "financials", section: "How You Compare" },
-                onApply: async () => {},
-              });
-            }}
-          />
-        )}
       </div>
 
       <PaywallModal open={paywallOpen} onClose={onPaywallClose} variant="copilot_trial" />

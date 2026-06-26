@@ -51,26 +51,32 @@ export async function proxy(request: NextRequest) {
   // cookies that clear on browser close.
   const remember = parseRememberPreference(request.cookies.get(REMEMBER_ME_COOKIE)?.value)
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
+  // TIM-3011: guard against empty env vars (CI without Supabase secrets).
+  // createServerClient throws "Invalid URL" when the URL is an empty string,
+  // crashing every route with a 500. Degrade gracefully: treat as unauthenticated.
+  let user: unknown = null
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+            supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, adjustOptionsForRemember(name, options, remember))
+            )
+          },
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, adjustOptionsForRemember(name, options, remember))
-          )
-        },
-      },
-    }
-  )
-
-  const { data: { user } } = await supabase.auth.getUser()
+      }
+    )
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  }
 
   // TIM-2589 / TIM-2598: ?ui=v1 or ?ui=v2 sets a persistent override cookie so
   // SSR branches correctly on first paint without a DB write. Phase 5.0 ships

@@ -3,8 +3,8 @@
 // @/lib/format), so identical underlying values cannot diverge on screen.
 //
 // Source pin: src/app/(app)/workspace/menu-pricing/menu-workspace.tsx
-//   - line ~1993: workspace "Avg COGS" badge
-//   - line ~2112: per-category metrics row
+//   - MetricsBar: workspace "Average Cost of Goods Sold" badge (TIM-3226)
+//   - CategoryMetrics: per-category metrics row
 //
 // Originating bug: founder saw "30.5%" badge alongside "31%" category card
 // for the same `aggregateMargins(items).avgCogsPct` selector.

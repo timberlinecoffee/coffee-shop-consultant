@@ -33,7 +33,6 @@ export const WORKSPACE_ORDER: WorkspaceKey[] = [
   "marketing",
   "suppliers",
   "operations_playbook",
-  "benchmarks",
   "business_plan",
 ]
 
@@ -48,7 +47,6 @@ export const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   marketing: "Marketing",
   suppliers: "Suppliers & Vendors",
   operations_playbook: "Operations Playbook",
-  benchmarks: "Benchmarks",
   business_plan: "Business Plan",
   dashboard: "Dashboard",
 }
@@ -210,7 +208,6 @@ export function ThreadBrowser({
       marketing: [],
       suppliers: [],
       operations_playbook: [],
-      benchmarks: [],
       business_plan: [],
       dashboard: [],
     }

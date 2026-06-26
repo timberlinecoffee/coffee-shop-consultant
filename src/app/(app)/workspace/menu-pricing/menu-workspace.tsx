@@ -53,8 +53,7 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { ProUpgradePrompt, type ProFeatureKey } from "@/components/pro-upgrade-prompt";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
-import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
-import { BenchmarkChip } from "@/components/benchmark/BenchmarkChip";
+import { CategoryPresetPicker } from "@/components/menu-pricing/CategoryPresetPicker";
 import { SectionHelp } from "@/components/ui/section-help";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 // TIM-2482 (F13): menu-side reconciliation banner — shows menu blend vs
@@ -83,6 +82,8 @@ import {
   marginRanking,
 } from "@/lib/menu-engineering";
 import { fmtPct, fmtIntegerPct, formatMinor, formatMinorExact } from "@/lib/formatters";
+import { resolveCogsFraction, computeMarginFloorCents } from "@/lib/menu-pricing/cogs-target";
+import { BenchmarkChip, type BenchmarkStatus } from "@/components/benchmark/BenchmarkChip";
 
 interface ConceptContext {
   shop_identity?: string;
@@ -1041,7 +1042,15 @@ function ItemEditorPanel({
     [ingredients, usedIngredientIds]
   );
 
-  const msrpCents = computeMsrpCents(effectiveCogs, targetGrossMargin);
+  // TIM-3248: when the category has a COGS range, use its midpoint as the
+  // recommender floor instead of the global target gross margin.
+  const catLowPct = category?.target_cogs_low_pct ?? null;
+  const catHighPct = category?.target_cogs_high_pct ?? null;
+  const hasCatRange = catLowPct !== null && catHighPct !== null;
+  const categoryMidPct = hasCatRange ? (catLowPct! + catHighPct!) / 2 : null;
+  const msrpCents = hasCatRange && effectiveCogs > 0
+    ? computeMarginFloorCents(Math.round(effectiveCogs), resolveCogsFraction(catLowPct, catHighPct))
+    : computeMsrpCents(effectiveCogs, targetGrossMargin);
 
   return (
     <div className="bg-white rounded-b-xl overflow-hidden flex flex-col">
@@ -1146,6 +1155,8 @@ function ItemEditorPanel({
         {activeTab === "cogs" && (
           <CostOfGoodsTabContent
             item={item}
+            category={category}
+            categoryMidPct={categoryMidPct}
             canEdit={canEdit}
             priceDisplay={priceDisplay}
             setPriceDisplay={setPriceDisplay}
@@ -1450,9 +1461,12 @@ function RecipeTabContent({
 }
 
 // TIM-1471: Cost of Goods tab — the costing summary. COGS, selling price,
-// MSRP (derived from target gross margin), gross margin, AI benchmark.
+// MSRP (derived from target gross margin or category midpoint), gross margin, AI benchmark.
+// TIM-3248: now accepts category + categoryMidPct for the Category target callout.
 function CostOfGoodsTabContent({
   item,
+  category,
+  categoryMidPct,
   canEdit,
   priceDisplay,
   setPriceDisplay,
@@ -1471,6 +1485,8 @@ function CostOfGoodsTabContent({
   benchmarkError,
 }: {
   item: MenuItemWithCogs;
+  category: MenuCategory | undefined;
+  categoryMidPct: number | null;
   canEdit: boolean;
   priceDisplay: string;
   setPriceDisplay: (v: string) => void;
@@ -1491,6 +1507,25 @@ function CostOfGoodsTabContent({
   const { currencyCode } = useCurrency();
   const targetPct = (targetGrossMargin * 100).toFixed(0);
   const noPriceYet = item.price_cents === 0;
+
+  // TIM-3248: compute COGS% for the category target callout.
+  const catLow = category?.target_cogs_low_pct ?? null;
+  const catHigh = category?.target_cogs_high_pct ?? null;
+  const hasCatRange = catLow !== null && catHigh !== null;
+  const cogsPctEditor = effectiveCogs > 0 && item.price_cents > 0
+    ? (effectiveCogs / item.price_cents) * 100
+    : null;
+  let editorChipStatus: BenchmarkStatus | null = null;
+  let editorChipLabel = "";
+  if (hasCatRange && cogsPctEditor !== null) {
+    if (cogsPctEditor >= catLow! && cogsPctEditor <= catHigh!) {
+      editorChipStatus = "green"; editorChipLabel = "On target";
+    } else if (cogsPctEditor < catLow!) {
+      editorChipStatus = "yellow"; editorChipLabel = "Under target";
+    } else {
+      editorChipStatus = "red"; editorChipLabel = "Over target";
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -1520,12 +1555,16 @@ function CostOfGoodsTabContent({
             </p>
           </div>
           <div>
-            <label className={labelCls}>Min. Suggested Price</label>
+            <label className={labelCls}>
+              {categoryMidPct !== null && msrpCents !== null ? "Recommended Price" : "Min. Suggested Price"}
+            </label>
             <p className="text-sm font-semibold text-[var(--foreground)] py-2">
               {msrpCents !== null ? formatCents(msrpCents) : "—"}
             </p>
             <p className="text-[11px] text-[var(--muted-foreground)]">
-              From {targetPct}% target margin
+              {categoryMidPct !== null && msrpCents !== null
+                ? `Based on ${category?.name ?? "category"} midpoint: ${categoryMidPct.toFixed(1)}%`
+                : `From ${targetPct}% target margin`}
             </p>
           </div>
           <div>
@@ -1541,6 +1580,41 @@ function CostOfGoodsTabContent({
           </div>
         </div>
       </section>
+
+      {/* TIM-3248: Category target callout — shown when the item's category has a COGS range. */}
+      {hasCatRange && (
+        <section>
+          <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
+            Category Target
+          </h3>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--off-white)] px-3 py-2.5 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--foreground)]">
+              <Tag size={12} className="text-[var(--teal)]" aria-hidden="true" />
+              <span>{category?.name}</span>
+            </div>
+            <p className="text-[10px] text-[var(--muted-foreground)]">
+              Target range: {catLow}%–{catHigh}%
+            </p>
+            {cogsPctEditor !== null && editorChipStatus && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-[var(--muted-foreground)]">
+                  Your COGS: {Math.round(cogsPctEditor)}%
+                </span>
+                <BenchmarkChip
+                  status={editorChipStatus}
+                  label={editorChipLabel}
+                  ariaLabel={`Your COGS is ${Math.round(cogsPctEditor)}% — ${editorChipLabel} (target ${catLow}%–${catHigh}%)`}
+                />
+              </div>
+            )}
+            {cogsPctEditor === null && (
+              <p className="text-[10px] text-[var(--muted-foreground)] italic">
+                Set a price and recipe to see your COGS% vs. target.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Expected popularity — kept on the costing tab since it pairs with margin
           for the Insights matrix. */}
@@ -1763,7 +1837,7 @@ function RecipeLineRow({
       className="text-[10px] font-medium uppercase tracking-wider text-[var(--teal)] bg-[var(--teal-tint-500)] border border-[var(--teal-tint)] rounded px-1.5 py-0.5 shrink-0"
       title="Seeded from this category's default ingredients. Edit or remove like any other ingredient."
     >
-      From Category
+      Default Item
     </span>
   ) : null;
 
@@ -1894,6 +1968,25 @@ function SortableMenuItemRow({
       ? Math.round(((item.price_cents - cogs) / item.price_cents) * 100)
       : null;
 
+  // TIM-3248: COGS% chip — compare item COGS% against category target range.
+  const catLow = category?.target_cogs_low_pct ?? null;
+  const catHigh = category?.target_cogs_high_pct ?? null;
+  const hasRange = catLow !== null && catHigh !== null;
+  const cogsPct = item.price_cents > 0 && cogs > 0
+    ? (cogs / item.price_cents) * 100
+    : null;
+  let cogsChipStatus: BenchmarkStatus | null = null;
+  let cogsChipLabel = "";
+  if (hasRange && cogsPct !== null) {
+    if (cogsPct >= catLow! && cogsPct <= catHigh!) {
+      cogsChipStatus = "green"; cogsChipLabel = "On target";
+    } else if (cogsPct < catLow!) {
+      cogsChipStatus = "yellow"; cogsChipLabel = "Under target";
+    } else {
+      cogsChipStatus = "red"; cogsChipLabel = "Over target";
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -1961,6 +2054,19 @@ function SortableMenuItemRow({
               </span>
             )}
           </p>
+        )}
+        {/* TIM-3248: COGS range chip — hidden on mobile, visible sm+ */}
+        {cogsChipStatus && (
+          <span className="hidden sm:inline-flex items-center gap-1 mt-1">
+            <BenchmarkChip
+              status={cogsChipStatus}
+              label={cogsChipLabel}
+              ariaLabel={`COGS ${cogsPct !== null ? Math.round(cogsPct) + "%" : ""} ${cogsChipLabel} (category target ${catLow}%–${catHigh}%)`}
+            />
+            <span className="text-[10px] text-[var(--muted-foreground)]">
+              {catLow}%–{catHigh}%
+            </span>
+          </span>
         )}
       </div>
 
@@ -2187,11 +2293,11 @@ function MetricsBar({
       {agg.count > 0 ? (
         <>
           <div>
-            <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">Avg COGS</span>{" "}
+            <span className="text-xs text-[var(--dark-grey)] font-semibold">Average Cost of Goods Sold</span>{" "}
             <span className="text-base font-bold text-[var(--foreground)] ml-1">{fmtPct((agg.avgCogsPct ?? 0) / 100)}</span>
           </div>
           <div>
-            <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">Avg Gross Profit</span>{" "}
+            <span className="text-xs text-[var(--dark-grey)] font-semibold">Average Gross Profit</span>{" "}
             <span className="text-base font-bold text-[var(--teal)] ml-1">{fmtPct((agg.avgGpPct ?? 0) / 100)}</span>
           </div>
         </>
@@ -2234,8 +2340,8 @@ function TargetMarginControl({
 
   return (
     <div className="inline-flex items-baseline gap-1">
-      <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">
-        Target GM
+      <span className="text-xs text-[var(--dark-grey)] font-semibold">
+        Target Gross Margin
       </span>
       {editing ? (
         <TargetMarginInput
@@ -2362,6 +2468,8 @@ interface MenuTabProps {
   onRenameCategory: (id: string, name: string) => Promise<void>;
   onDeleteCategory: (id: string) => Promise<void>;
   onReorderCategories: (updates: Array<{ id: string; position: number }>) => Promise<void>;
+  // TIM-3247: updates target_cogs_low_pct + target_cogs_high_pct on a user category.
+  onUpdateCogsRange: (id: string, low: number, high: number) => Promise<void>;
   onAddDefault: (categoryId: string, ingredientId: string, amount: number, unit: IngredientUnit) => Promise<void>;
   onUpdateDefault: (id: string, patch: { amount?: number; unit?: IngredientUnit }) => Promise<void>;
   onDeleteDefault: (id: string) => Promise<void>;
@@ -2382,7 +2490,7 @@ function MenuTab(props: MenuTabProps) {
     onSuggestPrice, priceLoading,
     onBenchmarkPrice, benchmarkLoading, benchmarkResult, benchmarkError,
     onReorderItems,
-    onAddCategory, onRenameCategory, onDeleteCategory,
+    onAddCategory, onRenameCategory, onDeleteCategory, onUpdateCogsRange,
     onAddDefault, onUpdateDefault, onDeleteDefault, onApplyDefaults,
     onPhotoChange,
   } = props;
@@ -2492,6 +2600,7 @@ function MenuTab(props: MenuTabProps) {
                 onToggleDefaults={() => onToggleDefaults(cat.id)}
                 onRename={(name) => onRenameCategory(cat.id, name)}
                 onDelete={() => onDeleteCategory(cat.id)}
+                onUpdateCogsRange={(low, high) => onUpdateCogsRange(cat.id, low, high)}
               />
 
               {defaultsOpen && (
@@ -2631,6 +2740,7 @@ function CategoryHeader({
   onToggleDefaults,
   onRename,
   onDelete,
+  onUpdateCogsRange,
 }: {
   category: MenuCategory;
   itemCount: number;
@@ -2643,11 +2753,21 @@ function CategoryHeader({
   onToggleDefaults: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
+  // TIM-3247: called when the user selects a preset or sets a custom range.
+  onUpdateCogsRange: (low: number, high: number) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   // Re-sync draft on every edit-enter (no useEffect needed) and on each new
   // server-confirmed category.name via the `key` on the input.
   const [draft, setDraft] = useState(category.name);
+  // TIM-3247: picker is dismissed per-category via local state (persists until
+  // the user sets a range, which collapses it automatically).
+  const [pickerDismissed, setPickerDismissed] = useState(false);
+
+  const showPicker =
+    canEdit &&
+    category.target_cogs_low_pct === null &&
+    !pickerDismissed;
 
   function startEdit() {
     setDraft(category.name);
@@ -2661,87 +2781,105 @@ function CategoryHeader({
     else setDraft(category.name);
   }
 
+  async function handleApplyPreset(low: number, high: number) {
+    await onUpdateCogsRange(low, high);
+    // Picker collapses automatically when the category row re-renders with the new range.
+  }
+
   return (
-    <div className="px-4 sm:px-5 py-3 border-b border-[var(--border)]">
-      <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <FolderOpen size={14} className="text-[var(--teal)] shrink-0" />
-        {editing ? (
-          <input
-            autoFocus
-            className="text-sm font-semibold text-[var(--foreground)] border-0 border-b border-[var(--teal)] focus-visible:outline-none bg-transparent min-w-[140px]"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commit();
-              if (e.key === "Escape") { setDraft(category.name); setEditing(false); }
-            }}
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={() => canEdit && startEdit()}
-            className="text-sm font-semibold text-[var(--foreground)] hover:underline decoration-dotted text-left truncate min-w-0"
-            title={canEdit ? "Click to rename" : undefined}
-          >
-            {category.name}
-          </button>
-        )}
-        <span className="text-xs text-[var(--dark-grey)] shrink-0">{itemCount}</span>
-        {/* TIM-1674: metrics inline beside the title from sm: up; on mobile they
-            drop to their own line below so the gear/+Add/× never collide with GP. */}
-        <span className="hidden sm:inline-flex items-center shrink-0 whitespace-nowrap">
+    <div className="border-b border-[var(--border)]">
+      <div className="px-4 sm:px-5 py-3">
+        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <FolderOpen size={14} className="text-[var(--teal)] shrink-0" />
+          {editing ? (
+            <input
+              autoFocus
+              className="text-sm font-semibold text-[var(--foreground)] border-0 border-b border-[var(--teal)] focus-visible:outline-none bg-transparent min-w-[140px]"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commit();
+                if (e.key === "Escape") { setDraft(category.name); setEditing(false); }
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => canEdit && startEdit()}
+              className="text-sm font-semibold text-[var(--foreground)] hover:underline decoration-dotted text-left truncate min-w-0"
+              title={canEdit ? "Click to rename" : undefined}
+            >
+              {category.name}
+            </button>
+          )}
+          <span className="text-xs text-[var(--dark-grey)] shrink-0">{itemCount}</span>
+          {/* TIM-1674: metrics inline beside the title from sm: up; on mobile they
+              drop to their own line below so the gear/+Add/× never collide with GP. */}
+          <span className="hidden sm:inline-flex items-center shrink-0 whitespace-nowrap">
+            <CategoryMetrics items={catItems} />
+          </span>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {canEdit && (
+            <button
+              type="button"
+              onClick={onToggleDefaults}
+              className={`flex items-center gap-1 text-xs font-medium transition-colors ${
+                defaultsOpen ? "text-[var(--teal)]" : "text-[var(--muted-foreground)] hover:text-[var(--teal)]"
+              }`}
+              title="Edit default ingredients for this category"
+            >
+              <Settings size={11} />
+              Defaults
+              {defaultsCount > 0 && (
+                <span className="text-[10px] bg-[var(--teal-tint-200)] text-[var(--teal)] rounded-full px-1.5 py-0.5 font-semibold">
+                  {defaultsCount}
+                </span>
+              )}
+              {defaultsOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+            </button>
+          )}
+          {canEdit && (
+            <button
+              type="button"
+              onClick={onAddItem}
+              className="flex items-center gap-1 text-xs font-medium text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
+            >
+              <Plus size={12} />
+              Add
+            </button>
+          )}
+          {canEdit && canDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] transition-colors"
+              aria-label="Delete category"
+              title="Delete category"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+        </div>
+        {/* TIM-1674: COGS/GP metrics on their own line below 640px — no overlap with actions. */}
+        <div className="sm:hidden mt-1.5 pl-6">
           <CategoryMetrics items={catItems} />
-        </span>
+        </div>
       </div>
-      <div className="flex items-center gap-3 shrink-0">
-        {canEdit && (
-          <button
-            type="button"
-            onClick={onToggleDefaults}
-            className={`flex items-center gap-1 text-xs font-medium transition-colors ${
-              defaultsOpen ? "text-[var(--teal)]" : "text-[var(--muted-foreground)] hover:text-[var(--teal)]"
-            }`}
-            title="Edit default ingredients for this category"
-          >
-            <Settings size={11} />
-            Defaults
-            {defaultsCount > 0 && (
-              <span className="text-[10px] bg-[var(--teal-tint-200)] text-[var(--teal)] rounded-full px-1.5 py-0.5 font-semibold">
-                {defaultsCount}
-              </span>
-            )}
-            {defaultsOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-          </button>
-        )}
-        {canEdit && (
-          <button
-            type="button"
-            onClick={onAddItem}
-            className="flex items-center gap-1 text-xs font-medium text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors"
-          >
-            <Plus size={12} />
-            Add
-          </button>
-        )}
-        {canEdit && canDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] transition-colors"
-            aria-label="Delete category"
-            title="Delete category"
-          >
-            <X size={13} />
-          </button>
-        )}
-      </div>
-      </div>
-      {/* TIM-1674: COGS/GP metrics on their own line below 640px — no overlap with actions. */}
-      <div className="sm:hidden mt-1.5 pl-6">
-        <CategoryMetrics items={catItems} />
-      </div>
+
+      {/* TIM-3247: onboarding preset picker — surfaces when no COGS range is set. */}
+      {showPicker && (
+        <div className="px-4 sm:px-5 pb-3">
+          <CategoryPresetPicker
+            categoryName={category.name}
+            onApplyPreset={handleApplyPreset}
+            onSkip={() => setPickerDismissed(true)}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -2797,7 +2935,6 @@ function InsightsTab({
   canEdit,
   onUpdateItem,
   onGoToMenu,
-  onSeeWhy,
   targetGrossMargin,
   onUpdateTargetGrossMargin,
 }: {
@@ -2805,8 +2942,6 @@ function InsightsTab({
   canEdit: boolean;
   onUpdateItem: (id: string, patch: Partial<MenuItemWithCogs>) => Promise<void>;
   onGoToMenu: () => void;
-  /** TIM-2450 — inline "see why" handler: navigates to How You Compare and opens the metric drill-down. */
-  onSeeWhy: (metricId: string) => void;
   /** TIM-3150: metrics strip moved from main page to Insights tab. */
   targetGrossMargin: number;
   onUpdateTargetGrossMargin: (next: number) => Promise<void>;
@@ -2970,16 +3105,12 @@ function InsightsTab({
                     <th className="text-left font-semibold px-3 py-2 w-[34%]">Gross Margin</th>
                     <th className="text-left font-semibold px-2 py-2">Popularity</th>
                     <th className="text-left font-semibold px-2 py-2">Class</th>
-                    <th className="text-left font-semibold px-2 py-2">How you compare</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ranking.map((r, idx) => {
                     const item = items.find((i) => i.id === r.id);
                     const q = quadrantById.get(r.id);
-                    // Inline chip: map item margin to benchmark status (mock until cohort API ships).
-                    const bmStatus = r.marginPct >= 65 ? "green" : r.marginPct >= 50 ? "blue" : "yellow";
-                    const bmSourceType = "best-practice" as const;
                     return (
                       <tr key={r.id} className="border-b border-[var(--gray-200)] last:border-0 hover:bg-[var(--background)] transition-colors">
                         <td className="px-4 py-2 text-[var(--dark-grey)] tabular-nums">{idx + 1}</td>
@@ -3017,28 +3148,6 @@ function InsightsTab({
                             </span>
                           ) : (
                             <span className="text-[10px] text-[var(--dark-grey)]">Set popularity</span>
-                          )}
-                        </td>
-                        <td className="px-2 py-2">
-                          {r.cogsCents != null ? (
-                            <div className="flex items-center gap-1.5">
-                              <BenchmarkChip
-                                metric="Gross margin"
-                                value={fmtIntegerPct(r.marginPct / 100)}
-                                status={bmStatus}
-                                sourceType={bmSourceType}
-                                variant="inline"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => onSeeWhy("avg_gross_margin_pct")}
-                                className="text-[10px] text-[var(--teal)] hover:underline whitespace-nowrap"
-                              >
-                                see why
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-[var(--dark-grey)]">—</span>
                           )}
                         </td>
                       </tr>
@@ -3303,7 +3412,7 @@ function SuggestItemsModal({
   );
 }
 
-type Tab = "menu" | "ingredients" | "insights" | "how-you-compare";
+type Tab = "menu" | "ingredients" | "insights";
 
 export function MenuWorkspace({
   planId,
@@ -3368,16 +3477,10 @@ export function MenuWorkspace({
     if (items.length > 0) promoteOnEdit("menu_pricing");
   }, [items.length, promoteOnEdit]);
 
-  const [benchmarkYellowCount, setBenchmarkYellowCount] = useState(0);
-  // TIM-2450: inline "see why" link sets this; the dashboard auto-opens the
-  // drill-down for the matching metric when the tab activates.
-  const [openBenchmarkMetricId, setOpenBenchmarkMetricId] = useState<string | null>(null);
-
   const tabs: { id: Tab; label: string; Icon: typeof Utensils; badge?: number }[] = [
     { id: "menu", label: "Menu", Icon: Utensils },
     { id: "ingredients", label: "Ingredients", Icon: Package },
     { id: "insights", label: "Insights", Icon: LayoutGrid },
-    { id: "how-you-compare", label: "How You Compare", Icon: TrendingUp, badge: benchmarkYellowCount || undefined },
   ];
 
   async function refetchItems() {
@@ -3485,6 +3588,10 @@ export function MenuWorkspace({
       name,
       position,
       is_default: false,
+      // TIM-3247: new categories start with no range — triggers the preset picker.
+      target_cogs_low_pct: null,
+      target_cogs_high_pct: null,
+      financial_role: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -3515,6 +3622,53 @@ export function MenuWorkspace({
     if (res.ok) {
       const updated = (await res.json()) as MenuCategory;
       setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    }
+  }
+
+  // TIM-3247: copies preset or custom low/high values into a user category.
+  // Optimistic-updates locally so the picker collapses immediately; server
+  // confirms and replaces the row. Standing Rule 3 validation happens on the server.
+  async function updateCategoryCogsRange(id: string, low: number, high: number) {
+    // Snapshot prior values before mutation so rollback restores them exactly.
+    const prior = categories.find((c) => c.id === id);
+    const priorLow = prior?.target_cogs_low_pct ?? null;
+    const priorHigh = prior?.target_cogs_high_pct ?? null;
+
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? { ...c, target_cogs_low_pct: low, target_cogs_high_pct: high }
+          : c
+      )
+    );
+    try {
+      const res = await fetch("/api/workspaces/menu-pricing/categories", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, target_cogs_low_pct: low, target_cogs_high_pct: high }),
+      });
+      if (res.ok) {
+        const updated = (await res.json()) as MenuCategory;
+        setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      } else {
+        // Roll back to the prior values (not null) so existing ranges aren't wiped.
+        setCategories((prev) =>
+          prev.map((c) =>
+            c.id === id
+              ? { ...c, target_cogs_low_pct: priorLow, target_cogs_high_pct: priorHigh }
+              : c
+          )
+        );
+      }
+    } catch {
+      // Network error — roll back and let the picker reappear if range was unset.
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? { ...c, target_cogs_low_pct: priorLow, target_cogs_high_pct: priorHigh }
+            : c
+        )
+      );
     }
   }
 
@@ -4177,6 +4331,7 @@ export function MenuWorkspace({
             onAddCategory={addCategory}
             onRenameCategory={renameCategory}
             onDeleteCategory={deleteCategory}
+            onUpdateCogsRange={updateCategoryCogsRange}
             onReorderCategories={async () => {}}
             onAddDefault={addDefault}
             onUpdateDefault={updateDefault}
@@ -4206,55 +4361,8 @@ export function MenuWorkspace({
             canEdit={canEdit}
             onUpdateItem={updateItem}
             onGoToMenu={() => setActiveTab("menu")}
-            onSeeWhy={(metricId) => {
-              setOpenBenchmarkMetricId(metricId);
-              setActiveTab("how-you-compare");
-            }}
             targetGrossMargin={targetGrossMargin}
             onUpdateTargetGrossMargin={updateTargetGrossMargin}
-          />
-        )}
-        {activeTab === "how-you-compare" && (
-          <BenchmarkDashboard
-            workspaceSlug="menu-pricing"
-            onYellowCountChange={setBenchmarkYellowCount}
-            openMetricId={openBenchmarkMetricId}
-            onAskBenchmark={(metricId, metricLabel) => {
-              // TIM-2450: hand off to the Scout drawer in Benchmark mode with
-              // the metric in scope. The drawer's `copilot:open-in-mode` handler
-              // (CoPilotDrawer.tsx:684) takes the focus payload and pre-loads
-              // the Benchmark panel.
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(
-                  new CustomEvent("copilot:open-in-mode", {
-                    detail: {
-                      mode: "check",
-                      scope: "menu_pricing",
-                      focus: { metricId, metricLabel },
-                    },
-                  }),
-                );
-              }
-            }}
-            onApplySuggestion={(drilldown) => {
-              const proposed = drilldown.proposedFormatted ?? drilldown.userValue;
-              openAIReviewModal({
-                suggestions: [
-                  {
-                    id: `bench:${drilldown.metricId}`,
-                    fieldId: drilldown.metricId,
-                    fieldLabel: drilldown.metricLabel,
-                    originalValue: drilldown.userValue,
-                    proposedValue: proposed,
-                  },
-                ],
-                context: { workspace: "menu_pricing", section: "How You Compare" },
-                onApply: async () => {
-                  // Phase 3: review-modal-only path; per-metric write paths
-                  // follow in a child issue.
-                },
-              });
-            }}
           />
         )}
       </div>
