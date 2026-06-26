@@ -14,10 +14,16 @@ import type { NextRequest } from "next/server"
 //  { dismissed: true }           — user skipped + clicked "don't ask again"
 //  { answers: { ... } }          — completed intake answers from the trimmed interview
 //  { answers: { ... }, dismissed: false } — completed (dismissed=false is the default)
+//
+// Branch 1 uses Zod's default strip mode: extra keys (e.g. answers) are silently
+// stripped, so { dismissed: true, answers: {...} } correctly resolves to branch 1
+// and the answers are ignored (dismissed wins). Removing answers: z.undefined() from
+// branch 1 is intentional — the undefined check prevented branch 1 from matching
+// when extra keys were present, causing branch 2 to match and the handler to discard
+// the answers with a silent ok: true (confirmed bug, TIM-3154 code-review).
 const IntakeBody = z.union([
   z.object({
     dismissed: z.literal(true),
-    answers: z.undefined(),
   }),
   z.object({
     dismissed: z.boolean().optional(),

@@ -185,12 +185,17 @@ export async function loadPlanContext(
   // brand_pillars priority: marketing.story.differentiator (live, user-editable)
   // > coffee_shop_plans.onboarding_data.brand_pillars (TIM-3151 per-project intake)
   // > users.onboarding_data.brand_pillars (frozen signup answer, first project).
+  // Each level is tried independently — do NOT short-circuit with ?? so that a
+  // non-null but brand_pillars-less planOd (e.g. { dismissed: true }) still falls
+  // through to the user-level signup answer.
   const livePillars = brandPillarsFromMarketingDoc(marketingRes.data?.content);
   const planOd = (plan.onboarding_data as Record<string, unknown> | null) ?? null;
+  const planLevelPillars = brandPillarsFromOnboarding(planOd);
+  const userLevelPillars = brandPillarsFromOnboarding(profileRes.data?.onboarding_data);
   const brand_pillars =
-    livePillars.length > 0
-      ? livePillars
-      : brandPillarsFromOnboarding(planOd ?? profileRes.data?.onboarding_data);
+    livePillars.length > 0 ? livePillars
+    : planLevelPillars.length > 0 ? planLevelPillars
+    : userLevelPillars;
 
   const location_country =
     (hiringSettingsRes.data?.hiring_country ?? null) ||
