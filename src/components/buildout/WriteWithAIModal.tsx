@@ -547,7 +547,7 @@ export function WriteWithAIModal({ sections, hasExistingItems, onClose, onCommit
                 <label
                   className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors ${
                     overwriteChoice === "replace"
-                      ? "border-[var(--error)] bg-red-50"
+                      ? "border-[var(--error)] bg-[var(--error-bg)]"
                       : "border-[var(--border)] hover:border-[var(--neutral-cool-350)]"
                   }`}
                 >

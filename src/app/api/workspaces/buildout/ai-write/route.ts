@@ -12,6 +12,7 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+import { z } from "zod";
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
@@ -149,14 +150,18 @@ export async function GET() {
 
 // ── POST — generate equipment list ─────────────────────────────────────────────
 
-type SourceABody = { mode: "concept" };
-type SourceBBody = {
-  mode: "prompt";
-  floorArea: string;
-  seatCount: string;
-  stationBreakdown: string;
-  serviceModel: string;
-};
+const PostBodySchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("concept") }),
+  z.object({
+    mode: z.literal("prompt"),
+    floorArea: z.string().max(500).default(""),
+    seatCount: z.string().max(500).default(""),
+    stationBreakdown: z.string().max(500).default(""),
+    serviceModel: z.string().max(500).default(""),
+  }),
+]);
+
+type PostBody = z.infer<typeof PostBodySchema>;
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -188,15 +193,17 @@ export async function POST(request: NextRequest) {
   });
   if (!rl.ok) return rateLimitedResponse(rl);
 
-  let body: SourceABody | SourceBBody;
+  // Rule 3: validate and cap all user-supplied fields before touching AI or DB.
+  let body: PostBody;
   try {
-    body = await request.json();
+    const raw = await request.json();
+    const parsed = PostBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return Response.json({ error: "Invalid request body" }, { status: 400 });
+    }
+    body = parsed.data;
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
-  if (body.mode !== "concept" && body.mode !== "prompt") {
-    return Response.json({ error: "mode must be 'concept' or 'prompt'" }, { status: 400 });
   }
 
   // ── Build the context block ──────────────────────────────────────────────────
@@ -298,7 +305,7 @@ ${ITEM_SCHEMA_INSTRUCTIONS}`;
   } catch (err) {
     console.error("AI ai-write error:", err);
     return Response.json(
-      { error: err instanceof Error ? err.message : "AI generation failed" },
+      { error: "AI generation failed. Please try again." },
       { status: 500 }
     );
   }
