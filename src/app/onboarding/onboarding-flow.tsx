@@ -941,7 +941,7 @@ export function OnboardingFlow({
             disabled={saving}
             className="px-4 py-3 text-sm text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
           >
-            Skip for now
+            Skip for Now
           </button>
         )}
         <button

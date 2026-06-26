@@ -1,6 +1,11 @@
 // TIM-3155: skip/resume banner for the project intake interview.
 // Shown when a Pro user created a 2nd+ project but has not completed or dismissed the
 // per-project onboarding interview. Polls GET /api/projects/[id]/intake on mount.
+//
+// DismissibleCallout is not used here because it persists dismissal to the user-level
+// `dismissedCallouts` table (keyed by a string constant). This banner requires
+// per-project persistence via POST /api/projects/[id]/intake { dismissed: true }, which
+// is incompatible with DismissibleCallout's user-scoped model.
 "use client";
 
 import { useEffect, useState } from "react";
@@ -87,9 +92,9 @@ export function IntakeBanner({ planId }: { planId: string }) {
         <button
           type="button"
           onClick={() => setShowInterview(true)}
-          className="text-xs font-semibold px-3 py-1.5 rounded-lg border bg-[var(--teal)] border-[var(--teal)] text-white hover:bg-[var(--teal-dark)] transition-colors"
+          className="text-xs font-semibold px-3 py-1.5 rounded-xl border bg-[var(--teal)] border-[var(--teal)] text-white hover:bg-[var(--teal-dark)] transition-colors"
         >
-          Complete your project interview
+          Complete Your Project Interview
         </button>
         <button
           type="button"
@@ -97,7 +102,7 @@ export function IntakeBanner({ planId }: { planId: string }) {
           disabled={dismissing}
           className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-50"
         >
-          Don&apos;t ask again
+          Don&apos;t Ask Again
         </button>
       </div>
     </div>
