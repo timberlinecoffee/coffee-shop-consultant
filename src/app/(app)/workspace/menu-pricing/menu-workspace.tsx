@@ -3450,6 +3450,9 @@ export function MenuWorkspace({
       is_default: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      target_cogs_low_pct: null,
+      target_cogs_high_pct: null,
+      financial_role: null,
     };
     setCategories((prev) => [...prev, optimistic]);
 
