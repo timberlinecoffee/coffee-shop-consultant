@@ -115,11 +115,13 @@ function getPrefsState(id: string) {
 
 export function usePlanNotifsMap(): {
   isLoaded: boolean;
+  /** Increments on every store change — include in useMemo deps to invalidate on dismiss/snooze. */
+  storeVersion: number;
   getState: (id: string) => { isDismissed: boolean; isSnoozed: boolean; snoozedUntil: Date | null };
   dismiss: (id: string, surface: PlanNotifSurface) => void;
   snooze: (id: string, surface: PlanNotifSurface, hours?: number) => void;
 } {
-  const [, force] = useState(0);
+  const [storeVersion, force] = useState(0);
   useEffect(() => {
     void ensureLoaded();
     return subscribe(() => force((n) => n + 1));
@@ -141,7 +143,7 @@ export function usePlanNotifsMap(): {
     fireAnalytics("plan_notification_snoozed", { surface, snooze_hours: String(hours) });
   }, []);
 
-  return { isLoaded, getState, dismiss, snooze };
+  return { isLoaded, storeVersion, getState, dismiss, snooze };
 }
 
 // ── Hook for single-key surfaces (LaunchReadiness error state). ───────────────
