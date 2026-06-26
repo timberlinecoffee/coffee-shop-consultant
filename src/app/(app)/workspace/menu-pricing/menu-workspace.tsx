@@ -52,6 +52,7 @@ import { TABLE_CELL_TEXT } from "@/lib/workspace-table";
 import { PaywallModal } from "@/components/paywall-modal";
 import { ProUpgradePrompt, type ProFeatureKey } from "@/components/pro-upgrade-prompt";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { DismissibleCallout } from "@/components/DismissibleCallout";
 import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
 import { BenchmarkChip } from "@/components/benchmark/BenchmarkChip";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -2450,29 +2451,16 @@ function MenuTab(props: MenuTabProps) {
   // panel out from the right.
   return (
     <div className="space-y-4">
+      {/* TIM-3150: "Not sure where to start?" card — converted to DismissibleCallout
+          (persisted per-user preference via platform.dismissed-callouts pref key).
+          The "Suggest menu items" CTA moved to the workspace top-right action cluster. */}
       {canEdit && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--teal-tint)] bg-[var(--teal-tint-500)] px-4 py-3">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Not sure where to start?</p>
-            <p className="text-xs text-[var(--muted-foreground)]">Get menu ideas that fit your concept and location.</p>
-          </div>
-          <button
-            type="button"
-            onClick={onOpenSuggest}
-            className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[var(--teal)] rounded-lg px-3.5 py-2 hover:bg-[var(--teal-deep)] transition-colors whitespace-nowrap"
-          >
-            <Sparkles size={14} />
-            Suggest menu items
-          </button>
-        </div>
+        <DismissibleCallout
+          calloutKey="menu-pricing.not-sure-where-to-start"
+          heading="Not sure where to start?"
+          subcopy="Get menu ideas that fit your concept and location. Use the Suggest menu items button above."
+        />
       )}
-
-      <MetricsBar
-        items={items}
-        targetGrossMargin={targetGrossMargin}
-        canEdit={canEdit}
-        onUpdateTargetGrossMargin={onUpdateTargetGrossMargin}
-      />
 
       {/* TIM-2482 (F13): menu↔ticket reconciliation. Renders only when the
           menu blend drifts meaningfully from Forecast Inputs avg ticket; sync
@@ -2811,6 +2799,8 @@ function InsightsTab({
   onUpdateItem,
   onGoToMenu,
   onSeeWhy,
+  targetGrossMargin,
+  onUpdateTargetGrossMargin,
 }: {
   items: MenuItemWithCogs[];
   canEdit: boolean;
@@ -2818,6 +2808,9 @@ function InsightsTab({
   onGoToMenu: () => void;
   /** TIM-2450 — inline "see why" handler: navigates to How You Compare and opens the metric drill-down. */
   onSeeWhy: (metricId: string) => void;
+  /** TIM-3150: metrics strip moved from main page to Insights tab. */
+  targetGrossMargin: number;
+  onUpdateTargetGrossMargin: (next: number) => Promise<void>;
 }) {
   const { classified, needsInfo, thresholds, counts } = useMemo(
     () => classifyMenu(items),
@@ -2839,32 +2832,48 @@ function InsightsTab({
 
   if (!hasAnything) {
     return (
-      <div className="rounded-xl border border-dashed border-[var(--teal-bg-750)] bg-[var(--teal-bg-faint)] px-6 py-10 text-center">
-        {/* TIM-1585: Lane A empty-state line-art, with the icon as graceful fallback. */}
-        <Illustration
-          recipeId="empty-state-no-data"
-          className="w-20 h-20 mx-auto mb-6"
-          fallback={<LayoutGrid className="w-6 h-6 text-[var(--sage)] mx-auto mb-3" />}
+      <div className="space-y-6">
+        {/* TIM-3150: metrics strip moved from main page to Insights tab. */}
+        <MetricsBar
+          items={items}
+          targetGrossMargin={targetGrossMargin}
+          canEdit={canEdit}
+          onUpdateTargetGrossMargin={onUpdateTargetGrossMargin}
         />
-        <p className="text-sm font-semibold text-[var(--foreground)] mb-1">No items to analyze yet</p>
-        <p className="text-xs text-[var(--muted-foreground)] max-w-md mx-auto leading-relaxed">
-          Add a few drinks or food items with a price, a cost, and an expected
-          popularity. We will sort them into what to feature, re-price, promote,
-          or rethink.
-        </p>
-        <button
-          type="button"
-          onClick={onGoToMenu}
-          className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] transition-colors"
-        >
-          <Utensils size={13} /> Go to the menu
-        </button>
+        <div className="rounded-xl border border-dashed border-[var(--teal-bg-750)] bg-[var(--teal-bg-faint)] px-6 py-10 text-center">
+          {/* TIM-1585: Lane A empty-state line-art, with the icon as graceful fallback. */}
+          <Illustration
+            recipeId="empty-state-no-data"
+            className="w-20 h-20 mx-auto mb-6"
+            fallback={<LayoutGrid className="w-6 h-6 text-[var(--sage)] mx-auto mb-3" />}
+          />
+          <p className="text-sm font-semibold text-[var(--foreground)] mb-1">No items to analyze yet</p>
+          <p className="text-xs text-[var(--muted-foreground)] max-w-md mx-auto leading-relaxed">
+            Add a few drinks or food items with a price, a cost, and an expected
+            popularity. We will sort them into what to feature, re-price, promote,
+            or rethink.
+          </p>
+          <button
+            type="button"
+            onClick={onGoToMenu}
+            className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--teal)] bg-[var(--teal-bg-f0f8)] border border-[var(--teal-tint)] px-3 py-2 rounded-lg hover:bg-[var(--teal-bg-450)] transition-colors"
+          >
+            <Utensils size={13} /> Go to the menu
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
+      {/* TIM-3150: metrics strip moved from main page to Insights tab. */}
+      <MetricsBar
+        items={items}
+        targetGrossMargin={targetGrossMargin}
+        canEdit={canEdit}
+        onUpdateTargetGrossMargin={onUpdateTargetGrossMargin}
+      />
       {/* Intro */}
       <div>
         <div className="flex items-center gap-2 mb-1">
@@ -4103,11 +4112,22 @@ export function MenuWorkspace({
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-4 sm:px-6 pt-8 pb-16">
-        {/* TIM-1894: canonical WorkspaceHeader (title-only — no page-level actions). */}
+        {/* TIM-3150: canonical WorkspaceHeader with Suggest menu items in action cluster. */}
         <WorkspaceHeader
           Icon={Utensils}
           title="Menu & Pricing"
           description="Build your menu, add recipe ingredients to compute COGS, and get AI-suggested retail prices."
+          actions={canEdit ? (
+            <WorkspaceActionButton
+              variant="primary"
+              onClick={suggestMenuItems}
+              aria-label="Suggest menu items"
+              title="Get AI-suggested menu items based on your concept"
+            >
+              <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+              Suggest menu items
+            </WorkspaceActionButton>
+          ) : undefined}
         />
 
         {/* Tab nav — canonical WorkspaceSubNav (TIM-1793).
@@ -4191,6 +4211,8 @@ export function MenuWorkspace({
               setOpenBenchmarkMetricId(metricId);
               setActiveTab("how-you-compare");
             }}
+            targetGrossMargin={targetGrossMargin}
+            onUpdateTargetGrossMargin={updateTargetGrossMargin}
           />
         )}
         {activeTab === "how-you-compare" && (
