@@ -5,7 +5,8 @@
 // Renders below md when ui_revamp_v2 is on; desktop uses SuppliesDesktopTable.
 
 import { useMemo, useState } from "react";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import { formatMinor } from "@/lib/formatters";
 
@@ -189,14 +190,12 @@ function SuppliesDetailSheet({
               {sectionLabel}
             </p>
           </div>
-          <button
-            type="button"
+          <CollapseButton
             onClick={onClose}
-            aria-label="Close"
+            size={16}
             className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]"
-          >
-            <X size={16} aria-hidden="true" />
-          </button>
+            aria-label="Close"
+          />
         </div>
         <dl className="divide-y divide-[var(--border)] px-5">
           {rows.map((row) => (

@@ -5,7 +5,8 @@
 // dedicated API routes directly with optimistic local state updates.
 // TIM-2968: OrgTab upgraded with drag-and-drop hierarchy list.
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import {
   Users,
   Network,
@@ -251,13 +252,11 @@ function ScorecardWorksheetButton({ scorecardId }: { scorecardId: string }) {
         >
           <Download size={WORKSPACE_ACTION_ICON_SIZE} />
         </WorkspaceActionButton>
-        <button
-          type="button"
+        <CollapseButton
           onClick={() => setOpen(false)}
+          size={11}
           className="text-[var(--dark-grey)] hover:text-[var(--foreground)] p-0.5"
-        >
-          <ChevronUp size={11} />
-        </button>
+        />
       </div>
       {paywalled && (
         <PaywallModal

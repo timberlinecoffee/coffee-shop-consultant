@@ -11,7 +11,8 @@ import {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { ChevronUp, Clock, Maximize2, Minimize2, Sparkles } from "lucide-react";
+import { Clock, Maximize2, Minimize2, Sparkles } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { cn } from "@/lib/utils";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -1429,18 +1430,14 @@ export function CoPilotDrawer({
                   )}
                 </button>
               )}
-              <button
-                type="button"
-                aria-label="Close"
+              <CollapseButton
                 onClick={closeDrawer}
-                /* TIM-3413: ≥44x44 tap target on mobile per audit DONE-criteria. */
                 className={cn(
                   "mt-0.5 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0",
                   isMobile ? "w-11 h-11" : "w-8 h-8",
                 )}
-              >
-                <ChevronUp className={cn(isMobile ? "w-5 h-5" : "w-4 h-4")} />
-              </button>
+                aria-label="Close"
+              />
             </header>
 
             {/* TIM-2416 — mode strip (UX spec §2). Sits below the header,
