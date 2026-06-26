@@ -44,19 +44,12 @@ const STATUS_COLORS: Record<ReadinessStatus, { bg: string; text: string; dot: st
   red: { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500", label: "Red" },
 };
 
-function deriveErrorKey(planId: string, msg: string): string {
-  let h = 0;
-  for (let i = 0; i < msg.length; i++) {
-    h = ((h << 5) - h + msg.charCodeAt(i)) | 0;
-  }
-  return `launch-readiness:${planId}:${Math.abs(h).toString(36)}`;
-}
-
 export function LaunchReadinessButton({ planId }: { planId: string }) {
   const [state, setState] = useState<"idle" | "thinking" | "done" | "error">("idle");
   const [result, setResult] = useState<ReadinessResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const errorKey = errorMsg ? deriveErrorKey(planId, errorMsg) : `launch-readiness:${planId}:pending`;
+  // Keyed per-plan (not per-message) so dismiss/snooze persists across retries with the same or different error text.
+  const errorKey = `launch-readiness:${planId}`;
   const {
     isDismissed: errorDismissed,
     isSnoozed: errorSnoozed,
@@ -117,10 +110,9 @@ export function LaunchReadinessButton({ planId }: { planId: string }) {
         }
       }
 
-      // If stream ended without result or error event, it was aborted
-      if (state === "thinking") {
-        setState("idle");
-      }
+      // If stream ended without result or error event, it was aborted.
+      // Use functional update to read current state rather than the stale closure value.
+      setState((s) => (s === "thinking" ? "idle" : s));
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Network error. Please try again.");
       setState("error");
@@ -194,7 +186,7 @@ export function LaunchReadinessButton({ planId }: { planId: string }) {
       {state === "error" && errorMsg && !errorDismissed && errorSnoozed && errorSnoozedUntil && (
         <div className="mt-4 border border-[var(--border)] bg-[var(--muted)] rounded-lg px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-neutral-500">
           <span>
-            Error snoozed until{" "}
+            Error Snoozed Until{" "}
             {errorSnoozedUntil.toLocaleString(undefined, {
               month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
             })}

@@ -101,7 +101,7 @@ function CompanionFindingCard({
         <SeverityChip level={finding.severity} />
         <p className="text-xs text-neutral-500 flex-1 min-w-0 truncate">{issue}</p>
         <span className="text-xs text-neutral-400 whitespace-nowrap flex-shrink-0">
-          Snoozed until {formatted}
+          Snoozed Until {formatted}
         </span>
       </div>
     );
@@ -440,7 +440,7 @@ export function CheckPanel({
           />
         </div>
         <p className="text-sm font-semibold text-[var(--foreground)] mb-1">
-          {allDismissed ? "All findings dismissed" : "Your plan looks good"}
+          {allDismissed ? "All Findings Dismissed" : "Your plan looks good"}
         </p>
         <p className="text-sm text-[var(--muted-foreground)] mb-6 max-w-[240px]">
           {allDismissed
@@ -462,7 +462,7 @@ export function CheckPanel({
     <div>
       <div className="flex items-center justify-between pb-3">
         <p className="text-[11px] text-[var(--muted-foreground)]">
-          {visibleFindings.length} {visibleFindings.length === 1 ? "item" : "items"} found
+          {report.findings.length} {report.findings.length === 1 ? "item" : "items"} found
         </p>
         <button
           type="button"

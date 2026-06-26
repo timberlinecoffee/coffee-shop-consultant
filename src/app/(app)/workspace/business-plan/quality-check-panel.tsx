@@ -91,7 +91,7 @@ function FindingCard({ finding, onApply, onGoToSource, onDismiss, onSnooze, snoo
         <SeverityChip level={finding.severity} />
         <p className="text-xs text-neutral-500 flex-1 min-w-0 truncate">{issue}</p>
         <span className="text-xs text-neutral-400 whitespace-nowrap flex-shrink-0">
-          Snoozed until {formatted}
+          Snoozed Until {formatted}
         </span>
       </div>
     );
@@ -359,7 +359,7 @@ export function QualityCheckPanel({
       {totalCount === 0 && snoozedFindings.length === 0 && hiddenCount > 0 && (
         <div className="bg-white rounded-2xl border border-[var(--border)] p-8 flex flex-col items-center justify-center text-center">
           <ShieldCheck className="w-10 h-10 text-neutral-300 mb-4" aria-hidden="true" />
-          <p className="text-sm font-medium text-neutral-950 mb-1">All findings dismissed</p>
+          <p className="text-sm font-medium text-neutral-950 mb-1">All Findings Dismissed</p>
           <p className="text-sm text-neutral-500">
             {hiddenCount} {hiddenCount === 1 ? "finding" : "findings"} dismissed. Re-check any time to re-scan.
           </p>
