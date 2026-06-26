@@ -15,7 +15,7 @@
 // useCrossSuiteConflictResolver hook in this same folder.
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ExternalLink, AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronUp, ExternalLink, Info } from "lucide-react";
 import type {
   CrossSuiteConflict,
   CrossSuiteSnapshot,
@@ -103,7 +103,7 @@ function Header({ conflict, onClose }: { conflict: CrossSuiteConflict; onClose: 
         className="rounded-md p-1 text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
         aria-label="Close"
       >
-        <X className="w-5 h-5" aria-hidden="true" />
+        <ChevronUp className="w-5 h-5" aria-hidden="true" />
       </button>
     </div>
   );

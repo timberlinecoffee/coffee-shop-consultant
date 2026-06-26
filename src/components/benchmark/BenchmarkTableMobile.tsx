@@ -4,7 +4,7 @@
 // Pattern: EquipmentMobileV2 — grouped by pillar, tap card → detail sheet.
 
 import { useState } from "react";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronRight, ChevronUp } from "lucide-react";
 import { BenchmarkChip, VERDICT_LABELS } from "./BenchmarkChip";
 import { formatRange } from "./benchmark-utils";
 import type { BenchmarkPillar, BenchmarkMetric, DrilldownData } from "./types";
@@ -179,7 +179,7 @@ function MetricDetailSheet({
             aria-label="Close"
             className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]"
           >
-            <X size={16} aria-hidden="true" />
+            <ChevronUp size={16} aria-hidden="true" />
           </button>
         </div>
 

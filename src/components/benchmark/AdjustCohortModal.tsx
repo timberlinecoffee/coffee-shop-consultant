@@ -4,7 +4,7 @@
 // Modal (not a drawer) per spec — requires deliberate confirmation before grid updates.
 
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { ChevronUp } from "lucide-react";
 import type { CohortAxes } from "./types";
 
 const SHOP_MODELS = ["Espresso bar", "Full café", "Drive-through", "Cart / kiosk", "Roaster with café"];
@@ -85,7 +85,7 @@ export function AdjustCohortModal({ current, onApply, onClose, onPreviewSampleSi
             onClick={onClose}
             className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
           >
-            <X size={16} />
+            <ChevronUp size={16} />
           </button>
         </div>
 

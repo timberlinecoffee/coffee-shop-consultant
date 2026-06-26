@@ -638,7 +638,7 @@ function AddVendorModal({
             aria-label="Close"
             className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
           >
-            <X size={16} />
+            <ChevronUp size={16} />
           </button>
         </div>
 

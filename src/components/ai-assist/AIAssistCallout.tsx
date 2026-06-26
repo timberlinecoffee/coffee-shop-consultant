@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { X } from "lucide-react";
+import { ChevronUp } from "lucide-react";
 import type { WorkspaceKey } from "@/types/supabase";
 import { consumeSseFrames } from "@/components/copilot/sse";
 import type { OpenAIReviewModalOptions } from "@/hooks/useAIReviewModal";
@@ -271,7 +271,7 @@ export function AIAssistCallout({
             aria-label="Close"
             className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed ml-4 mt-0.5 shrink-0"
           >
-            <X size={16} aria-hidden="true" />
+            <ChevronUp size={16} aria-hidden="true" />
           </button>
         </div>
 

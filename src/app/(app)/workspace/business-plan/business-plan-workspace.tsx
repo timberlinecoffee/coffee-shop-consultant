@@ -5,7 +5,7 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Eye, EyeOff, RotateCcw, Download, ChevronDown, ChevronUp, X, Circle, CheckCircle, Loader2 } from "lucide-react";
+import { FileText, Eye, EyeOff, RotateCcw, Download, ChevronDown, ChevronUp, Circle, CheckCircle, Loader2 } from "lucide-react";
 import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -1293,7 +1293,7 @@ function SectionCard({
                     aria-label="Close example"
                     className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus-visible:outline-none ml-2 shrink-0"
                   >
-                    <X size={13} aria-hidden="true" />
+                    <ChevronUp size={13} aria-hidden="true" />
                   </button>
                 </div>
                 <p className="text-sm text-[var(--gray-1200)] leading-relaxed italic border-l-2 border-[var(--warm-950)] pl-3">

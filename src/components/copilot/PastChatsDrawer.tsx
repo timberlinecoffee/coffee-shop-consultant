@@ -14,7 +14,7 @@
 
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, X } from "lucide-react";
+import { ChevronUp, Sparkles } from "lucide-react";
 import {
   ThreadBrowser,
   type ConversationScope,
@@ -156,7 +156,7 @@ function DrawerHeader({ onClose }: { onClose: () => void }) {
         aria-label="Close past chats"
         className="w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0"
       >
-        <X className="w-4 h-4" aria-hidden />
+        <ChevronUp className="w-4 h-4" aria-hidden />
       </button>
     </header>
   );

@@ -20,7 +20,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, Trash2, X } from "lucide-react";
+import { ChevronUp, GripVertical, Plus, Trash2 } from "lucide-react";
 import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
 import type { ListSection } from "@/types/buildout";
 
@@ -320,7 +320,7 @@ export function CategorySettingsPanel({
             className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors shrink-0"
             aria-label="Close"
           >
-            <X size={16} />
+            <ChevronUp size={16} />
           </button>
         </div>
 

@@ -11,7 +11,7 @@ import {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { Clock, Maximize2, Minimize2, Sparkles, X } from "lucide-react";
+import { ChevronUp, Clock, Maximize2, Minimize2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -1417,7 +1417,7 @@ export function CoPilotDrawer({
                 onClick={closeDrawer}
                 className="mt-0.5 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0"
               >
-                <X className="w-4 h-4" />
+                <ChevronUp className="w-4 h-4" />
               </button>
             </header>
 
