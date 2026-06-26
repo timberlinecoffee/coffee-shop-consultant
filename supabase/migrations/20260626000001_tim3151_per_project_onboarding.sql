@@ -5,6 +5,7 @@
 --
 -- RLS: inherited from coffee_shop_plans "Users can manage own plans" policy
 -- (deny-by-default row-level; no separate column policy needed per Rule 1).
+-- CI re-trigger: drift check fixed in scripts/check-migration-drift.mjs (IPv4 + baseline).
 
 ALTER TABLE public.coffee_shop_plans
   ADD COLUMN IF NOT EXISTS onboarding_data jsonb;
