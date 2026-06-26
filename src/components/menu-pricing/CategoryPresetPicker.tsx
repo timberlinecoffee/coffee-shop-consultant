@@ -152,6 +152,7 @@ export function CategoryPresetPicker({ categoryName, onApplyPreset, onSkip }: Pr
         <div className="mt-3">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+              {/* eslint-disable-next-line no-restricted-syntax -- percentage target (0-99%), not a dollar amount */}
               <input
                 ref={lowRef}
                 type="number"
@@ -166,6 +167,7 @@ export function CategoryPresetPicker({ categoryName, onApplyPreset, onSkip }: Pr
               />
               <span>%</span>
               <span className="text-[var(--muted-foreground)]">to</span>
+              {/* eslint-disable-next-line no-restricted-syntax -- percentage target (1-100%), not a dollar amount */}
               <input
                 type="number"
                 min={1}
