@@ -14,7 +14,8 @@
 // bottom sheet on small screens with the field scrolled clear above it.
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, X, GripHorizontal } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, GripHorizontal } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 
 export interface TourStep {
   id: string;
@@ -294,15 +295,12 @@ export function GuidedTour({
               <GripHorizontal size={13} className="text-[var(--neutral-cool-400)]" aria-hidden="true" />
               Guided Setup
             </span>
-            <button
-              type="button"
-              onPointerDown={(e) => e.stopPropagation()}
+            <CollapseButton
               onClick={() => onClose(index)}
+              size={16}
               className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
               aria-label="Close guided setup"
-            >
-              <X size={16} />
-            </button>
+            />
           </div>
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-medium text-[var(--muted-foreground)]">

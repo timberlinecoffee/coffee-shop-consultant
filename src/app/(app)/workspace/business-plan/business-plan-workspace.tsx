@@ -6,6 +6,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { FileText, Eye, EyeOff, RotateCcw, Download, ChevronDown, ChevronUp, Circle, CheckCircle, Loader2 } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -1287,14 +1288,12 @@ function SectionCard({
                       {ex.shopType}
                     </p>
                   </div>
-                  <button
-                    type="button"
+                  <CollapseButton
                     onClick={() => setOpenExample(false)}
+                    size={13}
                     aria-label="Close example"
-                    className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus-visible:outline-none ml-2 shrink-0"
-                  >
-                    <ChevronUp size={13} aria-hidden="true" />
-                  </button>
+                    className="text-[var(--dark-grey)] hover:text-[var(--foreground)] focus-visible:outline-none ml-2 shrink-0"
+                  />
                 </div>
                 <p className="text-sm text-[var(--gray-1200)] leading-relaxed italic border-l-2 border-[var(--warm-950)] pl-3">
                   {ex.answer}

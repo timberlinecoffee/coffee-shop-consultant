@@ -4,7 +4,8 @@
 // Opens below the pillar row — NOT a modal, NOT a sidebar.
 // Structure: header / percentile viz / BP band / insight / citation / actions.
 
-import { ArrowUpRight, ChevronUp, ExternalLink, Sparkles } from "lucide-react";
+import { ArrowUpRight, ExternalLink, Sparkles } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { PercentileBar } from "./PercentileBar";
 import { BestPracticeBand } from "./BestPracticeBand";
 import { BenchmarkTrendChart } from "./BenchmarkTrendChart";
@@ -69,14 +70,12 @@ export function BenchmarkDrilldown({ data, onClose, onAskBenchmark, onApplySugge
             {STATUS_LABELS[data.status]}
           </span>
         </div>
-        <button
-          type="button"
+        <CollapseButton
           onClick={onClose}
-          aria-label="Close drill-down"
+          size={16}
           className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors flex-shrink-0"
-        >
-          <ChevronUp size={16} />
-        </button>
+          aria-label="Close drill-down"
+        />
       </div>
 
       {/* Percentile visualization */}

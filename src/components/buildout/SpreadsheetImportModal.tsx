@@ -4,7 +4,8 @@
 // Upload .xlsx / .csv → AI-parse → editable preview → commit to equipment table.
 
 import { useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Trash2, Upload } from "lucide-react";
+import { ChevronDown, Trash2, Upload } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { useCurrency } from "@/components/CurrencyProvider";
 import type { ParsedRow } from "@/app/api/workspaces/buildout/import/route";
 import type { ListSection } from "@/types/buildout";
@@ -208,14 +209,12 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
               Upload a .xlsx or .csv file — AI maps columns and assigns stations automatically.
             </p>
           </div>
-          <button
-            type="button"
+          <CollapseButton
             onClick={onClose}
-            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
+            size={18}
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)]"
             aria-label="Close"
-          >
-            <ChevronUp size={18} />
-          </button>
+          />
         </div>
 
         <div className="flex-1 px-6 py-5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>

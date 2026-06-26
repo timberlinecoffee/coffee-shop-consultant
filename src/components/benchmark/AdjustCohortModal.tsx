@@ -4,7 +4,7 @@
 // Modal (not a drawer) per spec — requires deliberate confirmation before grid updates.
 
 import { useState, useEffect } from "react";
-import { ChevronUp } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import type { CohortAxes } from "./types";
 
 const SHOP_MODELS = ["Espresso bar", "Full café", "Drive-through", "Cart / kiosk", "Roaster with café"];
@@ -80,13 +80,12 @@ export function AdjustCohortModal({ current, onApply, onClose, onPreviewSampleSi
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
           <h2 className="text-sm font-semibold text-[var(--foreground)]">Adjust cohort</h2>
-          <button
-            type="button"
+          <CollapseButton
             onClick={onClose}
+            size={16}
             className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-          >
-            <ChevronUp size={16} />
-          </button>
+            aria-label="Collapse"
+          />
         </div>
 
         {/* Body */}

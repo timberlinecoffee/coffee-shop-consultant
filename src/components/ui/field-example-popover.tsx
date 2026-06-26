@@ -5,7 +5,8 @@
 // No modal takeover. Keyboard accessible (Escape closes). Voice-mandate compliant copy.
 
 import { useEffect, useState } from "react";
-import { Lightbulb, X } from "lucide-react";
+import { Lightbulb } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import type { FieldExample } from "@/lib/field-examples";
 
 interface FieldExamplePopoverProps {
@@ -68,14 +69,12 @@ export function FieldExamplePopover({ examples }: FieldExamplePopoverProps) {
                 {ex.shopType}
               </p>
             </div>
-            <button
-              type="button"
+            <CollapseButton
               onClick={() => setOpen(false)}
-              aria-label="Close example"
+              size={13}
               className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus-visible:outline-none focus:text-[var(--foreground)] ml-2 shrink-0"
-            >
-              <X size={13} aria-hidden="true" />
-            </button>
+              aria-label="Close example"
+            />
           </div>
 
           <p className="text-sm text-[var(--gray-1200)] leading-relaxed italic border-l-2 border-[var(--warm-950)] pl-3">

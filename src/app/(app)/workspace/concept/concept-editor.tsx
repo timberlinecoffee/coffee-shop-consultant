@@ -15,7 +15,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lightbulb, Printer, Sparkles, X } from "lucide-react";
+import { Lightbulb, Printer, Sparkles } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
@@ -513,14 +514,12 @@ export function ConceptWorkspace({
                               {ex.shopType}
                             </p>
                           </div>
-                          <button
-                            type="button"
+                          <CollapseButton
                             onClick={() => setOpenExampleId(null)}
-                            aria-label="Close example"
+                            size={13}
                             className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus-visible:outline-none ml-2 shrink-0"
-                          >
-                            <X size={13} aria-hidden="true" />
-                          </button>
+                            aria-label="Close example"
+                          />
                         </div>
                         <p className="text-sm text-[var(--gray-1200)] leading-relaxed italic border-l-2 border-[var(--warm-950)] pl-3">
                           {ex.answer}

@@ -4,7 +4,8 @@
 // Pattern: EquipmentMobileV2 — grouped by pillar, tap card → detail sheet.
 
 import { useState } from "react";
-import { ChevronRight, ChevronUp } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { BenchmarkChip, VERDICT_LABELS } from "./BenchmarkChip";
 import { formatRange } from "./benchmark-utils";
 import type { BenchmarkPillar, BenchmarkMetric, DrilldownData } from "./types";
@@ -173,14 +174,12 @@ function MetricDetailSheet({
               {metric.pillarLabel}
             </p>
           </div>
-          <button
-            type="button"
+          <CollapseButton
             onClick={onClose}
-            aria-label="Close"
+            size={16}
             className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]"
-          >
-            <ChevronUp size={16} aria-hidden="true" />
-          </button>
+            aria-label="Close"
+          />
         </div>
 
         {/* Detail rows */}

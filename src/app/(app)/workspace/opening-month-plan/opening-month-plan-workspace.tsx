@@ -15,10 +15,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Rocket, ChevronDown, ChevronUp, Check, X,
+  Rocket, ChevronDown, Check, X,
   Plus, RefreshCw, AlertTriangle, Pencil, Trash2, Info, ClipboardList,
   CheckCircle, Circle, Minus,
 } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { LaunchPlanSubNav } from "@/components/launch-plan/LaunchPlanSubNav";
 import {
   WorkspaceSubNav,
@@ -625,7 +626,7 @@ function EditModal({ milestone, onSave, onClose, isNew }: EditModalProps) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
           <h3 className="text-base font-semibold text-[var(--foreground)]">{isNew ? "Add Milestone" : "Edit Milestone"}</h3>
-          <button onClick={onClose} className="p-1 text-[var(--dark-grey)] hover:text-[var(--muted-foreground)]"><ChevronUp size={16} /></button>
+          <CollapseButton onClick={onClose} size={16} className="p-1 text-[var(--dark-grey)] hover:text-[var(--muted-foreground)]" />
         </div>
         <div className="px-5 py-4 space-y-4">
           <div>

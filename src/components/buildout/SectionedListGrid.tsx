@@ -68,6 +68,7 @@ import { formatCurrencyAmount, currencySymbol } from "@/lib/currency";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { type VendorCandidate, type VendorCategoryKey, VENDOR_CATEGORY_KEYS, VENDOR_CATEGORY_LABELS } from "@/lib/suppliers";
 import { EquipmentRecommendationCard } from "@/components/buildout/EquipmentRecommendationCard";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 
 // ── Column definitions ────────────────────────────────────────────────────────
 
@@ -632,14 +633,12 @@ function AddVendorModal({
               Saved to Suppliers &amp; Vendors and selected on this row.
             </p>
           </div>
-          <button
-            type="button"
+          <CollapseButton
             onClick={onClose}
+            size={16}
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)]"
             aria-label="Close"
-            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
-          >
-            <ChevronUp size={16} />
-          </button>
+          />
         </div>
 
         <div className="px-5 py-4 space-y-3">
