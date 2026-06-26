@@ -15,10 +15,11 @@
 //   - action row drops the `pl-[76px]` indent — there's no room for it.
 //   - card container is `bg-white rounded-xl border px-3 py-3 space-y-2`.
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { ArrowRight, ExternalLink, ShieldCheck } from "lucide-react";
 import type { AuditFinding, AuditReport, AuditSeverity } from "@/lib/business-plan/audit";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
+import { usePlanNotifsMap } from "@/lib/use-plan-notification-pref";
 
 // TIM-2434: "import" mode added for the document-import companion surface.
 // TIM-3072: "benchmark" removed — Check covers the same surface.
@@ -57,6 +58,8 @@ interface CompanionFindingCardProps {
   onApply: (finding: AuditFinding) => void;
   onGoToSource: (finding: AuditFinding) => void;
   onDismiss: (id: string) => void;
+  onSnooze: (id: string) => void;
+  snoozedUntil?: Date | null;
   // TIM-2453: when the finding maps to a registered cross-suite resolver
   // conflict AND that conflict is present in today's resolver response, the
   // card swaps its primary CTA for "Review fix options" which dispatches the
@@ -70,6 +73,8 @@ function CompanionFindingCard({
   onApply,
   onGoToSource,
   onDismiss,
+  onSnooze,
+  snoozedUntil,
   crossSuiteConflictId,
   onOpenCrossSuite,
 }: CompanionFindingCardProps) {
@@ -86,6 +91,21 @@ function CompanionFindingCard({
   const openResolver = useCallback(() => {
     if (crossSuiteConflictId && onOpenCrossSuite) onOpenCrossSuite(crossSuiteConflictId);
   }, [crossSuiteConflictId, onOpenCrossSuite]);
+
+  if (snoozedUntil) {
+    const formatted = snoozedUntil.toLocaleString(undefined, {
+      month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    });
+    return (
+      <div className="bg-white rounded-xl border border-[var(--border)] px-3 py-2.5 flex items-center gap-2">
+        <SeverityChip level={finding.severity} />
+        <p className="text-xs text-neutral-500 flex-1 min-w-0 truncate">{issue}</p>
+        <span className="text-xs text-neutral-400 whitespace-nowrap flex-shrink-0">
+          Snoozed until {formatted}
+        </span>
+      </div>
+    );
+  }
 
   // When a resolver is available, the issue+why+fix region becomes a single
   // interactive button so clicking the surfaced problem opens the modal — the
@@ -165,6 +185,13 @@ function CompanionFindingCard({
         <button
           type="button"
           className="text-xs font-semibold text-neutral-400 hover:text-neutral-500"
+          onClick={() => onSnooze(finding.id)}
+        >
+          Snooze 24h
+        </button>
+        <button
+          type="button"
+          className="text-xs font-semibold text-neutral-400 hover:text-neutral-500"
           onClick={() => onDismiss(finding.id)}
         >
           Dismiss
@@ -229,9 +256,12 @@ function groupBySeverity(findings: AuditFinding[]): Record<AuditSeverity, AuditF
 
 interface FindingListProps {
   findings: AuditFinding[];
+  snoozedFindings?: AuditFinding[];
   onApply: (finding: AuditFinding) => void;
   onGoToSource: (finding: AuditFinding) => void;
   onDismiss: (id: string) => void;
+  onSnooze: (id: string) => void;
+  getSnoozedUntil?: (id: string) => Date | null;
   // TIM-2453: per-finding resolver binding. Resolver returns null when the
   // finding has no registered conflict (or the conflict isn't present in
   // today's resolver response).
@@ -241,9 +271,12 @@ interface FindingListProps {
 
 function FindingList({
   findings,
+  snoozedFindings,
   onApply,
   onGoToSource,
   onDismiss,
+  onSnooze,
+  getSnoozedUntil,
   resolverConflictIdFor,
   onOpenCrossSuite,
 }: FindingListProps) {
@@ -271,6 +304,7 @@ function FindingList({
                   onApply={onApply}
                   onGoToSource={onGoToSource}
                   onDismiss={onDismiss}
+                  onSnooze={onSnooze}
                   crossSuiteConflictId={resolverConflictIdFor?.(f) ?? null}
                   onOpenCrossSuite={onOpenCrossSuite}
                 />
@@ -279,6 +313,26 @@ function FindingList({
           </section>
         );
       })}
+      {snoozedFindings && snoozedFindings.length > 0 && (
+        <section aria-label="Snoozed findings">
+          <h3 className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wide mb-2">
+            Snoozed
+          </h3>
+          <div className="space-y-2">
+            {snoozedFindings.map((f) => (
+              <CompanionFindingCard
+                key={f.id}
+                finding={f}
+                onApply={onApply}
+                onGoToSource={onGoToSource}
+                onDismiss={onDismiss}
+                onSnooze={onSnooze}
+                snoozedUntil={getSnoozedUntil?.(f.id) ?? null}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -309,18 +363,24 @@ export function CheckPanel({
   resolverConflictIdFor,
   onOpenCrossSuite,
 }: CheckPanelProps) {
-  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
-  const handleDismiss = useCallback((id: string) => {
-    setDismissed((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-  }, []);
+  const { isLoaded, getState, dismiss, snooze } = usePlanNotifsMap();
+
   const visibleFindings = useMemo(() => {
     if (!report) return [] as AuditFinding[];
-    return report.findings.filter((f) => !dismissed.has(f.id));
-  }, [report, dismissed]);
+    if (!isLoaded) return report.findings;
+    return report.findings.filter((f) => {
+      const s = getState(f.id);
+      return !s.isDismissed && !s.isSnoozed;
+    });
+  }, [report, isLoaded, getState]);
+
+  const snoozedFindings = useMemo(() => {
+    if (!report || !isLoaded) return [] as AuditFinding[];
+    return report.findings.filter((f) => {
+      const s = getState(f.id);
+      return !s.isDismissed && s.isSnoozed;
+    });
+  }, [report, isLoaded, getState]);
 
   if (isScanning) {
     return (
@@ -365,7 +425,7 @@ export function CheckPanel({
     );
   }
 
-  if (visibleFindings.length === 0) {
+  if (visibleFindings.length === 0 && snoozedFindings.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center text-center py-10 px-4">
         <div className="w-12 h-12 rounded-2xl bg-[var(--teal)]/10 flex items-center justify-center mb-4">
@@ -404,9 +464,12 @@ export function CheckPanel({
       </div>
       <FindingList
         findings={visibleFindings}
+        snoozedFindings={snoozedFindings}
         onApply={onApply}
         onGoToSource={onGoToSource}
-        onDismiss={handleDismiss}
+        onDismiss={(id) => dismiss(id, "companion")}
+        onSnooze={(id) => snooze(id, "companion")}
+        getSnoozedUntil={(id) => getState(id).snoozedUntil}
         resolverConflictIdFor={resolverConflictIdFor}
         onOpenCrossSuite={onOpenCrossSuite}
       />

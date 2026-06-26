@@ -2,9 +2,11 @@
 
 // TIM-736: Cross-workspace launch readiness check button + result display.
 // Streams SSE from /api/copilot/launch-readiness and renders a structured verdict.
+// TIM-3253: added dismiss + snooze controls on the error state.
 
 import { useState, useCallback } from "react";
 import { consumeSseFrames } from "@/components/copilot/sse";
+import { useSinglePlanNotifPref } from "@/lib/use-plan-notification-pref";
 
 type ReadinessStatus = "green" | "yellow" | "red";
 
@@ -42,10 +44,26 @@ const STATUS_COLORS: Record<ReadinessStatus, { bg: string; text: string; dot: st
   red: { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500", label: "Red" },
 };
 
+function deriveErrorKey(planId: string, msg: string): string {
+  let h = 0;
+  for (let i = 0; i < msg.length; i++) {
+    h = ((h << 5) - h + msg.charCodeAt(i)) | 0;
+  }
+  return `launch-readiness:${planId}:${Math.abs(h).toString(36)}`;
+}
+
 export function LaunchReadinessButton({ planId }: { planId: string }) {
   const [state, setState] = useState<"idle" | "thinking" | "done" | "error">("idle");
   const [result, setResult] = useState<ReadinessResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const errorKey = errorMsg ? deriveErrorKey(planId, errorMsg) : `launch-readiness:${planId}:pending`;
+  const {
+    isDismissed: errorDismissed,
+    isSnoozed: errorSnoozed,
+    snoozedUntil: errorSnoozedUntil,
+    dismiss: dismissError,
+    snooze: snoozeError,
+  } = useSinglePlanNotifPref(errorKey, "launch_readiness");
 
   const runCheck = useCallback(async () => {
     setState("thinking");
@@ -145,15 +163,48 @@ export function LaunchReadinessButton({ planId }: { planId: string }) {
         </div>
       )}
 
-      {state === "error" && errorMsg && (
+      {state === "error" && errorMsg && !errorDismissed && !errorSnoozed && (
         <div className="mt-4 border border-red-200 bg-red-50 text-red-700 rounded-lg px-4 py-3 text-sm">
-          {errorMsg}
+          <p className="mb-2">{errorMsg}</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => void runCheck()}
+              className="text-xs font-semibold underline"
+            >
+              Try again
+            </button>
+            <button
+              type="button"
+              onClick={() => snoozeError(24)}
+              className="text-xs font-semibold text-red-500 hover:text-red-700"
+            >
+              Snooze 24h
+            </button>
+            <button
+              type="button"
+              onClick={() => dismissError()}
+              className="text-xs font-semibold text-red-400 hover:text-red-600"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+      {state === "error" && errorMsg && !errorDismissed && errorSnoozed && errorSnoozedUntil && (
+        <div className="mt-4 border border-[var(--border)] bg-[var(--muted)] rounded-lg px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-neutral-500">
+          <span>
+            Error snoozed until{" "}
+            {errorSnoozedUntil.toLocaleString(undefined, {
+              month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+            })}
+          </span>
           <button
             type="button"
-            onClick={() => void runCheck()}
-            className="ml-3 text-xs font-semibold underline"
+            onClick={() => dismissError()}
+            className="font-semibold text-neutral-400 hover:text-neutral-600 whitespace-nowrap"
           >
-            Try again
+            Dismiss
           </button>
         </div>
       )}
