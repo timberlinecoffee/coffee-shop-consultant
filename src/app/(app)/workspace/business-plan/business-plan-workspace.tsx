@@ -663,6 +663,17 @@ export function BusinessPlanWorkspace({
       }
     });
     void persistDirty();
+    // Flush custom section dirty buffers too.
+    if (customPendingSaveTimer.current) {
+      clearTimeout(customPendingSaveTimer.current);
+      customPendingSaveTimer.current = null;
+    }
+    customSections.forEach((cs) => {
+      if (cs.isEditing && !customDirtyBuffersRef.current.has(cs.id)) {
+        customDirtyBuffersRef.current.set(cs.id, cs.editBuffer ?? null);
+      }
+    });
+    void persistCustomDirty();
   }
 
   const handleSectionPatchedFromGate = useCallback((sectionKey: string, newContent: string) => {
@@ -819,9 +830,18 @@ export function BusinessPlanWorkspace({
   }, [updateCustomSection]);
 
   const handleDeleteCustomSection = useCallback(async (id: string) => {
+    const snapshot = customSections.find((cs) => cs.id === id);
     setCustomSections((prev) => prev.filter((cs) => cs.id !== id));
-    await fetch(`/api/business-plan/custom-sections/${id}`, { method: "DELETE" });
-  }, []);
+    try {
+      const res = await fetch(`/api/business-plan/custom-sections/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("delete failed");
+    } catch {
+      if (snapshot) {
+        setCustomSections((prev) => [...prev, snapshot].sort((a, b) => a.sortOrder - b.sortOrder));
+      }
+      setCustomSectionError("Could not delete section. Try again.");
+    }
+  }, [customSections]);
 
   const handleCustomSectionVisibility = useCallback(async (id: string, current: boolean) => {
     const next = !current;
