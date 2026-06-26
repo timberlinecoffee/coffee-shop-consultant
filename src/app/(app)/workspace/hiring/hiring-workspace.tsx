@@ -568,6 +568,7 @@ function RoleDetailPanel({
     }
   }
 
+  // Live loaded cost preview (from entered fields, not just saved line)
   const compPreviewCents =
     typeof compPayAmount === "number" && compPayAmount > 0
       ? personnelLoadedMonthlyCents({
@@ -675,6 +676,13 @@ function RoleDetailPanel({
               Loaded: <MoneyDisplay cents={compPreviewCents} />/mo
             </span>
           )}
+          <span className="text-xs text-[var(--muted-foreground)]">
+            {role.headcount} headcount
+            {role.monthly_cost_cents
+              ? <> · <MoneyDisplay cents={role.monthly_cost_cents} />/mo</>
+              : ""}
+            {parentTitle ? ` · Reports to ${parentTitle}` : ""}
+          </span>
         </div>
         <div className="flex flex-wrap gap-3 items-end bg-white border border-[var(--neutral-cool-200)] rounded-lg p-3">
           <div className="w-36">
