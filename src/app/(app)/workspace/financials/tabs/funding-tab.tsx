@@ -12,9 +12,9 @@ import type {
   FinancialInputs,
 } from "@/lib/financial-projection";
 import { fmt, loanMonthlyPaymentCents } from "@/lib/financial-projection";
-import { currencySymbol } from "@/lib/currency";
 import { fmtPct } from "@/lib/formatters";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { InfoTip } from "@/components/ui/info-tip";
 
 const KIND_META: Record<FundingKind, { label: string; hint: string }> = {
@@ -80,7 +80,6 @@ interface LineRowProps {
 }
 
 function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowProps) {
-  const sym = currencySymbol(currencyCode);
   const inputCls =
     "text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 
@@ -101,11 +100,11 @@ function LineRow({ line, canEdit, currencyCode, onChange, onDelete }: LineRowPro
 
         <div className="w-[160px]">
           <label className="block text-[10px] font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-1">
-            Amount ({sym})
+            Amount
           </label>
-          <NumericInput
+          <MoneyInput
+            currencyCode={currencyCode}
             className={`${inputCls} w-full`}
-            type="number"
             min={0}
             step={100}
             value={line.amount_cents ? line.amount_cents / 100 : ""}

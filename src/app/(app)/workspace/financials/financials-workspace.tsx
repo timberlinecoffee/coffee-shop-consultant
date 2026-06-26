@@ -12,6 +12,7 @@ import { BarChart2, X, AlertTriangle, FileDown, Sheet, Compass, ChevronDown } fr
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { LabelWithHint } from "@/components/ui/label-with-hint";
 import { SectionHeader } from "@/components/section-header";
@@ -364,9 +365,8 @@ function OwnerContributionsEditor({
             className={rowCls + " w-16 text-right"}
             aria-label="Contribution month"
           />
-          <span className="text-[10px] text-[var(--muted-foreground)]">{currencyCode}</span>
-          <NumericInput
-            type="number"
+          <MoneyInput
+            currencyCode={currencyCode}
             min={0}
             step={100}
             value={c.amount_cents ? c.amount_cents / 100 : ""}
@@ -863,11 +863,11 @@ function ForecastTab({
                     hintLabel="Beverage average per sale"
                     hint="Espresso, drip, tea, etc."
                   >
-                    {`Beverage: average per sale (${mp.currency_code ?? "USD"})`}
+                    Beverage: average per sale
                   </LabelWithHint>
-                  <NumericInput
+                  <MoneyInput
+                    currencyCode={mp.currency_code ?? "USD"}
                     className={inputCls}
-                    type="number"
                     min={0}
                     step={0.5}
                     value={bevTicketCents ? bevTicketCents / 100 : ""}
@@ -882,11 +882,11 @@ function ForecastTab({
                     hintLabel="Food average per sale"
                     hint="Pastries, sandwiches, snacks"
                   >
-                    {`Food: average per sale (${mp.currency_code ?? "USD"})`}
+                    Food: average per sale
                   </LabelWithHint>
-                  <NumericInput
+                  <MoneyInput
+                    currencyCode={mp.currency_code ?? "USD"}
                     className={inputCls}
-                    type="number"
                     min={0}
                     step={0.5}
                     value={foodTicketCents ? foodTicketCents / 100 : ""}
@@ -903,11 +903,11 @@ function ForecastTab({
                   hintLabel="Average ticket"
                   hint="Typical espresso bar: $6–$10"
                 >
-                  {`Average ticket (${mp.currency_code ?? "USD"})`}
+                  Average ticket
                 </LabelWithHint>
-                <NumericInput
+                <MoneyInput
+                  currencyCode={mp.currency_code ?? "USD"}
                   className={inputCls}
-                  type="number"
                   min={0}
                   step={0.5}
                   value={mp.avg_ticket_cents ? mp.avg_ticket_cents / 100 : ""}
@@ -1144,11 +1144,11 @@ function ForecastTab({
                 hintLabel="Owner draws"
                 hint="What you pay yourself from the business each month. Shows up on the cash flow as a financing outflow."
               >
-                {`Owner draws (${mp.currency_code ?? "USD"} / month)`}
+                Owner draws / month
               </LabelWithHint>
-              <NumericInput
+              <MoneyInput
+                currencyCode={mp.currency_code ?? "USD"}
                 className={inputCls}
-                type="number"
                 min={0}
                 step={100}
                 value={
