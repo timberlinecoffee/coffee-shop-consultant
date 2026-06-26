@@ -42,6 +42,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useCurrency } from "@/components/CurrencyProvider";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Illustration } from "@/components/illustrations/Illustration";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -507,15 +508,15 @@ function IngredientTableRow({
             <option key={u.value} value={u.value}>{u.label}</option>
           ))}
         </select>
-        <input
-          type="number"
+        <MoneyInput
+          compact
           className={cellInputCls + " tabular-nums"}
           value={packageCost}
           disabled={!canEdit}
           min={0}
           step="0.01"
           placeholder="0.00"
-          aria-label="Package cost in dollars"
+          aria-label="Package cost"
           onChange={(e) => setPackageCost(e.target.value)}
           onBlur={handlePackageCostBlur}
         />
@@ -662,14 +663,14 @@ function QuickAddRow({
           <option key={u.value} value={u.value}>{u.label}</option>
         ))}
       </select>
-      <input
-        type="number"
+      <MoneyInput
+        compact
         className={quickInputCls + " tabular-nums"}
         value={cost}
         placeholder="0.00"
         min={0}
         step="0.01"
-        aria-label="New ingredient package cost in dollars"
+        aria-label="New ingredient package cost"
         onChange={(e) => setCost(e.target.value)}
       />
       <span className="px-2 text-sm font-medium text-[var(--muted-foreground)] tabular-nums truncate">
@@ -1500,9 +1501,8 @@ function CostOfGoodsTabContent({
         </h3>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Selling Price ($)</label>
-            <input
-              type="number"
+            <label className={labelCls}>Selling Price</label>
+            <MoneyInput
               className={inputCls}
               value={priceDisplay}
               disabled={!canEdit}
