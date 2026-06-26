@@ -27,7 +27,7 @@ if (!DB_URL) {
 
 const REF = "ltmcttjftxzpgynhnrpg"
 const MIGRATION_NAME = "tim3018_business_plan_section_drafts"
-const MIGRATION_FILE = "supabase/migrations/PENDING_tim3018_business_plan_section_drafts.sql"
+const MIGRATION_FILE = "supabase/migrations/20260626024424_tim3018_business_plan_section_drafts.sql"
 
 const AWS1_REGIONS = [
   "us-east-1",

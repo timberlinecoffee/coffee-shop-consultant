@@ -4,6 +4,7 @@
 
 export const dynamic = "force-dynamic";
 
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { enforceRateLimit } from "@/lib/rate-limit";
@@ -11,8 +12,18 @@ import type { NextRequest } from "next/server";
 
 type RouteContext = { params: Promise<{ runId: string; sectionKey: string }> };
 
+const ParamsSchema = z.object({
+  runId: z.string().uuid(),
+  sectionKey: z.string().min(1).max(200),
+});
+
 export async function POST(request: NextRequest, { params }: RouteContext) {
-  const { runId, sectionKey } = await params;
+  const rawParams = await params;
+  const paramsResult = ParamsSchema.safeParse(rawParams);
+  if (!paramsResult.success) {
+    return Response.json({ error: "Invalid request" }, { status: 400 });
+  }
+  const { runId, sectionKey } = paramsResult.data;
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -36,7 +47,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     .eq("section_key", sectionKey)
     .maybeSingle();
 
-  if (draftErr) return Response.json({ error: draftErr.message }, { status: 500 });
+  if (draftErr) return Response.json({ error: "Internal error" }, { status: 500 });
   if (!draft) return Response.json({ error: "Draft not found" }, { status: 404 });
   if (draft.status !== "pending") {
     return Response.json({ error: `Draft already ${draft.status}` }, { status: 409 });

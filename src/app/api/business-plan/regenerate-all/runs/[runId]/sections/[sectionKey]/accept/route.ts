@@ -17,8 +17,18 @@ const BodySchema = z.object({
   finalValue: z.string().max(100_000),
 });
 
+const ParamsSchema = z.object({
+  runId: z.string().uuid(),
+  sectionKey: z.string().min(1).max(200),
+});
+
 export async function POST(request: NextRequest, { params }: RouteContext) {
-  const { runId, sectionKey } = await params;
+  const rawParams = await params;
+  const paramsResult = ParamsSchema.safeParse(rawParams);
+  if (!paramsResult.success) {
+    return Response.json({ error: "Invalid request" }, { status: 400 });
+  }
+  const { runId, sectionKey } = paramsResult.data;
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -48,14 +58,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   // Rule 2: verify the draft exists, is pending, and is owned by the authed user
   // (via RLS plan_id check). Fetch it with the user's auth client so RLS applies.
+  // Also fetch estimated_claims_json so we can propagate it to business_plan_sections
+  // (mirrors the legacy PATCH route at /api/business-plan/sections/[sectionKey]).
   const { data: draft, error: draftErr } = await supabase
     .from("business_plan_section_drafts")
-    .select("id, plan_id, status")
+    .select("id, plan_id, status, estimated_claims_json")
     .eq("run_id", runId)
     .eq("section_key", sectionKey)
     .maybeSingle();
 
-  if (draftErr) return Response.json({ error: draftErr.message }, { status: 500 });
+  if (draftErr) return Response.json({ error: "Internal error" }, { status: 500 });
   if (!draft) return Response.json({ error: "Draft not found" }, { status: 404 });
   if (draft.status !== "pending") {
     return Response.json({ error: `Draft already ${draft.status}` }, { status: 409 });
@@ -65,11 +77,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   // auth context. RLS ownership was verified above.
   const svc = createServiceClient();
 
-  // 1. Promote draft to live section content.
+  // 1. Promote draft to live section content. Write estimated_claims_json alongside
+  // user_content so the export-gate modal sees the freshly-generated claims (not stale
+  // ones from a prior generation). Mirrors the legacy PATCH at /api/business-plan/sections.
   const { error: upsertErr } = await svc
     .from("business_plan_sections")
     .upsert(
-      { plan_id: draft.plan_id, section_key: sectionKey, user_content: finalValue },
+      {
+        plan_id: draft.plan_id,
+        section_key: sectionKey,
+        user_content: finalValue,
+        estimated_claims_json: draft.estimated_claims_json ?? [],
+      },
       { onConflict: "plan_id,section_key" },
     );
   if (upsertErr) return Response.json({ error: upsertErr.message }, { status: 500 });
