@@ -31,6 +31,7 @@ import type {
 } from "@/app/(app)/workspace/financials/financials-workspace";
 import { formatCurrency } from "@/lib/financial-projection";
 import { useCurrency } from "@/components/CurrencyProvider";
+import { MoneyInput } from "@/components/ui/money-input";
 import {
   TABLE_CELL_TEXT,
   TABLE_HEADER_TEXT,
@@ -261,6 +262,7 @@ function CostCell({
   onKeyDown: (e: React.KeyboardEvent) => void;
   inputRef: React.Ref<HTMLInputElement>;
 }) {
+  const { symbol } = useCurrency();
   const [draft, setDraft] = useState(valueCents > 0 ? String(valueCents / 100) : "");
 
   useEffect(() => {
@@ -268,19 +270,22 @@ function CostCell({
   }, [valueCents]);
 
   return (
-    <input
-      ref={inputRef}
-      type="number"
-      min={0}
-      step={50}
-      className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[var(--neutral-cool-400)]"
-      value={draft}
-      placeholder="0"
-      disabled={disabled}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => onCommit(Math.round((parseFloat(draft) || 0) * 100))}
-      onKeyDown={onKeyDown}
-    />
+    <div className="flex items-center gap-0.5 w-full h-full">
+      <span className="shrink-0 text-xs text-[var(--muted-foreground)]">{symbol}</span>
+      <input
+        ref={inputRef}
+        type="number"
+        min={0}
+        step={50}
+        className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[var(--neutral-cool-400)]"
+        value={draft}
+        placeholder="0"
+        disabled={disabled}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => onCommit(Math.round((parseFloat(draft) || 0) * 100))}
+        onKeyDown={onKeyDown}
+      />
+    </div>
   );
 }
 
@@ -423,14 +428,13 @@ function MobileEquipmentList({
                     { label: "Model", key: "model" as const, type: "text", placeholder: "Model" },
                     { label: "Supplier", key: "supplier" as const, type: "text", placeholder: "Supplier" },
                   ] : []),
-                  { label: "Cost ($)", key: "unit_cost_cents" as const, type: "cost", placeholder: "0" },
+                  { label: "Cost", key: "unit_cost_cents" as const, type: "cost", placeholder: "0" },
                   { label: "Notes", key: "notes" as const, type: "text", placeholder: "Notes" },
                 ].map(({ label, key, type, placeholder }) => (
                   <div key={key}>
                     <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">{label}</label>
                     {type === "cost" ? (
-                      <input
-                        type="number"
+                      <MoneyInput
                         min={0}
                         className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2.5 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
                         value={item.unit_cost_cents > 0 ? item.unit_cost_cents / 100 : ""}
