@@ -6,6 +6,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { FileText, Eye, EyeOff, RotateCcw, Download, ChevronDown, ChevronUp, X, Circle, CheckCircle, Loader2 } from "lucide-react";
+import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -1338,12 +1339,13 @@ function SectionCard({
 
             {section.isEditing ? (
               <div>
-                <textarea
+                <MobileExpandableTextarea
                   value={section.editBuffer}
-                  onChange={(e) => onEditChange(e.target.value)}
-                  className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed"
+                  onChange={onEditChange}
+                  label={section.title ?? "Section content"}
                   placeholder="Add content for this section..."
-                  disabled={false}
+                  minRows={6}
+                  className="min-h-[160px]"
                 />
                 <div className="flex gap-2 mt-2">
                   <button

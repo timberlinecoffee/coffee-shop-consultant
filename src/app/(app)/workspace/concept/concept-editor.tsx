@@ -20,6 +20,7 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
+import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -105,7 +106,7 @@ export function ConceptWorkspace({
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestDocRef = useRef<ConceptDocumentV2>(initialDoc);
 
-  const { promoteOnEdit } = useWorkspaceStatus();
+  const { promoteOnEdit, setStatus, statusByKey } = useWorkspaceStatus();
   const uiRevamp = useUiRevamp();
   const router = useRouter();
 
@@ -127,6 +128,19 @@ export function ConceptWorkspace({
   useEffect(() => {
     if (progress.filled > 0) promoteOnEdit("concept");
   }, [progress.filled, promoteOnEdit]);
+
+  // TIM-3108: auto-advance workspace status to "complete" when concept content
+  // becomes fully filled. Fires once per false→true transition so clicking
+  // "See all modules" in the ConceptUnlockBanner lands on an up-to-date
+  // dashboard % Ready stat. Never downgrades — guard on current status.
+  const prevCompleteRef = useRef(complete);
+  useEffect(() => {
+    const wasComplete = prevCompleteRef.current;
+    prevCompleteRef.current = complete;
+    if (complete && !wasComplete && statusByKey.get("concept") !== "complete") {
+      void setStatus("concept", "complete");
+    }
+  }, [complete, statusByKey, setStatus]);
   const shopName = doc.components.shop_identity.content.trim();
 
   const lastSavedAt =
@@ -559,14 +573,13 @@ export function ConceptWorkspace({
                     />
                   ) : showField ? (
                     meta.multiline ? (
-                      <textarea
-                        id={`concept-${meta.id}`}
+                      <MobileExpandableTextarea
                         value={comp.content}
-                        onChange={(e) => updateContent(meta.id, e.target.value)}
-                        rows={meta.rows ?? 3}
+                        onChange={(val) => updateContent(meta.id, val)}
+                        label={meta.label ?? "Field"}
+                        minRows={meta.rows ?? 3}
                         disabled={!canEdit}
-                        autoFocus={isEmpty && isActivated}
-                        className="mt-2 w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors bg-[var(--background)] resize-none leading-relaxed disabled:bg-[var(--surface-warm-200)] disabled:text-[var(--muted-foreground)]"
+                        className="mt-2"
                       />
                     ) : (
                       <input

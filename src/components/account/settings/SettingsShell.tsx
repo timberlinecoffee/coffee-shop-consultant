@@ -13,6 +13,7 @@ import { LanguageSettingsCard } from "@/components/account/LanguageSettingsCard"
 import { BillingTab } from "@/components/account/settings/BillingTab";
 import { AccountDataControls } from "@/components/account/AccountDataControls";
 import { GuidedNoticesCard } from "@/components/account/GuidedNoticesCard";
+import { ProfileNameEditor } from "@/components/account/ProfileNameEditor";
 import { SETTINGS_TABS } from "@/components/account/settings/tabs";
 import type { AccountSettings } from "@/lib/account-settings";
 
@@ -138,11 +139,9 @@ function AccountTabContent({
         </CardHeader>
         <CardContent>
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-[var(--dark-grey)]">Name</span>
-              <span className="text-[var(--foreground)]">
-                {profile?.full_name ?? "—"}
-              </span>
+              <ProfileNameEditor initialName={profile?.full_name ?? null} />
             </div>
             <div className="flex justify-between">
               <span className="text-[var(--dark-grey)]">Email</span>

@@ -194,3 +194,41 @@ test("TIM-2519 (regression CQ-03): mobile_cart Austin ≤ $80k (was $244k)", () 
   });
   assert.ok(startupCostsTotalCents(sc) <= 80 * K, "Austin mobile cart should land in the $40-80k real range");
 });
+
+// ── TIM-2534: Tier 3 city pin tests ─────────────────────────────────────────
+test("TIM-2534 AC#1: mobile_cart + Boise (Tier 3) ≈ $40k (50k × 0.8)", () => {
+  const sc = calibrateStartupCosts({
+    shopTypes: ["Mobile cart or pop-up"],
+    city: "Boise",
+    countryCode: "US",
+  });
+  assert.equal(startupCostsTotalCents(sc), 40 * K, "mobile_cart + Boise (Tier 3) total");
+});
+
+test("TIM-2534 AC#2: full_cafe + Spokane (Tier 3) ≈ $280k (350k × 0.8)", () => {
+  const sc = calibrateStartupCosts({
+    shopTypes: ["Full cafe with food"],
+    city: "Spokane",
+    countryCode: "US",
+  });
+  assert.equal(startupCostsTotalCents(sc), 280 * K, "full_cafe + Spokane (Tier 3) total");
+});
+
+test("TIM-2534: pickCityTier classifies all 16 Tier 3 cities correctly", () => {
+  const tier3Cities = [
+    "Boise", "Spokane", "Eugene", "Missoula", "Fargo",
+    "Sioux Falls", "Tucson", "El Paso", "Grand Rapids", "Fort Collins",
+    "Flagstaff", "Provo", "Ogden", "Billings", "Saskatoon", "Kelowna",
+  ];
+  for (const city of tier3Cities) {
+    assert.equal(pickCityTier(city, null), "tier3", `${city} should be Tier 3`);
+  }
+});
+
+test("TIM-2534: Tier 3 multiplier (0.8) produces costs below Tier 2 baseline", () => {
+  const tier2 = startupCostsTotalCents(calibrateStartupCosts({ shopTypes: ["Full cafe with food"], city: "Austin" }));
+  const tier3 = startupCostsTotalCents(calibrateStartupCosts({ shopTypes: ["Full cafe with food"], city: "Fargo" }));
+  assert.ok(tier3 < tier2, "Tier 3 city startup costs should be below Tier 2");
+  assert.equal(tier3, 280 * K); // 350k × 0.8
+  assert.equal(tier2, 350 * K);
+});

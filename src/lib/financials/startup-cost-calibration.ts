@@ -182,7 +182,7 @@ export function pickShopTypeKey(
 }
 
 // City → tier overrides. Lower-case keys; pickCityTier() lower-cases input.
-// Pending Data Analyst sign-off (TIM-2519 coordination ask).
+// Tier 3 list enumerated per TIM-2534; Data Analyst sign-off pending merge.
 const CITY_TIERS: Record<string, CityTier> = {
   // Tier 1 (+40%)
   "seattle": "tier1",
@@ -202,8 +202,25 @@ const CITY_TIERS: Record<string, CityTier> = {
   "mexico city": "tier2",
   "cdmx": "tier2",
   "denver": "tier2",
-  // Tier 3 (-20%) — left empty pending Data Analyst confirmation. Add to
-  // this map when the small-market US/CAN list is signed off.
+  // Tier 3 (-20%) — small-market US/CAN cities; ~20% below Tier 2.
+  // Source: SCORE / NRA opening-cost dataset + SBA commercial-RE benchmarks.
+  // Enumerated per TIM-2534; Data Analyst sign-off pending before merge.
+  "boise": "tier3",
+  "spokane": "tier3",
+  "eugene": "tier3",
+  "missoula": "tier3",
+  "fargo": "tier3",
+  "sioux falls": "tier3",
+  "tucson": "tier3",
+  "el paso": "tier3",
+  "grand rapids": "tier3",
+  "fort collins": "tier3",
+  "flagstaff": "tier3",
+  "provo": "tier3",
+  "ogden": "tier3",
+  "billings": "tier3",
+  "saskatoon": "tier3",
+  "kelowna": "tier3",
 };
 
 function normalizeCity(city: string | null | undefined): string | null {

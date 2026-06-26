@@ -12,6 +12,7 @@ import { GuidedNoticesCard } from "@/components/account/GuidedNoticesCard";
 import { RevertToggle } from "@/components/account/RevertToggle";
 import { effectivePlanForGating } from "@/lib/access";
 import { SettingsShell } from "@/components/account/settings/SettingsShell";
+import { ProfileNameEditor } from "@/components/account/ProfileNameEditor";
 import {
   UI_REVAMP_COOKIE,
   UI_REVAMP_OVERRIDE_COOKIE,
@@ -87,9 +88,9 @@ export default async function AccountPage() {
         <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
           <h2 className="font-semibold text-[var(--foreground)] mb-4">Profile</h2>
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-[var(--dark-grey)]">Name</span>
-              <span className="text-[var(--foreground)]">{profile?.full_name ?? "—"}</span>
+              <ProfileNameEditor initialName={profile?.full_name ?? null} />
             </div>
             <div className="flex justify-between">
               <span className="text-[var(--dark-grey)]">Email</span>
