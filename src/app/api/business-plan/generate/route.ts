@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, plan_name")
+    .select("id, plan_name, onboarding_data")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -157,7 +157,12 @@ export async function POST(request: NextRequest) {
   const menuBlendedCogsPct = computeMenuBlendedCogsPct((menuRows ?? []) as any[]);
 
   const shopName = plan.plan_name ?? "this coffee shop";
-  const onboarding = (profile.onboarding_data ?? {}) as Record<string, unknown>;
+  // TIM-3151: merge per-project intake answers over user-level onboarding data.
+  // Project-scoped fields (stage, shop_type, location, shop_vision, etc.) from
+  // the new-project interview override the signup snapshot when present.
+  const userOnboarding = (profile.onboarding_data ?? {}) as Record<string, unknown>;
+  const planOnboarding = (plan.onboarding_data as Record<string, unknown> | null) ?? {};
+  const onboarding = { ...userOnboarding, ...planOnboarding };
 
   // TIM-1418: Pull location from the live tables instead of the frozen
   // onboarding snapshot. Budget / stage live nowhere else, so they stay on

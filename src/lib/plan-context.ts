@@ -32,6 +32,11 @@ export interface PlanContext {
   // TIM-2340: resolved city label ("Calgary", "Seattle") for the geography
   // validator. Built from the chosen location_candidate when present.
   city_label: string | null;
+  // TIM-3151: per-project onboarding answers from coffee_shop_plans.onboarding_data.
+  // Non-null when the founder completed (or partially completed) the trimmed
+  // new-project interview. Callers merge this over users.onboarding_data so
+  // project-scoped fields (stage, shop_type, location, etc.) take precedence.
+  plan_onboarding_data: Record<string, unknown> | null;
 }
 
 export const EMPTY_PLAN_CONTEXT: PlanContext = {
@@ -44,6 +49,7 @@ export const EMPTY_PLAN_CONTEXT: PlanContext = {
   competitors: [],
   no_direct_competitors_identified: false,
   city_label: null,
+  plan_onboarding_data: null,
 };
 
 function parsePillars(differentiator: unknown): string[] {
@@ -130,7 +136,7 @@ export async function loadPlanContext(
 ): Promise<PlanContext> {
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, plan_name")
+    .select("id, plan_name, onboarding_data")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -177,15 +183,19 @@ export async function loadPlanContext(
   const concept = normalizeConceptV2(conceptRes.data?.content);
 
   // brand_pillars priority: marketing.story.differentiator (live, user-editable)
-  // > users.onboarding_data.brand_pillars (frozen onboarding answer).
-  // TIM-1417 removed the marketing_brand table, so the differentiator string is
-  // now the canonical live-table source. Onboarding stays as a fallback for
-  // founders who never opened the Marketing workspace.
+  // > coffee_shop_plans.onboarding_data.brand_pillars (TIM-3151 per-project intake)
+  // > users.onboarding_data.brand_pillars (frozen signup answer, first project).
+  // Each level is tried independently — do NOT short-circuit with ?? so that a
+  // non-null but brand_pillars-less planOd (e.g. { dismissed: true }) still falls
+  // through to the user-level signup answer.
   const livePillars = brandPillarsFromMarketingDoc(marketingRes.data?.content);
+  const planOd = (plan.onboarding_data as Record<string, unknown> | null) ?? null;
+  const planLevelPillars = brandPillarsFromOnboarding(planOd);
+  const userLevelPillars = brandPillarsFromOnboarding(profileRes.data?.onboarding_data);
   const brand_pillars =
-    livePillars.length > 0
-      ? livePillars
-      : brandPillarsFromOnboarding(profileRes.data?.onboarding_data);
+    livePillars.length > 0 ? livePillars
+    : planLevelPillars.length > 0 ? planLevelPillars
+    : userLevelPillars;
 
   const location_country =
     (hiringSettingsRes.data?.hiring_country ?? null) ||
@@ -208,6 +218,7 @@ export async function loadPlanContext(
     })),
     no_direct_competitors_identified: concept.no_direct_competitors_identified ?? false,
     city_label: cityLabelFromCandidates(locationsRes.data),
+    plan_onboarding_data: planOd,
   };
 }
 

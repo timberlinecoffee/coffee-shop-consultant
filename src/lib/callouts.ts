@@ -44,6 +44,10 @@ export const CALLOUT_REGISTRY: Record<CalloutKey, CalloutRegistryEntry> = {
     label: "Supplies starter-list prompt",
     workspace: "Equipment & Supplies",
   },
+  "menu-pricing.not-sure-where-to-start": {
+    label: "Not sure where to start? guidance card",
+    workspace: "Menu & Pricing",
+  },
 };
 
 /**

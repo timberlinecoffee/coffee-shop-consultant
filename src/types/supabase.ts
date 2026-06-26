@@ -93,6 +93,8 @@ export interface Database {
           status: 'in_progress' | 'completed'
           created_at: string
           updated_at: string
+          // TIM-3151: per-project onboarding interview answers. Null when not yet collected.
+          onboarding_data: Json | null
         }
         Insert: {
           id?: string
@@ -102,6 +104,7 @@ export interface Database {
           status?: 'in_progress' | 'completed'
           created_at?: string
           updated_at?: string
+          onboarding_data?: Json | null
         }
         Update: {
           id?: string
@@ -111,6 +114,7 @@ export interface Database {
           status?: 'in_progress' | 'completed'
           created_at?: string
           updated_at?: string
+          onboarding_data?: Json | null
         }
       }
       module_responses: {
