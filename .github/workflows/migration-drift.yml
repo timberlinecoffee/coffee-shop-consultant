@@ -38,4 +38,5 @@ jobs:
       - name: Run migration drift check
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          NODE_OPTIONS: "--dns-result-order=ipv4first"
         run: node scripts/check-migration-drift.mjs
