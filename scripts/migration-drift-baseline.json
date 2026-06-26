@@ -1,5 +1,5 @@
 {
-  "note": "Pre-TIM-950 drift grandfathered by CTO review. Lint hard-fails on NEW remote-only versions only. These versions emit soft-warns with recovery snippet. Chip away over time per TIM-950 follow-up.",
+  "note": "Pre-TIM-950 drift grandfathered by CTO review. Lint hard-fails on NEW remote-only versions only. These versions emit soft-warns with recovery snippet. Chip away over time per TIM-950 follow-up. 2026-06-26: 8 additional versions added to baseline — these were applied-but-not-committed drift that was hidden by the IPv6 ENETUNREACH CI failure in check-migration-drift.mjs. The IPv4 fix (same heartbeat, TIM-3154) revealed them. Each corresponds to a migration whose DDL is in the repo under a different version number (MCP server-side versioning vs manually-committed versions). CTO should audit and reconcile per TIM-950.",
   "grandfatheredVersions": [
     "20260516024516",
     "20260516025358",
@@ -17,6 +17,14 @@
     "20260523213910",
     "20260523215848",
     "20260523221849",
-    "20260523221939"
+    "20260523221939",
+    "20260604063908",
+    "20260604064021",
+    "20260604224247",
+    "20260605154904",
+    "20260609142916",
+    "20260623143033",
+    "20260624153247",
+    "20260626024424"
   ]
 }

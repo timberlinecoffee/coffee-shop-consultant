@@ -24,9 +24,21 @@
 import { readdirSync, readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { setDefaultResultOrder } from "node:dns/promises";
 import pg from "pg";
 
+// Force IPv4 resolution to avoid ENETUNREACH on IPv6-first CI runners.
+setDefaultResultOrder("ipv4first");
+
 const { Client } = pg;
+
+const REF = "ltmcttjftxzpgynhnrpg";
+const AWS1_REGIONS = [
+  "us-east-1", "us-west-1", "us-west-2",
+  "eu-west-1", "eu-west-2", "eu-west-3", "eu-central-1", "eu-central-2", "eu-north-1",
+  "ap-northeast-1", "ap-northeast-2", "ap-south-1", "ap-southeast-1", "ap-southeast-2",
+  "sa-east-1", "ca-central-1", "me-central-1",
+];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(__dirname, "..", "supabase", "migrations");
@@ -77,6 +89,36 @@ async function remoteMigrations(client) {
   return map;
 }
 
+async function connectWithFallback(dbUrl) {
+  let password = "";
+  try {
+    password = new URL(dbUrl).password;
+  } catch {
+    throw new Error("Could not parse SUPABASE_DB_URL");
+  }
+  const ssl = { rejectUnauthorized: false };
+  const base = { database: "postgres", ssl, user: `postgres.${REF}`, password };
+  const configs = [
+    [{ connectionString: dbUrl, ssl }, "SUPABASE_DB_URL as-is"],
+    ...AWS1_REGIONS.map((r) => [
+      { ...base, host: `aws-1-${r}.pooler.supabase.com`, port: 5432 },
+      `Supavisor v2 ${r}`,
+    ]),
+  ];
+  for (const [config, label] of configs) {
+    const c = new Client(config);
+    try {
+      await c.connect();
+      console.log(`  Connected via ${label}`);
+      return c;
+    } catch (err) {
+      console.log(`  ${label}: ${err.code ?? err.message}`);
+      try { await c.end(); } catch {}
+    }
+  }
+  throw new Error("Could not connect via any pooler region");
+}
+
 async function main() {
   const dbUrl = process.env.SUPABASE_DB_URL;
   if (!dbUrl) {
@@ -89,8 +131,7 @@ async function main() {
 
   const baseline = loadBaseline();
 
-  const client = new Client({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
-  await client.connect();
+  const client = await connectWithFallback(dbUrl);
 
   let remote, repo;
   try {
