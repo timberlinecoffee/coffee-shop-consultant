@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   if (!plan) return Response.json({ error: "No plan found" }, { status: 404 });
 
-  let body: { rows: ParsedRow[] };
+  let body: { rows: ParsedRow[]; replaceExisting?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -48,6 +48,19 @@ export async function POST(request: NextRequest) {
   const rows = (body.rows ?? []).filter((r) => !r.skip && r.name?.trim());
   if (rows.length === 0) {
     return Response.json({ inserted: 0 });
+  }
+
+  // TIM-3242: Write with AI "replace" mode — archive all existing items before inserting.
+  if (body.replaceExisting) {
+    const { error: archiveError } = await supabase
+      .from("buildout_equipment_items")
+      .update({ archived: true })
+      .eq("plan_id", plan.id)
+      .eq("archived", false);
+    if (archiveError) {
+      console.error("buildout archive-existing error:", archiveError);
+      return Response.json({ error: "Failed to archive existing items" }, { status: 500 });
+    }
   }
 
   // Collect unique station names

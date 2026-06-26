@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ApprovedChange } from "@/hooks/useAIReviewModal";
-import { Wrench, X, Settings2, FileSpreadsheet, MessageSquare, Eye } from "lucide-react";
+import { Wrench, X, Settings2, FileSpreadsheet, Sparkles, Eye } from "lucide-react";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionedListGrid } from "@/components/buildout/SectionedListGrid";
@@ -20,7 +20,8 @@ import { EquipmentGrid } from "@/components/equipment/EquipmentGrid";
 import { useUiRevamp } from "@/hooks/useUiRevamp";
 import { CategorySettingsPanel } from "@/components/buildout/CategorySettingsPanel";
 import { SpreadsheetImportModal } from "@/components/buildout/SpreadsheetImportModal";
-import { DescribeSetupModal } from "@/components/buildout/DescribeSetupModal";
+// TIM-3242: WriteWithAIModal replaces DescribeSetupModal.
+import { WriteWithAIModal } from "@/components/buildout/WriteWithAIModal";
 import { EquipmentSuppliesSubNav } from "@/components/buildout/EquipmentSuppliesSubNav";
 // TIM-2481 (F12): buildout grid vs Financials equipment line reconciliation pill.
 import { EquipmentReconciliationBanner } from "@/components/cross-suite/EquipmentReconciliationBanner";
@@ -163,7 +164,7 @@ export function BuildoutEquipmentWorkspace({
   const [reviewDismissed, setReviewDismissed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [describeOpen, setDescribeOpen] = useState(false);
+  const [writeWithAIOpen, setWriteWithAIOpen] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(true);
   const [showAiMarkings, setShowAiMarkings] = useState(true);
   const [recommendations, setRecommendations] = useState<Map<string, EquipmentRecommendation>>(new Map());
@@ -374,10 +375,9 @@ export function BuildoutEquipmentWorkspace({
     <div className="bg-[var(--background)] min-h-screen">
       <div className="px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1793: canonical chrome — title left, action cluster top-right. */}
-        {/* TIM-1894: canonical WorkspaceHeader. "Describe your setup" is the
-            filled-primary (the AI hero action, analogous to Financials' Guided
-            setup); the board flagged this header as the Item-3 offender for
-            having no primary. Other actions are outlined secondaries. */}
+        {/* TIM-3242: "Write with AI" replaces "Describe your setup" (TIM-1177/TIM-1894).
+            Concept-aware: reads Concept Suite outputs for Source A; falls back to
+            a short 4-field prompt (Source B) when concept data is sparse. */}
         <WorkspaceHeader
           Icon={Wrench}
           title="Equipment & Supplies"
@@ -386,13 +386,11 @@ export function BuildoutEquipmentWorkspace({
             <>
             {/* TIM-2413: primary hero CTA + SaveStatusAndButton stay outside;
                 secondary utilities (Manage Stations, Import, View options)
-                live inside the hamburger. View options become check-style menu
-                items so the existing toggle state surfaces inline without a
-                nested popover. */}
+                live inside the hamburger. */}
             {canEdit && (
-            <WorkspaceActionButton variant="primary" onClick={() => setDescribeOpen(true)} aria-label="Describe your setup" title="Describe your setup">
-              <MessageSquare size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              <span>Describe your setup</span>
+            <WorkspaceActionButton variant="primary" onClick={() => setWriteWithAIOpen(true)} aria-label="Write with AI" title="Generate your equipment list with AI">
+              <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+              <span>Write with AI</span>
             </WorkspaceActionButton>
           )}
           <WorkspaceActionMenu>
@@ -536,11 +534,11 @@ export function BuildoutEquipmentWorkspace({
         />
       )}
 
-      {describeOpen && (
-        <DescribeSetupModal
+      {writeWithAIOpen && (
+        <WriteWithAIModal
           sections={equipmentSections}
           hasExistingItems={activeEquipment.length > 0}
-          onClose={() => setDescribeOpen(false)}
+          onClose={() => setWriteWithAIOpen(false)}
           onCommitted={handleImportCommitted}
         />
       )}
