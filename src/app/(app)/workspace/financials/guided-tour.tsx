@@ -296,6 +296,7 @@ export function GuidedTour({
               Guided Setup
             </span>
             <CollapseButton
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={() => onClose(index)}
               size={16}
               className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"

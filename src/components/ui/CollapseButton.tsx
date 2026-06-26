@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 
 interface CollapseButtonProps {
   onClick: () => void;
+  onPointerDown?: React.PointerEventHandler<HTMLButtonElement>;
   size?: number;
   className?: string;
   "aria-label"?: string;
@@ -16,6 +17,7 @@ interface CollapseButtonProps {
  */
 export function CollapseButton({
   onClick,
+  onPointerDown,
   size = 16,
   className,
   "aria-label": ariaLabel = "Collapse",
@@ -25,6 +27,7 @@ export function CollapseButton({
     <button
       type="button"
       onClick={onClick}
+      onPointerDown={onPointerDown}
       disabled={disabled}
       aria-label={ariaLabel}
       className={cn("transition-colors", className)}
