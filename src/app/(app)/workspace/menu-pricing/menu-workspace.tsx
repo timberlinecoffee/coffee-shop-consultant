@@ -2786,6 +2786,8 @@ function CogsRangeRow({
       await onUpdateCogsRange(result.data.low, result.data.high);
       setEditing(false);
       setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save — please try again");
     } finally {
       setSaving(false);
     }
@@ -3799,11 +3801,21 @@ export function MenuWorkspace({
   // TIM-3247: copies preset or custom low/high values into a user category.
   // Optimistic-updates locally so the picker collapses immediately; server
   // confirms and replaces the row. Standing Rule 3 validation happens on the server.
+  // Throws on non-ok response so CogsRangeRow.save() can surface the error message.
   async function updateCategoryCogsRange(id: string, low: number, high: number) {
     // Snapshot prior values before mutation so rollback restores them exactly.
     const prior = categories.find((c) => c.id === id);
     const priorLow = prior?.target_cogs_low_pct ?? null;
     const priorHigh = prior?.target_cogs_high_pct ?? null;
+
+    const rollback = () =>
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? { ...c, target_cogs_low_pct: priorLow, target_cogs_high_pct: priorHigh }
+            : c
+        )
+      );
 
     setCategories((prev) =>
       prev.map((c) =>
@@ -3812,34 +3824,26 @@ export function MenuWorkspace({
           : c
       )
     );
+
+    let res: Response;
     try {
-      const res = await fetch("/api/workspaces/menu-pricing/categories", {
+      res = await fetch("/api/workspaces/menu-pricing/categories", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, target_cogs_low_pct: low, target_cogs_high_pct: high }),
       });
-      if (res.ok) {
-        const updated = (await res.json()) as MenuCategory;
-        setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
-      } else {
-        // Roll back to the prior values (not null) so existing ranges aren't wiped.
-        setCategories((prev) =>
-          prev.map((c) =>
-            c.id === id
-              ? { ...c, target_cogs_low_pct: priorLow, target_cogs_high_pct: priorHigh }
-              : c
-          )
-        );
-      }
     } catch {
-      // Network error — roll back and let the picker reappear if range was unset.
-      setCategories((prev) =>
-        prev.map((c) =>
-          c.id === id
-            ? { ...c, target_cogs_low_pct: priorLow, target_cogs_high_pct: priorHigh }
-            : c
-        )
-      );
+      rollback();
+      throw new Error("Failed to save — please try again");
+    }
+
+    if (res.ok) {
+      const updated = (await res.json()) as MenuCategory;
+      setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    } else {
+      rollback();
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      throw new Error(body.error ?? "Failed to save — please try again");
     }
   }
 
