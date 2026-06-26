@@ -105,7 +105,7 @@ export function ConceptWorkspace({
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestDocRef = useRef<ConceptDocumentV2>(initialDoc);
 
-  const { promoteOnEdit } = useWorkspaceStatus();
+  const { promoteOnEdit, setStatus, statusByKey } = useWorkspaceStatus();
   const uiRevamp = useUiRevamp();
   const router = useRouter();
 
@@ -127,6 +127,19 @@ export function ConceptWorkspace({
   useEffect(() => {
     if (progress.filled > 0) promoteOnEdit("concept");
   }, [progress.filled, promoteOnEdit]);
+
+  // TIM-3108: auto-advance workspace status to "complete" when concept content
+  // becomes fully filled. Fires once per false→true transition so clicking
+  // "See all modules" in the ConceptUnlockBanner lands on an up-to-date
+  // dashboard % Ready stat. Never downgrades — guard on current status.
+  const prevCompleteRef = useRef(complete);
+  useEffect(() => {
+    const wasComplete = prevCompleteRef.current;
+    prevCompleteRef.current = complete;
+    if (complete && !wasComplete && statusByKey.get("concept") !== "complete") {
+      void setStatus("concept", "complete");
+    }
+  }, [complete, statusByKey, setStatus]);
   const shopName = doc.components.shop_identity.content.trim();
 
   const lastSavedAt =
