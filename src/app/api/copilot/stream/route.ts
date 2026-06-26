@@ -38,6 +38,7 @@ import { loadPlanContext } from "@/lib/plan-context"
 import { buildEquipmentCostProposal, isEquipmentCostChangeIntent, type EquipmentCostItem } from "@/lib/cross-workspace-apply"
 import { rateLimit } from "@/lib/rate-limit"
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite"
+import { buildAiLanguageDirective, SUPPORTED_LANGUAGES } from "@/lib/account-settings"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -814,7 +815,7 @@ export async function POST(request: NextRequest) {
     .from("users")
     // TIM-1955: paused_from_tier omitted (TIM-1923 backlog) — effectiveTierForRead
     // treats it as optional.
-    .select("ai_credits_remaining, subscription_tier, subscription_status, onboarding_data, beta_waiver_until, trial_ends_at")
+    .select("ai_credits_remaining, subscription_tier, subscription_status, onboarding_data, beta_waiver_until, trial_ends_at, preferred_language")
     .eq("id", user.id)
     .single()
 
@@ -1024,6 +1025,13 @@ export async function POST(request: NextRequest) {
   // TIM-1897: board directive — all platform AI runs on Claude Haiku, no Sonnet routing.
   const modelId = PLATFORM_AI_MODEL
 
+  // TIM-3076: language directive — injected only when a non-English language is set.
+  const rawLangCode = typeof (profile as { preferred_language?: unknown }).preferred_language === "string"
+    ? (profile as { preferred_language?: string }).preferred_language!.trim().toLowerCase()
+    : "en"
+  const langCode = SUPPORTED_LANGUAGES.some((l) => l.code === rawLangCode) ? rawLangCode : "en"
+  const LANGUAGE_DIRECTIVE = buildAiLanguageDirective(langCode)
+
   // ── SSE stream ──────────────────────────────────────────────────────────────
   const encoder = new TextEncoder()
 
@@ -1139,6 +1147,8 @@ export async function POST(request: NextRequest) {
               offerAddPersonaTool ? ADD_PERSONA_DIRECTIVE : null,
               // TIM-2381: directive presence ⟺ tool presence, always.
               offerSuggestTool ? SUGGEST_WORKSPACE_CHANGES_DIRECTIVE : null,
+              // TIM-3076: language directive — only present when non-English is set.
+              LANGUAGE_DIRECTIVE || null,
             ].filter(Boolean).join("\n\n"),
           },
           {

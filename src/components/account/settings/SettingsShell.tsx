@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
+import { LanguageSettingsCard } from "@/components/account/LanguageSettingsCard";
 import { BillingTab } from "@/components/account/settings/BillingTab";
 import { AccountDataControls } from "@/components/account/AccountDataControls";
 import { GuidedNoticesCard } from "@/components/account/GuidedNoticesCard";
@@ -83,7 +84,10 @@ export function SettingsShell({
               />
             )}
             {activeTab === "localization" && (
-              <LocalizationSettingsCard initial={accountSettings} />
+              <>
+                <LanguageSettingsCard initial={accountSettings} />
+                <LocalizationSettingsCard initial={accountSettings} />
+              </>
             )}
             {activeTab === "billing" && <BillingTab />}
             {activeTab === "notifications" && (

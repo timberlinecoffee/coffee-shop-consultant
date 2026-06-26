@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PLAN_DISPLAY_NAMES } from "@/lib/plan-names";
 import { getAccountSettings } from "@/lib/account-settings";
 import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
+import { LanguageSettingsCard } from "@/components/account/LanguageSettingsCard";
 import { ProFeatureEntries } from "@/components/account/ProFeatureEntries";
 import { AccountDataControls } from "@/components/account/AccountDataControls";
 import { GuidedNoticesCard } from "@/components/account/GuidedNoticesCard";
@@ -96,6 +97,8 @@ export default async function AccountPage() {
             </div>
           </div>
         </div>
+
+        <LanguageSettingsCard initial={accountSettings} />
 
         <LocalizationSettingsCard initial={accountSettings} />
 

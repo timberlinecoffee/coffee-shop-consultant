@@ -10,6 +10,7 @@ import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { buildAiLanguageDirective, SUPPORTED_LANGUAGES } from "@/lib/account-settings";
 import { normalizeAIOutput } from "@/lib/normalize";
 import {
   type MarketingDocument,
@@ -206,7 +207,7 @@ export async function POST(request: Request) {
   const { data: profile } = await supabase
     .from("users")
     .select(
-      "subscription_status, beta_waiver_until, target_opening_date, onboarding_data",
+      "subscription_status, beta_waiver_until, target_opening_date, onboarding_data, preferred_language",
     )
     .eq("id", user.id)
     .single();
@@ -285,7 +286,12 @@ ${buildConceptBlock(seed)}
     const response = await anthropic.messages.create({
       model: PLATFORM_AI_MODEL,
       max_tokens: 2048,
-      system: SYSTEM_PROMPT,
+      system: (() => {
+        const rawLang = typeof (profile as { preferred_language?: unknown }).preferred_language === "string" ? (profile as { preferred_language?: string }).preferred_language!.trim().toLowerCase() : "en";
+        const lang = SUPPORTED_LANGUAGES.some((l) => l.code === rawLang) ? rawLang : "en";
+        const langDir = buildAiLanguageDirective(lang);
+        return langDir ? `${SYSTEM_PROMPT}\n\n${langDir}` : SYSTEM_PROMPT;
+      })(),
       messages: [{ role: "user", content: prompt }],
     });
     aiText = response.content[0]?.type === "text" ? response.content[0].text : "";

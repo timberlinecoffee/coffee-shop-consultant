@@ -1,11 +1,14 @@
 // TIM-1741: per-account settings API (Localization group).
+// TIM-3076: extended with preferredLanguage for AI output locale.
 // GET   /api/account/settings — current account settings (defaults if unset).
-// PATCH /api/account/settings — partial update of currencyCode / localization.
+// PATCH /api/account/settings — partial update of currencyCode / localization / preferredLanguage.
 
 import { createClient } from "@/lib/supabase/server";
 import {
   coerceLocalization,
   getAccountSettings,
+  SUPPORTED_LANGUAGES,
+  DEFAULT_PREFERRED_LANGUAGE,
   type LocalizationSettings,
 } from "@/lib/account-settings";
 import { normalizeCurrencyCode } from "@/lib/currency";
@@ -35,7 +38,7 @@ export async function PATCH(request: NextRequest) {
   // Start from current settings so partial PATCHes never wipe the other group.
   const current = await getAccountSettings(supabase, user.id);
 
-  const update: { currency_code?: string; localization?: LocalizationSettings } = {};
+  const update: { currency_code?: string; localization?: LocalizationSettings; preferred_language?: string } = {};
 
   if ("currencyCode" in body) {
     update.currency_code = normalizeCurrencyCode(body.currencyCode);
@@ -45,6 +48,10 @@ export async function PATCH(request: NextRequest) {
       ...current.localization,
       ...(body.localization as object),
     });
+  }
+  if ("preferredLanguage" in body) {
+    const raw = typeof body.preferredLanguage === "string" ? body.preferredLanguage.trim().toLowerCase() : "";
+    update.preferred_language = SUPPORTED_LANGUAGES.some((l) => l.code === raw) ? raw : DEFAULT_PREFERRED_LANGUAGE;
   }
 
   if (Object.keys(update).length === 0) {

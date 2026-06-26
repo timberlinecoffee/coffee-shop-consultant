@@ -18,6 +18,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { buildAiLanguageDirective, SUPPORTED_LANGUAGES } from "@/lib/account-settings";
 import {
   type OperationsPlaybookDocument,
   type SopCategory,
@@ -478,7 +479,7 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, beta_waiver_until, preferred_language")
     .eq("id", user.id)
     .single();
 
@@ -567,9 +568,13 @@ export async function POST(request: Request) {
 
   let aiText: string;
   try {
+    const rawLang = typeof (profile as { preferred_language?: unknown }).preferred_language === "string" ? (profile as { preferred_language?: string }).preferred_language!.trim().toLowerCase() : "en";
+    const lang = SUPPORTED_LANGUAGES.some((l) => l.code === rawLang) ? rawLang : "en";
+    const langDir = buildAiLanguageDirective(lang);
     const response = await anthropic.messages.create({
       model: PLATFORM_AI_MODEL,
       max_tokens: 2048,
+      ...(langDir ? { system: langDir } : {}),
       messages: [{ role: "user", content: prompt }],
     });
     aiText =

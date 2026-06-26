@@ -156,6 +156,9 @@ export interface BpPromptInputs {
   // to cite <num src="benchmark">…</num> only against the listed benchmarks.
   sourceMarkerDirective?: string;
   industryBenchmarks?: string;
+  // TIM-3076: BCP 47-ish language code — prose is written in this language.
+  // "en" or empty string means English (no directive injected).
+  preferredLanguage?: string;
 }
 
 export interface BpPromptOutput {
@@ -193,10 +196,16 @@ export function buildBpSectionPrompt(inp: BpPromptInputs): BpPromptOutput {
     ? `\n${inp.industryBenchmarks.trim()}\n`
     : "";
 
+  // TIM-3076: language directive — only injected when a non-English language is set.
+  const langCode = inp.preferredLanguage?.trim() ?? "en";
+  const languageBlock = langCode && langCode !== "en"
+    ? `\n\nLanguage: Write ALL narrative prose in the language matching code "${langCode}". Field names, section headings, numeric formats, and labels must stay in English -- only the generated paragraph text must be in the requested language.`
+    : "";
+
   if (inp.sectionKey === "executive-summary") {
     const systemPrompt = `You are an expert coffee shop business advisor writing an executive summary for a founder's business plan.
 
-${BP_SHARED_RULES}${sourceMarkerBlock}
+${BP_SHARED_RULES}${sourceMarkerBlock}${languageBlock}
 
 Section spec:
 ${sectionSpec}`;
@@ -217,7 +226,7 @@ ${inp.planSnapshot || "The workspaces are mostly empty, so generate from the fou
 
   const systemPrompt = `You are an expert coffee shop business advisor writing the "${inp.sectionTitle}" section of a founder's business plan.
 
-${BP_SHARED_RULES}${sourceMarkerBlock}
+${BP_SHARED_RULES}${sourceMarkerBlock}${languageBlock}
 
 Section spec:
 ${sectionSpec}`;

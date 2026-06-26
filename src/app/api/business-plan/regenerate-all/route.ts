@@ -58,6 +58,7 @@ import {
   buildBpSectionPrompt,
   BP_REGENERABLE_SECTION_KEYS,
 } from "@/lib/business-plan-prompts";
+import { getPreferredLanguage } from "@/lib/account-settings";
 import { buildPlanState, formatPlanStateForPrompt } from "@/lib/business-plan/plan-state";
 import { canonicalizeNarrative, unifySections } from "@/lib/business-plan/entities";
 // TIM-2342: same source-marker pipeline as /generate — every regenerated
@@ -124,11 +125,14 @@ export async function POST(request: NextRequest): Promise<Response> {
   const bodyParsed = RequestBodySchema.safeParse(rawBody);
   const onlyKeys = bodyParsed.success ? (bodyParsed.data.only ?? null) : null;
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("subscription_status, subscription_tier, ai_credits_remaining, onboarding_data, beta_waiver_until, trial_ends_at")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: profile }, preferredLanguage] = await Promise.all([
+    supabase
+      .from("users")
+      .select("subscription_status, subscription_tier, ai_credits_remaining, onboarding_data, beta_waiver_until, trial_ends_at")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getPreferredLanguage(supabase, user.id),
+  ]);
 
   if (!profile) return Response.json({ error: "Profile not found" }, { status: 404 });
 
@@ -383,6 +387,7 @@ export async function POST(request: NextRequest): Promise<Response> {
           // TIM-2342: source-marker rule + section-relevant industry benchmarks.
           sourceMarkerDirective: SOURCE_MARKER_DIRECTIVE,
           industryBenchmarks: formatBenchmarksForPrompt(sectionKey),
+          preferredLanguage,
         });
 
         let fullText = "";

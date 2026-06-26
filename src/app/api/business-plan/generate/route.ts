@@ -43,6 +43,7 @@ import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import { buildBpSectionPrompt } from "@/lib/business-plan-prompts";
+import { getPreferredLanguage } from "@/lib/account-settings";
 import { buildPlanState, formatPlanStateForPrompt } from "@/lib/business-plan/plan-state";
 import { canonicalizeNarrative } from "@/lib/business-plan/entities";
 // TIM-2342: source-marker directive + parser + curated industry benchmarks.
@@ -92,11 +93,14 @@ export async function POST(request: NextRequest) {
   });
   if (rl) return rl;
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("subscription_status, subscription_tier, ai_credits_remaining, onboarding_data, beta_waiver_until, trial_ends_at")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: profile }, preferredLanguage] = await Promise.all([
+    supabase
+      .from("users")
+      .select("subscription_status, subscription_tier, ai_credits_remaining, onboarding_data, beta_waiver_until, trial_ends_at")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getPreferredLanguage(supabase, user.id),
+  ]);
 
   if (!profile) return Response.json({ error: "Profile not found" }, { status: 404 });
 
@@ -272,6 +276,7 @@ export async function POST(request: NextRequest) {
     // the section-relevant subset of the curated industry benchmark dataset.
     sourceMarkerDirective: SOURCE_MARKER_DIRECTIVE,
     industryBenchmarks: formatBenchmarksForPrompt(sectionKey),
+    preferredLanguage,
   });
 
   const client = new Anthropic();

@@ -18,6 +18,7 @@ import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
 import { loadPlanContext } from "@/lib/plan-context";
 import { rateLimit } from "@/lib/rate-limit";
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
+import { getPreferredLanguage, buildAiLanguageDirective } from "@/lib/account-settings";
 import type { WorkspaceKey } from "@/types/supabase";
 import type { NextRequest } from "next/server";
 
@@ -42,6 +43,7 @@ function buildImproveSystemPrompt(
   planSnapshot: string,
   onboarding: Record<string, unknown>,
   locationCountry: string | null,
+  preferredLanguage?: string,
 ): string {
   const shopType = Array.isArray(onboarding?.shop_type)
     ? (onboarding.shop_type as string[]).join(", ")
@@ -69,7 +71,7 @@ ${planSnapshot}
 - 1–3 sentences unless more detail is genuinely needed
 - NEVER use: actually, genuinely, honestly, unlock, elevate, leverage, embark, delve
 - NEVER hallucinate prices, addresses, suppliers, or statistics
-- Return only the improved field text, nothing else`;
+- Return only the improved field text, nothing else${preferredLanguage && preferredLanguage !== "en" ? `\n${buildAiLanguageDirective(preferredLanguage)}` : ""}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -178,9 +180,10 @@ export async function POST(request: NextRequest) {
   // TIM-1418: Location now comes from the live plan_hiring_settings + location_candidates
   // tables instead of the frozen onboarding snapshot. Other onboarding fields below
   // (budget, stage, shop_type) have no live workspace equivalent and stay as-is.
-  const [{ snapshot: planSnapshot }, planContext] = await Promise.all([
+  const [{ snapshot: planSnapshot }, planContext, preferredLanguage] = await Promise.all([
     composePlanSnapshot(planId, workspaceKey, svcClient),
     loadPlanContext(svcClient, user.id),
+    getPreferredLanguage(supabase, user.id),
   ]);
 
   // Map fieldKey to a human-readable label (best-effort; the component passes fieldLabel separately)
@@ -193,6 +196,7 @@ export async function POST(request: NextRequest) {
     planSnapshot,
     onboarding,
     planContext.location_country,
+    preferredLanguage,
   );
 
   // Build user message from draft + instruction.
