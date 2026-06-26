@@ -7,6 +7,8 @@
 //   - Skips with {skipped:true} when RESEND_API_KEY is missing so dev/preview
 //     do not need a key configured.
 
+import { currencySymbol } from "@/lib/currency";
+
 type ResendResult =
   | { ok: true; provider: "resend"; id: string }
   | { ok: false; skipped: true; reason: "no_api_key" }
@@ -137,7 +139,7 @@ export async function sendCreditPackReceiptEmail(args: {
       </tr>
       <tr>
         <td style="padding:6px 0;color:#6b6b6b;">Charged</td>
-        <td style="padding:6px 0;text-align:right;">${currencyLabel} $${amountDollars}</td>
+        <td style="padding:6px 0;text-align:right;">${currencyLabel} ${currencySymbol(args.currency)}${amountDollars}</td>
       </tr>
       <tr style="border-top:1px solid #e5e5e5;">
         <td style="padding:8px 0;font-weight:600;">New credit balance</td>
@@ -152,7 +154,7 @@ export async function sendCreditPackReceiptEmail(args: {
     "",
     `Pack: ${args.packName}`,
     `Credits added: ${args.creditsAdded}`,
-    `Charged: ${currencyLabel} $${amountDollars}`,
+    `Charged: ${currencyLabel} ${currencySymbol(args.currency)}${amountDollars}`,
     `New credit balance: ${args.newBalance}`,
     "",
     "Questions? Contact hello@timberline.coffee.",
