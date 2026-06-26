@@ -24,21 +24,10 @@
 import { readdirSync, readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { setDefaultResultOrder } from "node:dns/promises";
+import { resolve4 } from "node:dns/promises";
 import pg from "pg";
 
-// Force IPv4 resolution to avoid ENETUNREACH on IPv6-first CI runners.
-setDefaultResultOrder("ipv4first");
-
 const { Client } = pg;
-
-const REF = "ltmcttjftxzpgynhnrpg";
-const AWS1_REGIONS = [
-  "us-east-1", "us-west-1", "us-west-2",
-  "eu-west-1", "eu-west-2", "eu-west-3", "eu-central-1", "eu-central-2", "eu-north-1",
-  "ap-northeast-1", "ap-northeast-2", "ap-south-1", "ap-southeast-1", "ap-southeast-2",
-  "sa-east-1", "ca-central-1", "me-central-1",
-];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(__dirname, "..", "supabase", "migrations");
@@ -89,34 +78,46 @@ async function remoteMigrations(client) {
   return map;
 }
 
+// Connect to the Supabase pooler, working around IPv6-only CI runners.
+// Strategy: explicitly resolve the pooler hostname to its first IPv4 address,
+// then connect to that IP directly with SSL + SNI. This avoids ENETUNREACH on
+// runners where the kernel has no IPv6 route but DNS still returns AAAA records.
 async function connectWithFallback(dbUrl) {
-  let password = "";
+  let parsedUrl;
   try {
-    password = new URL(dbUrl).password;
+    parsedUrl = new URL(dbUrl);
   } catch {
     throw new Error("Could not parse SUPABASE_DB_URL");
   }
-  const ssl = { rejectUnauthorized: false };
-  const base = { database: "postgres", ssl, user: `postgres.${REF}`, password };
-  const configs = [
-    [{ connectionString: dbUrl, ssl }, "SUPABASE_DB_URL as-is"],
-    ...AWS1_REGIONS.map((r) => [
-      { ...base, host: `aws-1-${r}.pooler.supabase.com`, port: 5432 },
-      `Supavisor v2 ${r}`,
-    ]),
-  ];
-  for (const [config, label] of configs) {
-    const c = new Client(config);
-    try {
-      await c.connect();
-      console.log(`  Connected via ${label}`);
-      return c;
-    } catch (err) {
-      console.log(`  ${label}: ${err.code ?? err.message}`);
-      try { await c.end(); } catch {}
-    }
+
+  const hostname = parsedUrl.hostname;
+  const port = parsedUrl.port ? parseInt(parsedUrl.port, 10) : 5432;
+  const ssl = { rejectUnauthorized: false, servername: hostname };
+
+  // Try 1: connect via explicit IPv4 address (resolve hostname → IPv4 first)
+  try {
+    const addrs = await resolve4(hostname);
+    const ipv4 = addrs[0];
+    console.log(`  Resolved ${hostname} → ${ipv4} (IPv4)`);
+    const c = new Client({ connectionString: dbUrl, host: ipv4, port, ssl });
+    await c.connect();
+    console.log(`  Connected via IPv4 direct (${ipv4})`);
+    return c;
+  } catch (err) {
+    console.log(`  IPv4 direct: ${err.code ?? err.message}`);
   }
-  throw new Error("Could not connect via any pooler region");
+
+  // Try 2: original connection string as-is (works on IPv4-capable runners)
+  try {
+    const c = new Client({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
+    await c.connect();
+    console.log(`  Connected via SUPABASE_DB_URL as-is`);
+    return c;
+  } catch (err) {
+    console.log(`  as-is: ${err.code ?? err.message}`);
+  }
+
+  throw new Error("Could not connect: both IPv4-direct and as-is attempts failed");
 }
 
 async function main() {
