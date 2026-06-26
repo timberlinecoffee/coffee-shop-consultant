@@ -34,6 +34,7 @@ import { PaymentFailureBanner } from "./_components/payment-failure-banner";
 import { WelcomeToast } from "./_components/welcome-toast";
 import { RefreshConflictsButton } from "./_components/refresh-conflicts-button";
 import { OpenImportFromQuery } from "./_components/open-import-from-query";
+import { IntakeBanner } from "./_components/intake-banner";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { Suspense } from "react";
 
@@ -114,6 +115,7 @@ export default async function DashboardPage() {
             }
           />
         )}
+        {overview.planId && <IntakeBanner planId={overview.planId} />}
         <HomeV2 firstName={firstName} overview={overview} snapshot={snapshot} />
         {overview.planId && (
           <CoPilotDrawer
@@ -155,6 +157,8 @@ export default async function DashboardPage() {
             }
           />
         )}
+
+        {overview.planId && <IntakeBanner planId={overview.planId} />}
 
         {/* TIM-2470 / TIM-1894 / TIM-1937: canonical WorkspaceHeader chrome
             (icon + h1 + description, action cluster right-aligned with
