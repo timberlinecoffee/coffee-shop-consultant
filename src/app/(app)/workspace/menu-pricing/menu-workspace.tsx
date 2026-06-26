@@ -52,8 +52,6 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { ProUpgradePrompt, type ProFeatureKey } from "@/components/pro-upgrade-prompt";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
-import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
-import { BenchmarkChip } from "@/components/benchmark/BenchmarkChip";
 import { SectionHelp } from "@/components/ui/section-help";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 // TIM-2482 (F13): menu-side reconciliation banner — shows menu blend vs
@@ -2797,7 +2795,6 @@ function InsightsTab({
   canEdit,
   onUpdateItem,
   onGoToMenu,
-  onSeeWhy,
   targetGrossMargin,
   onUpdateTargetGrossMargin,
 }: {
@@ -2805,8 +2802,6 @@ function InsightsTab({
   canEdit: boolean;
   onUpdateItem: (id: string, patch: Partial<MenuItemWithCogs>) => Promise<void>;
   onGoToMenu: () => void;
-  /** TIM-2450 — inline "see why" handler: navigates to How You Compare and opens the metric drill-down. */
-  onSeeWhy: (metricId: string) => void;
   /** TIM-3150: metrics strip moved from main page to Insights tab. */
   targetGrossMargin: number;
   onUpdateTargetGrossMargin: (next: number) => Promise<void>;
@@ -2970,16 +2965,12 @@ function InsightsTab({
                     <th className="text-left font-semibold px-3 py-2 w-[34%]">Gross Margin</th>
                     <th className="text-left font-semibold px-2 py-2">Popularity</th>
                     <th className="text-left font-semibold px-2 py-2">Class</th>
-                    <th className="text-left font-semibold px-2 py-2">How you compare</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ranking.map((r, idx) => {
                     const item = items.find((i) => i.id === r.id);
                     const q = quadrantById.get(r.id);
-                    // Inline chip: map item margin to benchmark status (mock until cohort API ships).
-                    const bmStatus = r.marginPct >= 65 ? "green" : r.marginPct >= 50 ? "blue" : "yellow";
-                    const bmSourceType = "best-practice" as const;
                     return (
                       <tr key={r.id} className="border-b border-[var(--gray-200)] last:border-0 hover:bg-[var(--background)] transition-colors">
                         <td className="px-4 py-2 text-[var(--dark-grey)] tabular-nums">{idx + 1}</td>
@@ -3017,28 +3008,6 @@ function InsightsTab({
                             </span>
                           ) : (
                             <span className="text-[10px] text-[var(--dark-grey)]">Set popularity</span>
-                          )}
-                        </td>
-                        <td className="px-2 py-2">
-                          {r.cogsCents != null ? (
-                            <div className="flex items-center gap-1.5">
-                              <BenchmarkChip
-                                metric="Gross margin"
-                                value={fmtIntegerPct(r.marginPct / 100)}
-                                status={bmStatus}
-                                sourceType={bmSourceType}
-                                variant="inline"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => onSeeWhy("avg_gross_margin_pct")}
-                                className="text-[10px] text-[var(--teal)] hover:underline whitespace-nowrap"
-                              >
-                                see why
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-[var(--dark-grey)]">—</span>
                           )}
                         </td>
                       </tr>
@@ -3303,7 +3272,7 @@ function SuggestItemsModal({
   );
 }
 
-type Tab = "menu" | "ingredients" | "insights" | "how-you-compare";
+type Tab = "menu" | "ingredients" | "insights";
 
 export function MenuWorkspace({
   planId,
@@ -3368,16 +3337,10 @@ export function MenuWorkspace({
     if (items.length > 0) promoteOnEdit("menu_pricing");
   }, [items.length, promoteOnEdit]);
 
-  const [benchmarkYellowCount, setBenchmarkYellowCount] = useState(0);
-  // TIM-2450: inline "see why" link sets this; the dashboard auto-opens the
-  // drill-down for the matching metric when the tab activates.
-  const [openBenchmarkMetricId, setOpenBenchmarkMetricId] = useState<string | null>(null);
-
   const tabs: { id: Tab; label: string; Icon: typeof Utensils; badge?: number }[] = [
     { id: "menu", label: "Menu", Icon: Utensils },
     { id: "ingredients", label: "Ingredients", Icon: Package },
     { id: "insights", label: "Insights", Icon: LayoutGrid },
-    { id: "how-you-compare", label: "How You Compare", Icon: TrendingUp, badge: benchmarkYellowCount || undefined },
   ];
 
   async function refetchItems() {
@@ -4206,55 +4169,8 @@ export function MenuWorkspace({
             canEdit={canEdit}
             onUpdateItem={updateItem}
             onGoToMenu={() => setActiveTab("menu")}
-            onSeeWhy={(metricId) => {
-              setOpenBenchmarkMetricId(metricId);
-              setActiveTab("how-you-compare");
-            }}
             targetGrossMargin={targetGrossMargin}
             onUpdateTargetGrossMargin={updateTargetGrossMargin}
-          />
-        )}
-        {activeTab === "how-you-compare" && (
-          <BenchmarkDashboard
-            workspaceSlug="menu-pricing"
-            onYellowCountChange={setBenchmarkYellowCount}
-            openMetricId={openBenchmarkMetricId}
-            onAskBenchmark={(metricId, metricLabel) => {
-              // TIM-2450: hand off to the Scout drawer in Benchmark mode with
-              // the metric in scope. The drawer's `copilot:open-in-mode` handler
-              // (CoPilotDrawer.tsx:684) takes the focus payload and pre-loads
-              // the Benchmark panel.
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(
-                  new CustomEvent("copilot:open-in-mode", {
-                    detail: {
-                      mode: "check",
-                      scope: "menu_pricing",
-                      focus: { metricId, metricLabel },
-                    },
-                  }),
-                );
-              }
-            }}
-            onApplySuggestion={(drilldown) => {
-              const proposed = drilldown.proposedFormatted ?? drilldown.userValue;
-              openAIReviewModal({
-                suggestions: [
-                  {
-                    id: `bench:${drilldown.metricId}`,
-                    fieldId: drilldown.metricId,
-                    fieldLabel: drilldown.metricLabel,
-                    originalValue: drilldown.userValue,
-                    proposedValue: proposed,
-                  },
-                ],
-                context: { workspace: "menu_pricing", section: "How You Compare" },
-                onApply: async () => {
-                  // Phase 3: review-modal-only path; per-metric write paths
-                  // follow in a child issue.
-                },
-              });
-            }}
           />
         )}
       </div>

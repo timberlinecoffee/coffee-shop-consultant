@@ -35,9 +35,6 @@ export const metadata: Metadata = {
 
 // Pexels photos by Ketut Subiyanto (Pexels License — free for commercial use)
 const PEXELS = {
-  // Coffee shop team reviewing their plan together
-  teamPlanning:
-    "https://images.pexels.com/photos/4350093/pexels-photo-4350093.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
   // Barista pouring steamed milk at the espresso machine — operator at work
   baristaMilk:
     "https://images.pexels.com/photos/4350048/pexels-photo-4350048.jpeg?auto=compress&cs=tinysrgb&w=1100&h=700&dpr=1",
@@ -61,22 +58,6 @@ const SUITE_ITEMS: AccordionItem[] = [
       "Coffee Concept, Location & Lease, Menu Pricing, Build-Out & Equipment, Barista Hiring, Financials, Operations Playbook, Launch Plan: eight modules in sequence",
       "Asks for the inputs that matter, skips the ones that don't",
       "Saves your answers and shows what's left",
-    ],
-  },
-  {
-    accent: "sage",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/>
-      </svg>
-    ),
-    title: "Real Benchmarking",
-    oneLiner:
-      "Holds your numbers up against what real coffee shops look like.",
-    bullets: [
-      "Startup cost, rent, COGS, labor and margin flagged when they drift",
-      "Modeled from coffee-shop research and operator-reported data, not generic templates",
-      "Updates live so you can stress-test before you sign anything",
     ],
   },
   {
@@ -129,44 +110,6 @@ const SUITE_ITEMS: AccordionItem[] = [
   },
 ];
 
-const BENCHMARK_STEPS: AccordionItem[] = [
-  {
-    step: "01",
-    accent: "teal",
-    title: "Get Guided Through Every Decision",
-    oneLiner:
-      "Stop wondering what you should be working on this week.",
-    bullets: [
-      "Eight modules walk you through the full plan",
-      "Each module asks for what matters and shows what's missing",
-      "The next action stays visible so you don't sit staring at a blank page",
-    ],
-  },
-  {
-    step: "02",
-    accent: "sage",
-    title: "See How Your Plan Compares",
-    oneLiner:
-      "Know if your numbers are realistic before a landlord or lender does.",
-    bullets: [
-      "Startup cost, rent, COGS and labor benchmarked against real shops",
-      "Drift flags tell you which assumption is breaking the model",
-      "Re-run as soon as a lease term or supplier price changes",
-    ],
-  },
-  {
-    step: "03",
-    accent: "teal",
-    title: "Take Action Toward Opening",
-    oneLiner:
-      "Turn the plan into a launch you can actually run.",
-    bullets: [
-      "Milestone-based launch plan tied to your open date",
-      "Hiring, onboarding and soft-open checklists wired to the same plan",
-      "Track what's done and what's next without a separate project tool",
-    ],
-  },
-];
 
 const FOUNDER_QUOTE = {
   body: "Most people who open a coffee shop don't have a business background. Build your plan thoughtfully, even without one. Groundwork fills the gaps so you can plan your shop intentionally.",
@@ -261,22 +204,15 @@ export default async function LandingPage({
               Built for Owner-Operators
             </p>
           </FadeUp>
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
               {
                 title: "Guided Through Every Decision",
                 body: "Eight modules in order. You always know what to plan next.",
-                color: "teal" as const,
-              },
-              {
-                title: "Benchmarked Against Real Shops",
-                body: "Your numbers sit next to what real coffee shops actually look like.",
-                color: "sage" as const,
               },
               {
                 title: "Scout in Your Corner",
                 body: "Ask about your lease, menu, or equipment. Get answers tied to your plan.",
-                color: "teal" as const,
               },
             ].map((item) => (
               <StaggerItem key={item.title}>
@@ -285,7 +221,7 @@ export default async function LandingPage({
                     className="font-semibold mb-2"
                     style={{
                       fontSize: "17px",
-                      color: item.color === "sage" ? "var(--sage)" : "var(--teal)",
+                      color: "var(--teal)",
                       lineHeight: 1.3,
                     }}
                   >
@@ -396,99 +332,6 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Guided. Benchmarked. Moving. — accordion + photo ───────────────────── */}
-      <section className="bg-white" style={{ padding: "96px 24px" }}>
-        <div className="max-w-6xl mx-auto">
-          <FadeUp className="text-center mb-12">
-            <p
-              className="font-semibold uppercase mb-3"
-              style={{ fontSize: "11px", letterSpacing: "0.12em", color: "var(--sage)" }}
-            >
-              How It Works
-            </p>
-            <h2
-              className="font-bold"
-              style={{
-                fontSize: "clamp(1.6rem, 3.5vw, 2.25rem)",
-                lineHeight: 1.2,
-                fontWeight: 700,
-                color: "var(--teal)",
-              }}
-            >
-              Guided. Benchmarked. Moving.
-            </h2>
-            <p
-              className="mx-auto mt-4 text-neutral-600"
-              style={{ fontSize: "17px", lineHeight: 1.55, maxWidth: "560px" }}
-            >
-              Three habits the platform builds into your week.
-            </p>
-          </FadeUp>
-
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start">
-            {/* Photo + floating card — 2 cols */}
-            <ScaleIn className="lg:col-span-2 relative">
-              <div className="rounded-2xl overflow-hidden aspect-[4/5] relative">
-                <Image
-                  src={PEXELS.teamPlanning}
-                  alt="Coffee shop owners reviewing their plan together. Photo: Ketut Subiyanto / Pexels."
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 40vw"
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background:
-                      "linear-gradient(to bottom right, transparent 60%, rgba(14,68,72,0.18) 100%)",
-                  }}
-                />
-              </div>
-              <div
-                className="absolute bottom-4 left-4 rounded-xl px-4 py-3"
-                style={{
-                  background: "rgba(255,255,255,0.95)",
-                  backdropFilter: "blur(12px)",
-                  border: "1px solid rgba(118,179,157,0.25)",
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-                }}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <div
-                    className="w-4 h-4 rounded-full flex items-center justify-center"
-                    style={{ background: "var(--sage)" }}
-                  >
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  </div>
-                  <p className="font-semibold" style={{ fontSize: "12px", color: "var(--teal)" }}>
-                    Plan Benchmark: Healthy
-                  </p>
-                </div>
-                <p className="text-neutral-600" style={{ fontSize: "11px" }}>
-                  Your startup cost is within range
-                </p>
-              </div>
-            </ScaleIn>
-
-            {/* Accordion + CTA — 3 cols */}
-            <div className="lg:col-span-3 space-y-4">
-              <FeatureAccordion items={BENCHMARK_STEPS} layout="step" columns={1} />
-              <FadeUp delay={0.2}>
-                <Link
-                  href="/signup"
-                  className="inline-flex items-center justify-center w-full px-6 py-3 rounded-lg font-semibold text-sm text-white transition-all mt-2"
-                  style={{ background: "var(--teal)" }}
-                >
-                  Start Your Plan &rarr;
-                </Link>
-              </FadeUp>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── Module snapshots strip ────────────────────────────────────────────── */}
       <section
         style={{
@@ -522,7 +365,7 @@ export default async function LandingPage({
             <StaggerItem className="h-full">
               <ModuleCard
                 title="Financials"
-                description="Startup costs and 12-month projections, benchmarked live."
+                description="Startup costs and 12-month projections, all in one place."
                 mockup={<FinancialsMockup />}
                 thumbnailSrc="https://images.pexels.com/photos/4350048/pexels-photo-4350048.jpeg?auto=compress&cs=tinysrgb&w=600&h=280&dpr=1"
                 thumbnailAlt="Coffee shop owner reviewing financial spreadsheets"
@@ -531,7 +374,7 @@ export default async function LandingPage({
             <StaggerItem className="h-full">
               <ModuleCard
                 title="Menu Pricing"
-                description="Cost-per-cup analysis with margin targets and industry benchmarks."
+                description="Cost-per-cup analysis with margin targets and local cafe price research."
                 mockup={<MenuMockup />}
                 thumbnailSrc="https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=600&h=280&dpr=1"
                 thumbnailAlt="Barista preparing espresso drinks at a coffee bar"

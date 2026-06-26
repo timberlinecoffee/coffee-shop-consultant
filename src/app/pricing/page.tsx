@@ -48,7 +48,6 @@ const TIERS: Tier[] = [
       "100 AI planning credits/month",
     ],
     notIncluded: [
-      "Coffee Shop World benchmarking",
       "Weekly Live Office Hours Q&A",
       "Deeper insights",
       "Unlimited locations and projects",
@@ -68,7 +67,6 @@ const TIERS: Tier[] = [
     highlight: true,
     features: [
       "Everything in Starter",
-      "Coffee Shop World benchmarking vs. real shops",
       "Weekly Live Office Hours Q&A + recordings",
       "Deeper insights: deep market research and longer Scout chains",
       "Unlimited locations and projects",

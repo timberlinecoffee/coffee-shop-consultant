@@ -13,7 +13,6 @@ const WORKSPACE_PATH_MAP: Record<string, WorkspaceKey> = {
   "marketing":           "marketing",
   "suppliers":           "suppliers",
   "operations-playbook": "operations_playbook",
-  "benchmarks":          "benchmarks",
   "business-plan":       "business_plan",
 };
 

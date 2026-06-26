@@ -78,9 +78,6 @@ export const WORKSPACE_MANIFEST: WorkspaceManifestItem[] = [
   // rows + RLS keep working without a migration.
   { moduleNumber: 6,  workspaceKey: "opening_month_plan",   label: "Launch Plan",            href: "/workspace/launch-plan",          icon: "rocket",         category: "launch",  blurb: "Map the dated milestones to opening day and the tactical playbook for your first month." },
   { moduleNumber: 11, workspaceKey: "operations_playbook",  label: "Operations Playbook",    href: "/workspace/operations-playbook",  icon: "clipboard-list", category: "operate", blurb: "Document the daily routines that keep the shop running." },
-  // TIM-2498: Benchmarks sidebar entry so the feature is discoverable. Pro users
-  // see full benchmark data; Starter users see an upgrade CTA.
-  { moduleNumber: 12, workspaceKey: "benchmarks",           label: "Benchmarks",             href: "/workspace/benchmarks",           icon: "trending-up",    category: "operate", blurb: "Compare your numbers against real coffee shops in your area." },
 ];
 
 export function buildNavItems(

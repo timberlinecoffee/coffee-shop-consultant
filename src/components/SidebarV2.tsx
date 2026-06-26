@@ -96,7 +96,6 @@ const NAV_CATEGORIES: V2NavCategory[] = [
     icon: BarChart2,
     subItems: [
       { label: "Financials", href: "/workspace/financials" },
-      { label: "Benchmarks", href: "/workspace/benchmarks" },
     ],
   },
   {
