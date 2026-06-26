@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/client'
 import { formatLocationScore } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/info-tip'
+import { MoneyInput } from '@/components/ui/money-input'
 import { AddressAutocomplete, type PlacePick } from './AddressAutocomplete'
 import { AreaAnalysisPanel } from './AreaAnalysisPanel'
 import type { Candidate, CandidateStatus } from './CandidateListCard'
@@ -1259,18 +1260,15 @@ function CurrencyInput({
   placeholder?: string
 }) {
   return (
-    <div className="relative flex items-center">
-      <span className="pointer-events-none absolute left-3 text-sm text-[var(--neutral-cool-600)]">$</span>
-      <input
-        type="text"
-        inputMode="decimal"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
-        placeholder={placeholder ?? '0.00'}
-        className="h-8 w-full rounded-lg border border-[var(--border)] bg-transparent pl-6 pr-3 py-1 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[var(--neutral-cool-600)]/50"
-      />
-    </div>
+    <MoneyInput
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={onBlur}
+      placeholder={placeholder ?? '0.00'}
+      step="0.01"
+      min="0"
+      className="h-8 w-full rounded-lg border border-[var(--border)] bg-transparent pr-3 py-1 text-sm outline-none transition-colors focus-visible:border-[var(--teal)] focus-visible:ring-3 focus-visible:ring-[var(--teal)]/50 placeholder:text-[var(--neutral-cool-600)]/50"
+    />
   )
 }
 
