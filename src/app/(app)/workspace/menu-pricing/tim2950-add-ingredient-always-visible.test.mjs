@@ -2,7 +2,7 @@
 // in the recipe editor (combobox when there are catalog ingredients to pick;
 // disabled placeholder pointing to the Ingredients tab when there are none
 // available). And rows seeded from category defaults must render with the
-// "From Category" badge.
+// "Default Item" badge (TIM-3226 renamed from "From Category").
 //
 // We test by reading the source file (no jsdom/React runtime here) and
 // asserting the structural shape — same pattern as TIM-2877 ResponsiveChart.
@@ -42,9 +42,9 @@ test("Add Ingredient affordance has no other gating that would hide it when defa
   assert.doesNotMatch(SRC, /!categoryDefault[^.]*\.length/)
 })
 
-test("RecipeLineRow accepts isFromCategoryDefault and renders From Category badge", () => {
+test("RecipeLineRow accepts isFromCategoryDefault and renders Default Item badge", () => {
   assert.match(SRC, /isFromCategoryDefault\?: boolean/)
-  assert.match(SRC, /From Category/)
+  assert.match(SRC, /Default Item/)
   assert.match(
     SRC,
     /isFromCategoryDefault=\{categoryDefaultIngredientIds\.has\(line\.ingredient_id\)\}/,
