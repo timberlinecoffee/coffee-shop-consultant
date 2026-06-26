@@ -1102,7 +1102,7 @@ export function EquipmentGrid({
             >
               {item.unit_cost_cents > 0
                 ? format(item.unit_cost_cents / 100)
-                : <span className="text-[var(--neutral-cool-400)] font-normal text-xs">{symbol}0</span>
+                : <span className="text-[var(--neutral-cool-400)] font-normal">{symbol}0</span>
               }
             </span>
           );
@@ -1459,7 +1459,7 @@ export function EquipmentGrid({
                 return (
                   <tr
                     key={row.id}
-                    className={`border-b border-[var(--neutral-cool-100)] last:border-b-0 transition-colors hover:brightness-[0.97] ${rowBg}`}
+                    className={`border-b border-[var(--neutral-cool-100)] last:border-b-0 transition-colors ${!selected && !fund ? "hover:brightness-[0.97]" : ""} ${rowBg}`}
                   >
                     {row.getVisibleCells().map((cell) => {
                       const stickyBg = selected
@@ -1490,12 +1490,12 @@ export function EquipmentGrid({
               type="text"
               className={TABLE_QUICK_ADD_INPUT_CLS + " flex-1"}
               value={quickAddName}
-              placeholder="Add an item…"
+              placeholder="Add an Item…"
               autoComplete="off"
               aria-label="New item name"
               onChange={(e) => setQuickAddName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") { e.preventDefault(); addRowWithName(quickAddName); }
+                if (e.key === "Enter" && quickAddName.trim()) { e.preventDefault(); addRowWithName(quickAddName); }
               }}
             />
             <button

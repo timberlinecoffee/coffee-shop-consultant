@@ -67,6 +67,9 @@ export function SuppliesDesktopTable({
   const [qaQty, setQaQty] = useState("1");
   const [qaCost, setQaCost] = useState("");
   const qaNameRef = useRef<HTMLInputElement>(null);
+  // Always reflects the latest items so rapid Enter-Enter doesn't read a stale closure.
+  const latestItemsRef = useRef(items);
+  latestItemsRef.current = items;
 
   const sectionsById = new Map(sections.map((s) => [s.id, s]));
 
@@ -177,7 +180,8 @@ export function SuppliesDesktopTable({
   // TIM-3251: inline quick-add commit.
   function commitQuickAdd() {
     if (!canEdit || !qaName.trim()) return;
-    const blank = newBlankItem(planId, active.length);
+    const current = latestItemsRef.current;
+    const blank = newBlankItem(planId, current.filter((i) => !i.archived).length);
     const qty = Math.max(1, parseInt(qaQty, 10) || 1);
     const costCents = Math.round((parseFloat(qaCost) || 0) * 100);
     const patched: SuppliesItem = {
@@ -188,7 +192,8 @@ export function SuppliesDesktopTable({
       quantity: qty,
       unit_cost_cents: costCents,
     };
-    const next = [...items, patched];
+    const next = [...current, patched];
+    latestItemsRef.current = next;
     onItemsChange(next);
     scheduleAutosave(patched.id, {
       name: patched.name,
@@ -367,7 +372,7 @@ export function SuppliesDesktopTable({
               type="text"
               className={TABLE_QUICK_ADD_INPUT_CLS}
               value={qaName}
-              placeholder="Add a supply…"
+              placeholder="Add a Supply…"
               autoComplete="off"
               aria-label="New supply name"
               onChange={(e) => setQaName(e.target.value)}
