@@ -35,14 +35,18 @@ export default async function LoginPage({
   // prompt. Skip the bounce when ?error= is present — they came here because
   // an auth flow failed and the error message belongs in front of them.
   if (!error) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      // TIM-2730: use the shared allowlist (resolveNext) — same path-only +
-      // prefix-allowlist guard used by /auth/callback and (app)/layout.tsx so
-      // the open-redirect check is identical across every honor-?next= site.
-      const safeNext = resolveNext(typeof next === "string" ? next : null);
-      redirect(safeNext ?? "/dashboard");
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // TIM-2730: use the shared allowlist (resolveNext) — same path-only +
+        // prefix-allowlist guard used by /auth/callback and (app)/layout.tsx so
+        // the open-redirect check is identical across every honor-?next= site.
+        const safeNext = resolveNext(typeof next === "string" ? next : null);
+        redirect(safeNext ?? "/dashboard");
+      }
+    } catch {
+      // Supabase unavailable (e.g. CI without credentials) — fall through to login form
     }
   }
 

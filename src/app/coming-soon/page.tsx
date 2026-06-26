@@ -120,16 +120,20 @@ export default async function ComingSoonPage({
   // chip for a one-click handoff to /dashboard. Persistence was already there
   // (cookies with maxAge 400d) — what was missing was a visible indicator that
   // the user is signed in.
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
   let chip = resolveAccountChip(null, null);
-  if (user) {
-    const { data: profile } = await supabase
-      .from("users")
-      .select("full_name")
-      .eq("id", user.id)
-      .maybeSingle();
-    chip = resolveAccountChip(profile?.full_name ?? null, user.email ?? null);
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      chip = resolveAccountChip(profile?.full_name ?? null, user.email ?? null);
+    }
+  } catch {
+    // Supabase unavailable (e.g. CI without credentials) — render as unauthenticated
   }
 
   return (
