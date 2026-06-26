@@ -300,13 +300,13 @@ function PricingPageInner() {
                     <span className="text-4xl font-bold">
                       {interval === "annual" ? tier.annualPrice : tier.monthlyPrice}
                     </span>
-                    <span className={`text-sm ${tier.highlight ? "text-white/80" : "text-[var(--muted-foreground)]"}`}>/month</span>
+                    <span className={`text-sm ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"}`}>/month</span>
                   </div>
 
                   {interval === "annual" && (
                     <>
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`text-xs ${tier.highlight ? "text-white/80" : "text-[var(--muted-foreground)]"}`}>
+                        <span className={`text-xs ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"}`}>
                           {tier.annualBilled}
                         </span>
                         <span className="text-xs bg-[var(--teal-bg-850)] text-[var(--teal)] px-1.5 py-0.5 rounded-full font-semibold">
@@ -340,7 +340,7 @@ function PricingPageInner() {
                     </p>
                   )}
 
-                  <p className={`text-sm ${tier.highlight ? "text-white/80" : "text-[var(--muted-foreground)]"}`}>
+                  <p className={`text-sm ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"}`}>
                     {tier.description}
                   </p>
                 </div>
@@ -348,7 +348,7 @@ function PricingPageInner() {
                 <ul className="space-y-2.5 mb-8 flex-1">
                   {tier.features.map((f) => (
                     <li key={f} className="flex gap-2 text-sm items-start">
-                      <span className={`flex-shrink-0 mt-0.5 ${tier.highlight ? "text-white/80" : "text-[var(--teal)]"}`}>
+                      <span className={`flex-shrink-0 mt-0.5 ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--teal)]"}`}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12"/>
                         </svg>
@@ -358,17 +358,17 @@ function PricingPageInner() {
                   ))}
                   {tier.notIncluded.map((f) => (
                     <li key={f} className="flex gap-2 text-sm items-start">
-                      <span className="flex-shrink-0 mt-0.5 text-[var(--muted-foreground)]">
+                      <span className="flex-shrink-0 mt-0.5 text-[var(--neutral-cool-350)]">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                         </svg>
                       </span>
-                      <span className="text-[var(--muted-foreground)]">{f}</span>
+                      <span className="text-[var(--neutral-cool-400)]">{f}</span>
                     </li>
                   ))}
                 </ul>
 
-                <p className={`text-xs text-center mb-3 ${tier.highlight ? "text-white/80" : "text-[var(--dark-grey)]"}`}>
+                <p className={`text-xs text-center mb-3 ${tier.highlight ? "text-[var(--sage)]" : "text-[var(--dark-grey)]"}`}>
                   By subscribing you agree to our{" "}
                   <a href="/terms" className={`underline ${tier.highlight ? "text-white/70" : "text-[var(--teal)]"}`}>Terms</a>
                   {", "}
