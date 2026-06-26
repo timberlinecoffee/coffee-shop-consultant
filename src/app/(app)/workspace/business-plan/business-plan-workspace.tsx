@@ -670,7 +670,7 @@ export function BusinessPlanWorkspace({
     }
     customSections.forEach((cs) => {
       if (cs.isEditing && !customDirtyBuffersRef.current.has(cs.id)) {
-        customDirtyBuffersRef.current.set(cs.id, cs.editBuffer ?? null);
+        customDirtyBuffersRef.current.set(cs.id, cs.editBuffer || null);
       }
     });
     void persistCustomDirty();
@@ -832,6 +832,7 @@ export function BusinessPlanWorkspace({
   const handleDeleteCustomSection = useCallback(async (id: string) => {
     const snapshot = customSections.find((cs) => cs.id === id);
     setCustomSections((prev) => prev.filter((cs) => cs.id !== id));
+    setCustomSectionError(null);
     try {
       const res = await fetch(`/api/business-plan/custom-sections/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("delete failed");
@@ -853,32 +854,26 @@ export function BusinessPlanWorkspace({
     });
   }, [updateCustomSection]);
 
-  const handleCustomSectionReorder = useCallback(async (id: string, direction: "up" | "down") => {
-    setCustomSections((prev) => {
-      const idx = prev.findIndex((cs) => cs.id === id);
-      if (idx < 0) return prev;
-      const next = [...prev];
-      const swapWith = direction === "up" ? idx - 1 : idx + 1;
-      if (swapWith < 0 || swapWith >= next.length) return prev;
-      [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
-      // Persist new sort_order for both swapped items.
-      const a = next[idx];
-      const b = next[swapWith];
-      if (a && b) {
-        void fetch(`/api/business-plan/custom-sections/${a.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sort_order: idx }),
-        });
-        void fetch(`/api/business-plan/custom-sections/${b.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sort_order: swapWith }),
-        });
-      }
-      return next;
+  const handleCustomSectionReorder = useCallback((id: string, direction: "up" | "down") => {
+    const idx = customSections.findIndex((cs) => cs.id === id);
+    if (idx < 0) return;
+    const swapWith = direction === "up" ? idx - 1 : idx + 1;
+    if (swapWith < 0 || swapWith >= customSections.length) return;
+    const next = [...customSections];
+    [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
+    setCustomSections(next);
+    // Fetches fire exactly once per user action — outside any state updater.
+    void fetch(`/api/business-plan/custom-sections/${next[idx].id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sort_order: idx }),
     });
-  }, []);
+    void fetch(`/api/business-plan/custom-sections/${next[swapWith].id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sort_order: swapWith }),
+    });
+  }, [customSections]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 

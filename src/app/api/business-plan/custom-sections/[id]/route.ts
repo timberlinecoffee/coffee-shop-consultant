@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { getActivePlanId } from "@/lib/plan-context";
 import type { NextRequest } from "next/server";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -15,25 +16,13 @@ const PatchBodySchema = z.object({
   sort_order: z.number().int().min(0).optional(),
 });
 
-// Rule 2: re-verify plan ownership server-side on every write.
-async function resolveOwnerPlanId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string | null> {
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return plan?.id ?? null;
-}
-
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const planId = await resolveOwnerPlanId(supabase, user.id);
+  const planId = await getActivePlanId(supabase, user.id);
   if (!planId) return Response.json({ error: "No plan" }, { status: 404 });
 
   let rawBody: unknown;
@@ -75,7 +64,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const planId = await resolveOwnerPlanId(supabase, user.id);
+  const planId = await getActivePlanId(supabase, user.id);
   if (!planId) return Response.json({ error: "No plan" }, { status: 404 });
 
   const { error } = await supabase
