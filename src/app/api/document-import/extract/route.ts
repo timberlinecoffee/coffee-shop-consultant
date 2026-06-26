@@ -16,6 +16,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { enforceRateLimit, clientIp } from "@/lib/rate-limit";
+import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import {
   effectivePlanForGating,
   isBetaWaived,
@@ -203,6 +204,8 @@ export async function POST(req: Request) {
         .from("users")
         .update({ ai_credits_remaining: runningBalance })
         .eq("id", user.id);
+      // TIM-3023: at-most-one credit-balance-low notice per month.
+      void notifyIfCreditBalanceLow({ userId: user.id, postMutationBalance: runningBalance, supabase: svc });
     }
     runningCharged += charged;
 

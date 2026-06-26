@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
 import { normalizeAIOutput } from "@/lib/normalize";
+import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import type { NextRequest } from "next/server";
 
 const TTFT_MS = 8_000;
@@ -165,10 +166,13 @@ ${currentContent}`;
         // TIM-2509: also record per-turn telemetry to ai_turn_metrics.
         const svcForTelemetry = createServiceClient();
         if (hasAccess && !isBetaWaived) {
+          const postDebitBalance = Math.max(0, (profile.ai_credits_remaining ?? 0) - 1);
           await svcForTelemetry
             .from("users")
-            .update({ ai_credits_remaining: Math.max(0, (profile.ai_credits_remaining ?? 0) - 1) })
+            .update({ ai_credits_remaining: postDebitBalance })
             .eq("id", user.id);
+          // TIM-3023: at-most-one credit-balance-low notice per month.
+          void notifyIfCreditBalanceLow({ userId: user.id, postMutationBalance: postDebitBalance, supabase: svcForTelemetry });
         }
         await recordTurnMetric(
           {

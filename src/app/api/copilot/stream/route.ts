@@ -37,6 +37,7 @@ import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
 import { loadPlanContext } from "@/lib/plan-context"
 import { buildEquipmentCostProposal, isEquipmentCostChangeIntent, type EquipmentCostItem } from "@/lib/cross-workspace-apply"
 import { rateLimit } from "@/lib/rate-limit"
+import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
 
@@ -1648,6 +1649,8 @@ export async function POST(request: NextRequest) {
                 toolCallCount,
               ),
             })
+            // TIM-3023: at-most-one credit-balance-low notice per month.
+            void notifyIfCreditBalanceLow({ userId: user.id, postMutationBalance: creditsRemaining })
           }
 
           // TIM-1638: emit a cross-plan inconsistency suggestion when the owner's

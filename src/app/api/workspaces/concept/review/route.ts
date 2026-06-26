@@ -18,6 +18,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { normalizeAIOutput } from "@/lib/normalize";
+import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
 import {
   CONCEPT_COMPONENTS_V2,
@@ -247,9 +248,10 @@ Valid fieldId values: ${targets.map((id) => `"${id}"`).join(", ")}.`;
   // TIM-1902: uniform debit — trialists are on the same credit balance as
   // paid users, so there is no separate trial counter to bump.
   const svcClient = createServiceClient();
+  const postDebitBalance = Math.max(0, (profile.ai_credits_remaining ?? 0) - 1);
   await supabase
     .from("users")
-    .update({ ai_credits_remaining: Math.max(0, (profile.ai_credits_remaining ?? 0) - 1) })
+    .update({ ai_credits_remaining: postDebitBalance })
     .eq("id", user.id);
   await svcClient.from("credit_transactions").insert({
     user_id: user.id,
@@ -257,6 +259,8 @@ Valid fieldId values: ${targets.map((id) => `"${id}"`).join(", ")}.`;
     type: "usage",
     description: "AI Review: concept",
   });
+  // TIM-3023: at-most-one credit-balance-low notice per month.
+  void notifyIfCreditBalanceLow({ userId: user.id, postMutationBalance: postDebitBalance, supabase: svcClient });
 
   return Response.json({
     suggestions,

@@ -15,6 +15,7 @@ import { toTitleCase } from "@/lib/text"
 import { normalizeAIOutput } from "@/lib/normalize"
 // TIM-2868: getActivePlanId() — see candidates/route.ts header.
 import { getActivePlanId } from "@/lib/plan-context"
+import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite"
 
 const SCORECARD_FACTORS = [
   { key: "foot_traffic_weekday", label: "Weekday Foot Traffic" },
@@ -308,10 +309,13 @@ export async function POST(request: NextRequest) {
     .sort((a, b) => a.position - b.position)
 
   // Decrement AI credit
+  const postDebitBalance = Math.max(0, credits - 1)
   await supabase
     .from("users")
-    .update({ ai_credits_remaining: Math.max(0, credits - 1) })
+    .update({ ai_credits_remaining: postDebitBalance })
     .eq("id", user.id)
+  // TIM-3023: at-most-one credit-balance-low notice per month.
+  void notifyIfCreditBalanceLow({ userId: user.id, postMutationBalance: postDebitBalance })
 
   return Response.json({ perCandidate, ranking })
 }

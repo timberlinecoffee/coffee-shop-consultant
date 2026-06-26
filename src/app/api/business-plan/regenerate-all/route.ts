@@ -53,6 +53,7 @@ import {
 } from "@/lib/business-plan";
 import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import {
   buildBpSectionPrompt,
   BP_REGENERABLE_SECTION_KEYS,
@@ -477,6 +478,8 @@ export async function POST(request: NextRequest): Promise<Response> {
               .update({ ai_credits_remaining: nextRemaining })
               .eq("id", user.id);
             creditsRemaining = nextRemaining;
+            // TIM-3023: at-most-one credit-balance-low notice per month.
+            void notifyIfCreditBalanceLow({ userId: user.id, postMutationBalance: nextRemaining, supabase: svc });
           } finally {
             creditLock.locked = false;
           }

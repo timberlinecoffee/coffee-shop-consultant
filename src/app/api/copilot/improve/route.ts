@@ -17,6 +17,7 @@ import { normalizeAIOutput } from "@/lib/normalize";
 import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
 import { loadPlanContext } from "@/lib/plan-context";
 import { rateLimit } from "@/lib/rate-limit";
+import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import type { WorkspaceKey } from "@/types/supabase";
 import type { NextRequest } from "next/server";
 
@@ -313,9 +314,10 @@ export async function POST(request: NextRequest) {
           const costUsd =
             (inputTokens * costPerInputM + outputTokens * costPerOutputM) / 1_000_000;
 
+          const postDebitBalance = Math.max(0, profile.ai_credits_remaining - 1);
           await supabase
             .from("users")
-            .update({ ai_credits_remaining: Math.max(0, profile.ai_credits_remaining - 1) })
+            .update({ ai_credits_remaining: postDebitBalance })
             .eq("id", user.id);
 
           await supabase.from("credit_transactions").insert({
@@ -324,6 +326,9 @@ export async function POST(request: NextRequest) {
             type: "usage",
             description: `AI Assist: ${workspaceKey}/${fieldKey}`,
           });
+          // TIM-3023: fire credit-balance-low notice if this debit dropped
+          // the user under the threshold (at most one per calendar month).
+          void notifyIfCreditBalanceLow({ userId: user.id, postMutationBalance: postDebitBalance });
           // Log cost for internal tracking (best-effort).
           await svcClient.from("ai_errors").insert({
             user_id: user.id,
