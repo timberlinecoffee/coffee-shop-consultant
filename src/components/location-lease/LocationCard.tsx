@@ -856,6 +856,9 @@ function classifyVerdict(body: string): RecommendationVerdict {
   const head = body.slice(0, 160).toLowerCase()
   if (/(^|\W)move\s*forward(\W|$)/.test(head)) return 'move'
   if (/(^|\W)negotiate(\s+first)?(\W|$)/.test(head)) return 'negotiate'
+  // "Not Recommended" is the current AI verdict; "pass" kept for backward compat
+  // with any cached responses that still use the old prompt wording.
+  if (/(^|\W)not\s+recommended(\W|$)/.test(head)) return 'pass'
   if (/(^|\W)pass(\W|$)/.test(head)) return 'pass'
   return 'unknown'
 }
@@ -912,7 +915,7 @@ function RecommendationCallout({
           }
         : verdict === 'pass'
           ? {
-              label: 'Pass',
+              label: 'Not Recommended',
               wrap: 'border-rose-300 bg-rose-50',
               chip: 'bg-rose-600 text-white',
               title: 'text-rose-800',

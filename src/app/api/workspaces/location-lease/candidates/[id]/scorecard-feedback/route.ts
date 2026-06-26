@@ -63,7 +63,7 @@ ${scoredLines}
 Based on this scorecard, provide a structured assessment with exactly these five sections — use the exact headers below in this order:
 
 ## Recommendation
-Start the body with a single bolded verdict on its own line, choosing exactly one of: **Move Forward**, **Negotiate First**, or **Pass**. Then write one short paragraph (2–3 sentences max) explaining the verdict in plain English — what tips the decision, and the single biggest thing that would change it.
+Start the body with a single bolded verdict on its own line, choosing exactly one of: **Move Forward**, **Negotiate First**, or **Not Recommended**. Then write one short paragraph (2–3 sentences max) explaining the verdict in plain English — what tips the decision, and the single biggest thing that would change it.
 
 ## Overall Risk Profile
 Two to three sentences describing the overall risk level (low / medium / high) and the primary driver of that risk. Be direct and specific to this location's numbers.
