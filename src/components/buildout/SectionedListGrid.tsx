@@ -64,7 +64,7 @@ import {
 import type { EquipmentItem, EquipmentCategory, FinancingMethod } from "@/app/(app)/workspace/financials/financials-workspace";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentRecommendation } from "@/types/referral";
-import { formatCurrencyAmount, currencySymbol } from "@/lib/currency";
+import { formatCurrencyAmount } from "@/lib/currency";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { type VendorCandidate, type VendorCategoryKey, VENDOR_CATEGORY_KEYS, VENDOR_CATEGORY_LABELS } from "@/lib/suppliers";
 import { EquipmentRecommendationCard } from "@/components/buildout/EquipmentRecommendationCard";
@@ -257,14 +257,14 @@ function TextInput({
 }
 
 function CostInput({
-  valueCents, disabled, currencyCode, onCommit,
-}: { valueCents: number; disabled: boolean; currencyCode: string; onCommit: (cents: number) => void }) {
+  valueCents, disabled, onCommit,
+}: { valueCents: number; disabled: boolean; onCommit: (cents: number) => void }) {
+  const { symbol } = useCurrency();
   const [draft, setDraft] = useState(valueCents > 0 ? String(valueCents / 100) : "");
   useEffect(() => { setDraft(valueCents > 0 ? String(valueCents / 100) : ""); }, [valueCents]);
-  const sym = currencySymbol(currencyCode);
   return (
     <div className="flex items-center gap-0.5 w-full h-full">
-      <span className="shrink-0 text-xs text-[var(--muted-foreground)]">{sym}</span>
+      <span className="shrink-0 text-xs text-[var(--muted-foreground)]">{symbol}</span>
       <input
         type="number"
         min={0}
@@ -1089,7 +1089,6 @@ function SortableRow({
             <CostInput
               valueCents={item.unit_cost_cents}
               disabled={!canEdit}
-              currencyCode={currencyCode}
               onCommit={(cents) => onUpdate(item.id, { unit_cost_cents: cents } as Partial<AnyItem>)}
             />
           </td>
