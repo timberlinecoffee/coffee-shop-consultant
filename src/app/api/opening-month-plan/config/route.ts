@@ -1,7 +1,10 @@
 // TIM-1449: Opening Month Plan workspace config (targetLaunchDate, lastGeneratedAt,
 // viewPreference, sourcesSnapshotAt). Stored in workspace_documents with key
 // 'opening_month_plan' (collapsed from the short-lived opening_milestones split in TIM-1411).
+// TIM-2980: switched off inline latest-by-created plan resolver — use canonical
+// getActivePlanId (TIM-2377) so plan ID agrees with users.current_plan_id.
 import { createClient } from "@/lib/supabase/server"
+import { getActivePlanId } from "@/lib/plan-context"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan"
 import type { NextRequest } from "next/server"
@@ -11,20 +14,13 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   const { data: doc } = await supabase
     .from("workspace_documents")
     .select("content, updated_at")
-    .eq("plan_id", plan.id)
+    .eq("plan_id", planId)
     .eq("workspace_key", "opening_month_plan")
     .maybeSingle()
 
@@ -51,21 +47,14 @@ export async function PATCH(request: NextRequest) {
     return Response.json({ error: "Invalid JSON" }, { status: 400 })
   }
 
-  const { data: plan } = await supabase
-    .from("coffee_shop_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!plan) return Response.json({ error: "No plan found" }, { status: 404 })
+  const planId = await getActivePlanId(supabase, user.id)
+  if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
   // Merge patch into existing config.
   const { data: existing } = await supabase
     .from("workspace_documents")
     .select("content")
-    .eq("plan_id", plan.id)
+    .eq("plan_id", planId)
     .eq("workspace_key", "opening_month_plan")
     .maybeSingle()
 
@@ -79,7 +68,7 @@ export async function PATCH(request: NextRequest) {
   const { data, error } = await supabase
     .from("workspace_documents")
     .upsert(
-      { plan_id: plan.id, workspace_key: "opening_month_plan", content: current },
+      { plan_id: planId, workspace_key: "opening_month_plan", content: current },
       { onConflict: "plan_id,workspace_key" }
     )
     .select("id, updated_at")
