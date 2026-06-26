@@ -2820,6 +2820,7 @@ function CogsRangeRow({
             Target COGS
           </span>
           <div className="flex items-center gap-1 text-xs">
+            {/* eslint-disable-next-line no-restricted-syntax -- COGS percentage target (0–100%), not a dollar amount; <MoneyInput> not applicable here */}
             <input
               ref={lowRef}
               type="number"
@@ -2834,6 +2835,7 @@ function CogsRangeRow({
             />
             <span className="text-[var(--muted-foreground)]">%</span>
             <span className="text-[var(--muted-foreground)]">to</span>
+            {/* eslint-disable-next-line no-restricted-syntax -- COGS percentage target (0–100%), not a dollar amount; <MoneyInput> not applicable here */}
             <input
               type="number"
               min={1}
