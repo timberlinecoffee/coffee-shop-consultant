@@ -2787,7 +2787,7 @@ function CogsRangeRow({
       setEditing(false);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save — please try again");
+      setError(err instanceof Error ? err.message : "Failed to save. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -2804,7 +2804,7 @@ function CogsRangeRow({
         <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
           Target COGS
         </span>
-        <Lock size={10} className="text-[var(--neutral-cool-350)] shrink-0" aria-label="Read-only — preset category" />
+        <Lock size={10} className="text-[var(--neutral-cool-350)] shrink-0" aria-label="Read-only: preset category" />
         <span className="text-xs font-semibold text-[var(--foreground)] tabular-nums">
           {category.target_cogs_low_pct}%&ndash;{category.target_cogs_high_pct}%
         </span>
@@ -3834,7 +3834,7 @@ export function MenuWorkspace({
       });
     } catch {
       rollback();
-      throw new Error("Failed to save — please try again");
+      throw new Error("Failed to save. Please try again.");
     }
 
     if (res.ok) {
