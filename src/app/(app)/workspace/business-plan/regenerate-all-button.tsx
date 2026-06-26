@@ -40,6 +40,7 @@ import type { OpenProgressOverlayOptions } from "@/hooks/useBusinessPlanProgress
 import type { AuditReport } from "@/lib/business-plan/audit";
 
 interface EstimatePayload {
+  run_id: string;
   sections: Array<{ key: string; title: string }>;
   estimated_credits: number;
   credits_remaining: number;
@@ -317,6 +318,8 @@ export function RegenerateAllButton({
     if (!pending) return;
     const { estimate, reader, decoder, abortController } = pending;
     let buf = pending.buf;
+    // TIM-3018: capture run_id from the estimate payload for accept/reject calls.
+    const runId = estimate.run_id;
     setPhase("streaming");
     setPending(null);
 
@@ -350,18 +353,36 @@ export function RegenerateAllButton({
     const claimsByKey = new Map<string, unknown[]>();
     const failedTitles: string[] = [];
 
+    // TIM-3018: accept/reject now route through the draft-aware endpoints so
+    // draft rows are marked accepted/rejected and Shape C is enforced server-side.
+    // Fall back to the legacy PATCH when runId is absent (keeps old streams
+    // working during a rolling deploy window).
     const accept = async (accepted: ApprovedChange[]) => {
       const failed: string[] = [];
+      const acceptedFieldIds = new Set(accepted.map((a) => a.fieldId));
+
       for (const a of accepted) {
         try {
-          const res = await fetch(`/api/business-plan/sections/${a.fieldId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              user_content: a.finalValue,
-              estimated_claims_json: claimsByKey.get(a.fieldId) ?? [],
-            }),
-          });
+          let res: Response;
+          if (runId) {
+            res = await fetch(
+              `/api/business-plan/regenerate-all/runs/${runId}/sections/${a.fieldId}/accept`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ finalValue: a.finalValue }),
+              },
+            );
+          } else {
+            res = await fetch(`/api/business-plan/sections/${a.fieldId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                user_content: a.finalValue,
+                estimated_claims_json: claimsByKey.get(a.fieldId) ?? [],
+              }),
+            });
+          }
           if (!res.ok) {
             failed.push(titleByKey.get(a.fieldId) ?? a.fieldId);
           } else {
@@ -371,6 +392,20 @@ export function RegenerateAllButton({
           failed.push(titleByKey.get(a.fieldId) ?? a.fieldId);
         }
       }
+
+      // TIM-3018: mark non-accepted sections as rejected so draft rows resolve.
+      // Fire-and-forget — user_content is never touched by reject (Shape C).
+      if (runId) {
+        for (const s of suggestions) {
+          if (!acceptedFieldIds.has(s.fieldId)) {
+            fetch(
+              `/api/business-plan/regenerate-all/runs/${runId}/sections/${s.fieldId}/reject`,
+              { method: "POST" },
+            ).catch(() => {});
+          }
+        }
+      }
+
       if (failed.length > 0) {
         throw new Error(
           failed.length === accepted.length

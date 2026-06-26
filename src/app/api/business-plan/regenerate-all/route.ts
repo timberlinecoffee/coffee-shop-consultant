@@ -21,7 +21,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { hasWriteAccess } from "@/lib/access";
 import { normalizeAIOutput } from "@/lib/normalize";
-import { loadPlanContext } from "@/lib/plan-context";
+import { loadPlanContext, getActivePlanId } from "@/lib/plan-context";
 import {
   buildPlanSnapshotForExecutiveSummary,
   BUSINESS_PLAN_SECTIONS,
@@ -157,17 +157,17 @@ export async function POST(request: NextRequest): Promise<Response> {
     return Response.json({ reason: "out_of_credits", tier_required: "pro" }, { status: 402 });
   }
 
+  // TIM-3157 drive-by: use getActivePlanId (same cluster as TIM-2980/TIM-2965/TIM-2917).
+  const planId = await getActivePlanId(supabase, user.id);
+  if (!planId) return Response.json({ error: "No plan" }, { status: 404 });
+
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, plan_name, onboarding_data")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
+    .select("plan_name, onboarding_data")
+    .eq("id", planId)
     .maybeSingle();
 
   if (!plan) return Response.json({ error: "No plan" }, { status: 404 });
-
-  const planId = plan.id;
 
   // Load ALL platform data in parallel, once, before streaming.
   const [
@@ -298,6 +298,10 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const stream = new ReadableStream({
     async start(controller) {
+      // TIM-3018: one run_id per stream so the client can correlate accept/reject
+      // calls to the draft rows written server-side as each section completes.
+      const run_id = crypto.randomUUID();
+
       const enc = new TextEncoder();
       let heartbeat: ReturnType<typeof setInterval> | null = null;
       let closed = false;
@@ -325,6 +329,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       let creditDebits = 0;
 
       send("estimate", {
+        run_id,
         sections: sectionsToRegenerate.map((key) => ({
           key,
           title: sectionsByKey.get(key)?.title ?? key,
@@ -529,12 +534,28 @@ export async function POST(request: NextRequest): Promise<Response> {
         const estimatedClaims = extractEstimatedClaims(sectionKey, draftCanon.text);
         const draft = parsed.rendered;
 
-        // TIM-2924 Shape C fix: do not pre-write here. The review modal is the
-        // Accept gate; the client's accept() function PATCHes sections with
-        // finalValue when the user confirms. Pre-writing caused Reject to be a
-        // no-op (rejected sections stayed in DB). See TIM-2924.
+        // TIM-2924 Shape C fix: do not pre-write to business_plan_sections here.
+        // The review modal is the Accept gate; the accept route writes finalValue
+        // when the user confirms. Pre-writing caused Reject to be a no-op.
+        //
+        // TIM-3018: write to business_plan_section_drafts (NOT user_content) so
+        // a Lambda kill mid-stream can be recovered via the pending draft rows.
         completed.push({ key: sectionKey, draft });
+        const svc = createServiceClient();
+        await svc.from("business_plan_section_drafts").upsert({
+          plan_id: planId,
+          run_id,
+          section_key: sectionKey,
+          draft_content: draft,
+          source_markers_json: parsed.counts,
+          estimated_claims_json: estimatedClaims,
+          canon_substitutions_json: draftCanon.substitutions,
+          consistency_contradictions_json: contradictions,
+          status: "pending",
+        }, { onConflict: "run_id,section_key" });
+
         send("section:complete", {
+          run_id,
           sectionKey,
           sectionTitle: sectionMeta.title,
           draft,
