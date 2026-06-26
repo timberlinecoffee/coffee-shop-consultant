@@ -10,6 +10,20 @@ import {
   tail4,
 } from "@/lib/oauth-diag";
 
+// TIM-3148 (2026-06-26): explicit dynamic + zero-revalidate so the route is
+// never edge-cached. Reading `cookies()` already opts out of static rendering
+// in Next.js 15, but being explicit is belt-and-suspenders and removes any
+// ambiguity if the platform changes its auto-detection. The bigger win is the
+// `Cache-Control: no-store` we set on every redirect response below — Vercel
+// edge can otherwise cache 307/308 redirects, and a cached error redirect
+// (`/login?error=auth_failed`) would force the user to retry the OAuth round-
+// trip a second time even after the underlying state cleared. That matches
+// the "log in twice, second succeeds" symptom in the user-authored debugging
+// directive on this issue.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const runtime = "nodejs";
+
 // TIM-2327: short-lived first-party handoff cookies set by /login before
 // signInWithOAuth. Lets us strip query params off `redirectTo` so it matches
 // Supabase's Additional Redirect URLs allowlist exactly (bare `/auth/callback`),
@@ -31,6 +45,18 @@ function clearHandoffCookies(res: NextResponse) {
   for (const name of HANDOFF_COOKIES) {
     res.cookies.set(name, "", { path: "/", maxAge: 0 });
   }
+  return res;
+}
+
+// TIM-3148 (2026-06-26): every redirect response from this route must be
+// uncacheable — by the browser, by Vercel edge, and by any intermediate CDN.
+// A cached 307/308 redirect on `/auth/callback?code=…` would force the user
+// to walk the OAuth round-trip a second time. Set on every response we hand
+// back so the no-store guarantee never depends on a caller remembering to
+// add it.
+function applyNoStore(res: NextResponse): NextResponse {
+  res.headers.set("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate");
+  res.headers.set("Pragma", "no-cache");
   return res;
 }
 
@@ -166,7 +192,7 @@ export async function GET(request: Request) {
       location: sanitized,
       ...extra,
     });
-    return clearHandoffCookies(NextResponse.redirect(targetUrl));
+    return applyNoStore(clearHandoffCookies(NextResponse.redirect(targetUrl)));
   }
 
   if (code) {
