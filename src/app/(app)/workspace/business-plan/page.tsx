@@ -19,6 +19,7 @@ import {
   assembleTeamHiring,
   assembleFinancialPlan,
   type BusinessPlanSectionData,
+  type CustomSectionData,
   type BpLocationCandidate,
   type BpEquipmentItem,
   type BpMenuItem,
@@ -62,6 +63,7 @@ export default async function BusinessPlanWorkspacePage() {
     { data: profile },
     { data: coverRow },
     { data: financialDocRows },
+    { data: customSectionRows },
   ] = await Promise.all([
     supabase
       .from("workspace_documents")
@@ -125,6 +127,12 @@ export default async function BusinessPlanWorkspacePage() {
       .from("business_plan_financial_documents")
       .select("document_key, is_visible")
       .eq("plan_id", planId),
+    supabase
+      .from("business_plan_custom_sections")
+      .select("id, title, user_content, is_visible, sort_order")
+      .eq("plan_id", planId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
   ]);
 
   const savedMap = new Map(
@@ -209,6 +217,14 @@ export default async function BusinessPlanWorkspacePage() {
     (financialDocRows ?? []) as { document_key: string; is_visible: boolean }[]
   );
 
+  const initialCustomSections: CustomSectionData[] = (customSectionRows ?? []).map((row) => ({
+    id: row.id as string,
+    title: (row.title as string) ?? "Custom Section",
+    userContent: (row.user_content as string | null) ?? null,
+    isVisible: (row.is_visible as boolean) ?? true,
+    sortOrder: (row.sort_order as number) ?? 0,
+  }));
+
   // TIM-2466: Pre-generate checklist. The four source workspaces below feed
   // the assembler functions that build BP autoContent. When they are all
   // empty (the state of every test persona in TIM-2459), the assembled
@@ -268,6 +284,7 @@ export default async function BusinessPlanWorkspacePage() {
       planId={planId}
       shopName={plan.plan_name ?? ""}
       initialSections={sections}
+      initialCustomSections={initialCustomSections}
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
       initialCoverSettings={initialCoverSettings}
