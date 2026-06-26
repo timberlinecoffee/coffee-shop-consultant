@@ -1,5 +1,6 @@
-// TIM-2366: barrel re-export for the 11 transactional templates so callers can
-// pull a send-helper without knowing the file layout.
+// TIM-3022 / TIM-2366: barrel re-export for the 11 transactional templates so
+// callers (including the Supabase Send-Email auth hook) can pull a send-helper
+// without knowing the file layout.
 
 export {
   sendVerifyEmail,
