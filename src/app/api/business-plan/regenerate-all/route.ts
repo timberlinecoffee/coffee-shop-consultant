@@ -159,7 +159,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, plan_name")
+    .select("id, plan_name, onboarding_data")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -196,7 +196,10 @@ export async function POST(request: NextRequest): Promise<Response> {
   const menuBlendedCogsPct = computeMenuBlendedCogsPct((menuRows ?? []) as any[]);
 
   const shopName = plan.plan_name ?? "this coffee shop";
-  const onboarding = (profile.onboarding_data ?? {}) as Record<string, unknown>;
+  // TIM-3151: merge per-project intake answers over user-level onboarding data.
+  const userOnboarding = (profile.onboarding_data ?? {}) as Record<string, unknown>;
+  const planOnboarding = (plan.onboarding_data as Record<string, unknown> | null) ?? {};
+  const onboarding = { ...userOnboarding, ...planOnboarding };
   const founderBudget = String(onboarding?.budget ?? "not specified");
   const founderLocation = planContext.location_country ?? "not specified";
   const founderStage = String(onboarding?.stage ?? "not specified");

@@ -890,13 +890,14 @@ export async function POST(request: NextRequest) {
 
   // ── Build prompt ────────────────────────────────────────────────────────────
   const svcClient = createServiceClient()
-  const onboarding = (profile.onboarding_data as Record<string, unknown>) ?? {}
 
   // TIM-1418: Location is read live from plan_hiring_settings + location_candidates
   // instead of the frozen onboarding snapshot. Other onboarding fields here
   // (budget, stage, motivation, coffee_experience, timeline, shop_type) have no
   // live workspace equivalent and stay on onboarding_data.
-  const [snapshotResult, planContext, locationsResult] = await Promise.all([
+  // TIM-3151: also fetch coffee_shop_plans.onboarding_data to override user-level
+  // answers for this specific project (Pro multi-project intake).
+  const [snapshotResult, planContext, locationsResult, planOdResult] = await Promise.all([
     composePlanSnapshot(planId, workspaceKey, svcClient),
     loadPlanContext(svcClient, user.id),
     // TIM-1670: real sites live here, not in the location_lease workspace_document.
@@ -906,7 +907,16 @@ export async function POST(request: NextRequest) {
       .eq("plan_id", planId)
       .eq("archived", false)
       .order("position", { ascending: true }),
+    svcClient
+      .from("coffee_shop_plans")
+      .select("onboarding_data")
+      .eq("id", planId)
+      .maybeSingle(),
   ])
+  // TIM-3151: project-scoped onboarding fields override user-level signup answers.
+  const userOnboarding = (profile.onboarding_data as Record<string, unknown>) ?? {}
+  const planOnboarding = (planOdResult.data?.onboarding_data as Record<string, unknown> | null) ?? {}
+  const onboarding = { ...userOnboarding, ...planOnboarding }
   const { snapshot: planSnapshot, targetLaunchDate } = snapshotResult
 
   // TIM-1638: detect timeline mismatch between the authoritative plan date and
