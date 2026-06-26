@@ -1556,13 +1556,13 @@ function CostOfGoodsTabContent({
           </div>
           <div>
             <label className={labelCls}>
-              {categoryMidPct !== null ? "Recommended Price" : "Min. Suggested Price"}
+              {categoryMidPct !== null && msrpCents !== null ? "Recommended Price" : "Min. Suggested Price"}
             </label>
             <p className="text-sm font-semibold text-[var(--foreground)] py-2">
               {msrpCents !== null ? formatCents(msrpCents) : "—"}
             </p>
             <p className="text-[11px] text-[var(--muted-foreground)]">
-              {categoryMidPct !== null
+              {categoryMidPct !== null && msrpCents !== null
                 ? `Based on ${category?.name ?? "category"} midpoint: ${categoryMidPct.toFixed(1)}%`
                 : `From ${targetPct}% target margin`}
             </p>
@@ -3594,9 +3594,6 @@ export function MenuWorkspace({
       financial_role: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      target_cogs_low_pct: null,
-      target_cogs_high_pct: null,
-      financial_role: null,
     };
     setCategories((prev) => [...prev, optimistic]);
 
