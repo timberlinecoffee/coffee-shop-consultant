@@ -70,23 +70,30 @@ async function ensureLoaded() {
   return store.loadPromise;
 }
 
-async function persistMap(next: PlanNotifPrefsMap) {
+async function persistMap(map: PlanNotifPrefsMap) {
   try {
     await fetch(`/api/ui-prefs/${PLAN_NOTIFS_PREF_KEY}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify(next),
+      body: JSON.stringify(map),
     });
   } catch {
     /* non-blocking; next load reconciles */
   }
 }
 
+// Debounced to batch rapid dismiss/snooze actions into one PUT, preventing
+// last-writer-wins data loss when multiple findings are acted on quickly.
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
 function setMap(next: PlanNotifPrefsMap) {
   store.map = next;
   emit();
-  void persistMap(next);
+  if (persistTimer !== null) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    void persistMap(store.map);
+    persistTimer = null;
+  }, 500);
 }
 
 function fireAnalytics(eventName: string, params: Record<string, string>) {
