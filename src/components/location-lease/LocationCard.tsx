@@ -6,7 +6,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  Archive,
   ChevronDown,
   ChevronUp,
   ExternalLink,
@@ -1323,6 +1322,10 @@ export function LocationCard({
   onToggleSelect,
 }: LocationCardProps) {
   const [open, setOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const initial = candidate.name.trim().charAt(0).toUpperCase() || '?'
 
   const canUseAI = subscriptionTier !== 'free' && aiCreditsRemaining > 0
   const isShortlisted = candidate.status === 'shortlisted'
@@ -1403,6 +1406,7 @@ export function LocationCard({
             )}
           </button>
         )}
+
         <button
           type="button"
           onClick={toggleShortlist}
@@ -1420,13 +1424,31 @@ export function LocationCard({
           <Star className={cn('size-4', isShortlisted && 'fill-amber-400 text-amber-500')} />
         </button>
 
-        <div className="flex-1 min-w-0">
-          <InlineInput
-            value={candidate.name}
-            placeholder="Location name"
-            onCommit={(v) => onPatch(candidate.id, { name: v || 'Untitled' })}
-          />
-        </div>
+        {/* Name header — matches PersonaCard: avatar circle + name text, clickable to expand */}
+        <button
+          type="button"
+          onClick={() => setOpen((p) => !p)}
+          className="flex items-center gap-3 min-w-0 text-left focus-visible:outline-none flex-1"
+          aria-expanded={open}
+          aria-label={open ? `Collapse ${candidate.name}` : `Expand ${candidate.name}`}
+        >
+          <div
+            className="w-9 h-9 rounded-full bg-[var(--teal)] text-white flex items-center justify-center text-sm font-bold flex-shrink-0"
+            aria-hidden="true"
+          >
+            {initial}
+          </div>
+          <div className="min-w-0">
+            <span className="text-sm font-semibold text-[var(--foreground)] truncate block">
+              {candidate.name || 'Untitled'}
+            </span>
+            {candidate.address && (
+              <p className="text-xs text-[var(--dark-grey)] mt-0.5 truncate">
+                {candidate.address}
+              </p>
+            )}
+          </div>
+        </button>
 
         <StatusPillSelector
           status={candidate.status}
@@ -1435,29 +1457,68 @@ export function LocationCard({
 
         {saving && <span className="shrink-0 text-[10px] italic text-[var(--neutral-cool-600)]">saving…</span>}
 
-        <button
-          type="button"
-          onClick={() => setOpen((p) => !p)}
-          aria-label={open ? 'Collapse details' : 'Expand details'}
-          className="shrink-0 rounded-lg p-1 text-[var(--neutral-cool-600)] transition-colors hover:bg-[var(--surface-warm-50)] hover:text-[var(--foreground)]"
-        >
-          {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        </button>
+        {/* ··· menu — replaces standalone Archive button, matches PersonaCard pattern */}
+        <div className="relative flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => { setMenuOpen((v) => !v); setConfirmDelete(false); }}
+            aria-label="More options"
+            className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-200)] transition-colors focus-visible:outline-none"
+          >
+            <span aria-hidden="true" className="text-base leading-none tracking-tighter">...</span>
+          </button>
+          {menuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => { setMenuOpen(false); setConfirmDelete(false); }}
+              />
+              <div className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-[var(--border)] bg-white shadow-lg overflow-hidden">
+                {confirmDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); setConfirmDelete(false); onArchive(candidate.id); }}
+                    className="w-full text-left px-4 py-3 text-sm text-[var(--error)] font-semibold hover:bg-[var(--error-bg)] transition-colors"
+                  >
+                    Confirm delete
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="w-full text-left px-4 py-3 text-sm text-[var(--error)] hover:bg-[var(--error-bg)] transition-colors"
+                  >
+                    Delete location
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
 
         <button
           type="button"
-          onClick={() => onArchive(candidate.id)}
-          aria-label="Archive candidate"
-          title="Archive this location"
-          className="shrink-0 rounded-lg p-1 text-[var(--neutral-cool-600)] transition-colors hover:bg-red-600/10 hover:text-red-600"
+          onClick={() => setOpen((p) => !p)}
+          aria-label={open ? 'Collapse' : 'Expand'}
+          className="shrink-0 rounded-lg p-1 text-[var(--neutral-cool-600)] transition-colors hover:bg-[var(--surface-warm-50)] hover:text-[var(--foreground)]"
         >
-          <Archive className="size-4" />
+          {open ? <ChevronUp className="size-4" aria-hidden="true" /> : <ChevronDown className="size-4" aria-hidden="true" />}
         </button>
       </div>
 
       {/* ── Expanded — all info for this location lives here ── */}
       {open && (
         <div className="border-t border-[var(--border)] px-4 py-4 flex flex-col gap-4">
+          {/* Location name — first/header field, edit in-place */}
+          <div className="flex flex-col gap-1">
+            <FieldLabel>Location Name</FieldLabel>
+            <InlineInput
+              value={candidate.name}
+              placeholder="Location name"
+              onCommit={(v) => onPatch(candidate.id, { name: v || 'Untitled' })}
+            />
+          </div>
+
           {/* Intake fields */}
           <Section icon={ClipboardList} title="Identity & Intake" defaultOpen>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
