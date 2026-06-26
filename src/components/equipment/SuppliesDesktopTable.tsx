@@ -13,7 +13,6 @@ import {
   TABLE_ACTION_ICON_SIZE,
   TABLE_ROW_PADDING,
   TABLE_PRICE_CLS,
-  TABLE_UNIT_CLS,
   TABLE_QUICK_ADD_ROW_CLS,
   TABLE_QUICK_ADD_INPUT_CLS,
 } from "@/lib/workspace-table";
@@ -177,7 +176,7 @@ export function SuppliesDesktopTable({
 
   // TIM-3251: inline quick-add commit.
   function commitQuickAdd() {
-    if (!qaName.trim()) return;
+    if (!canEdit || !qaName.trim()) return;
     const blank = newBlankItem(planId, active.length);
     const qty = Math.max(1, parseInt(qaQty, 10) || 1);
     const costCents = Math.round((parseFloat(qaCost) || 0) * 100);
@@ -357,13 +356,12 @@ export function SuppliesDesktopTable({
               })}
             </tbody>
           </table>
-        </div>
-        {/* TIM-3251: inline quick-add row — teal-tinted, matches Menu QuickAddRow. */}
-        {canEdit && (
-          <div
-            className={`grid grid-cols-[minmax(0,1fr)_140px_100px_80px_110px_110px_1fr_36px] gap-1.5 px-2.5 py-2 ${TABLE_QUICK_ADD_ROW_CLS}`}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitQuickAdd(); } }}
-          >
+          {/* TIM-3251: inline quick-add row — inside overflow-x-auto so it scrolls with columns. */}
+          {canEdit && (
+            <div
+              className={`min-w-[700px] grid grid-cols-[220px_140px_100px_80px_110px_110px_minmax(0,1fr)_36px] gap-1.5 px-2.5 py-2 ${TABLE_QUICK_ADD_ROW_CLS}`}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitQuickAdd(); } }}
+            >
             <input
               ref={qaNameRef}
               type="text"
@@ -429,7 +427,8 @@ export function SuppliesDesktopTable({
               </button>
             </div>
           </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
