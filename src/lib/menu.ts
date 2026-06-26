@@ -21,6 +21,10 @@ export type MenuCategory = {
   is_default: boolean
   created_at: string
   updated_at: string
+  // TIM-3243: per-category COGS target range. Null = inherit plan-level default.
+  target_cogs_low_pct: number | null
+  target_cogs_high_pct: number | null
+  financial_role: string | null
 }
 
 export type MenuItem = {
