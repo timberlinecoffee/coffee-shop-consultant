@@ -19,6 +19,21 @@ const ROOT = resolve(__dirname, "..");
 const SRC = join(ROOT, "src");
 const APP = join(SRC, "app");
 
+// ── 0. Collect redirect sources from next.config.mjs ─────────────────────
+// Paths served by Next.js redirects are valid navigation targets even though
+// they have no page.tsx — exempt them from the dead-link check.
+const REDIRECT_SOURCES = new Set();
+try {
+  const configSrc = readFileSync(join(ROOT, "next.config.mjs"), "utf8");
+  // Extract  source: '/path'  entries from the redirects() array
+  for (const m of configSrc.matchAll(/source:\s*['"]([^'"]+)['"]/g)) {
+    // Strip trailing query/hash and treat the path literally (no dynamic segs)
+    REDIRECT_SOURCES.add(m[1].replace(/[?#].*$/, ""));
+  }
+} catch {
+  // next.config.mjs missing or unreadable — proceed without exemptions
+}
+
 // ── 1. Collect all .ts/.tsx source files ──────────────────────────────────
 function walk(dir, results = []) {
   for (const entry of readdirSync(dir)) {
@@ -107,13 +122,16 @@ function couldMatchDynamic(dir, segments) {
   if (existsSync(literal) && statSync(literal).isDirectory()) {
     if (couldMatchDynamic(literal, tail)) return true;
   }
-  // Try [dynamic] segments
   for (const entry of readdirSync(dir)) {
+    const entryDir = join(dir, entry);
+    if (!statSync(entryDir).isDirectory()) continue;
+    // Route groups (e.g. "(app)") are transparent — consume no URL segment
+    if (entry.startsWith("(") && entry.endsWith(")")) {
+      if (couldMatchDynamic(entryDir, segments)) return true;
+    }
+    // Dynamic segments consume one URL segment
     if (entry.startsWith("[") && entry.endsWith("]")) {
-      const dynDir = join(dir, entry);
-      if (statSync(dynDir).isDirectory()) {
-        if (couldMatchDynamic(dynDir, tail)) return true;
-      }
+      if (couldMatchDynamic(entryDir, tail)) return true;
     }
   }
   return false;
@@ -122,7 +140,7 @@ function couldMatchDynamic(dir, segments) {
 // ── 4. Report ────────────────────────────────────────────────────────────
 const dead = [];
 for (const [href, files] of [...allHrefs].sort(([a], [b]) => a.localeCompare(b))) {
-  if (!isRoutable(href)) {
+  if (!isRoutable(href) && !REDIRECT_SOURCES.has(href)) {
     dead.push({ href, files });
   }
 }
