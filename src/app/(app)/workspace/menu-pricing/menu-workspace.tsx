@@ -27,7 +27,9 @@ import {
   StickyNote,
   LayoutGrid,
   TrendingUp,
+  Lock,
 } from "lucide-react";
+import { z } from "zod";
 import {
   DndContext,
   PointerSensor,
@@ -2728,6 +2730,169 @@ function EmptyCategoryDropZone({
   );
 }
 
+// TIM-3246: Zod schema for client-side COGS range validation — mirrors the server schema in
+// /api/workspaces/menu-pricing/categories/route.ts (low ≥ 0, high ≤ 100, low < high).
+const CogsRangeSchema = z.object({
+  low: z.number().min(0, "Low must be at least 0").max(100, "Low must be at most 100"),
+  high: z.number().min(0, "High must be at least 0").max(100, "High must be at most 100"),
+}).refine((v) => v.low < v.high, { message: "Low must be less than high" });
+
+// TIM-3246: Inline COGS range display row shown inside each CategoryHeader.
+// Preset categories (is_default = true) show a locked read-only badge.
+// User-created categories show an editable pair of % inputs with Zod validation.
+function CogsRangeRow({
+  category,
+  canEdit,
+  onUpdateCogsRange,
+}: {
+  category: MenuCategory;
+  canEdit: boolean;
+  onUpdateCogsRange: (low: number, high: number) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [lowVal, setLowVal] = useState("");
+  const [highVal, setHighVal] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const lowRef = useRef<HTMLInputElement>(null);
+
+  const hasRange = category.target_cogs_low_pct !== null;
+  if (!hasRange) return null;
+
+  const isPreset = category.is_default;
+
+  function startEdit() {
+    setLowVal(String(category.target_cogs_low_pct ?? ""));
+    setHighVal(String(category.target_cogs_high_pct ?? ""));
+    setError(null);
+    setEditing(true);
+    setTimeout(() => lowRef.current?.focus(), 0);
+  }
+
+  function cancel() {
+    setEditing(false);
+    setError(null);
+  }
+
+  async function save() {
+    const raw = { low: parseFloat(lowVal), high: parseFloat(highVal) };
+    const result = CogsRangeSchema.safeParse(raw);
+    if (!result.success) {
+      setError(result.error.issues[0]?.message ?? "Invalid range");
+      return;
+    }
+    setSaving(true);
+    try {
+      await onUpdateCogsRange(result.data.low, result.data.high);
+      setEditing(false);
+      setError(null);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") { e.preventDefault(); save(); }
+    if (e.key === "Escape") { e.preventDefault(); cancel(); }
+  }
+
+  if (isPreset) {
+    return (
+      <div className="flex items-center gap-1.5 mt-1.5 pl-6">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+          Target COGS
+        </span>
+        <Lock size={10} className="text-[var(--neutral-cool-350)] shrink-0" aria-label="Read-only — preset category" />
+        <span className="text-xs font-semibold text-[var(--foreground)] tabular-nums">
+          {category.target_cogs_low_pct}%&ndash;{category.target_cogs_high_pct}%
+        </span>
+      </div>
+    );
+  }
+
+  if (editing) {
+    return (
+      <div className="mt-1.5 pl-6">
+        <div className="flex items-center flex-wrap gap-x-2 gap-y-1" onKeyDown={handleKeyDown}>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+            Target COGS
+          </span>
+          <div className="flex items-center gap-1 text-xs">
+            <input
+              ref={lowRef}
+              type="number"
+              min={0}
+              max={99}
+              step={1}
+              value={lowVal}
+              onChange={(e) => { setLowVal(e.target.value); setError(null); }}
+              aria-label="Low COGS target %"
+              placeholder="e.g. 20"
+              className="w-14 border border-[var(--border-medium)] rounded-md px-2 py-0.5 text-xs text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <span className="text-[var(--muted-foreground)]">%</span>
+            <span className="text-[var(--muted-foreground)]">to</span>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              step={1}
+              value={highVal}
+              onChange={(e) => { setHighVal(e.target.value); setError(null); }}
+              aria-label="High COGS target %"
+              placeholder="e.g. 30"
+              className="w-14 border border-[var(--border-medium)] rounded-md px-2 py-0.5 text-xs text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <span className="text-[var(--muted-foreground)]">%</span>
+          </div>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={save}
+            className="text-xs px-2.5 py-0.5 rounded-md bg-[var(--teal)] text-white font-semibold disabled:opacity-60 hover:bg-[var(--teal-dark)] transition-colors"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={cancel}
+            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+        {error && (
+          <p role="alert" className="text-xs text-[var(--error-accent)] mt-1">
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 mt-1.5 pl-6 group/cogs">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+        Target COGS
+      </span>
+      <span className="text-xs font-semibold text-[var(--foreground)] tabular-nums">
+        {category.target_cogs_low_pct}%&ndash;{category.target_cogs_high_pct}%
+      </span>
+      {canEdit && (
+        <button
+          type="button"
+          onClick={startEdit}
+          title="Edit COGS target range"
+          aria-label="Edit COGS target range"
+          className="opacity-0 group-hover/cogs:opacity-100 text-[var(--muted-foreground)] hover:text-[var(--teal)] transition-all"
+        >
+          <Edit2 size={11} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 function CategoryHeader({
   category,
   itemCount,
@@ -2868,6 +3033,12 @@ function CategoryHeader({
         <div className="sm:hidden mt-1.5 pl-6">
           <CategoryMetrics items={catItems} />
         </div>
+        {/* TIM-3246: target COGS range row — always visible once range is set. */}
+        <CogsRangeRow
+          category={category}
+          canEdit={canEdit}
+          onUpdateCogsRange={onUpdateCogsRange}
+        />
       </div>
 
       {/* TIM-3247: onboarding preset picker — surfaces when no COGS range is set. */}
