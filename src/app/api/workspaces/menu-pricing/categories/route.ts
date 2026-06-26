@@ -10,7 +10,7 @@ import type { NextRequest } from "next/server"
 const CogsRangePatchSchema = z.object({
   target_cogs_low_pct: z.number().min(0).max(100),
   target_cogs_high_pct: z.number().min(0).max(100),
-}).refine((v) => v.target_cogs_low_pct <= v.target_cogs_high_pct, {
+}).refine((v) => v.target_cogs_low_pct < v.target_cogs_high_pct, {
   message: "Low must be less than high",
 })
 

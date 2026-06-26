@@ -10,16 +10,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
-
-export type CategoryPreset = {
-  id: string;
-  slug: string;
-  name: string;
-  target_cogs_low_pct: number;
-  target_cogs_high_pct: number;
-  financial_role: string;
-  position: number;
-};
+import type { CategoryPreset } from "@/lib/menu";
 
 interface Props {
   categoryName: string;

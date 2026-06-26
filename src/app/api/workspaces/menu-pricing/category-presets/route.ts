@@ -6,16 +6,6 @@ import type { NextRequest } from "next/server"
 
 export const runtime = "nodejs"
 
-export type CategoryPreset = {
-  id: string
-  slug: string
-  name: string
-  target_cogs_low_pct: number
-  target_cogs_high_pct: number
-  financial_role: string
-  position: number
-}
-
 export async function GET(_request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
