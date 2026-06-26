@@ -58,7 +58,7 @@ const TABS: TabItem[] = [
     label: "Financials",
     href: "/workspace/financials",
     icon: BarChart2,
-    matchPrefixes: ["/workspace/financials", "/workspace/benchmarks"],
+    matchPrefixes: ["/workspace/financials"],
   },
   {
     label: "Run",
