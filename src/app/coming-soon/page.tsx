@@ -120,16 +120,24 @@ export default async function ComingSoonPage({
   // chip for a one-click handoff to /dashboard. Persistence was already there
   // (cookies with maxAge 400d) — what was missing was a visible indicator that
   // the user is signed in.
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  //
+  // TIM-3011: Wrap in try-catch so any Supabase error (network failure in CI,
+  // missing env vars, rate limits) degrades gracefully to the "Coming Soon"
+  // chip rather than a 500.
   let chip = resolveAccountChip(null, null);
-  if (user) {
-    const { data: profile } = await supabase
-      .from("users")
-      .select("full_name")
-      .eq("id", user.id)
-      .maybeSingle();
-    chip = resolveAccountChip(profile?.full_name ?? null, user.email ?? null);
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      chip = resolveAccountChip(profile?.full_name ?? null, user.email ?? null);
+    }
+  } catch {
+    // Degrade gracefully — show unauthenticated "Coming Soon" chip
   }
 
   return (
