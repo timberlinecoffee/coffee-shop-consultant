@@ -19,6 +19,10 @@ export type MenuCategory = {
   name: string
   position: number
   is_default: boolean
+  // TIM-3243: per-category COGS target range. null = no range set yet (triggers onboarding picker).
+  target_cogs_low_pct: number | null
+  target_cogs_high_pct: number | null
+  financial_role: string | null
   created_at: string
   updated_at: string
 }
