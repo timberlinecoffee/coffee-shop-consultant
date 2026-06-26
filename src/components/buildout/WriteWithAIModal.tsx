@@ -252,6 +252,10 @@ export function WriteWithAIModal({ sections, hasExistingItems, onClose, onCommit
         fetch("/api/workspaces/buildout/sections?list_type=equipment"),
       ]);
 
+      if (!eqRes.ok || !secRes.ok) {
+        throw new Error("Failed to refresh equipment list. Your items were saved — reload the page.");
+      }
+
       const [newEq, newSec] = await Promise.all([
         eqRes.json() as Promise<EquipmentItem[]>,
         secRes.json() as Promise<ListSection[]>,
