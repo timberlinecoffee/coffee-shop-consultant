@@ -34,7 +34,10 @@ export default async function LoginPage({
   // their next destination so revisiting /login does not look like a re-login
   // prompt. Skip the bounce when ?error= is present — they came here because
   // an auth flow failed and the error message belongs in front of them.
-  if (!error) {
+  //
+  // TIM-3011: guard on env vars so createClient() is not called when Supabase
+  // is not configured (CI without secrets) — avoids an "Invalid URL" crash.
+  if (!error && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
