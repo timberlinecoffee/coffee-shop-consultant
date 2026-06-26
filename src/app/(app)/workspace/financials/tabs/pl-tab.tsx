@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Pencil, RotateCcw, ChevronsRight } from "lucide-react";
-import { NumericInput } from "@/components/ui/numeric-input";
+import { MoneyInput } from "@/components/ui/money-input";
 // TIM-2474: bind gross-margin + occupancy thresholds to the canonical
 // `benchmarks.json` band loader. Same voice (`describeBandPosition`) the
 // cross-suite hiring resolver uses.
@@ -260,8 +260,9 @@ function EditableLineRow({
         if (isEditing) {
           return (
             <td key={i} className="py-1 px-2 text-right">
-              <NumericInput
-                type="number"
+              <MoneyInput
+                currencyCode={currencyCode}
+                compact
                 autoFocus
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -270,7 +271,7 @@ function EditableLineRow({
                   if (e.key === "Enter") commit(i);
                   else if (e.key === "Escape") setEditingCol(null);
                 }}
-                className="w-24 text-right text-xs border border-[var(--teal)] rounded px-1.5 py-1 focus-visible:outline-none"
+                className="w-24 text-right text-xs border border-[var(--teal)] rounded pr-1.5 py-1 focus-visible:outline-none"
               />
             </td>
           );

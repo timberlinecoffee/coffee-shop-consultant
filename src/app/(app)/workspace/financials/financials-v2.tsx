@@ -26,6 +26,7 @@ import { ForecastLinesEditor } from "./forecast-lines-editor";
 import { PaywallModal } from "@/components/paywall-modal";
 import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { LabelWithHint } from "@/components/ui/label-with-hint";
 import { InfoTip } from "@/components/ui/info-tip";
 import { MenuTicketReconciliationBanner } from "@/components/cross-suite/MenuTicketReconciliationBanner";
@@ -510,10 +511,10 @@ function RevenueStreamsContent({
           {splitOn ? (
             <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>{`Beverage: avg per sale (${currencyCode})`}</label>
-                <NumericInput
+                <label className={labelCls}>Beverage: avg per sale</label>
+                <MoneyInput
+                  currencyCode={currencyCode}
                   className={inputCls}
-                  type="number"
                   min={0}
                   step={0.5}
                   value={bevTicketCents ? bevTicketCents / 100 : ""}
@@ -526,10 +527,10 @@ function RevenueStreamsContent({
                 />
               </div>
               <div>
-                <label className={labelCls}>{`Food: avg per sale (${currencyCode})`}</label>
-                <NumericInput
+                <label className={labelCls}>Food: avg per sale</label>
+                <MoneyInput
+                  currencyCode={currencyCode}
                   className={inputCls}
-                  type="number"
                   min={0}
                   step={0.5}
                   value={foodTicketCents ? foodTicketCents / 100 : ""}
@@ -545,11 +546,11 @@ function RevenueStreamsContent({
           ) : (
             <div>
               <LabelWithHint className={labelCls.replace(" mb-1", "")} hintLabel="Average ticket" hint="Typical espresso bar: $6–$10">
-                {`Average ticket (${currencyCode})`}
+                Average ticket
               </LabelWithHint>
-              <NumericInput
+              <MoneyInput
+                currencyCode={currencyCode}
                 className={inputCls}
-                type="number"
                 min={0}
                 step={0.5}
                 value={mp.avg_ticket_cents ? mp.avg_ticket_cents / 100 : ""}
@@ -1102,11 +1103,11 @@ function GrowthRampContent({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <LabelWithHint className={labelCls.replace(" mb-1", "")} hintLabel="Owner draws" hint="What you pay yourself monthly. Shows on cash flow as financing outflow.">
-              {`Owner draws (${mp.currency_code ?? "USD"} / month)`}
+              Owner draws / month
             </LabelWithHint>
-            <NumericInput
+            <MoneyInput
+              currencyCode={mp.currency_code ?? "USD"}
               className={inputCls}
-              type="number"
               min={0}
               step={100}
               value={(mp.owner_draws_monthly_cents ?? 0) > 0 ? (mp.owner_draws_monthly_cents ?? 0) / 100 : ""}
