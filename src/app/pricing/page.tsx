@@ -129,6 +129,9 @@ function PricingPageInner() {
   const returnPath = searchParams.get("return");
 
   useEffect(() => {
+    // TIM-3011: guard against empty env vars in CI — same pattern as proxy.ts
+    // and login/page. createClient() throws "Invalid URL" when the URL is "".
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
     const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
       const logged = !!session;
