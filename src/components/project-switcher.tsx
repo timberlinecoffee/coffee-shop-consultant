@@ -592,11 +592,16 @@ function AddProjectModal({
     if (!createdProject || switching) return;
     setSwitching(true);
     try {
-      await fetch(`/api/projects/${createdProject.id}`, {
+      const res = await fetch(`/api/projects/${createdProject.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: true }),
       });
+      if (!res.ok) {
+        setError("Could not switch to the new project. Try again.");
+        setSwitching(false);
+        return;
+      }
       onCreated(createdProject, true);
       onClose();
       if (onOpenInterview) {
