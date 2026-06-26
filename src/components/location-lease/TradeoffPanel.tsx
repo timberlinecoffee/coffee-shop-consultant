@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { formatLocationScore } from '@/lib/format'
-import { X, Sparkles, Trophy, AlertCircle } from 'lucide-react'
+import { AlertCircle, ChevronUp, Sparkles, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Candidate } from './CandidateListCard'
 
@@ -297,7 +297,7 @@ export function TradeoffPanel({
             aria-label="Close trade-off"
             className="flex size-8 items-center justify-center rounded-lg bg-[var(--surface-warm-50)] text-[var(--neutral-cool-600)] hover:bg-[var(--surface-warm-50)]/80 hover:text-[var(--foreground)] transition-colors"
           >
-            <X className="size-4" />
+            <ChevronUp className="size-4" />
           </button>
         </div>
 

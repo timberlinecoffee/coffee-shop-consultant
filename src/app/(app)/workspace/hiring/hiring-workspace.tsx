@@ -17,7 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronRight,
-  X,
+
   Check,
   ExternalLink,
   Copy,
@@ -256,7 +256,7 @@ function ScorecardWorksheetButton({ scorecardId }: { scorecardId: string }) {
           onClick={() => setOpen(false)}
           className="text-[var(--dark-grey)] hover:text-[var(--foreground)] p-0.5"
         >
-          <X size={11} />
+          <ChevronUp size={11} />
         </button>
       </div>
       {paywalled && (

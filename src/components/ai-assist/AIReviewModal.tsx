@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, X, Pencil, Sparkles, AlertCircle, Link2 } from "lucide-react";
+import { Check, ChevronUp, X, Pencil, Sparkles, AlertCircle, Link2 } from "lucide-react";
 import { COPILOT_NAME } from "@/lib/copilot/branding";
 import {
   recomputeEquipmentLinked,
@@ -701,7 +701,7 @@ export function AIReviewModal({
         aria-label="Close"
         className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 shrink-0 mt-0.5"
       >
-        <X size={16} aria-hidden />
+        <ChevronUp size={16} aria-hidden />
       </button>
     </div>
   );

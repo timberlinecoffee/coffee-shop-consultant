@@ -11,7 +11,7 @@
 // until the rest of Phase 5 lands.
 
 import { useMemo, useState } from "react";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronRight, ChevronUp } from "lucide-react";
 import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
 import type { ListSection } from "@/types/buildout";
 import { formatMinor } from "@/lib/formatters";
@@ -249,7 +249,7 @@ function DetailSheet({
             aria-label="Close"
             className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]"
           >
-            <X size={16} aria-hidden="true" />
+            <ChevronUp size={16} aria-hidden="true" />
           </button>
         </div>
         <dl className="divide-y divide-[var(--border)] px-5">

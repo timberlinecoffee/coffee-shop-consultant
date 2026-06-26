@@ -1102,7 +1102,7 @@ function ItemEditorPanel({
           className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors mt-0.5 shrink-0"
           aria-label="Collapse"
         >
-          <X size={16} />
+          <ChevronUp size={16} />
         </button>
       </div>
 
@@ -3492,7 +3492,7 @@ function SuggestItemsModal({
             className="text-[var(--neutral-cool-650)] hover:text-[var(--foreground)] transition-colors"
             aria-label="Close"
           >
-            <X size={18} />
+            <ChevronUp size={18} />
           </button>
         </div>
 

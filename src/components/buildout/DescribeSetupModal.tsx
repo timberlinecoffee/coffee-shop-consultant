@@ -5,7 +5,7 @@
 // Supports iterative refinement: re-run to merge new items into existing list.
 
 import { useRef, useState } from "react";
-import { X, Trash2, ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { MoneyInput } from "@/components/ui/money-input";
 import type { ParsedRow } from "@/app/api/workspaces/buildout/import/route";
@@ -183,7 +183,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
             className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
             aria-label="Close"
           >
-            <X size={18} />
+            <ChevronUp size={18} />
           </button>
         </div>
 
