@@ -35,9 +35,6 @@ export const metadata: Metadata = {
 
 // Pexels photos by Ketut Subiyanto (Pexels License — free for commercial use)
 const PEXELS = {
-  // Coffee shop team reviewing their plan together
-  teamPlanning:
-    "https://images.pexels.com/photos/4350093/pexels-photo-4350093.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&dpr=1",
   // Barista pouring steamed milk at the espresso machine — operator at work
   baristaMilk:
     "https://images.pexels.com/photos/4350048/pexels-photo-4350048.jpeg?auto=compress&cs=tinysrgb&w=1100&h=700&dpr=1",

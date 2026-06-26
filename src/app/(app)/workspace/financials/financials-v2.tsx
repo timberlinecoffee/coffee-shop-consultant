@@ -51,7 +51,6 @@ import {
   manualOverrideCountsByLine,
   fiscalYearMonthLabels,
 } from "@/lib/financial-projection";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import type { CritiqueResult } from "@/lib/financials";
 import type { MinWageInfo } from "@/lib/wages/minimum-wage";
 import type { OpeningRunwayResult } from "@/lib/business-plan/opening-runway";
@@ -1291,8 +1290,6 @@ export function FinancialsV2({
   initialTrialMessagesUsed,
 }: FinancialsV2Props) {
   const [activeTab, setActiveTab] = useState<V2Tab>("inputs");
-  const { AIReviewModalNode } = useAIReviewModal();
-
   const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
   const currencyCode = mp.currency_code ?? "USD";
   const manualLines = mp.manual_lines ?? [];
@@ -1315,7 +1312,6 @@ export function FinancialsV2({
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      {AIReviewModalNode}
       <div className="w-full px-6 pt-8 pb-16">
         <WorkspaceHeader
           Icon={BarChart2}

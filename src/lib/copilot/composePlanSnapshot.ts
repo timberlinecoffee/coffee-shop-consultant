@@ -25,7 +25,6 @@ const WORKSPACE_LABELS: Record<WorkspaceKey, string> = {
   marketing: "Marketing",
   suppliers: "Suppliers & Vendors",
   operations_playbook: "Operations Playbook",
-  benchmarks: "Benchmarks",
   business_plan: "Business Plan",
   dashboard: "Dashboard",
 }

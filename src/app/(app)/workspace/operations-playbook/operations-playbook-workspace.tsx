@@ -23,7 +23,6 @@ import {
   Minus,
 } from "lucide-react";
 import { PaywallModal } from "@/components/paywall-modal";
-import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { SaveIndicator } from "@/components/ui/save-indicator";
@@ -228,7 +227,6 @@ export function OperationsPlaybookWorkspace({
     "no_subscription" | "paused" | "expired" | null
   >(null);
   const [generating, setGenerating] = useState<GeneratableSection | null>(null);
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
   const [activeView, setActiveView] = useState<OperationsView>("playbook");
 
   const opsTabs: { id: OperationsView; label: string }[] = [
@@ -292,33 +290,6 @@ export function OperationsPlaybookWorkspace({
     [],
   );
 
-  // TIM-1561: routes AI result through unified review modal before applying.
-  // TIM-2382: apply Scout suggest_workspace_changes proposals for operations playbook.
-  // fieldId = "sectionKey" (full section JSON replacement) or "sectionKey.intro"
-  // (intro text only). Doc autosaves via useEffect watcher.
-  const handleApplyPlaybookSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
-    setDoc((prev) => {
-      let next = { ...prev };
-      for (const c of accepted) {
-        const dotIdx = c.fieldId.indexOf(".");
-        const section = dotIdx === -1 ? c.fieldId : c.fieldId.slice(0, dotIdx);
-        const subField = dotIdx === -1 ? "" : c.fieldId.slice(dotIdx + 1);
-        if (subField === "intro") {
-          const s = next[section as keyof OperationsPlaybookDocument] as { intro: string };
-          if (s && typeof s === "object" && "intro" in s) {
-            next = { ...next, [section]: { ...s, intro: c.finalValue } };
-          }
-        } else {
-          try {
-            const val = JSON.parse(c.finalValue) as OperationsPlaybookDocument[keyof OperationsPlaybookDocument];
-            next = { ...next, [section as keyof OperationsPlaybookDocument]: val };
-          } catch { /* ignore non-JSON */ }
-        }
-      }
-      return next;
-    });
-  }, []);
-
   // Section statuses for progress bar
   const statuses = OPERATIONS_SECTION_KEYS.map((key) =>
     getSectionStatus(doc, key, initialRecipeCards.length),
@@ -326,7 +297,6 @@ export function OperationsPlaybookWorkspace({
 
   return (
     <>
-    {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1894: canonical WorkspaceHeader — description in the left column
