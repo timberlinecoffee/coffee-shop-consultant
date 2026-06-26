@@ -56,6 +56,7 @@ import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
 import { CategoryPresetPicker } from "@/components/menu-pricing/CategoryPresetPicker";
 import { SectionHelp } from "@/components/ui/section-help";
+import { MoneyInput } from "@/components/ui/money-input";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 // TIM-2482 (F13): menu-side reconciliation banner — shows menu blend vs
 // Forecast Inputs avg ticket and offers a Sync action that opens the
@@ -510,15 +511,15 @@ function IngredientTableRow({
             <option key={u.value} value={u.value}>{u.label}</option>
           ))}
         </select>
-        <input
-          type="number"
+        <MoneyInput
+          compact
           className={cellInputCls + " tabular-nums"}
           value={packageCost}
           disabled={!canEdit}
           min={0}
           step="0.01"
           placeholder="0.00"
-          aria-label="Package cost in dollars"
+          aria-label="Package cost"
           onChange={(e) => setPackageCost(e.target.value)}
           onBlur={handlePackageCostBlur}
         />
@@ -665,14 +666,14 @@ function QuickAddRow({
           <option key={u.value} value={u.value}>{u.label}</option>
         ))}
       </select>
-      <input
-        type="number"
+      <MoneyInput
+        compact
         className={quickInputCls + " tabular-nums"}
         value={cost}
         placeholder="0.00"
         min={0}
         step="0.01"
-        aria-label="New ingredient package cost in dollars"
+        aria-label="New ingredient package cost"
         onChange={(e) => setCost(e.target.value)}
       />
       <span className="px-2 text-sm font-medium text-[var(--muted-foreground)] tabular-nums truncate">
@@ -2820,6 +2821,7 @@ function CogsRangeRow({
             Target COGS
           </span>
           <div className="flex items-center gap-1 text-xs">
+            {/* eslint-disable-next-line no-restricted-syntax -- percentage target (0-99%), not a dollar amount */}
             <input
               ref={lowRef}
               type="number"
@@ -2834,6 +2836,7 @@ function CogsRangeRow({
             />
             <span className="text-[var(--muted-foreground)]">%</span>
             <span className="text-[var(--muted-foreground)]">to</span>
+            {/* eslint-disable-next-line no-restricted-syntax -- percentage target (1-100%), not a dollar amount */}
             <input
               type="number"
               min={1}
