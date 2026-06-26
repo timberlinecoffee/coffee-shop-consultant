@@ -206,11 +206,12 @@
   --error-destructive: #DC2626;
   --error-secondary: #EF4444;
 
-  /* Benchmark chip tokens (TIM-2472) */
+  /* Benchmark chip tokens (TIM-2472, TIM-3248) */
   --bench-green-bg: #f0faf4;  --bench-green-border: #a8d5b8;  --bench-green-text: #1e6e3a;
   --bench-blue-bg: #eff6ff;   --bench-blue-border: #93c5fd;   --bench-blue-text: #1d4ed8;
   --bench-yellow-bg: #fffbeb; --bench-yellow-border: #fcd34d; --bench-yellow-text: #92400e;
   --bench-grey-bg: #f4f3f1;   --bench-grey-border: #d1d1cc;   --bench-grey-text: #6b6b6b;
+  --bench-red-bg: #fff5f5;    --bench-red-border: #f5c4c4;    --bench-red-text: #b91c1c;
 
   /* Coffee / warm brown */
   --coffee-100: #FDF5EC;

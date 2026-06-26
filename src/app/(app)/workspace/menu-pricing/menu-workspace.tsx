@@ -81,6 +81,8 @@ import {
   marginRanking,
 } from "@/lib/menu-engineering";
 import { fmtPct, fmtIntegerPct, formatMinor, formatMinorExact } from "@/lib/formatters";
+import { resolveCogsFraction, computeMarginFloorCents } from "@/lib/menu-pricing/cogs-target";
+import { BenchmarkChip, type BenchmarkStatus } from "@/components/benchmark/BenchmarkChip";
 
 interface ConceptContext {
   shop_identity?: string;
@@ -1039,7 +1041,15 @@ function ItemEditorPanel({
     [ingredients, usedIngredientIds]
   );
 
-  const msrpCents = computeMsrpCents(effectiveCogs, targetGrossMargin);
+  // TIM-3248: when the category has a COGS range, use its midpoint as the
+  // recommender floor instead of the global target gross margin.
+  const catLowPct = category?.target_cogs_low_pct ?? null;
+  const catHighPct = category?.target_cogs_high_pct ?? null;
+  const hasCatRange = catLowPct !== null && catHighPct !== null;
+  const categoryMidPct = hasCatRange ? (catLowPct! + catHighPct!) / 2 : null;
+  const msrpCents = hasCatRange && effectiveCogs > 0
+    ? computeMarginFloorCents(Math.round(effectiveCogs), resolveCogsFraction(catLowPct, catHighPct))
+    : computeMsrpCents(effectiveCogs, targetGrossMargin);
 
   return (
     <div className="bg-white rounded-b-xl overflow-hidden flex flex-col">
@@ -1144,6 +1154,8 @@ function ItemEditorPanel({
         {activeTab === "cogs" && (
           <CostOfGoodsTabContent
             item={item}
+            category={category}
+            categoryMidPct={categoryMidPct}
             canEdit={canEdit}
             priceDisplay={priceDisplay}
             setPriceDisplay={setPriceDisplay}
@@ -1448,9 +1460,12 @@ function RecipeTabContent({
 }
 
 // TIM-1471: Cost of Goods tab — the costing summary. COGS, selling price,
-// MSRP (derived from target gross margin), gross margin, AI benchmark.
+// MSRP (derived from target gross margin or category midpoint), gross margin, AI benchmark.
+// TIM-3248: now accepts category + categoryMidPct for the Category target callout.
 function CostOfGoodsTabContent({
   item,
+  category,
+  categoryMidPct,
   canEdit,
   priceDisplay,
   setPriceDisplay,
@@ -1469,6 +1484,8 @@ function CostOfGoodsTabContent({
   benchmarkError,
 }: {
   item: MenuItemWithCogs;
+  category: MenuCategory | undefined;
+  categoryMidPct: number | null;
   canEdit: boolean;
   priceDisplay: string;
   setPriceDisplay: (v: string) => void;
@@ -1489,6 +1506,25 @@ function CostOfGoodsTabContent({
   const { currencyCode } = useCurrency();
   const targetPct = (targetGrossMargin * 100).toFixed(0);
   const noPriceYet = item.price_cents === 0;
+
+  // TIM-3248: compute COGS% for the category target callout.
+  const catLow = category?.target_cogs_low_pct ?? null;
+  const catHigh = category?.target_cogs_high_pct ?? null;
+  const hasCatRange = catLow !== null && catHigh !== null;
+  const cogsPctEditor = effectiveCogs > 0 && item.price_cents > 0
+    ? (effectiveCogs / item.price_cents) * 100
+    : null;
+  let editorChipStatus: BenchmarkStatus | null = null;
+  let editorChipLabel = "";
+  if (hasCatRange && cogsPctEditor !== null) {
+    if (cogsPctEditor >= catLow! && cogsPctEditor <= catHigh!) {
+      editorChipStatus = "green"; editorChipLabel = "On target";
+    } else if (cogsPctEditor < catLow!) {
+      editorChipStatus = "yellow"; editorChipLabel = "Under target";
+    } else {
+      editorChipStatus = "red"; editorChipLabel = "Over target";
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -1519,12 +1555,16 @@ function CostOfGoodsTabContent({
             </p>
           </div>
           <div>
-            <label className={labelCls}>Min. Suggested Price</label>
+            <label className={labelCls}>
+              {categoryMidPct !== null && msrpCents !== null ? "Recommended Price" : "Min. Suggested Price"}
+            </label>
             <p className="text-sm font-semibold text-[var(--foreground)] py-2">
               {msrpCents !== null ? formatCents(msrpCents) : "—"}
             </p>
             <p className="text-[11px] text-[var(--muted-foreground)]">
-              From {targetPct}% target margin
+              {categoryMidPct !== null && msrpCents !== null
+                ? `Based on ${category?.name ?? "category"} midpoint: ${categoryMidPct.toFixed(1)}%`
+                : `From ${targetPct}% target margin`}
             </p>
           </div>
           <div>
@@ -1540,6 +1580,41 @@ function CostOfGoodsTabContent({
           </div>
         </div>
       </section>
+
+      {/* TIM-3248: Category target callout — shown when the item's category has a COGS range. */}
+      {hasCatRange && (
+        <section>
+          <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
+            Category Target
+          </h3>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--off-white)] px-3 py-2.5 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--foreground)]">
+              <Tag size={12} className="text-[var(--teal)]" aria-hidden="true" />
+              <span>{category?.name}</span>
+            </div>
+            <p className="text-[10px] text-[var(--muted-foreground)]">
+              Target range: {catLow}%–{catHigh}%
+            </p>
+            {cogsPctEditor !== null && editorChipStatus && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-[var(--muted-foreground)]">
+                  Your COGS: {Math.round(cogsPctEditor)}%
+                </span>
+                <BenchmarkChip
+                  status={editorChipStatus}
+                  label={editorChipLabel}
+                  ariaLabel={`Your COGS is ${Math.round(cogsPctEditor)}% — ${editorChipLabel} (target ${catLow}%–${catHigh}%)`}
+                />
+              </div>
+            )}
+            {cogsPctEditor === null && (
+              <p className="text-[10px] text-[var(--muted-foreground)] italic">
+                Set a price and recipe to see your COGS% vs. target.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Expected popularity — kept on the costing tab since it pairs with margin
           for the Insights matrix. */}
@@ -1893,6 +1968,25 @@ function SortableMenuItemRow({
       ? Math.round(((item.price_cents - cogs) / item.price_cents) * 100)
       : null;
 
+  // TIM-3248: COGS% chip — compare item COGS% against category target range.
+  const catLow = category?.target_cogs_low_pct ?? null;
+  const catHigh = category?.target_cogs_high_pct ?? null;
+  const hasRange = catLow !== null && catHigh !== null;
+  const cogsPct = item.price_cents > 0 && cogs > 0
+    ? (cogs / item.price_cents) * 100
+    : null;
+  let cogsChipStatus: BenchmarkStatus | null = null;
+  let cogsChipLabel = "";
+  if (hasRange && cogsPct !== null) {
+    if (cogsPct >= catLow! && cogsPct <= catHigh!) {
+      cogsChipStatus = "green"; cogsChipLabel = "On target";
+    } else if (cogsPct < catLow!) {
+      cogsChipStatus = "yellow"; cogsChipLabel = "Under target";
+    } else {
+      cogsChipStatus = "red"; cogsChipLabel = "Over target";
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -1960,6 +2054,19 @@ function SortableMenuItemRow({
               </span>
             )}
           </p>
+        )}
+        {/* TIM-3248: COGS range chip — hidden on mobile, visible sm+ */}
+        {cogsChipStatus && (
+          <span className="hidden sm:inline-flex items-center gap-1 mt-1">
+            <BenchmarkChip
+              status={cogsChipStatus}
+              label={cogsChipLabel}
+              ariaLabel={`COGS ${cogsPct !== null ? Math.round(cogsPct) + "%" : ""} ${cogsChipLabel} (category target ${catLow}%–${catHigh}%)`}
+            />
+            <span className="text-[10px] text-[var(--muted-foreground)]">
+              {catLow}%–{catHigh}%
+            </span>
+          </span>
         )}
       </div>
 
@@ -3487,9 +3594,6 @@ export function MenuWorkspace({
       financial_role: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      target_cogs_low_pct: null,
-      target_cogs_high_pct: null,
-      financial_role: null,
     };
     setCategories((prev) => [...prev, optimistic]);
 
