@@ -14,6 +14,7 @@ import { toTitleCase } from "@/lib/text";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { normalizeConceptV2, formatConceptV2ForAI } from "@/lib/concept";
 import { normalizeMonthlyProjections, totalCapexCents } from "@/lib/financial-projection";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
 import type { EquipmentRecommendation, EquipmentReferral } from "@/types/referral";
 
@@ -35,6 +36,15 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "buildout:recommendations",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   const { data: profile } = await supabase
     .from("users")

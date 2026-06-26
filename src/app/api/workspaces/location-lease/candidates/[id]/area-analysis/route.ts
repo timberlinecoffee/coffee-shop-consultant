@@ -14,6 +14,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { normalizeAIOutput } from "@/lib/normalize"
+import { enforceRateLimit } from "@/lib/rate-limit"
 import type { NextRequest } from "next/server"
 // TIM-2868: getActivePlanId() — see candidates/route.ts header.
 import { getActivePlanId } from "@/lib/plan-context"
@@ -159,6 +160,15 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "location-lease:area-analysis",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  })
+  if (rateLimited) return rateLimited
 
   // TIM-2361: pull plan-tier fields so ai_turn_metrics can attribute COGS.
   const { data: profile } = await supabase
