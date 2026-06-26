@@ -171,7 +171,7 @@ export function QualityCheckPanel({
   onApply,
   onGoToSource,
 }: QualityCheckPanelProps) {
-  const { isLoaded, getState, dismiss, snooze } = usePlanNotifsMap();
+  const { isLoaded, storeVersion, getState, dismiss, snooze } = usePlanNotifsMap();
 
   const visibleFindings = useMemo(() => {
     if (!report) return [] as AuditFinding[];
@@ -180,7 +180,9 @@ export function QualityCheckPanel({
       const s = getState(f.id);
       return !s.isDismissed && !s.isSnoozed;
     });
-  }, [report, isLoaded, getState]);
+  // storeVersion changes on every dismiss/snooze, ensuring the memo recomputes
+  // even though getState is a stable callback that reads module-scope store.map.
+  }, [report, isLoaded, getState, storeVersion]);
 
   const snoozedFindings = useMemo(() => {
     if (!report || !isLoaded) return [] as AuditFinding[];
@@ -188,7 +190,7 @@ export function QualityCheckPanel({
       const s = getState(f.id);
       return !s.isDismissed && s.isSnoozed;
     });
-  }, [report, isLoaded, getState]);
+  }, [report, isLoaded, getState, storeVersion]);
 
   const grouped = useMemo(() => {
     const buckets: Record<AuditSeverity, AuditFinding[]> = { critical: [], warning: [], info: [] };
@@ -345,12 +347,21 @@ export function QualityCheckPanel({
         </section>
       )}
 
-      {totalCount === 0 && snoozedFindings.length === 0 && (
+      {totalCount === 0 && snoozedFindings.length === 0 && hiddenCount === 0 && (
         <div className="bg-white rounded-2xl border border-[var(--border)] p-8 flex flex-col items-center justify-center text-center">
           <ShieldCheck className="w-10 h-10 text-[var(--teal)] mb-4" aria-hidden="true" />
           <p className="text-sm font-medium text-neutral-950 mb-1">No issues found</p>
           <p className="text-sm text-neutral-500">
             Your plan looks consistent across all workspaces. Good to go.
+          </p>
+        </div>
+      )}
+      {totalCount === 0 && snoozedFindings.length === 0 && hiddenCount > 0 && (
+        <div className="bg-white rounded-2xl border border-[var(--border)] p-8 flex flex-col items-center justify-center text-center">
+          <ShieldCheck className="w-10 h-10 text-neutral-300 mb-4" aria-hidden="true" />
+          <p className="text-sm font-medium text-neutral-950 mb-1">All findings dismissed</p>
+          <p className="text-sm text-neutral-500">
+            {hiddenCount} {hiddenCount === 1 ? "finding" : "findings"} dismissed. Re-check any time to re-scan.
           </p>
         </div>
       )}

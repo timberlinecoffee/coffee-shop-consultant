@@ -363,7 +363,7 @@ export function CheckPanel({
   resolverConflictIdFor,
   onOpenCrossSuite,
 }: CheckPanelProps) {
-  const { isLoaded, getState, dismiss, snooze } = usePlanNotifsMap();
+  const { isLoaded, storeVersion, getState, dismiss, snooze } = usePlanNotifsMap();
 
   const visibleFindings = useMemo(() => {
     if (!report) return [] as AuditFinding[];
@@ -372,7 +372,7 @@ export function CheckPanel({
       const s = getState(f.id);
       return !s.isDismissed && !s.isSnoozed;
     });
-  }, [report, isLoaded, getState]);
+  }, [report, isLoaded, getState, storeVersion]);
 
   const snoozedFindings = useMemo(() => {
     if (!report || !isLoaded) return [] as AuditFinding[];
@@ -380,7 +380,7 @@ export function CheckPanel({
       const s = getState(f.id);
       return !s.isDismissed && s.isSnoozed;
     });
-  }, [report, isLoaded, getState]);
+  }, [report, isLoaded, getState, storeVersion]);
 
   if (isScanning) {
     return (
@@ -425,17 +425,27 @@ export function CheckPanel({
     );
   }
 
+  const dismissedCount = report
+    ? report.findings.length - visibleFindings.length - snoozedFindings.length
+    : 0;
+
   if (visibleFindings.length === 0 && snoozedFindings.length === 0) {
+    const allDismissed = dismissedCount > 0;
     return (
       <div className="flex flex-col items-center justify-center text-center py-10 px-4">
         <div className="w-12 h-12 rounded-2xl bg-[var(--teal)]/10 flex items-center justify-center mb-4">
-          <ShieldCheck className="w-6 h-6 text-[var(--teal)]" aria-hidden="true" />
+          <ShieldCheck
+            className={`w-6 h-6 ${allDismissed ? "text-neutral-300" : "text-[var(--teal)]"}`}
+            aria-hidden="true"
+          />
         </div>
         <p className="text-sm font-semibold text-[var(--foreground)] mb-1">
-          Your plan looks good
+          {allDismissed ? "All findings dismissed" : "Your plan looks good"}
         </p>
         <p className="text-sm text-[var(--muted-foreground)] mb-6 max-w-[240px]">
-          No issues found across your workspaces.
+          {allDismissed
+            ? `${dismissedCount} ${dismissedCount === 1 ? "finding" : "findings"} dismissed.`
+            : "No issues found across your workspaces."}
         </p>
         <button
           type="button"
