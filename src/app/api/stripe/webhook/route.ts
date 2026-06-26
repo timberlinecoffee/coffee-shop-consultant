@@ -1,6 +1,7 @@
 import { stripe, tierFromPriceId, MONTHLY_CREDITS, TRIAL_CREDITS, PAUSE_PRICE_ID } from "@/lib/stripe";
 import { creditsForPackKey, isCreditPackKey, CREDIT_PACKS_BY_KEY } from "@/lib/credits/packs";
 import { sendCreditPackReceiptEmail } from "@/lib/email/send-account-email";
+import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import { createServiceClient } from "@/lib/supabase/service";
 import { assertUserSubscriptionStatus } from "@/lib/billing/subscription-status";
 import { NextRequest } from "next/server";
@@ -83,13 +84,20 @@ export async function POST(request: NextRequest) {
           type: "monthly_allocation",
           description: `${tier} 7-day trial: initial allocation`,
         });
+        // TIM-3023: grant-boundary wiring. TRIAL_CREDITS is well above the
+        // low-balance threshold so this short-circuits in practice — the
+        // call is the spec-required boundary check at grant.
+        void notifyIfCreditBalanceLow({ userId, postMutationBalance: TRIAL_CREDITS, supabase });
       } else {
+        const postGrantBalance = MONTHLY_CREDITS[tier] ?? 0;
         await supabase.from("users").update({
           subscription_status: "active",
           subscription_tier: tier,
-          ai_credits_remaining: MONTHLY_CREDITS[tier] ?? 0,
+          ai_credits_remaining: postGrantBalance,
           trial_ends_at: null,
         }).eq("id", userId);
+        // TIM-3023: grant-boundary wiring (free tier → 0 credits could fire).
+        void notifyIfCreditBalanceLow({ userId, postMutationBalance: postGrantBalance, supabase });
       }
       break;
     }
@@ -117,8 +125,9 @@ export async function POST(request: NextRequest) {
 
         const current = prof?.ai_credits_remaining ?? 0;
 
+        const postGrantBalance = current + credits;
         await supabase.from("users").update({
-          ai_credits_remaining: current + credits,
+          ai_credits_remaining: postGrantBalance,
         }).eq("id", userId);
 
         await supabase.from("credit_transactions").insert({
@@ -127,6 +136,8 @@ export async function POST(request: NextRequest) {
           type: "purchase",
           description: `Credit top-up: ${packKey} pack (+${credits})`,
         });
+        // TIM-3023: grant-boundary wiring (pack purchase brings balance up).
+        void notifyIfCreditBalanceLow({ userId, postMutationBalance: postGrantBalance, supabase });
 
         // Send purchase receipt email. Failure is logged but must not block the
         // webhook response — the balance and ledger are already committed.
@@ -213,6 +224,8 @@ export async function POST(request: NextRequest) {
           type: "monthly_allocation",
           description: `${tier} 7-day trial: initial allocation`,
         });
+        // TIM-3023: grant-boundary wiring at checkout.session.completed trial.
+        void notifyIfCreditBalanceLow({ userId, postMutationBalance: TRIAL_CREDITS, supabase });
       } else {
         // Non-trial path (e.g. resubscribe after a previous cancel): grant the
         // chosen plan's monthly allotment immediately.
@@ -223,10 +236,11 @@ export async function POST(request: NextRequest) {
           stripeEventType: event.type,
           stripeSubscriptionId: subscriptionId,
         });
+        const postGrantBalance = MONTHLY_CREDITS[tier] ?? 0;
         await supabase.from("users").update({
           subscription_status: "active",
           subscription_tier: tier,
-          ai_credits_remaining: MONTHLY_CREDITS[tier] ?? 0,
+          ai_credits_remaining: postGrantBalance,
           trial_ends_at: null,
         }).eq("id", userId);
 
@@ -238,6 +252,8 @@ export async function POST(request: NextRequest) {
             description: `${tier} plan: initial allocation`,
           });
         }
+        // TIM-3023: grant-boundary wiring (free tier resubscribe lands at 0).
+        void notifyIfCreditBalanceLow({ userId, postMutationBalance: postGrantBalance, supabase });
       }
       break;
     }
@@ -383,6 +399,17 @@ export async function POST(request: NextRequest) {
       }
 
       await supabase.from("users").update(usersUpdate).eq("id", sub.user_id);
+
+      // TIM-3023: grant-boundary wiring — trial conversion or monthly renewal
+      // both reset ai_credits_remaining in usersUpdate. Fire only when the
+      // field was set in this branch.
+      if (typeof usersUpdate.ai_credits_remaining === "number") {
+        void notifyIfCreditBalanceLow({
+          userId: sub.user_id,
+          postMutationBalance: usersUpdate.ai_credits_remaining as number,
+          supabase,
+        });
+      }
       break;
     }
 

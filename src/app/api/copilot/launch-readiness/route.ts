@@ -20,6 +20,7 @@ import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
 import { rateLimit } from "@/lib/rate-limit"
+import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite"
 import type { NextRequest } from "next/server"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -362,9 +363,10 @@ export async function POST(request: NextRequest) {
 
           // Deduct credit
           if (!isUnlimited) {
+            const postDebitBalance = profile.ai_credits_remaining - 1
             await supabase
               .from("users")
-              .update({ ai_credits_remaining: profile.ai_credits_remaining - 1 })
+              .update({ ai_credits_remaining: postDebitBalance })
               .eq("id", user.id)
 
             await supabase.from("credit_transactions").insert({
@@ -373,6 +375,8 @@ export async function POST(request: NextRequest) {
               type: "usage",
               description: "Launch readiness check",
             })
+            // TIM-3023: at-most-one credit-balance-low notice per month.
+            void notifyIfCreditBalanceLow({ userId: user.id, postMutationBalance: postDebitBalance })
           }
 
           // TIM-2509: per-turn telemetry into ai_turn_metrics (awaited before

@@ -41,6 +41,7 @@ import {
 } from "@/lib/business-plan";
 import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import { buildBpSectionPrompt } from "@/lib/business-plan-prompts";
 import { buildPlanState, formatPlanStateForPrompt } from "@/lib/business-plan/plan-state";
 import { canonicalizeNarrative } from "@/lib/business-plan/entities";
@@ -350,10 +351,13 @@ export async function POST(request: NextRequest) {
         // instrumented; primary section stream is the dominant cost driver.
         const svcForTelemetry = createServiceClient();
         if (hasAccess && !isBetaWaived) {
+          const postDebitBalance = Math.max(0, (profile.ai_credits_remaining ?? 0) - 1);
           await svcForTelemetry
             .from("users")
-            .update({ ai_credits_remaining: Math.max(0, (profile.ai_credits_remaining ?? 0) - 1) })
+            .update({ ai_credits_remaining: postDebitBalance })
             .eq("id", user.id);
+          // TIM-3023: at-most-one credit-balance-low notice per month.
+          void notifyIfCreditBalanceLow({ userId: user.id, postMutationBalance: postDebitBalance, supabase: svcForTelemetry });
         }
         await recordTurnMetric(
           {
