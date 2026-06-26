@@ -1762,7 +1762,7 @@ function RecipeLineRow({
       className="text-[10px] font-medium uppercase tracking-wider text-[var(--teal)] bg-[var(--teal-tint-500)] border border-[var(--teal-tint)] rounded px-1.5 py-0.5 shrink-0"
       title="Seeded from this category's default ingredients. Edit or remove like any other ingredient."
     >
-      From Category
+      Default Item
     </span>
   ) : null;
 
@@ -2186,11 +2186,11 @@ function MetricsBar({
       {agg.count > 0 ? (
         <>
           <div>
-            <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">Avg COGS</span>{" "}
+            <span className="text-xs text-[var(--dark-grey)] font-semibold">Average Cost of Goods Sold</span>{" "}
             <span className="text-base font-bold text-[var(--foreground)] ml-1">{fmtPct((agg.avgCogsPct ?? 0) / 100)}</span>
           </div>
           <div>
-            <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">Avg Gross Profit</span>{" "}
+            <span className="text-xs text-[var(--dark-grey)] font-semibold">Average Gross Profit</span>{" "}
             <span className="text-base font-bold text-[var(--teal)] ml-1">{fmtPct((agg.avgGpPct ?? 0) / 100)}</span>
           </div>
         </>
@@ -2233,8 +2233,8 @@ function TargetMarginControl({
 
   return (
     <div className="inline-flex items-baseline gap-1">
-      <span className="text-[10px] uppercase tracking-wider text-[var(--teal)] font-semibold">
-        Target GM
+      <span className="text-xs text-[var(--dark-grey)] font-semibold">
+        Target Gross Margin
       </span>
       {editing ? (
         <TargetMarginInput
