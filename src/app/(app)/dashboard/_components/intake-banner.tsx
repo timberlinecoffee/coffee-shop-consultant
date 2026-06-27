@@ -16,19 +16,21 @@ interface IntakeState {
   dismissed: boolean;
 }
 
-export function IntakeBanner({ planId }: { planId: string }) {
+export function IntakeBanner({ planId, subscriptionTier }: { planId: string; subscriptionTier: string }) {
   const [intake, setIntake] = useState<IntakeState | null>(null);
   const [showInterview, setShowInterview] = useState(false);
   const [dismissing, setDismissing] = useState(false);
 
   useEffect(() => {
+    // TIM-3274: skip intake fetch for non-Pro users — they will never see the banner.
+    if (subscriptionTier !== "pro") return;
     fetch(`/api/projects/${planId}/intake`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) setIntake({ completed: data.completed, dismissed: data.dismissed });
       })
       .catch(() => {});
-  }, [planId]);
+  }, [planId, subscriptionTier]);
 
   async function handleDismiss() {
     if (dismissing) return;
@@ -46,6 +48,9 @@ export function IntakeBanner({ planId }: { planId: string }) {
       setDismissing(false);
     }
   }
+
+  // TIM-3274: AC5 guard — free/legacy users never see the interview prompt.
+  if (subscriptionTier !== "pro") return null;
 
   if (!intake || intake.completed || intake.dismissed) return null;
 
