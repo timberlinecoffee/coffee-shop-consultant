@@ -830,26 +830,38 @@ export function EquipmentGrid({
   const handleCellKeyDown = useCallback(
     (e: React.KeyboardEvent, rowId: string, colKey: EditableCol) => {
       const sortedRows = table.getSortedRowModel().rows;
-      const colIdx = EDITABLE_COLS.indexOf(colKey);
       const rowIdx = sortedRows.findIndex((r) => r.original.id === rowId);
 
       if (e.key === "Tab") {
         e.preventDefault();
         const dir = e.shiftKey ? -1 : 1;
-        let nextColIdx = colIdx + dir;
+
+        // TIM-3329: navigate only through VISIBLE editable columns. If the
+        // user has hidden e.g. Brand or Cost via the column picker, Tab
+        // would otherwise land on a column whose <td> doesn't render and
+        // autoFocus has no input to grab, dropping focus to <body>.
+        const visibleEditableCols = EDITABLE_COLS.filter(
+          (c) => columnVisibility[c] !== false,
+        );
+        if (visibleEditableCols.length === 0) return;
+        const visIdx = visibleEditableCols.indexOf(colKey);
+        // If current cell isn't in the visible set (shouldn't happen, but
+        // defensive), start from position 0.
+        const fromIdx = visIdx === -1 ? 0 : visIdx;
+        let nextVisIdx = fromIdx + dir;
         let nextRowIdx = rowIdx;
 
-        if (nextColIdx >= EDITABLE_COLS.length) {
-          nextColIdx = 0;
+        if (nextVisIdx >= visibleEditableCols.length) {
+          nextVisIdx = 0;
           nextRowIdx++;
-        } else if (nextColIdx < 0) {
-          nextColIdx = EDITABLE_COLS.length - 1;
+        } else if (nextVisIdx < 0) {
+          nextVisIdx = visibleEditableCols.length - 1;
           nextRowIdx--;
         }
 
         if (nextRowIdx >= 0 && nextRowIdx < sortedRows.length) {
           const nextRow = sortedRows[nextRowIdx];
-          focusCell(nextRow.original.id, EDITABLE_COLS[nextColIdx]);
+          focusCell(nextRow.original.id, visibleEditableCols[nextVisIdx]);
         } else if (nextRowIdx >= sortedRows.length) {
           addRow();
         }
@@ -867,7 +879,7 @@ export function EquipmentGrid({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [focusCell, addRow]
+    [focusCell, addRow, columnVisibility]
   );
 
   // ── Column definitions ────────────────────────────────────────────────────────
