@@ -769,6 +769,20 @@ export function EquipmentGrid({
     [canEdit, updateItemLocal, scheduleAutosave]
   );
 
+  // ── Keyboard navigation ──────────────────────────────────────────────────────
+
+  const focusCell = useCallback(
+    (rowId: string, colKey: EditableCol) => {
+      setEditingCell({ rowId, colKey });
+      const key = `${rowId}:${colKey}`;
+      setTimeout(() => {
+        const el = cellInputRefs.current.get(key);
+        if (el) (el as HTMLElement).focus();
+      }, 20);
+    },
+    []
+  );
+
   // ── Add row ──────────────────────────────────────────────────────────────────
 
   const addRow = useCallback(() => {
@@ -781,11 +795,14 @@ export function EquipmentGrid({
       blankId = blank.id;
       return [...prev, blank];
     });
-    // Focus name cell of new row after render
+    // TIM-3329: focus the new row's name input (not just set editingCell) so
+    // the user can start typing immediately — true both for the Add-row button
+    // path AND for the Tab-past-last-column path, where this is the only way
+    // the directive's "5 items in a row using only Tab" flow can land data.
     setTimeout(() => {
-      if (blankId) setEditingCell({ rowId: blankId, colKey: "name" });
+      if (blankId) focusCell(blankId, "name");
     }, 30);
-  }, [canEdit, planId, onItemsChange]);
+  }, [canEdit, planId, onItemsChange, focusCell]);
 
   // ── Delete selected rows ─────────────────────────────────────────────────────
 
@@ -803,20 +820,6 @@ export function EquipmentGrid({
       deleteRow(id);
     },
     [onItemsChange, deleteRow]
-  );
-
-  // ── Keyboard navigation ──────────────────────────────────────────────────────
-
-  const focusCell = useCallback(
-    (rowId: string, colKey: EditableCol) => {
-      setEditingCell({ rowId, colKey });
-      const key = `${rowId}:${colKey}`;
-      setTimeout(() => {
-        const el = cellInputRefs.current.get(key);
-        if (el) (el as HTMLElement).focus();
-      }, 20);
-    },
-    []
   );
 
   const handleCellKeyDown = useCallback(
