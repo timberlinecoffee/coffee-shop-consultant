@@ -740,14 +740,6 @@ export function BusinessPlanWorkspace({
                 focusLabel="business plan"
                 hasContent={hasContent}
               />
-              <SaveStatusAndButton
-                saving={saveState.kind === "saving"}
-                savedAt={saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null}
-                unsaved={saveState.kind === "dirty"}
-                error={saveState.kind === "error" ? saveState.message : null}
-                canEdit={canEdit}
-                onSave={handleManualSave}
-              />
               {/* TIM-2416: the standalone "Check Plan" header CTA was removed.
                   Plan Quality Check now lives in the AI companion (Check mode)
                   reachable from every workspace via the floating affordance.
@@ -803,6 +795,14 @@ export function BusinessPlanWorkspace({
                   </>
                 )}
               </WorkspaceActionMenu>
+              <SaveStatusAndButton
+                saving={saveState.kind === "saving"}
+                savedAt={saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null}
+                unsaved={saveState.kind === "dirty"}
+                error={saveState.kind === "error" ? saveState.message : null}
+                canEdit={canEdit}
+                onSave={handleManualSave}
+              />
             </>
           }
         />
