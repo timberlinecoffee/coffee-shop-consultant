@@ -39,7 +39,7 @@ export function WelcomeEmailTemplate({
       <EmailHeader eyebrow="Trial Day 0" />
       <EmailBody>
         <EmailP>{greetingLine(firstName)}</EmailP>
-        <EmailH1>Welcome to Groundwork</EmailH1>
+        <EmailH1>Your trial is live</EmailH1>
         <EmailP>
           Your 7-day trial is live. Here are three places to start so you get
           real value out of the next week:
