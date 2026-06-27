@@ -130,6 +130,20 @@ export async function GET(request: Request) {
   const purgeTotal = cookieStore.get("gw_oauth_purge_total")?.value;
   const userAgent = request.headers.get("user-agent") ?? "";
   const browserHint = browserHintFromUA(userAgent);
+  // TIM-3327: capture the host this callback is running on AND the Referer
+  // host the browser was sent from. A mismatch (e.g. /login on
+  // www.groundwork.cafe → Supabase fallback lands user on apex
+  // groundwork.cafe → coming-soon forwarder redirects here on apex) explains
+  // verifier_pre_nav=absent + verifier_cookies=0 + auth_token_cookies>0:
+  // host-only cookies set under www are invisible on apex even though prior
+  // apex sessions left their own auth-token chunks behind. This single log
+  // pair lets the next failed attempt rule the hypothesis in or out.
+  const hostHeader = request.headers.get("host") ?? "absent";
+  const refererHostHeader = (() => {
+    const r = request.headers.get("referer");
+    if (!r) return "absent";
+    try { return new URL(r).host; } catch { return "unparseable"; }
+  })();
 
   // Prefer the cookie handoff (OAuth path); fall back to query param for the
   // email-link confirmation flow which still uses `?next=` on emailRedirectTo.
@@ -168,6 +182,9 @@ export async function GET(request: Request) {
     sec_fetch_dest: request.headers.get("sec-fetch-dest") ?? "absent",
     sb_cookie_shape: cookieShape(allCookies.filter((c) => c.name.startsWith("sb-"))),
     all_cookie_names: allCookies.map((c) => c.name).slice(0, 60),
+    // TIM-3327: see hostHeader/refererHostHeader declarations for context.
+    host: hostHeader,
+    referer_host: refererHostHeader,
   });
 
   // TIM-2786 helper: build a redirect, log the Location header for the
@@ -197,6 +214,27 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
+    // TIM-3327: re-read cookies immediately before exchange so we can tell
+    // "verifier was never present at the callback origin" from "verifier was
+    // present at handler entry but cleared between entry and exchange". The
+    // delta should always be zero — if it isn't, supabase-js's server-side
+    // init is touching the verifier slot before exchangeCodeForSession runs.
+    const preExchangeCookies = (await cookies()).getAll();
+    const preExchangeVerifierCount = preExchangeCookies.filter(c =>
+      c.name.startsWith("sb-") && c.name.endsWith("-auth-token-code-verifier")
+    ).length;
+    const preExchangeVerifierChunks = preExchangeCookies.filter(c =>
+      c.name.startsWith("sb-") && /-auth-token-code-verifier\.\d+$/.test(c.name)
+    ).length;
+    logOAuthDiag("callback_pre_exchange", {
+      corrId,
+      browser: browserHint,
+      host: hostHeader,
+      verifier_cookies_entry: verifierCookies.length,
+      verifier_chunks_entry: verifierChunked.length,
+      verifier_cookies_pre_exchange: preExchangeVerifierCount,
+      verifier_chunks_pre_exchange: preExchangeVerifierChunks,
+    });
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       logOAuthDiag("callback_exchange_ok", { corrId, browser: browserHint });
