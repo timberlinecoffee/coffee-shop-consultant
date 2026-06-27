@@ -1,0 +1,26 @@
+[
+  {
+    "name": "gw_remember_me",
+    "domain": "groundwork.cafe",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": true,
+    "httpOnly": false,
+    "expires": 1817125547.826175,
+    "expiresHuman": "2027-08-01T13:05:47.826Z",
+    "isSession": false,
+    "valueLength": 1
+  },
+  {
+    "name": "sb-ltmcttjftxzpgynhnrpg-auth-token",
+    "domain": "groundwork.cafe",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": true,
+    "httpOnly": false,
+    "expires": 1817125548.238284,
+    "expiresHuman": "2027-08-01T13:05:48.238Z",
+    "isSession": false,
+    "valueLength": 2809
+  }
+]

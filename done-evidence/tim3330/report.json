@@ -1,0 +1,109 @@
+{
+  "TARGET": "https://groundwork.cafe",
+  "email": "tim3330-c05321d8@simpler.coffee",
+  "userId": "d33b9e14-dc52-40d1-88d5-a602c1ac35b1",
+  "steps": [
+    {
+      "step": 1,
+      "label": "Initial signin",
+      "url": "https://groundwork.cafe/dashboard",
+      "reachedDashboard": true,
+      "error": "My Coffee Shop Consultant: Timberline Coffee School",
+      "cookies": [
+        {
+          "name": "gw_remember_me",
+          "domain": "groundwork.cafe",
+          "path": "/",
+          "sameSite": "Lax",
+          "secure": true,
+          "httpOnly": false,
+          "expires": 1817125547.826175,
+          "expiresHuman": "2027-08-01T13:05:47.826Z",
+          "isSession": false,
+          "valueLength": 1
+        },
+        {
+          "name": "sb-ltmcttjftxzpgynhnrpg-auth-token",
+          "domain": "groundwork.cafe",
+          "path": "/",
+          "sameSite": "Lax",
+          "secure": true,
+          "httpOnly": false,
+          "expires": 1817125548.238284,
+          "expiresHuman": "2027-08-01T13:05:48.238Z",
+          "isSession": false,
+          "valueLength": 2809
+        }
+      ],
+      "setCookieHeaders": []
+    },
+    {
+      "step": 2,
+      "label": "Same context, new tab → /dashboard",
+      "url": "https://groundwork.cafe/dashboard",
+      "reachedDashboard": true,
+      "bouncedToLogin": false,
+      "cookies": [
+        {
+          "name": "gw_remember_me",
+          "domain": "groundwork.cafe",
+          "path": "/",
+          "sameSite": "Lax",
+          "secure": true,
+          "httpOnly": false,
+          "expires": 1817125547.826175,
+          "expiresHuman": "2027-08-01T13:05:47.826Z",
+          "isSession": false,
+          "valueLength": 1
+        },
+        {
+          "name": "sb-ltmcttjftxzpgynhnrpg-auth-token",
+          "domain": "groundwork.cafe",
+          "path": "/",
+          "sameSite": "Lax",
+          "secure": true,
+          "httpOnly": false,
+          "expires": 1817125548.238284,
+          "expiresHuman": "2027-08-01T13:05:48.238Z",
+          "isSession": false,
+          "valueLength": 2809
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "label": "Cold restart (only persistent cookies imported) → /dashboard",
+      "url": "https://groundwork.cafe/dashboard",
+      "reachedDashboard": true,
+      "bouncedToLogin": false,
+      "cookies": [
+        {
+          "name": "gw_remember_me",
+          "domain": "groundwork.cafe",
+          "path": "/",
+          "sameSite": "Lax",
+          "secure": true,
+          "httpOnly": false,
+          "expires": 1817125547.826175,
+          "expiresHuman": "2027-08-01T13:05:47.826Z",
+          "isSession": false,
+          "valueLength": 1
+        },
+        {
+          "name": "sb-ltmcttjftxzpgynhnrpg-auth-token",
+          "domain": "groundwork.cafe",
+          "path": "/",
+          "sameSite": "Lax",
+          "secure": true,
+          "httpOnly": false,
+          "expires": 1817125548.238284,
+          "expiresHuman": "2027-08-01T13:05:48.238Z",
+          "isSession": false,
+          "valueLength": 2809
+        }
+      ],
+      "persistentCookieCount": 2,
+      "sessionScopedDropped": []
+    }
+  ]
+}
