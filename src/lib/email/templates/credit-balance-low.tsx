@@ -41,7 +41,7 @@ export function CreditBalanceLowTemplate({
       <EmailHeader />
       <EmailBody>
         <EmailP>{greetingLine(firstName)}</EmailP>
-        <EmailH1>Heads up — your credits are running low</EmailH1>
+        <EmailH1>Heads up: your credits are running low</EmailH1>
         <EmailP>
           You have <strong>{safeBalance}</strong>{' '}
           {safeBalance === 1 ? 'credit' : 'credits'} left on your Groundwork
