@@ -4,9 +4,12 @@
 //
 // Standing Rules applied:
 //   Rule 2 — ownership verified server-side; plan must belong to the authenticated user.
+//             TIM-3274: Pro-tier gate applied server-side (effectivePlanForGating) — client
+//             guards are UX only.
 //   Rule 3 — all input validated with zod before DB write.
 //   Rule 5 — no raw errors exposed to client.
 import { createClient } from "@/lib/supabase/server"
+import { effectivePlanForGating } from "@/lib/access"
 import { z } from "zod"
 import type { NextRequest } from "next/server"
 
@@ -34,6 +37,16 @@ const IntakeBody = z.union([
   }),
 ])
 
+// Fetch the caller's profile fields needed for effectivePlanForGating.
+async function requireProTier(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("users")
+    .select("subscription_status, subscription_tier, trial_ends_at, paused_from_tier")
+    .eq("id", userId)
+    .single()
+  return !!data && effectivePlanForGating(data) === "pro"
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -41,6 +54,11 @@ export async function GET(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  // TIM-3274: Rule 2 — server-side Pro-tier gate (client guard is UX only).
+  if (!await requireProTier(supabase, user.id)) {
+    return Response.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const { id } = await params
 
@@ -72,6 +90,11 @@ export async function POST(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  // TIM-3274: Rule 2 — server-side Pro-tier gate (client guard is UX only).
+  if (!await requireProTier(supabase, user.id)) {
+    return Response.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const { id } = await params
 

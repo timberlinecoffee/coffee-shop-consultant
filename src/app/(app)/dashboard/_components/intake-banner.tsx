@@ -9,6 +9,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { type SubscriptionTier } from "@/lib/access";
 import { OnboardingFlow } from "@/app/onboarding/onboarding-flow";
 
 interface IntakeState {
@@ -16,7 +17,7 @@ interface IntakeState {
   dismissed: boolean;
 }
 
-export function IntakeBanner({ planId, subscriptionTier }: { planId: string; subscriptionTier: string }) {
+export function IntakeBanner({ planId, subscriptionTier }: { planId: string; subscriptionTier: SubscriptionTier }) {
   const [intake, setIntake] = useState<IntakeState | null>(null);
   const [showInterview, setShowInterview] = useState(false);
   const [dismissing, setDismissing] = useState(false);
