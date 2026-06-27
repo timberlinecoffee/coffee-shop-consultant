@@ -27,7 +27,7 @@ export interface WelcomeEmailProps {
   dashboardUrl: string;
 }
 
-const SUBJECT = 'Welcome to Groundwork';
+const SUBJECT = 'Your Groundwork trial is live';
 const PREVIEW = 'Your trial is live. Three things to do first.';
 
 export function WelcomeEmailTemplate({
