@@ -4480,7 +4480,7 @@ export function MenuWorkspace({
                 saving={mutationSaving}
                 savedAt={mutationSavedAt}
                 unsaved={false}
-                canEdit={canEdit}
+                canEdit={true}
                 onSave={confirmSaved}
               />
             </>
