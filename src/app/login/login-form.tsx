@@ -209,29 +209,49 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
             hostname: window.location.hostname,
           })
         : 0;
-    // TIM-2750: skipBrowserRedirect lets us inspect document.cookie AFTER
-    // @supabase/ssr's setItem has written the verifier and BEFORE we navigate
-    // to Supabase /authorize. The sentinel cookie below captures that state,
-    // which the /auth/callback route surfaces in the diag string on failure.
-    // (auth/callback/route.ts:65 already READS gw_oauth_verifier_pre_nav; we
-    // were never writing it. That's why the board's recent diagnostic showed
-    // `verifier_pre_nav=` empty.) We then navigate manually via
-    // window.location.assign(data.url) — same call supabase-js makes when
-    // skipBrowserRedirect is false, just executed by our handler so it can be
-    // gated on the in-flight ref above.
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        skipBrowserRedirect: true,
-        // TIM-2246: pass CAPTCHA token when Turnstile is provisioned. Supabase
-        // OAuth honors the project-level CAPTCHA setting on the initiate call.
-        ...(turnstileToken ? { captchaToken: turnstileToken } : {}),
-      },
-    });
-    // Sentinel handoffs are written AFTER signInWithOAuth has resolved (so the
-    // verifier write has landed in document.cookie) but BEFORE the manual nav,
-    // so they're in the jar when /auth/callback runs on the round-trip back.
+    // TIM-3339: OAuth initiation now runs server-side. /api/auth/google/start
+    // creates the Supabase client via @supabase/ssr's createServerClient with
+    // the route's cookie adapter wired in — `signInWithOAuth` persists the
+    // PKCE verifier through that adapter, which Next.js emits as `Set-Cookie`
+    // headers on this JSON response. The browser commits those headers BEFORE
+    // any JS reads `data.url`, so by the time we call window.location.assign
+    // below the verifier cookie is guaranteed to be in the jar. Previously
+    // (TIM-2750-era) the verifier was written client-side via
+    // `document.cookie = ...` inside @supabase/ssr's `createBrowserClient`
+    // setItem; that write is not synchronously durable across the page-unload
+    // that follows window.location.assign, which captured the
+    // AuthPKCECodeVerifierMissingError pattern (verifier_cookies=0,
+    // verifier_pre_nav=absent) on TIM-3336's diag deploy.
+    //
+    // skipBrowserRedirect: true semantics stay the same — we navigate
+    // manually so the in-flight ref above can gate rapid double-clicks.
+    let initiateUrl: string | null = null;
+    let initiateError: string | null = null;
+    try {
+      const res = await fetch("/api/auth/google/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          captchaToken: turnstileToken ?? null,
+          redirectTo: `${window.location.origin}/auth/callback`,
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { url?: string; error?: string }
+        | null;
+      if (!res.ok || !json?.url) {
+        initiateError = json?.error ?? `Sign-in failed (${res.status}).`;
+      } else {
+        initiateUrl = json.url;
+      }
+    } catch (err) {
+      initiateError = (err as Error)?.message ?? "Sign-in failed. Please try again.";
+    }
+    // Sentinel handoffs are written AFTER the server route has resolved (so
+    // the verifier Set-Cookie has committed to the browser's cookie jar) but
+    // BEFORE the manual nav, so they're in the jar when /auth/callback runs
+    // on the round-trip back.
     setHandoffCookie("gw_oauth_stale_verifiers", String(staleVerifierCount));
     // TIM-2327 (2026-06-25): expose the purge outcome so the callback diag can
     // show whether the new zombie-cookie cleanup actually ran on this attempt.
@@ -243,15 +263,16 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
       "gw_oauth_verifier_pre_nav",
       typeof document !== "undefined" && verifierPresentInDocumentCookie(document.cookie) ? "1" : "0"
     );
-    if (error || !data?.url) {
+    if (initiateError || !initiateUrl) {
       // Surface the error and release the in-flight guard so the user can
       // retry. On the happy path the navigation that follows tears down this
       // page, so resetting the guard is unnecessary.
-      setError(error?.message ?? "Sign-in failed. Please try again.");
+      setError(initiateError ?? "Sign-in failed. Please try again.");
       setLoading(false);
       googleInFlightRef.current = false;
       return;
     }
+    const data = { url: initiateUrl };
     // TIM-2786: pre-nav beacon. sendBeacon survives the page-unload from
     // window.location.assign(); fetch with keepalive falls back if Beacon API
     // is absent. Captures the verifier-cookie / sb-* state at the EXACT moment
