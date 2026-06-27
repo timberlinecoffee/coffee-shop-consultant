@@ -115,7 +115,7 @@ export default async function DashboardPage() {
             }
           />
         )}
-        {overview.planId && <IntakeBanner planId={overview.planId} />}
+        {overview.planId && <IntakeBanner planId={overview.planId} subscriptionTier={profile?.subscription_tier ?? "free"} />}
         <HomeV2 firstName={firstName} overview={overview} snapshot={snapshot} />
         {overview.planId && (
           <CoPilotDrawer
@@ -158,7 +158,7 @@ export default async function DashboardPage() {
           />
         )}
 
-        {overview.planId && <IntakeBanner planId={overview.planId} />}
+        {overview.planId && <IntakeBanner planId={overview.planId} subscriptionTier={profile?.subscription_tier ?? "free"} />}
 
         {/* TIM-2470 / TIM-1894 / TIM-1937: canonical WorkspaceHeader chrome
             (icon + h1 + description, action cluster right-aligned with
