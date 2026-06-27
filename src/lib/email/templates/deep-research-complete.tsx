@@ -25,7 +25,7 @@ export interface DeepResearchCompleteProps {
 }
 
 const SUBJECT = 'Your Deep Research report is ready';
-const PREVIEW = 'Sources synthesized — go read the findings.';
+const PREVIEW = 'Sources synthesized. Read the report.';
 
 export function DeepResearchCompleteTemplate({
   firstName,
