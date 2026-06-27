@@ -275,10 +275,19 @@ export function BuildoutEquipmentWorkspace({
     []
   );
 
-  function handleEquipmentChange(next: AnyItem[]) {
-    const eq = next as EquipmentItem[];
-    setEquipment(eq);
-    scheduleSave(eq);
+  // TIM-3329: accept both array and updater forms. The grid composes
+  // synchronous updates (commit-on-Tab + addRow) and needs functional
+  // updaters so one call cannot overwrite the other.
+  function handleEquipmentChange(
+    next: AnyItem[] | ((prev: AnyItem[]) => AnyItem[])
+  ) {
+    setEquipment((prev) => {
+      const eq = (
+        typeof next === "function" ? next(prev as AnyItem[]) : next
+      ) as EquipmentItem[];
+      scheduleSave(eq);
+      return eq;
+    });
   }
 
   function handleSectionsChange(next: ListSection[]) {
@@ -494,7 +503,17 @@ export function BuildoutEquipmentWorkspace({
               planId={planId}
               canEdit={canEdit}
               items={equipment}
-              onItemsChange={handleEquipmentChange}
+              // TIM-3329: bridge variance gap — EquipmentGrid is narrowed to
+              // EquipmentItem, handleEquipmentChange is widened to AnyItem.
+              onItemsChange={(next) => {
+                if (typeof next === "function") {
+                  handleEquipmentChange((prev) =>
+                    next(prev as EquipmentItem[]) as AnyItem[]
+                  );
+                } else {
+                  handleEquipmentChange(next);
+                }
+              }}
             />
           </div>
         ) : (
