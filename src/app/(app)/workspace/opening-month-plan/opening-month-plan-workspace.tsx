@@ -33,6 +33,8 @@ const VIEW_TABS: ReadonlyArray<WorkspaceSubNavTab<"list" | "calendar">> = [
 ];
 import { LaunchReadinessButton } from "@/components/launch-plan/LaunchReadinessButton";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
+import { useMutationStatus } from "@/hooks/use-mutation-status";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { consumeSseFrames } from "@/components/copilot/sse";
@@ -748,6 +750,7 @@ export function OpeningMonthPlanWorkspace({
   // TIM-1450 (carried into TIM-1449 merge): auto-promote not_started →
   // in_progress once either half of the unified suite has content.
   const { promoteOnEdit } = useWorkspaceStatus();
+  const { saving: mutationSaving, savedAt: mutationSavedAt, confirmSaved } = useMutationStatus();
   useEffect(() => {
     if (milestones.length > 0 || playbookItems.length > 0) {
       promoteOnEdit("opening_month_plan");
@@ -1184,13 +1187,24 @@ export function OpeningMonthPlanWorkspace({
           Icon={headerIcon}
           title={headerTitle}
           description={headerSubtitle}
-          actions={showMilestones ? (
-            <AskScoutButton
-              workspaceKey="opening_month_plan"
-              focusLabel="launch milestones"
-              hasContent={hasContent}
-            />
-          ) : undefined}
+          actions={
+            <>
+              {showMilestones && (
+                <AskScoutButton
+                  workspaceKey="opening_month_plan"
+                  focusLabel="launch milestones"
+                  hasContent={hasContent}
+                />
+              )}
+              <SaveStatusAndButton
+                saving={mutationSaving}
+                savedAt={mutationSavedAt}
+                unsaved={false}
+                canEdit={true}
+                onSave={confirmSaved}
+              />
+            </>
+          }
         />
 
         {/* TIM-1634: standard suite sub-nav. Only rendered for split sub-pages;

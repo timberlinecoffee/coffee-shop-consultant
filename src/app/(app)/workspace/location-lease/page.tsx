@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { CandidateListCard } from "@/components/location-lease/CandidateListCard";
 import type { Candidate } from "@/components/location-lease/CandidateListCard";
-import { MapPin } from "lucide-react";
+import { LocationLeaseWorkspaceClient } from "./location-lease-client";
 // TIM-2868: Page must resolve via getActivePlanId() so multi-plan users see
 // the project they're editing — and so the page + API agree on the same plan
 // (same parity rule shipped under TIM-2860 for the Concept workspace).
@@ -61,29 +60,7 @@ export default async function LocationLeaseWorkspacePage() {
   return (
     <div className="bg-[var(--background)]">
       <div className="w-full px-4 sm:px-6 pt-8 pb-12">
-        {/* TIM-1894 / TIM-1937: matches the canonical WorkspaceHeader chrome
-            (icon+title+description, mb-6, ≥1200px nowrap). Kept hand-rolled
-            because this is a server component and the shared client
-            WorkspaceHeader can't take a lucide Icon component as a prop across
-            the server/client boundary. */}
-        <header className="mb-6 flex flex-wrap items-start justify-between gap-4 min-[1200px]:flex-nowrap">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <MapPin
-                className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
-                aria-hidden="true"
-              />
-              <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
-                Location &amp; Lease
-              </h1>
-            </div>
-            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-              Compare candidate sites and weigh lease terms before you sign.
-            </p>
-          </div>
-        </header>
-
-        <CandidateListCard
+        <LocationLeaseWorkspaceClient
           initialCandidates={initialCandidates}
           planId={planId}
           aiCreditsRemaining={profile?.ai_credits_remaining ?? 0}

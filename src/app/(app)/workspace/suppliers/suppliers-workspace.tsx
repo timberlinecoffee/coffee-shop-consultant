@@ -27,6 +27,8 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { useMutationStatus } from "@/hooks/use-mutation-status";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { useCurrency } from "@/components/CurrencyProvider";
 import {
   VENDOR_CATEGORY_KEYS,
@@ -193,6 +195,7 @@ export function SuppliersWorkspace({
   }, []);
 
   const { promoteOnEdit } = useWorkspaceStatus();
+  const { saving: mutationSaving, savedAt: mutationSavedAt, confirmSaved } = useMutationStatus();
 
   const customById = useMemo(() => {
     const m = new Map<string, VendorCustomCategory>();
@@ -585,14 +588,23 @@ export function SuppliersWorkspace({
           title="Suppliers & Vendors"
           description="Shortlist vendors in each category, compare them side-by-side, and lock in the one you choose. Choices land in your concept brief."
           actions={
-            chosenCount > 0 ? (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-medium text-[var(--teal)]">{chosenCount}</span>
-                <span className="text-xs text-[var(--muted-foreground)]">
-                  of {totalCategories} {totalCategories === 1 ? "category" : "categories"} chosen
-                </span>
-              </div>
-            ) : undefined
+            <>
+              {chosenCount > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-[var(--teal)]">{chosenCount}</span>
+                  <span className="text-xs text-[var(--muted-foreground)]">
+                    of {totalCategories} {totalCategories === 1 ? "category" : "categories"} chosen
+                  </span>
+                </div>
+              )}
+              <SaveStatusAndButton
+                saving={mutationSaving}
+                savedAt={mutationSavedAt}
+                unsaved={false}
+                canEdit={true}
+                onSave={confirmSaved}
+              />
+            </>
           }
         />
 

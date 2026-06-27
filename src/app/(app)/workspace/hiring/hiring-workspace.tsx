@@ -36,6 +36,8 @@ import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { ConflictNoticeBadge } from "@/components/cross-suite/ConflictNoticeBadge";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
+import { useMutationStatus } from "@/hooks/use-mutation-status";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -2706,6 +2708,7 @@ export function HiringWorkspace({
   const [evaluations, setEvaluations] = useState<CompetencyEvaluation[]>(initialCompetencyEvals);
 
   const { promoteOnEdit } = useWorkspaceStatus();
+  const { saving: mutationSaving, savedAt: mutationSavedAt, confirmSaved } = useMutationStatus();
   // Auto-promote not_started → in_progress once any hiring data exists.
   const hasContent = roles.length > 0 || candidates.length > 0 || competencies.length > 0 || tasks.length > 0;
   useEffect(() => {
@@ -2765,11 +2768,20 @@ export function HiringWorkspace({
           title="Hiring & Onboarding"
           description="Figure out who you need on the team and what it'll cost to pay them."
           actions={
-            <AskScoutButton
-              workspaceKey="hiring"
-              focusLabel="hiring plan"
-              hasContent={hasContent}
-            />
+            <>
+              <AskScoutButton
+                workspaceKey="hiring"
+                focusLabel="hiring plan"
+                hasContent={hasContent}
+              />
+              <SaveStatusAndButton
+                saving={mutationSaving}
+                savedAt={mutationSavedAt}
+                unsaved={false}
+                canEdit={true}
+                onSave={confirmSaved}
+              />
+            </>
           }
         />
 

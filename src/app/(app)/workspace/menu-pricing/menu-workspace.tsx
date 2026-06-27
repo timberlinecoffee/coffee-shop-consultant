@@ -55,6 +55,8 @@ import { TABLE_CELL_TEXT } from "@/lib/workspace-table";
 import { PaywallModal } from "@/components/paywall-modal";
 import { ProUpgradePrompt, type ProFeatureKey } from "@/components/pro-upgrade-prompt";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { useMutationStatus } from "@/hooks/use-mutation-status";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
 import { CategoryPresetPicker } from "@/components/menu-pricing/CategoryPresetPicker";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -3631,6 +3633,7 @@ export function MenuWorkspace({
   const [proPromptFeature, setProPromptFeature] = useState<ProFeatureKey | null>(null);
   const [priceLoading, setPriceLoading] = useState(false);
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
+  const { saving: mutationSaving, savedAt: mutationSavedAt, confirmSaved } = useMutationStatus();
   const [recipeLoading, setRecipeLoading] = useState(false);
   const [recipeError, setRecipeError] = useState<string | null>(null);
   // TIM-1471: AI preparation-steps generator state.
@@ -4473,6 +4476,13 @@ export function MenuWorkspace({
                   Suggest menu items
                 </WorkspaceActionButton>
               )}
+              <SaveStatusAndButton
+                saving={mutationSaving}
+                savedAt={mutationSavedAt}
+                unsaved={false}
+                canEdit={canEdit}
+                onSave={confirmSaved}
+              />
             </>
           }
         />
