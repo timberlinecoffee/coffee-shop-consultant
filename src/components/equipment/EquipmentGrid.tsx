@@ -237,6 +237,7 @@ function TextCell({
         placeholder={placeholder}
         disabled={disabled}
         rows={2}
+        autoFocus
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => onCommit(draft)}
         onKeyDown={handleKeyDown}
@@ -252,6 +253,7 @@ function TextCell({
       value={draft}
       placeholder={placeholder}
       disabled={disabled}
+      autoFocus
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => onCommit(draft)}
       onKeyDown={handleKeyDown}
@@ -299,6 +301,7 @@ function CostCell({
         value={draft}
         placeholder="0"
         disabled={disabled}
+        autoFocus
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => onCommit(Math.round((parseFloat(draft) || 0) * 100))}
         onKeyDown={handleKeyDown}
@@ -339,6 +342,7 @@ function UsefulLifeCell({
       className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0"
       value={draft}
       disabled={disabled}
+      autoFocus
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => onCommit(Math.max(1, Math.min(50, Math.round(parseFloat(draft) || 7))))}
       onKeyDown={handleKeyDown}
@@ -367,6 +371,7 @@ function SelectCell({
       className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 cursor-pointer"
       value={value}
       disabled={disabled}
+      autoFocus
       onChange={(e) => onCommit(e.target.value)}
       onKeyDown={onKeyDown}
     >

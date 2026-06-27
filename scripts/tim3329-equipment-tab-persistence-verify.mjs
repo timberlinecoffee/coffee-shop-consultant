@@ -144,6 +144,19 @@ try {
   page.on("console", (msg) => {
     if (msg.type() === "error") console.log(`  [browser error] ${msg.text()}`);
   });
+  // Log all relevant /api/workspaces/financials/equipment requests
+  page.on("request", (req) => {
+    const url = req.url();
+    if (url.includes("/api/workspaces/financials/equipment") || url.includes("/api/workspaces/buildout")) {
+      console.log(`  [req] ${req.method()} ${url.split("groundwork.cafe").pop()}`);
+    }
+  });
+  page.on("response", async (res) => {
+    const url = res.url();
+    if (url.includes("/api/workspaces/financials/equipment") || url.includes("/api/workspaces/buildout")) {
+      console.log(`  [res] ${res.status()} ${res.request().method()} ${url.split("groundwork.cafe").pop()}`);
+    }
+  });
 
   console.log(`[6/9] open ${TARGET}/workspace/buildout-equipment`);
   await page.goto(`${TARGET}/workspace/buildout-equipment`, { waitUntil: "networkidle" });
@@ -155,22 +168,33 @@ try {
     if (await accept.isVisible().catch(() => false)) await accept.click();
   }
 
-  console.log("[7/9] click Add row and type 5 items with Tab between fields");
-  // The Equipment seed callout ("Generate a starter equipment list") may be
-  // present — dismiss it so the layout settles without an extra Generate
-  // button under the Add row.
-  const dismissBanner = page.getByRole("button", { name: /dismiss this notice/i }).first();
-  if (await dismissBanner.isVisible().catch(() => false)) await dismissBanner.click();
+  // Settle any auto-open modals
+  await page.waitForTimeout(1000);
+  // Dismiss the Equipment seed callout if present (it has a clear X button
+  // with aria-label "Dismiss this notice").
+  const dismissCallout = page.getByRole("button", { name: /dismiss this notice/i }).first();
+  if (await dismissCallout.isVisible({ timeout: 500 }).catch(() => false)) {
+    await dismissCallout.click();
+    await page.waitForTimeout(200);
+  }
 
+  console.log("[7/9] click Add row and type 5 items with Tab between fields");
   // EquipmentGrid renders a "+ Add row" button below the table.
   const addBtn = page.getByRole("button", { name: /^add row$/i }).first();
   await addBtn.scrollIntoViewIfNeeded();
   await addBtn.click();
+  // Wait for addRow's focusCell (30ms setTimeout + 20ms inner setTimeout)
+  await page.waitForTimeout(200);
 
-  // After addRow, the name cell of the new row becomes editing after ~30ms;
-  // the input is focused after ~20ms more. Wait until the focused element
-  // is the name input we expect.
-  await page.waitForTimeout(120);
+  // Defensive: explicitly click the Name input of the newly-created blank row
+  // so Playwright's keyboard.type lands there, regardless of any focus race.
+  const nameInputLocator = page.locator('input[placeholder="Item name"]').first();
+  if (await nameInputLocator.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await nameInputLocator.focus();
+    console.log("      Name input focused explicitly");
+  } else {
+    console.warn("      WARN: Name input not visible after Add row click");
+  }
 
   // For each item, type 9 fields separated by Tab.
   // EDITABLE_COLS order: name, vendor, model, supplier, unit_cost_cents,
@@ -210,7 +234,18 @@ try {
     // Tab past notes triggers addRow for the next item; addRow focuses next
     // name cell after 30ms+20ms.
     await page.waitForTimeout(200);
-    console.log(`      item ${i + 1}/${ITEMS.length} typed: ${it.name}`);
+    // Probe focus to verify it landed on next-row name (or report mishap)
+    const focusInfo = await page.evaluate(() => {
+      const el = document.activeElement;
+      if (!el) return "null";
+      const tag = el.tagName.toLowerCase();
+      const placeholder = el.getAttribute?.("placeholder") || "";
+      const aria = el.getAttribute?.("aria-label") || "";
+      const name = el.getAttribute?.("name") || "";
+      const role = el.getAttribute?.("role") || "";
+      return `${tag}#${el.id || ""} placeholder="${placeholder}" aria-label="${aria}" name="${name}" role="${role}"`;
+    });
+    console.log(`      item ${i + 1}/${ITEMS.length} typed: ${it.name} — focus after Tab: ${focusInfo}`);
   }
 
   // Wait for autosave debounce (400ms) + create POST round-trips to settle.
