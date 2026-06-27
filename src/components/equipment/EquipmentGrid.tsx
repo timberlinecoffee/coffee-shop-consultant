@@ -720,6 +720,24 @@ export function EquipmentGrid({
             onItemsChange((prev) =>
               prev.map((i) => (i.id === id ? { ...created, ...accumulated } : i))
             );
+            // TIM-3329: re-point editingCell at the new server id so the next
+            // cell stays mounted across the tempId → realId swap. Without this
+            // the active cell unmounts when its row's id changes and focus
+            // drops to <body>, breaking Tab navigation between fields.
+            setEditingCell((prev) =>
+              prev && prev.rowId === id ? { rowId: created.id, colKey: prev.colKey } : prev
+            );
+            // Migrate any cellInputRefs registered under the tempId so a
+            // subsequent focusCell() lookup against the new id finds the
+            // mounted input even before the next ref-callback fires.
+            for (const col of EDITABLE_COLS) {
+              const oldKey = `${id}:${col}`;
+              const ref = cellInputRefs.current.get(oldKey);
+              if (ref) {
+                cellInputRefs.current.set(`${created.id}:${col}`, ref);
+                cellInputRefs.current.delete(oldKey);
+              }
+            }
             // Drain any patches that accumulated during the in-flight POST.
             const buffered = pendingPatches.current.get(id);
             if (buffered) {
