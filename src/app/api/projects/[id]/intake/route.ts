@@ -76,6 +76,22 @@ export async function GET(
   if (!plan) return Response.json({ error: "Project not found" }, { status: 404 })
 
   const od = plan.onboarding_data as Record<string, unknown> | null
+
+  // AC2 (TIM-3274): legacy Pro users completed onboarding via users.onboarding_data
+  // before TIM-3151 introduced per-project storage. A NULL per-project column means
+  // "no data yet" for new projects but "already done" for legacy users — disambiguate
+  // by checking the old column before returning completed: false.
+  if (od === null) {
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("onboarding_data")
+      .eq("id", user.id)
+      .single()
+    if (userRow?.onboarding_data != null) {
+      return Response.json({ completed: true, dismissed: false, onboardingData: null })
+    }
+  }
+
   return Response.json({
     completed: od !== null && !od?.dismissed,
     dismissed: od?.dismissed === true,
