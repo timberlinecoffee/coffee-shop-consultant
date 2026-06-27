@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import {
   type ConsentState,
   subscribeConsent,
@@ -21,22 +21,23 @@ type UseConsent = {
 
 /**
  * Read consent reactively. The banner and the gated tracking loader share this
- * store, so a decision in one updates the other in the same tick.
+ * store, so a decision in one updates the other in the same tick. The client
+ * snapshot reads the cookie synchronously on first render, so there is no flash
+ * for visitors who have already chosen.
  *
- * TIM-3284: when the server already read the cookie (passed in via
- * `initialConsent`), use that as the SSR snapshot so the rendered HTML matches
- * what the client will see post-hydration. Without this, the SSR snapshot is
- * always null and the banner is always present in the served HTML — anything
- * that delays or breaks client hydration (browser extension touching
- * document.cookie, slow JS, hydration error) leaves the banner visible even
- * though the visitor accepted on a prior visit.
+ * TIM-3284: SSR-visible suppression of the banner element for returning visitors
+ * happens via the pre-hydration script in `src/app/layout.tsx` + the
+ * `[data-consent-decided] [data-consent-banner]` CSS rule in `globals.css`. The
+ * banner element stays in the React tree; CSS hides it before paint. React
+ * state still owns the Accept-All / Reject / Cookie-Preferences flow once
+ * hydration completes.
  */
-export function useConsent(initialConsent: ConsentState | null = null): UseConsent {
-  const serverSnapshot = useMemo(
-    () => (initialConsent === null ? getConsentServerSnapshot : () => initialConsent),
-    [initialConsent],
+export function useConsent(): UseConsent {
+  const consent = useSyncExternalStore(
+    subscribeConsent,
+    getConsentSnapshot,
+    getConsentServerSnapshot,
   );
-  const consent = useSyncExternalStore(subscribeConsent, getConsentSnapshot, serverSnapshot);
 
   return {
     consent,

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import type { ConsentState } from "@/lib/consent/consent";
 import { useConsent } from "@/lib/consent/useConsent";
 
 /**
@@ -12,22 +11,18 @@ import { useConsent } from "@/lib/consent/useConsent";
  * off. Reject is one click and equally prominent (GDPR). The decision gates
  * whether tracking scripts load; see TrackingScripts.
  *
- * TIM-3284: `initialConsent` comes from a server-side read of the `gw_consent`
- * cookie in `src/app/layout.tsx`. Passing it lets the SSR HTML render the
- * correct decided state immediately, so the banner does not appear in the
- * served markup for returning visitors. Previously the SSR snapshot was always
- * `null`, the banner was always in the HTML, and we relied on client hydration
- * reading `document.cookie` to hide it — fragile under any condition that
- * delays or breaks hydration.
+ * TIM-3284: the SSR HTML always renders this element. A pre-hydration script
+ * in `src/app/layout.tsx` adds `data-consent-decided` on `<html>` when the
+ * cookie is present, and the CSS rule in `globals.css` hides the banner via
+ * `[data-consent-decided] [data-consent-banner]`. This way the banner stays
+ * hidden on returning visits independent of how fast React hydration runs, and
+ * we don't have to opt every route into dynamic rendering (which kills
+ * Lighthouse perf on the marketing pages).
  *
  * Tokens and components per the Groundwork style guide (Banners, Buttons).
  */
-export function CookieConsentBanner({
-  initialConsent = null,
-}: {
-  initialConsent?: ConsentState | null;
-}) {
-  const { decided, acceptAll, rejectNonEssential } = useConsent(initialConsent);
+export function CookieConsentBanner() {
+  const { decided, acceptAll, rejectNonEssential } = useConsent();
   const pathname = usePathname();
 
   // Never show on print/export views.
@@ -38,6 +33,7 @@ export function CookieConsentBanner({
     <div
       role="dialog"
       aria-label="Cookie consent"
+      data-consent-banner
       className="fixed bottom-0 inset-x-0 z-50 p-4 sm:p-6"
     >
       <div className="max-w-3xl mx-auto bg-white border border-[var(--border)] rounded-2xl shadow-lg p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4">

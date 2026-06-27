@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
-import { cookies } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { TrackingScripts } from "@/components/consent/TrackingScripts";
-import { CONSENT_COOKIE, parseConsentCookie } from "@/lib/consent/consent";
+import { CONSENT_COOKIE } from "@/lib/consent/consent";
 import { RewardfulScript } from "./_components/RewardfulScript";
 import "./globals.css";
 
@@ -25,26 +24,31 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+// TIM-3284: pre-hydration cookie probe. Sets data-consent-decided=1 on <html>
+// before first paint when gw_consent is present, so the CSS rule in globals.css
+// hides the consent banner element on returning visits — independent of how
+// fast (or whether) React hydration runs. The script is a static string so the
+// root layout stays static (no cookies()/headers() call → no dynamic opt-in →
+// Lighthouse perf score unaffected). React state still owns reset (Cookie
+// Preferences) and Accept-All transitions; this only suppresses the SSR-default
+// "show" state when the cookie already exists at first paint.
+const CONSENT_PRE_HYDRATION_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${CONSENT_COOKIE}=([^;]*)/);if(!m||!m[1])return;var v=JSON.parse(decodeURIComponent(m[1]));if(v&&v.version===1){document.documentElement.setAttribute("data-consent-decided","1");}}catch(_){/* fall through to React */}})();`;
+
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // TIM-3284: read the consent cookie server-side so the banner's SSR snapshot
-  // matches the client one. Returning visitors render with no banner in the
-  // served HTML — independent of how fast (or whether) hydration runs.
-  const cookieStore = await cookies();
-  const initialConsent = parseConsentCookie(cookieStore.get(CONSENT_COOKIE)?.value);
-
   return (
     <html lang="en" className="h-full">
       <RewardfulScript />
       <body className={`${poppins.className} min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]`}>
+        <script dangerouslySetInnerHTML={{ __html: CONSENT_PRE_HYDRATION_SCRIPT }} />
         <a href="#main-content" className="skip-to-main">Skip to main content</a>
         <div id="main-content" tabIndex={-1} className="flex flex-col flex-1">
           {children}
         </div>
-        <CookieConsentBanner initialConsent={initialConsent} />
+        <CookieConsentBanner />
         <TrackingScripts />
         <Analytics />
       </body>
