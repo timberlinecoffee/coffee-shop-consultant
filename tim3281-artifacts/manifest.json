@@ -1,0 +1,116 @@
+{
+  "to": "trent@simpler.coffee",
+  "ranAt": "2026-06-27T02:32:40.822Z",
+  "results": [
+    {
+      "name": "verify-email",
+      "flow": "Flow 1 step 2",
+      "ok": true,
+      "send_id": "95ae880e-0891-43c6-93b4-15e51b67458e",
+      "subject": "Confirm your Groundwork email",
+      "last_event": "delivered",
+      "created_at": "2026-06-27 02:32:25.167203+00",
+      "voice": {
+        "ok": true,
+        "hits": []
+      },
+      "png": "/tmp/tim3281-artifacts/verify-email.png"
+    },
+    {
+      "name": "welcome",
+      "flow": "Flow 1 step 4",
+      "ok": true,
+      "send_id": "b8952824-b1db-47c0-bb15-61b90177f27e",
+      "subject": "Welcome to Groundwork",
+      "last_event": "bounced",
+      "created_at": "2026-06-27 02:32:25.379803+00",
+      "voice": {
+        "ok": false,
+        "hits": [
+          " — "
+        ]
+      },
+      "png": "/tmp/tim3281-artifacts/welcome.png"
+    },
+    {
+      "name": "credit-balance-low",
+      "flow": "Flow 5 step 18",
+      "ok": true,
+      "send_id": "18307059-c794-4138-ac35-6870c5dab523",
+      "subject": "Your Groundwork credit balance is running low",
+      "last_event": "delivered",
+      "created_at": "2026-06-27 02:32:25.906253+00",
+      "voice": {
+        "ok": false,
+        "hits": [
+          " — "
+        ]
+      },
+      "png": "/tmp/tim3281-artifacts/credit-balance-low.png"
+    },
+    {
+      "name": "business-plan-export-ready",
+      "flow": "Flow 5 step 16",
+      "ok": true,
+      "send_id": "1196bc23-f339-41ae-9e30-93be6e6b6cec",
+      "subject": "Your Business Plan PDF is ready",
+      "last_event": "delivered",
+      "created_at": "2026-06-27 02:32:26.079211+00",
+      "voice": {
+        "ok": false,
+        "hits": [
+          " — "
+        ]
+      },
+      "png": "/tmp/tim3281-artifacts/business-plan-export-ready.png"
+    },
+    {
+      "name": "deep-research-complete",
+      "flow": "Flow 5 step 17",
+      "ok": true,
+      "send_id": "c2785ec3-0fb9-4131-a72b-21ebc245e5c1",
+      "subject": "Your Deep Research report is ready",
+      "last_event": "delivered",
+      "created_at": "2026-06-27 02:32:26.276802+00",
+      "voice": {
+        "ok": false,
+        "hits": [
+          " — "
+        ]
+      },
+      "png": "/tmp/tim3281-artifacts/deep-research-complete.png"
+    },
+    {
+      "name": "support-ticket-received",
+      "flow": "Flow 6 step 19",
+      "ok": true,
+      "send_id": "7df817af-a270-439d-8743-1c197548f406",
+      "subject": "We got your message — Live E2E pass — please ignore (TIM-3281)",
+      "last_event": "delivered",
+      "created_at": "2026-06-27 02:32:26.473064+00",
+      "voice": {
+        "ok": false,
+        "hits": [
+          " — "
+        ]
+      },
+      "png": "/tmp/tim3281-artifacts/support-ticket-received.png"
+    },
+    {
+      "name": "support-ticket-replied",
+      "flow": "Flow 6 step 20",
+      "ok": true,
+      "send_id": "7a77ddb4-e3b7-4113-976b-4a3ecb767bd1",
+      "subject": "Re: Live E2E pass — please ignore (TIM-3281)",
+      "last_event": "delivered",
+      "created_at": "2026-06-27 02:32:26.70783+00",
+      "voice": {
+        "ok": false,
+        "hits": [
+          " — "
+        ]
+      },
+      "png": "/tmp/tim3281-artifacts/support-ticket-replied.png"
+    }
+  ]
+}
