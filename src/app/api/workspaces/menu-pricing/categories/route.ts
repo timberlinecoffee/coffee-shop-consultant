@@ -160,6 +160,22 @@ export async function PATCH(request: NextRequest) {
 
   // TIM-3247: COGS range update — Zod-validated pair (both fields required together).
   if ("target_cogs_low_pct" in rest || "target_cogs_high_pct" in rest) {
+    // Rule 2: server-side preset guard — UI hides edit for presets but we must also
+    // reject direct API calls. Fetch the row first to confirm is_default status.
+    const { data: catRow } = await supabase
+      .from("menu_categories")
+      .select("is_default")
+      .eq("id", id as string)
+      .eq("plan_id", planId)
+      .maybeSingle();
+    if (!catRow) return Response.json({ error: "Category not found" }, { status: 404 });
+    if (catRow.is_default) {
+      return Response.json(
+        { error: "COGS range cannot be changed on preset categories" },
+        { status: 403 },
+      );
+    }
+
     const parsed = CogsRangePatchSchema.safeParse({
       target_cogs_low_pct: rest.target_cogs_low_pct,
       target_cogs_high_pct: rest.target_cogs_high_pct,

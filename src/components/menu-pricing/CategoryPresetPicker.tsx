@@ -25,6 +25,7 @@ export function CategoryPresetPicker({ categoryName, onApplyPreset, onSkip }: Pr
   const [customLow, setCustomLow] = useState("");
   const [customHigh, setCustomHigh] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
+  const [applyError, setApplyError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const lowRef = useRef<HTMLInputElement>(null);
 
@@ -44,8 +45,11 @@ export function CategoryPresetPicker({ categoryName, onApplyPreset, onSkip }: Pr
 
   async function handlePreset(preset: CategoryPreset) {
     setSaving(true);
+    setApplyError(null);
     try {
       await onApplyPreset(preset.target_cogs_low_pct, preset.target_cogs_high_pct);
+    } catch (err) {
+      setApplyError(err instanceof Error ? err.message : "Failed to save. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -70,6 +74,8 @@ export function CategoryPresetPicker({ categoryName, onApplyPreset, onSkip }: Pr
     setSaving(true);
     try {
       await onApplyPreset(low, high);
+    } catch (err) {
+      setCustomError(err instanceof Error ? err.message : "Failed to save. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -130,6 +136,9 @@ export function CategoryPresetPicker({ categoryName, onApplyPreset, onSkip }: Pr
             </div>
           )}
 
+          {applyError && (
+            <p role="alert" className="text-xs text-[var(--error-accent)] mt-2">{applyError}</p>
+          )}
           <div className="flex items-center gap-4 mt-3">
             <button
               type="button"

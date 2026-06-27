@@ -27,7 +27,9 @@ import {
   StickyNote,
   LayoutGrid,
   TrendingUp,
+  Lock,
 } from "lucide-react";
+import { z } from "zod";
 import {
   DndContext,
   PointerSensor,
@@ -2728,6 +2730,174 @@ function EmptyCategoryDropZone({
   );
 }
 
+// TIM-3246: Zod schema for client-side COGS range validation — mirrors the server schema in
+// /api/workspaces/menu-pricing/categories/route.ts (low ≥ 0, high ≤ 100, low < high).
+const CogsRangeSchema = z.object({
+  low: z.number().min(0, "Low must be at least 0").max(100, "Low must be at most 100"),
+  high: z.number().min(0, "High must be at least 0").max(100, "High must be at most 100"),
+}).refine((v) => v.low < v.high, { message: "Low must be less than high" });
+
+// TIM-3246: Inline COGS range display row shown inside each CategoryHeader.
+// Preset categories (is_default = true) show a locked read-only badge.
+// User-created categories show an editable pair of % inputs with Zod validation.
+function CogsRangeRow({
+  category,
+  canEdit,
+  onUpdateCogsRange,
+}: {
+  category: MenuCategory;
+  canEdit: boolean;
+  onUpdateCogsRange: (low: number, high: number) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [lowVal, setLowVal] = useState("");
+  const [highVal, setHighVal] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const lowRef = useRef<HTMLInputElement>(null);
+
+  const hasRange = category.target_cogs_low_pct !== null && category.target_cogs_high_pct !== null;
+  if (!hasRange) return null;
+
+  const isPreset = category.is_default;
+
+  function startEdit() {
+    setLowVal(String(category.target_cogs_low_pct ?? ""));
+    setHighVal(String(category.target_cogs_high_pct ?? ""));
+    setError(null);
+    setEditing(true);
+    setTimeout(() => lowRef.current?.focus(), 0);
+  }
+
+  function cancel() {
+    setEditing(false);
+    setError(null);
+  }
+
+  async function save() {
+    const raw = { low: parseFloat(lowVal), high: parseFloat(highVal) };
+    const result = CogsRangeSchema.safeParse(raw);
+    if (!result.success) {
+      setError(result.error.issues[0]?.message ?? "Invalid range");
+      return;
+    }
+    setSaving(true);
+    try {
+      await onUpdateCogsRange(result.data.low, result.data.high);
+      setEditing(false);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.target instanceof HTMLButtonElement) return;
+    if (e.key === "Enter") { e.preventDefault(); save(); }
+    if (e.key === "Escape") { e.preventDefault(); cancel(); }
+  }
+
+  if (isPreset) {
+    return (
+      <div className="flex items-center gap-1.5 mt-1.5 pl-6">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+          Target COGS
+        </span>
+        <Lock size={10} className="text-[var(--neutral-cool-350)] shrink-0" aria-label="Read-only: preset category" />
+        <span className="text-xs font-semibold text-[var(--foreground)] tabular-nums">
+          {category.target_cogs_low_pct}%&ndash;{category.target_cogs_high_pct}%
+        </span>
+      </div>
+    );
+  }
+
+  if (editing) {
+    return (
+      <div className="mt-1.5 pl-6">
+        <div className="flex items-center flex-wrap gap-x-2 gap-y-1" onKeyDown={handleKeyDown}>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+            Target COGS
+          </span>
+          <div className="flex items-center gap-1 text-xs">
+            {/* eslint-disable-next-line no-restricted-syntax -- COGS percentage target (0–100%), not a dollar amount; <MoneyInput> not applicable here */}
+            <input
+              ref={lowRef}
+              type="number"
+              min={0}
+              max={99}
+              step={1}
+              value={lowVal}
+              onChange={(e) => { setLowVal(e.target.value); setError(null); }}
+              aria-label="Low COGS target %"
+              placeholder="e.g. 20"
+              className="w-14 border border-[var(--border-medium)] rounded-md px-2 py-0.5 text-xs text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <span className="text-[var(--muted-foreground)]">%</span>
+            <span className="text-[var(--muted-foreground)]">to</span>
+            {/* eslint-disable-next-line no-restricted-syntax -- COGS percentage target (0–100%), not a dollar amount; <MoneyInput> not applicable here */}
+            <input
+              type="number"
+              min={1}
+              max={100}
+              step={1}
+              value={highVal}
+              onChange={(e) => { setHighVal(e.target.value); setError(null); }}
+              aria-label="High COGS target %"
+              placeholder="e.g. 30"
+              className="w-14 border border-[var(--border-medium)] rounded-md px-2 py-0.5 text-xs text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <span className="text-[var(--muted-foreground)]">%</span>
+          </div>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={save}
+            className="text-xs px-2.5 py-0.5 rounded-md bg-[var(--teal)] text-white font-semibold disabled:opacity-60 hover:bg-[var(--teal-dark)] transition-colors"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={cancel}
+            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+        {error && (
+          <p role="alert" className="text-xs text-[var(--error-accent)] mt-1">
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 mt-1.5 pl-6 group/cogs">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+        Target COGS
+      </span>
+      <span className="text-xs font-semibold text-[var(--foreground)] tabular-nums">
+        {category.target_cogs_low_pct}%&ndash;{category.target_cogs_high_pct}%
+      </span>
+      {canEdit && (
+        <button
+          type="button"
+          onClick={startEdit}
+          title="Edit COGS target range"
+          aria-label="Edit COGS target range"
+          className="opacity-0 group-hover/cogs:opacity-100 text-[var(--muted-foreground)] hover:text-[var(--teal)] transition-all"
+        >
+          <Edit2 size={11} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 function CategoryHeader({
   category,
   itemCount,
@@ -2868,6 +3038,12 @@ function CategoryHeader({
         <div className="sm:hidden mt-1.5 pl-6">
           <CategoryMetrics items={catItems} />
         </div>
+        {/* TIM-3246: target COGS range row — always visible once range is set. */}
+        <CogsRangeRow
+          category={category}
+          canEdit={canEdit}
+          onUpdateCogsRange={onUpdateCogsRange}
+        />
       </div>
 
       {/* TIM-3247: onboarding preset picker — surfaces when no COGS range is set. */}
@@ -3628,11 +3804,21 @@ export function MenuWorkspace({
   // TIM-3247: copies preset or custom low/high values into a user category.
   // Optimistic-updates locally so the picker collapses immediately; server
   // confirms and replaces the row. Standing Rule 3 validation happens on the server.
+  // Throws on non-ok response so CogsRangeRow.save() can surface the error message.
   async function updateCategoryCogsRange(id: string, low: number, high: number) {
     // Snapshot prior values before mutation so rollback restores them exactly.
     const prior = categories.find((c) => c.id === id);
     const priorLow = prior?.target_cogs_low_pct ?? null;
     const priorHigh = prior?.target_cogs_high_pct ?? null;
+
+    const rollback = () =>
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? { ...c, target_cogs_low_pct: priorLow, target_cogs_high_pct: priorHigh }
+            : c
+        )
+      );
 
     setCategories((prev) =>
       prev.map((c) =>
@@ -3641,34 +3827,26 @@ export function MenuWorkspace({
           : c
       )
     );
+
+    let res: Response;
     try {
-      const res = await fetch("/api/workspaces/menu-pricing/categories", {
+      res = await fetch("/api/workspaces/menu-pricing/categories", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, target_cogs_low_pct: low, target_cogs_high_pct: high }),
       });
-      if (res.ok) {
-        const updated = (await res.json()) as MenuCategory;
-        setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
-      } else {
-        // Roll back to the prior values (not null) so existing ranges aren't wiped.
-        setCategories((prev) =>
-          prev.map((c) =>
-            c.id === id
-              ? { ...c, target_cogs_low_pct: priorLow, target_cogs_high_pct: priorHigh }
-              : c
-          )
-        );
-      }
     } catch {
-      // Network error — roll back and let the picker reappear if range was unset.
-      setCategories((prev) =>
-        prev.map((c) =>
-          c.id === id
-            ? { ...c, target_cogs_low_pct: priorLow, target_cogs_high_pct: priorHigh }
-            : c
-        )
-      );
+      rollback();
+      throw new Error("Failed to save. Please try again.");
+    }
+
+    if (res.ok) {
+      const updated = (await res.json()) as MenuCategory;
+      setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    } else {
+      rollback();
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      throw new Error(body.error ?? "Failed to save — please try again");
     }
   }
 
