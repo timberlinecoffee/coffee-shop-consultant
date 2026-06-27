@@ -28,6 +28,7 @@ import {
   LayoutGrid,
   TrendingUp,
   Lock,
+  Printer,
 } from "lucide-react";
 import { z } from "zod";
 import {
@@ -4443,22 +4444,37 @@ export function MenuWorkspace({
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-4 sm:px-6 pt-8 pb-16">
-        {/* TIM-3150: canonical WorkspaceHeader with Suggest menu items in action cluster. */}
+        {/* TIM-3150: canonical WorkspaceHeader with Suggest menu items in action cluster.
+            TIM-3296: Print Recipe Cards added as a secondary action — opens the
+            printable recipe card page in a new tab. */}
         <WorkspaceHeader
           Icon={Utensils}
           title="Menu & Pricing"
           description="Build your menu, add recipe ingredients to compute COGS, and get AI-suggested retail prices."
-          actions={canEdit ? (
-            <WorkspaceActionButton
-              variant="primary"
-              onClick={suggestMenuItems}
-              aria-label="Suggest menu items"
-              title="Get AI-suggested menu items based on your concept"
-            >
-              <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              Suggest menu items
-            </WorkspaceActionButton>
-          ) : undefined}
+          actions={
+            <>
+              <WorkspaceActionButton
+                variant="secondary"
+                onClick={() => window.open("/workspace/menu-pricing/print", "_blank", "noopener,noreferrer")}
+                aria-label="Print recipe cards"
+                title="Open a print-friendly view of all recipe cards"
+              >
+                <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                Print recipe cards
+              </WorkspaceActionButton>
+              {canEdit && (
+                <WorkspaceActionButton
+                  variant="primary"
+                  onClick={suggestMenuItems}
+                  aria-label="Suggest menu items"
+                  title="Get AI-suggested menu items based on your concept"
+                >
+                  <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                  Suggest menu items
+                </WorkspaceActionButton>
+              )}
+            </>
+          }
         />
 
         {/* Tab nav — canonical WorkspaceSubNav (TIM-1793).
