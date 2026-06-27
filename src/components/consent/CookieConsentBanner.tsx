@@ -11,6 +11,14 @@ import { useConsent } from "@/lib/consent/useConsent";
  * off. Reject is one click and equally prominent (GDPR). The decision gates
  * whether tracking scripts load; see TrackingScripts.
  *
+ * TIM-3284: the SSR HTML always renders this element. A pre-hydration script
+ * in `src/app/layout.tsx` adds `data-consent-decided` on `<html>` when the
+ * cookie is present, and the CSS rule in `globals.css` hides the banner via
+ * `[data-consent-decided] [data-consent-banner]`. This way the banner stays
+ * hidden on returning visits independent of how fast React hydration runs, and
+ * we don't have to opt every route into dynamic rendering (which kills
+ * Lighthouse perf on the marketing pages).
+ *
  * Tokens and components per the Groundwork style guide (Banners, Buttons).
  */
 export function CookieConsentBanner() {
@@ -25,6 +33,7 @@ export function CookieConsentBanner() {
     <div
       role="dialog"
       aria-label="Cookie consent"
+      data-consent-banner
       className="fixed bottom-0 inset-x-0 z-50 p-4 sm:p-6"
     >
       <div className="max-w-3xl mx-auto bg-white border border-[var(--border)] rounded-2xl shadow-lg p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4">

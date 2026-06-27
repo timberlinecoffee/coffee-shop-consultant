@@ -456,3 +456,11 @@ body {
   animation: ai-gradient-shift 2s ease-in-out infinite;
   color: #ffffff;
 }
+
+/* TIM-3284: pre-hydration consent-banner suppression. The inline script in
+ * src/app/layout.tsx sets data-consent-decided on <html> before paint when
+ * the gw_consent cookie is present. This rule hides the banner element so
+ * returning visitors never see a flash, even before React hydrates. */
+html[data-consent-decided] [data-consent-banner] {
+  display: none !important;
+}
