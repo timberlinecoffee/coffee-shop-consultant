@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import type { ConsentState } from "@/lib/consent/consent";
 import { useConsent } from "@/lib/consent/useConsent";
 
 /**
@@ -11,10 +12,22 @@ import { useConsent } from "@/lib/consent/useConsent";
  * off. Reject is one click and equally prominent (GDPR). The decision gates
  * whether tracking scripts load; see TrackingScripts.
  *
+ * TIM-3284: `initialConsent` comes from a server-side read of the `gw_consent`
+ * cookie in `src/app/layout.tsx`. Passing it lets the SSR HTML render the
+ * correct decided state immediately, so the banner does not appear in the
+ * served markup for returning visitors. Previously the SSR snapshot was always
+ * `null`, the banner was always in the HTML, and we relied on client hydration
+ * reading `document.cookie` to hide it — fragile under any condition that
+ * delays or breaks hydration.
+ *
  * Tokens and components per the Groundwork style guide (Banners, Buttons).
  */
-export function CookieConsentBanner() {
-  const { decided, acceptAll, rejectNonEssential } = useConsent();
+export function CookieConsentBanner({
+  initialConsent = null,
+}: {
+  initialConsent?: ConsentState | null;
+}) {
+  const { decided, acceptAll, rejectNonEssential } = useConsent(initialConsent);
   const pathname = usePathname();
 
   // Never show on print/export views.

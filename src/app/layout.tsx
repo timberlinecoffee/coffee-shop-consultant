@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { cookies } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { TrackingScripts } from "@/components/consent/TrackingScripts";
+import { CONSENT_COOKIE, parseConsentCookie } from "@/lib/consent/consent";
 import { RewardfulScript } from "./_components/RewardfulScript";
 import "./globals.css";
 
@@ -23,11 +25,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // TIM-3284: read the consent cookie server-side so the banner's SSR snapshot
+  // matches the client one. Returning visitors render with no banner in the
+  // served HTML — independent of how fast (or whether) hydration runs.
+  const cookieStore = await cookies();
+  const initialConsent = parseConsentCookie(cookieStore.get(CONSENT_COOKIE)?.value);
+
   return (
     <html lang="en" className="h-full">
       <RewardfulScript />
@@ -36,7 +44,7 @@ export default function RootLayout({
         <div id="main-content" tabIndex={-1} className="flex flex-col flex-1">
           {children}
         </div>
-        <CookieConsentBanner />
+        <CookieConsentBanner initialConsent={initialConsent} />
         <TrackingScripts />
         <Analytics />
       </body>
