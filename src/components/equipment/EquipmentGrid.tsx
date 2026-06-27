@@ -158,7 +158,12 @@ function newBlankItem(planId: string, position: number): EquipmentItem {
     position,
     section_id: null,
     name: "",
-    category: "miscellaneous",
+    // TIM-3329: must NOT default to a FUND category (ceramics/glassware/
+    // to_go_ware/miscellaneous), or isFundRow() will hide vendor/model/
+    // supplier/cost/useful_life cells and Tab from the name cell falls
+    // through to <body> because the next column has no input to focus.
+    // Users can change the category in-place after typing the name.
+    category: "furniture_fixtures",
     vendor: null,
     model: null,
     supplier: null,
