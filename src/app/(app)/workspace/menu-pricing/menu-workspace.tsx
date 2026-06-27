@@ -2756,7 +2756,7 @@ function CogsRangeRow({
   const [saving, setSaving] = useState(false);
   const lowRef = useRef<HTMLInputElement>(null);
 
-  const hasRange = category.target_cogs_low_pct !== null;
+  const hasRange = category.target_cogs_low_pct !== null && category.target_cogs_high_pct !== null;
   if (!hasRange) return null;
 
   const isPreset = category.is_default;
@@ -2794,6 +2794,7 @@ function CogsRangeRow({
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.target instanceof HTMLButtonElement) return;
     if (e.key === "Enter") { e.preventDefault(); save(); }
     if (e.key === "Escape") { e.preventDefault(); cancel(); }
   }
