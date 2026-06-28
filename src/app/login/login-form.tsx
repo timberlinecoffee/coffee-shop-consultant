@@ -293,6 +293,14 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
         cookie_names: cookieNames.slice(0, 80),
         verifier_present: typeof document !== "undefined" && verifierPresentInDocumentCookie(document.cookie),
         stale_verifiers: staleVerifierCount,
+        // TIM-3327: capture the /login origin so we can correlate against the
+        // /auth/callback `host` header. If they don't match (e.g. signInWithOAuth
+        // initiated from www but callback fired on apex because Supabase's Site
+        // URL fallback or a Vercel apex/www redirect kicked in), host-only
+        // verifier + handoff cookies set here are invisible at the callback —
+        // explains verifier_pre_nav=absent with no other failure mode active.
+        login_origin: typeof window !== "undefined" ? window.location.origin : "absent",
+        login_host: typeof window !== "undefined" ? window.location.host : "absent",
         authorize_host: (() => {
           try { return new URL(data.url).host; } catch { return "unparseable"; }
         })(),

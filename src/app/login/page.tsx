@@ -24,6 +24,14 @@ export default async function LoginPage({
   const { mode, next, error, diag, expired, corr } = await searchParams;
   const initialMode = mode === "signup" ? "signup" : "signin";
   const isSignup = initialMode === "signup";
+  // TIM-3327: hide the raw diagnostic panel in production. The board reported
+  // that even gated behind a `<details>` summary, exposing `stage=exchange_failed
+  // err=...` to end users reads as a broken product. Diagnostics still emit to
+  // Vercel runtime logs (callback_exchange_fail) and the `?diag=` query param
+  // is still set on the redirect so the channel is unchanged for engineering.
+  // VERCEL_ENV is `production` only on the prod alias deploy; preview + dev
+  // keep the panel for live debugging.
+  const showDiagPanel = process.env.VERCEL_ENV !== "production";
   // TIM-2732: surface a session-expiry banner when the (app) layout or proxy
   // bounced the visitor here with `?expired=1`. Signed-in users redirect away
   // before reaching the render path so the banner only appears for the actual
@@ -74,7 +82,7 @@ export default async function LoginPage({
         {error === "auth_failed" && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
             <p className="font-medium mb-1">Sign-in didn&apos;t complete. Please try again.</p>
-            {typeof diag === "string" && diag.length > 0 && (
+            {showDiagPanel && typeof diag === "string" && diag.length > 0 && (
               <details className="mt-2">
                 <summary className="cursor-pointer text-red-600 font-medium select-none">Diagnostic detail (TIM-2327)</summary>
                 <code className="block mt-1 text-[10px] break-all text-red-800 font-mono">{diag}</code>
