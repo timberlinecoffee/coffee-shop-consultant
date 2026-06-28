@@ -11,6 +11,10 @@ import {
   TABLE_CELL_TEXT,
   TABLE_HEADER_TEXT,
   TABLE_ACTION_ICON_SIZE,
+  TABLE_ROW_PADDING,
+  TABLE_PRICE_CLS,
+  TABLE_QUICK_ADD_ROW_CLS,
+  TABLE_QUICK_ADD_INPUT_CLS,
 } from "@/lib/workspace-table";
 import { formatMinor } from "@/lib/formatters";
 
@@ -56,6 +60,16 @@ export function SuppliesDesktopTable({
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const pendingPatches = useRef<Map<string, Partial<SuppliesItem>>>(new Map());
   const creatingRows = useRef<Set<string>>(new Set());
+  // TIM-3251: inline quick-add row state.
+  const [qaName, setQaName] = useState("");
+  const [qaVendor, setQaVendor] = useState("");
+  const [qaUnit, setQaUnit] = useState("unit");
+  const [qaQty, setQaQty] = useState("1");
+  const [qaCost, setQaCost] = useState("");
+  const qaNameRef = useRef<HTMLInputElement>(null);
+  // Always reflects the latest items so rapid Enter-Enter doesn't read a stale closure.
+  const latestItemsRef = useRef(items);
+  latestItemsRef.current = items;
 
   const sectionsById = new Map(sections.map((s) => [s.id, s]));
 
@@ -151,14 +165,6 @@ export function SuppliesDesktopTable({
     scheduleAutosave(id, patch, next);
   }
 
-  function addRow() {
-    if (!canEdit) return;
-    const blank = newBlankItem(planId, active.length);
-    const next = [...items, blank];
-    onItemsChange(next);
-    setTimeout(() => setEditingCell({ rowId: blank.id, key: "name" }), 30);
-  }
-
   function deleteSingleRow(id: string) {
     const next = items.filter((i) => i.id !== id);
     onItemsChange(next);
@@ -171,8 +177,38 @@ export function SuppliesDesktopTable({
     return () => { timers.forEach((t) => clearTimeout(t)); };
   }, []);
 
-  const cellCls = `px-2.5 py-2 ${TABLE_CELL_TEXT} border-r border-[var(--neutral-cool-150)] last:border-r-0 align-top`;
-  const headerCellCls = `px-2.5 py-2 text-left ${TABLE_HEADER_TEXT} text-[var(--muted-foreground)] border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none`;
+  // TIM-3251: inline quick-add commit.
+  function commitQuickAdd() {
+    if (!canEdit || !qaName.trim()) return;
+    const current = latestItemsRef.current;
+    const blank = newBlankItem(planId, current.filter((i) => !i.archived).length);
+    const qty = Math.max(1, parseInt(qaQty, 10) || 1);
+    const costCents = Math.round((parseFloat(qaCost) || 0) * 100);
+    const patched: SuppliesItem = {
+      ...blank,
+      name: qaName.trim(),
+      vendor: qaVendor.trim() || null,
+      unit_type: qaUnit.trim() || "unit",
+      quantity: qty,
+      unit_cost_cents: costCents,
+    };
+    const next = [...current, patched];
+    latestItemsRef.current = next;
+    onItemsChange(next);
+    scheduleAutosave(patched.id, {
+      name: patched.name,
+      vendor: patched.vendor,
+      unit_type: patched.unit_type,
+      quantity: patched.quantity,
+      unit_cost_cents: patched.unit_cost_cents,
+    }, next);
+    setQaName(""); setQaVendor(""); setQaUnit("unit"); setQaQty("1"); setQaCost("");
+    qaNameRef.current?.focus();
+  }
+
+  // TIM-3251: row padding from TABLE_ROW_PADDING (Menu ingredients-tab canon).
+  const cellCls = `px-2.5 ${TABLE_ROW_PADDING} ${TABLE_CELL_TEXT} border-r border-[var(--neutral-cool-150)] last:border-r-0 align-middle`;
+  const headerCellCls = `px-2.5 py-2.5 text-left ${TABLE_HEADER_TEXT} text-[var(--muted-foreground)] border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none`;
 
   return (
     <div className="space-y-3">
@@ -221,18 +257,21 @@ export function SuppliesDesktopTable({
                   </td>
                 </tr>
               )}
-              {active.map((it) => {
+              {/* TIM-3251: alternating row stripe (even=background, odd=white). */}
+              {active.map((it, rowIdx) => {
                 const rowTotal = it.unit_cost_cents * it.quantity;
+                const stripeBg = rowIdx % 2 === 0 ? "bg-white" : "bg-[var(--background)]";
                 return (
                   <tr
                     key={it.id}
-                    className="border-b border-[var(--neutral-cool-100)] last:border-b-0 bg-white hover:bg-[var(--background)] transition-colors"
+                    className={`border-b border-[var(--neutral-cool-100)] last:border-b-0 transition-colors hover:brightness-[0.97] ${stripeBg}`}
                   >
-                    {/* Name */}
+                    {/* Name — font-medium per Menu ingredients-tab canon. */}
                     <td className={cellCls}>
                       <EditableCell
                         value={it.name}
                         placeholder="Item name"
+                        nameBold
                         active={editingCell?.rowId === it.id && editingCell.key === "name"}
                         canEdit={canEdit}
                         onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "name" })}
@@ -250,11 +289,12 @@ export function SuppliesDesktopTable({
                         onCommit={(v) => { handleCommit(it.id, "vendor", v, items); setEditingCell(null); }}
                       />
                     </td>
-                    {/* Unit type */}
+                    {/* Unit type — muted grey per Menu unit-label treatment. */}
                     <td className={cellCls}>
                       <EditableCell
                         value={it.unit_type}
                         placeholder="unit"
+                        muted
                         active={editingCell?.rowId === it.id && editingCell.key === "unit_type"}
                         canEdit={canEdit}
                         onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "unit_type" })}
@@ -286,9 +326,9 @@ export function SuppliesDesktopTable({
                         displayValue={formatMinor(it.unit_cost_cents, currencyCode)}
                       />
                     </td>
-                    {/* Total (read-only) */}
+                    {/* Total (read-only) — teal semibold per Menu price treatment. */}
                     <td className={cellCls}>
-                      <span className="text-xs font-medium text-[var(--foreground)]">
+                      <span className={TABLE_PRICE_CLS}>
                         {formatMinor(rowTotal, currencyCode)}
                       </span>
                     </td>
@@ -321,19 +361,80 @@ export function SuppliesDesktopTable({
               })}
             </tbody>
           </table>
+          {/* TIM-3251: inline quick-add row — inside overflow-x-auto so it scrolls with columns. */}
+          {canEdit && (
+            <div
+              className={`min-w-[700px] grid grid-cols-[220px_140px_100px_80px_110px_110px_minmax(0,1fr)_36px] gap-1.5 px-2.5 py-2 ${TABLE_QUICK_ADD_ROW_CLS}`}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitQuickAdd(); } }}
+            >
+            <input
+              ref={qaNameRef}
+              type="text"
+              className={TABLE_QUICK_ADD_INPUT_CLS}
+              value={qaName}
+              placeholder="Add a Supply…"
+              autoComplete="off"
+              aria-label="New supply name"
+              onChange={(e) => setQaName(e.target.value)}
+            />
+            <input
+              type="text"
+              className={TABLE_QUICK_ADD_INPUT_CLS}
+              value={qaVendor}
+              placeholder="Vendor"
+              autoComplete="off"
+              aria-label="Vendor"
+              onChange={(e) => setQaVendor(e.target.value)}
+            />
+            <input
+              type="text"
+              className={TABLE_QUICK_ADD_INPUT_CLS}
+              value={qaUnit}
+              placeholder="unit"
+              aria-label="Unit"
+              onChange={(e) => setQaUnit(e.target.value)}
+            />
+            <input
+              type="number"
+              className={TABLE_QUICK_ADD_INPUT_CLS + " tabular-nums"}
+              value={qaQty}
+              placeholder="1"
+              min={1}
+              aria-label="Quantity"
+              onChange={(e) => setQaQty(e.target.value)}
+            />
+            <input
+              type="number"
+              className={TABLE_QUICK_ADD_INPUT_CLS + " tabular-nums"}
+              value={qaCost}
+              placeholder="0.00"
+              min={0}
+              step="0.01"
+              aria-label="Unit cost"
+              onChange={(e) => setQaCost(e.target.value)}
+            />
+            <span className="px-2 text-xs text-[var(--muted-foreground)] flex items-center tabular-nums">
+              {qaCost && qaQty
+                ? formatMinor(Math.round((parseFloat(qaCost) || 0) * 100) * (parseInt(qaQty, 10) || 1), currencyCode)
+                : "—"}
+            </span>
+            <span /> {/* notes — empty */}
+            <div className="flex items-center justify-center">
+              <button
+                type="button"
+                onClick={commitQuickAdd}
+                disabled={!qaName.trim()}
+                title="Add supply (Enter)"
+                aria-label="Add supply"
+                className="flex items-center justify-center w-7 h-7 rounded-md bg-[var(--teal)] text-white hover:bg-[var(--teal-dark)] disabled:bg-[var(--teal-bg-soft)] disabled:cursor-not-allowed transition-colors"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+          </div>
+          )}
         </div>
       </div>
-
-      {canEdit && (
-        <button
-          type="button"
-          onClick={addRow}
-          className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors w-full justify-center"
-        >
-          <Plus size={14} aria-hidden="true" />
-          Add item
-        </button>
-      )}
     </div>
   );
 }
@@ -347,6 +448,8 @@ function EditableCell({
   onActivate,
   onCommit,
   displayValue,
+  nameBold,
+  muted,
 }: {
   value: string;
   placeholder: string;
@@ -356,6 +459,10 @@ function EditableCell({
   onActivate: () => void;
   onCommit: (v: string) => void;
   displayValue?: string;
+  /** TIM-3251: apply font-medium (name column canon from Menu ingredients tab). */
+  nameBold?: boolean;
+  /** TIM-3251: apply muted-foreground (unit column canon from Menu ingredients tab). */
+  muted?: boolean;
 }) {
   const [draft, setDraft] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -384,12 +491,18 @@ function EditableCell({
     );
   }
 
+  const textCls = muted
+    ? "text-xs text-[var(--muted-foreground)]"
+    : nameBold
+    ? "text-xs font-medium text-[var(--foreground)]"
+    : "text-xs text-[var(--foreground)]";
+
   return (
     <span
-      className="block truncate text-xs text-[var(--foreground)] cursor-text"
+      className={`block truncate ${textCls} cursor-text`}
       onClick={canEdit ? onActivate : undefined}
     >
-      {displayValue ?? (value || <span className="text-[var(--neutral-cool-400)]">{placeholder}</span>)}
+      {displayValue ?? (value || <span className="text-[var(--neutral-cool-400)] font-normal">{placeholder}</span>)}
     </span>
   );
 }

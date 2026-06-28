@@ -36,6 +36,10 @@ import {
   TABLE_CELL_TEXT,
   TABLE_HEADER_TEXT,
   TABLE_ACTION_ICON_SIZE,
+  TABLE_ROW_PADDING,
+  TABLE_PRICE_CLS,
+  TABLE_QUICK_ADD_ROW_CLS,
+  TABLE_QUICK_ADD_INPUT_CLS,
 } from "@/lib/workspace-table";
 
 const COL_VISIBILITY_KEY = "tcs-equipment-col-visibility";
@@ -570,6 +574,9 @@ export function EquipmentGrid({
   const [colPickerOpen, setColPickerOpen] = useState(false);
   const colPickerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  // TIM-3251: inline quick-add row state (name field pre-fills the new row).
+  const [quickAddName, setQuickAddName] = useState("");
+  const quickAddRef = useRef<HTMLInputElement>(null);
 
   // Load saved column visibility on mount
   useEffect(() => {
@@ -797,6 +804,18 @@ export function EquipmentGrid({
     [canEdit, updateItemLocal, scheduleAutosave]
   );
 
+  // TIM-3251: inline quick-add — commits name then opens the row for further edits.
+  const addRowWithName = useCallback((name: string) => {
+    if (!canEdit) return;
+    const blank = { ...newBlankItem(planId, items.length), name: name.trim() || "New Item" };
+    onItemsChange([...items, blank]);
+    setQuickAddName("");
+    setTimeout(() => {
+      setEditingCell({ rowId: blank.id, colKey: "vendor" });
+    }, 30);
+  }, [canEdit, planId, items, onItemsChange]);
+
+
   // ── Keyboard navigation ──────────────────────────────────────────────────────
 
   const focusCell = useCallback(
@@ -962,10 +981,10 @@ export function EquipmentGrid({
                   />
                 ) : (
                   <span
-                    className="block truncate text-xs text-[var(--foreground)] cursor-text"
+                    className="block truncate text-xs font-medium text-[var(--foreground)] cursor-text"
                     onClick={() => canEdit && focusCell(item.id, "name")}
                   >
-                    {item.name || <span className="text-[var(--neutral-cool-400)]">Name</span>}
+                    {item.name || <span className="font-normal text-[var(--neutral-cool-400)]">Name</span>}
                   </span>
                 )}
               </div>
@@ -1078,7 +1097,7 @@ export function EquipmentGrid({
             />
           ) : (
             <span
-              className="block truncate text-xs text-[var(--foreground)] cursor-text font-medium"
+              className={`block truncate ${TABLE_PRICE_CLS} cursor-text`}
               onClick={() => canEdit && focusCell(item.id, "unit_cost_cents")}
             >
               {item.unit_cost_cents > 0
@@ -1277,10 +1296,11 @@ export function EquipmentGrid({
 
   // ── Spreadsheet ───────────────────────────────────────────────────────────────
 
+  // TIM-3251: row padding from TABLE_ROW_PADDING (Menu ingredients-tab canon).
   const cellCls =
-    `px-2.5 py-2 ${TABLE_CELL_TEXT} border-r border-[var(--neutral-cool-150)] last:border-r-0 align-top`;
+    `px-2.5 ${TABLE_ROW_PADDING} ${TABLE_CELL_TEXT} border-r border-[var(--neutral-cool-150)] last:border-r-0 align-middle`;
   const headerCellCls =
-    `px-2.5 py-2 text-left ${TABLE_HEADER_TEXT} text-[var(--muted-foreground)] border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none`;
+    `px-2.5 py-2.5 text-left ${TABLE_HEADER_TEXT} text-[var(--muted-foreground)] border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none`;
 
   return (
     <div className="space-y-3">
@@ -1425,51 +1445,72 @@ export function EquipmentGrid({
                   </td>
                 </tr>
               )}
-              {table.getRowModel().rows.map((row) => {
+              {/* TIM-3251: alternating row stripe (even=background, odd=white). */}
+              {table.getRowModel().rows.map((row, rowIdx) => {
                 const item = row.original;
                 const fund = isFundRow(item);
                 const selected = row.getIsSelected();
+                const stripeBg = rowIdx % 2 === 0 ? "bg-white" : "bg-[var(--background)]";
+                const rowBg = selected
+                  ? "bg-[var(--teal-bg-pale)]"
+                  : fund
+                  ? "bg-[var(--teal-tint-500)]/60"
+                  : stripeBg;
                 return (
                   <tr
                     key={row.id}
-                    className={`border-b border-[var(--neutral-cool-100)] last:border-b-0 transition-colors ${
-                      selected
+                    className={`border-b border-[var(--neutral-cool-100)] last:border-b-0 transition-colors ${!selected && !fund ? "hover:brightness-[0.97]" : ""} ${rowBg}`}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const stickyBg = selected
                         ? "bg-[var(--teal-bg-pale)]"
                         : fund
-                        ? "bg-[var(--teal-tint-500)]/60"
-                        : "bg-white hover:bg-[var(--background)]"
-                    }`}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className={`${cellCls} ${getStickyColCls(
-                          cell.column.id,
-                          selected ? "bg-[var(--teal-bg-pale)]" : fund ? "bg-[var(--teal-tint-500)]" : "bg-white"
-                        )}`}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
+                        ? "bg-[var(--teal-tint-500)]"
+                        : stripeBg;
+                      return (
+                        <td
+                          key={cell.id}
+                          className={`${cellCls} ${getStickyColCls(cell.column.id, stickyBg)}`}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      );
+                    })}
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+        {/* TIM-3251: inline quick-add row — teal-tinted, matches Menu ingredients QuickAddRow. */}
+        {canEdit && (
+          <div className={`flex items-center gap-2 px-3 py-2 ${TABLE_QUICK_ADD_ROW_CLS}`}>
+            <input
+              ref={quickAddRef}
+              type="text"
+              className={TABLE_QUICK_ADD_INPUT_CLS + " flex-1"}
+              value={quickAddName}
+              placeholder="Add an Item…"
+              autoComplete="off"
+              aria-label="New item name"
+              onChange={(e) => setQuickAddName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && quickAddName.trim()) { e.preventDefault(); addRowWithName(quickAddName); }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => addRowWithName(quickAddName)}
+              disabled={!quickAddName.trim()}
+              title="Add item (Enter)"
+              aria-label="Add item"
+              className="flex items-center justify-center w-8 h-8 rounded-md bg-[var(--teal)] text-white hover:bg-[var(--teal-dark)] disabled:bg-[var(--teal-bg-soft)] disabled:cursor-not-allowed transition-colors shrink-0"
+            >
+              <Plus size={15} />
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* Add row button */}
-      {canEdit && (
-        <button
-          type="button"
-          onClick={addRow}
-          className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors w-full justify-center"
-        >
-          <Plus size={14} aria-hidden="true" />
-          Add row
-        </button>
-      )}
     </div>
   );
 }
