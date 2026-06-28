@@ -6,6 +6,7 @@
 
 import { useState, useCallback } from "react";
 import { BarChart2, ChevronDown, CheckCircle, Circle, Minus } from "lucide-react";
+import { SectionHeader } from "@/components/section-header";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
@@ -121,13 +122,13 @@ function AccordionSection({
         aria-expanded={open}
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--background)] transition-colors"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           <ChevronDown
             size={16}
             className={`text-[var(--muted-foreground)] transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
-          <span className="text-sm font-semibold text-[var(--foreground)]">{title}</span>
+          <SectionHeader title={title} className="mb-0 flex-1" />
         </div>
         <StatusBadge status={status} />
       </button>
