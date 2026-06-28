@@ -27,6 +27,7 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { SectionHeader } from "@/components/section-header";
 import { useMutationStatus } from "@/hooks/use-mutation-status";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { useCurrency } from "@/components/CurrencyProvider";
@@ -748,14 +749,11 @@ export function SuppliersWorkspace({
             <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
               <div className="px-5 pt-5 pb-4 border-b border-[var(--border)]">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <h2 className="text-lg font-bold text-[var(--foreground)] leading-tight">
-                      <TruncatedText text={labelFor(activeCategory)} />
-                    </h2>
-                    <p className="text-xs text-[var(--dark-grey)] mt-0.5">
-                      {subtitleFor(activeCategory)}
-                    </p>
-                  </div>
+                  <SectionHeader
+                    title={labelFor(activeCategory)}
+                    helpContent={subtitleFor(activeCategory)}
+                    className="mb-0 flex-1"
+                  />
                   <div className="flex items-center gap-2 shrink-0">
                     {/* TIM-1846: canonical WorkspaceActionButton chrome (were hand-rolled). */}
                     <WorkspaceActionButton

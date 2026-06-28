@@ -26,7 +26,6 @@ import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
-import { SectionHelp } from "@/components/ui/section-help";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
@@ -34,6 +33,7 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { SectionHeader } from "@/components/section-header";
 import {
   type OperationsPlaybookDocument,
   type SopCategoryKey,
@@ -529,11 +529,7 @@ function CategoryEditor({
 
   return (
     <div>
-      <SectionHeader
-        label={label}
-        tagline={tagline}
-        printDocKey={categoryKey}
-      />
+      <SectionHeader title={label} helpContent={tagline} />
 
       <div className="mb-5">
         {/* TIM-1477: helper one-liner moved into a "?" popup beside the
@@ -649,36 +645,6 @@ function CategoryEditor({
   );
 }
 
-function SectionHeader({
-  label,
-  tagline,
-  printDocKey,
-}: {
-  label: string;
-  tagline: string;
-  canEdit?: boolean;
-  printDocKey?: string;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4 mb-4">
-      <div className="flex-1 min-w-0 flex items-center gap-1">
-        <SectionHelp title={label}>{tagline}</SectionHelp>
-      </div>
-      {printDocKey && (
-        <Link
-          href={`/workspace/operations-playbook/print?doc=${printDocKey}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
-          aria-label={`Print ${label}`}
-        >
-          <Printer className="w-3.5 h-3.5" />
-          Print
-        </Link>
-      )}
-    </div>
-  );
-}
 
 function LastGeneratedAt({ at }: { at: string }) {
   return (
@@ -931,33 +897,28 @@ function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex-1 min-w-0 flex items-center gap-1">
-          <SectionHelp title="Drink Recipes">
-            Read-only view of the recipes you build in the Menu workspace. Edit
-            a recipe by opening the menu item. Tip: add the prep notes and
-            ingredients on each menu item. They print here for the bar.
-          </SectionHelp>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-          <Link
-            href="/workspace/operations-playbook/print?doc=recipes"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
-            aria-label="Print drink recipes"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            Print
-          </Link>
-          <Link
-            href="/workspace/menu-pricing"
-            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Open Menu workspace
-          </Link>
-        </div>
+      <SectionHeader
+        title="Drink Recipes"
+        helpContent="Read-only view of the recipes you build in the Menu workspace. Edit a recipe by opening the menu item. Tip: add the prep notes and ingredients on each menu item. They print here for the bar."
+      />
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <Link
+          href="/workspace/operations-playbook/print?doc=recipes"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+          aria-label="Print drink recipes"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          Print
+        </Link>
+        <Link
+          href="/workspace/menu-pricing"
+          className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          Open Menu workspace
+        </Link>
       </div>
 
       {cards.length === 0 ? (
@@ -1103,11 +1064,7 @@ function RolesEditor({
 
   return (
     <div>
-      <SectionHeader
-        label={label}
-        tagline={tagline}
-        printDocKey="roles"
-      />
+      <SectionHeader title={label} helpContent={tagline} />
 
       <div className="mb-5">
         <label className={labelCls}>How roles work in your shop</label>
@@ -1273,11 +1230,7 @@ function VendorContactsEditor({
 
   return (
     <div>
-      <SectionHeader
-        label={label}
-        tagline={tagline}
-        printDocKey="vendor_contacts"
-      />
+      <SectionHeader title={label} helpContent={tagline} />
 
       <div className="mb-5">
         <label className={labelCls}>How to use this card</label>
@@ -1480,11 +1433,7 @@ function TrainingEditor({
 
   return (
     <div>
-      <SectionHeader
-        label={label}
-        tagline={tagline}
-        printDocKey="training"
-      />
+      <SectionHeader title={label} helpContent={tagline} />
 
       <div className="mb-5">
         <label className={labelCls}>How training works in your shop</label>

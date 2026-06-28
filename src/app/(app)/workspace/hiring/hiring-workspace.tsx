@@ -40,7 +40,7 @@ import { useMutationStatus } from "@/hooks/use-mutation-status";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
-import { SectionHelp } from "@/components/ui/section-help";
+import { SectionHeader } from "@/components/section-header";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents } from "@/lib/financial-projection";
 import { formatHourlyWage, isBelowMinimumWage, type MinWageInfo } from "@/lib/wages/minimum-wage";
@@ -586,10 +586,7 @@ function OrgTab({
       {/* Org chart — read-only visual preview (TIM-1900 fit-to-width preserved) */}
       <div className="hidden sm:block rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)]">
-          <div className="flex items-center gap-1">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Org Chart</p>
-            <SectionHelp title="Org Chart">Visual preview. Use the hierarchy list below to drag and reorder roles.</SectionHelp>
-          </div>
+          <SectionHeader title="Org Chart" helpContent="Visual preview. Use the hierarchy list below to drag and reorder roles." className="mb-0" />
         </div>
         <div className="px-5 py-6">
           {roles.length === 0 ? (
@@ -613,12 +610,7 @@ function OrgTab({
       {/* Role Hierarchy — drag-and-drop edit surface (TIM-2968) */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Role Hierarchy</p>
-            <SectionHelp title="Role Hierarchy">
-              Drag rows to reorder. Drag right to nest under a parent. Use the Edit button to fill in role details below.
-            </SectionHelp>
-          </div>
+          <SectionHeader title="Role Hierarchy" helpContent="Drag rows to reorder. Drag right to nest under a parent. Use the Edit button to fill in role details below." className="mb-0 flex-1" />
           {canEdit && (
             <WorkspaceActionButton
               variant="primary"
@@ -667,7 +659,7 @@ function OrgTab({
       {orderedRoles.length > 0 && (
         <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
           <div className="px-5 py-4 border-b border-[var(--border)]">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Role Details</p>
+            <SectionHeader title="Role Details" className="mb-0" />
           </div>
           <div className="divide-y divide-[var(--neutral-cool-100)]">
             {orderedRoles.map((role) => (
@@ -1589,13 +1581,8 @@ function InterviewTab({
       {/* Question template */}
       {selectedRoleId && (
         <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-          <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-1">
-                <p className="text-sm font-semibold text-[var(--foreground)]">Interview Questions</p>
-                <SectionHelp title="Interview Questions">Template questions and weights for this scorecard.</SectionHelp>
-              </div>
-            </div>
+          <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
+            <SectionHeader title="Interview Questions" helpContent="Template questions and weights for this scorecard." className="mb-0 flex-1" />
             {canEdit && (
               <button
                 type="button"
@@ -1876,8 +1863,8 @@ function OnboardingTab({
     <div className="space-y-5">
       {/* Instance list */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
-          <p className="text-sm font-semibold text-[var(--foreground)]">Onboarding Plans</p>
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
+          <SectionHeader title="Onboarding Plans" className="mb-0 flex-1" />
           {canEdit && (
             <button
               type="button"
@@ -2397,13 +2384,8 @@ function CompetencyTab({
     <div className="space-y-5">
       {/* Competency template */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-1">
-              <p className="text-sm font-semibold text-[var(--foreground)]">Competency Framework</p>
-              <SectionHelp title="Competency Framework">Shared skills and rubric for all staff evaluations.</SectionHelp>
-            </div>
-          </div>
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
+          <SectionHeader title="Competency Framework" helpContent="Shared skills and rubric for all staff evaluations." className="mb-0 flex-1" />
           {canEdit && (
             <button
               type="button"
@@ -2567,16 +2549,13 @@ function RequirementsTab({
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <div className="flex items-center gap-1">
-                <p className="text-sm font-semibold text-[var(--foreground)]">Hiring Jurisdiction</p>
-                <SectionHelp title="Hiring Jurisdiction">
-                  {settings.hiring_country
-                    ? "Override set. Requirement set sourced from your selection."
-                    : "Auto-detected from your signed or primary location candidate."}
-                </SectionHelp>
-              </div>
-            </div>
+            <SectionHeader
+              title="Hiring Jurisdiction"
+              helpContent={settings.hiring_country
+                ? "Override set. Requirement set sourced from your selection."
+                : "Auto-detected from your signed or primary location candidate."}
+              className="mb-0"
+            />
             <div className="flex items-center gap-2">
               <Globe size={14} className="text-[var(--muted-foreground)]" />
               <select
