@@ -5,6 +5,7 @@ import {
   adjustOptionsForRemember,
   parseRememberPreference,
 } from '@/lib/auth/remember-me'
+import { shouldSuppressSetAll } from '@/lib/auth/cookie-deletion-guard'
 
 export async function createClient() {
   const cookieStore = await cookies()
@@ -21,6 +22,13 @@ export async function createClient() {
           return cookieStore.getAll()
         },
         setAll(cookiesToSet) {
+          // TIM-3330: same race guard as proxy.ts — refresh-token-already-used
+          // can fire `_removeSession` on a route-handler request whose cookie
+          // jar still carries valid auth tokens (winning concurrent request
+          // already minted replacements). Suppress the wipe in that case.
+          if (shouldSuppressSetAll(cookiesToSet, cookieStore, { reason: 'route-handler' })) {
+            return
+          }
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, adjustOptionsForRemember(name, options, remember))

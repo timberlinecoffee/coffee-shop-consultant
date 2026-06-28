@@ -6,6 +6,7 @@ import {
   adjustOptionsForRemember,
   parseRememberPreference,
 } from './lib/auth/remember-me'
+import { shouldSuppressSetAll } from './lib/auth/cookie-deletion-guard'
 import { UI_REVAMP_OVERRIDE_COOKIE } from './lib/ui-revamp'
 import { resolveNext } from './lib/safe-next'
 import { buildSessionExpiredLoginUrl } from './lib/session-expired'
@@ -65,6 +66,11 @@ export async function proxy(request: NextRequest) {
             return request.cookies.getAll()
           },
           setAll(cookiesToSet) {
+            // TIM-3330: drop refresh-token-race wipes when the inbound request
+            // still carries a valid Supabase auth-token. See cookie-deletion-guard.
+            if (shouldSuppressSetAll(cookiesToSet, request.cookies, { path: pathname })) {
+              return
+            }
             cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
             supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
             cookiesToSet.forEach(({ name, value, options }) =>
