@@ -1,0 +1,71 @@
+{
+  "issue": "TIM-2993",
+  "timestamp": "2026-06-24T12:36:03.639Z",
+  "base": "https://groundwork.cafe",
+  "fixtureEmail": "trent@simpler.coffee",
+  "fixtureUserId": "a9d38122-7402-4490-b662-f05464134db8",
+  "fixtureDbValue": true,
+  "results": [
+    {
+      "surface": "home",
+      "viewport": "desktop",
+      "status": 200,
+      "v2Marker": 2,
+      "override": null,
+      "mirror": null,
+      "vercel": "arn1::iad1::bhvh8-1782304527822-e2c34df314a8",
+      "filename": "home-desktop.png"
+    },
+    {
+      "surface": "financials",
+      "viewport": "desktop",
+      "status": 200,
+      "v2Marker": 2,
+      "override": null,
+      "mirror": null,
+      "vercel": "arn1::iad1::9gmb2-1782304534840-14402d2f66a6",
+      "filename": "financials-desktop.png"
+    },
+    {
+      "surface": "concept",
+      "viewport": "desktop",
+      "status": 200,
+      "v2Marker": 2,
+      "override": null,
+      "mirror": null,
+      "vercel": "arn1::iad1::gqdx6-1782304540897-347bc2ff7b98",
+      "filename": "concept-desktop.png"
+    },
+    {
+      "surface": "home",
+      "viewport": "mobile",
+      "status": 200,
+      "v2Marker": 3,
+      "override": null,
+      "mirror": null,
+      "vercel": "arn1::iad1::6lwd4-1782304546752-bfbddc1cb6cb",
+      "filename": "home-mobile.png"
+    },
+    {
+      "surface": "financials",
+      "viewport": "mobile",
+      "status": 200,
+      "v2Marker": 3,
+      "override": null,
+      "mirror": null,
+      "vercel": "arn1::iad1::x6mbh-1782304552423-ed9d7adfc21e",
+      "filename": "financials-mobile.png"
+    },
+    {
+      "surface": "concept",
+      "viewport": "mobile",
+      "status": 200,
+      "v2Marker": 3,
+      "override": null,
+      "mirror": null,
+      "vercel": "arn1::iad1::kbm6q-1782304558136-f0fe14714e3c",
+      "filename": "concept-mobile.png"
+    }
+  ],
+  "pass": true
+}
