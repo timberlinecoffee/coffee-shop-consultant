@@ -72,6 +72,7 @@ import {
   HIRING_COUNTRY_OPTIONS,
 } from "@/lib/hiring";
 import dynamic from "next/dynamic";
+import { ScorecardGridPanel } from "@/components/hiring/ScorecardGridPanel";
 
 // TIM-3048: load OrgHierarchyList client-only — @dnd-kit relies on DOM APIs
 // that can fault during SSR under Next.js 16 / React 19 streaming.
@@ -1344,6 +1345,29 @@ function InterviewTab({
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Scorecard grid — candidates × competencies */}
+      {selectedScorecardId && (
+        <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--border)]">
+            <div className="flex items-center gap-1">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Scorecard Grid</p>
+              <SectionHelp title="Scorecard Grid">
+                Rate each candidate (rows) on each competency (columns) on a 1–5 scale.
+                Weighted totals appear automatically. Use multipliers to weight competencies differently.
+              </SectionHelp>
+            </div>
+          </div>
+          <div className="px-5 py-4">
+            <ScorecardGridPanel
+              scorecardId={selectedScorecardId}
+              planId={planId}
+              questions={roleQuestions}
+              canEdit={canEdit}
+            />
+          </div>
         </div>
       )}
 
