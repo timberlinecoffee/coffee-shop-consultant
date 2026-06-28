@@ -2554,7 +2554,7 @@ function RequirementsTab({
               helpContent={settings.hiring_country
                 ? "Override set. Requirement set sourced from your selection."
                 : "Auto-detected from your signed or primary location candidate."}
-              className="mb-0"
+              className="mb-0 flex-1"
             />
             <div className="flex items-center gap-2">
               <Globe size={14} className="text-[var(--muted-foreground)]" />

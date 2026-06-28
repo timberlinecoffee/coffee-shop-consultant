@@ -900,6 +900,7 @@ function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
       <SectionHeader
         title="Drink Recipes"
         helpContent="Read-only view of the recipes you build in the Menu workspace. Edit a recipe by opening the menu item. Tip: add the prep notes and ingredients on each menu item. They print here for the bar."
+        className="mb-2"
       />
       <div className="flex items-center gap-2 flex-wrap mb-4">
         <Link
@@ -1064,7 +1065,19 @@ function RolesEditor({
 
   return (
     <div>
-      <SectionHeader title={label} helpContent={tagline} />
+      <SectionHeader title={label} helpContent={tagline} className="mb-2" />
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <Link
+          href="/workspace/operations-playbook/print?doc=roles"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+          aria-label="Print roles"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          Print
+        </Link>
+      </div>
 
       <div className="mb-5">
         <label className={labelCls}>How roles work in your shop</label>
@@ -1230,7 +1243,19 @@ function VendorContactsEditor({
 
   return (
     <div>
-      <SectionHeader title={label} helpContent={tagline} />
+      <SectionHeader title={label} helpContent={tagline} className="mb-2" />
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <Link
+          href="/workspace/operations-playbook/print?doc=vendor_contacts"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+          aria-label="Print vendor contacts"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          Print
+        </Link>
+      </div>
 
       <div className="mb-5">
         <label className={labelCls}>How to use this card</label>
@@ -1433,7 +1458,19 @@ function TrainingEditor({
 
   return (
     <div>
-      <SectionHeader title={label} helpContent={tagline} />
+      <SectionHeader title={label} helpContent={tagline} className="mb-2" />
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <Link
+          href="/workspace/operations-playbook/print?doc=training"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+          aria-label="Print training"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          Print
+        </Link>
+      </div>
 
       <div className="mb-5">
         <label className={labelCls}>How training works in your shop</label>

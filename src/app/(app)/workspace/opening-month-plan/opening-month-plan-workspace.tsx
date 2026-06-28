@@ -1400,6 +1400,7 @@ export function OpeningMonthPlanWorkspace({
               title="Milestones"
               helpContent="The dated, gating steps that get you to opening day. Lease, permits, build-out, equipment, hiring, training, soft-open dates."
               className="mb-3"
+              headingLevel={2}
             />
 
             {/* View toggle — canonical pill nav (TIM-1888 H-8) */}
@@ -1450,6 +1451,7 @@ export function OpeningMonthPlanWorkspace({
               title="Playbook"
               helpContent="Week-by-week and day-by-day tasks for the weeks before opening, opening week, and the first 30 days."
               className="mb-3"
+              headingLevel={2}
             />
 
             <div className="space-y-4">

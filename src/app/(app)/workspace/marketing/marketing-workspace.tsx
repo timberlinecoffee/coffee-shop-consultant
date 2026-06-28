@@ -427,7 +427,7 @@ function SectionBody(props: SectionBodyProps) {
       <SectionHeader
         title={label}
         helpContent={tagline}
-        onWriteWithAi={canEdit && !generating ? onGenerate : undefined}
+        onWriteWithAi={canEdit ? onGenerate : undefined}
       />
 
       {sectionKey === "overview" && <OverviewEditor {...props} />}

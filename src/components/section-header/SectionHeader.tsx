@@ -21,19 +21,26 @@ export interface SectionHeaderProps {
   /** When provided, renders the "Write with AI" button on the right. */
   onWriteWithAi?: () => void
   /**
-   * Extra classes applied to the root element — use to override the default
-   * `mb-4` bottom margin when the surrounding card already provides spacing.
+   * Extra classes applied to the root element. When provided, the default
+   * `mb-4` is suppressed entirely — pass `mb-4` explicitly if you need it.
    */
   className?: string
+  /**
+   * Renders the title as an aria heading at the given level (2 or 3).
+   * Omit for the default <span> (non-heading) rendering.
+   */
+  headingLevel?: 2 | 3
 }
 
-export function SectionHeader({ title, helpContent, onWriteWithAi, className }: SectionHeaderProps) {
+export function SectionHeader({ title, helpContent, onWriteWithAi, className, headingLevel }: SectionHeaderProps) {
+  const TitleEl = headingLevel != null ? (`h${headingLevel}` as 'h2' | 'h3') : 'span'
   return (
-    <div className={`flex items-center justify-between gap-4 mb-4${className ? ` ${className}` : ''}`}>
+    <div className={`flex items-center justify-between gap-4${className != null ? ` ${className}` : ' mb-4'}`}>
       <div className="flex items-center gap-2 min-w-0">
-        <span className="text-sm font-semibold text-[var(--foreground)] truncate">
+        <TitleEl className="text-sm font-semibold text-[var(--foreground)] truncate" title={title}>
           {title}
-        </span>
+        </TitleEl>
+
         {helpContent != null && (
           <SectionHelp title={title}>{helpContent}</SectionHelp>
         )}
