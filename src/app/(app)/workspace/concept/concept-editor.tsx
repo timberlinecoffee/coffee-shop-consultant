@@ -456,21 +456,23 @@ export function ConceptWorkspace({
                     }
                     className="mb-1"
                   />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (openExampleId === meta.id) {
-                        setOpenExampleId(null);
-                      } else {
-                        setOpenExampleId(meta.id);
-                        setExampleIdx(0);
-                      }
-                    }}
-                    aria-expanded={openExampleId === meta.id}
-                    className="mb-2 text-xs text-[var(--teal)] font-medium hover:underline focus-visible:outline-none focus:underline"
-                  >
-                    {openExampleId === meta.id ? "Hide example" : "See an example"}
-                  </button>
+                  {(FIELD_EXAMPLES[meta.id as FieldExampleKey] ?? []).length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (openExampleId === meta.id) {
+                          setOpenExampleId(null);
+                        } else {
+                          setOpenExampleId(meta.id);
+                          setExampleIdx(0);
+                        }
+                      }}
+                      aria-expanded={openExampleId === meta.id}
+                      className="mb-2 text-xs text-[var(--teal)] font-medium hover:underline focus-visible:outline-none focus:underline"
+                    >
+                      {openExampleId === meta.id ? "Hide example" : "See an example"}
+                    </button>
+                  )}
 
                   {/* Example panel — inline, between card header and field */}
                   {openExampleId === meta.id && (() => {

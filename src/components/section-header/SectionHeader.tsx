@@ -29,7 +29,7 @@ export interface SectionHeaderProps {
 
 export function SectionHeader({ title, helpContent, onWriteWithAi, className }: SectionHeaderProps) {
   return (
-    <div className={`flex items-center justify-between gap-4 mb-4${className ? ` ${className}` : ''}`}>
+    <div className={`flex items-center justify-between gap-4 ${className ?? 'mb-4'}`}>
       <div className="flex items-center gap-2 min-w-0">
         <span className="text-sm font-semibold text-[var(--foreground)] truncate">
           {title}
