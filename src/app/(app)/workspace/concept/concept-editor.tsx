@@ -21,7 +21,7 @@ import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
-import { InfoTip } from "@/components/ui/info-tip";
+import { SectionHeader } from "@/components/section-header/SectionHeader";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { useUiRevamp } from "@/hooks/useUiRevamp";
@@ -439,59 +439,40 @@ export function ConceptWorkspace({
                 className="group rounded-xl border border-[var(--border)] bg-white transition-all duration-200 overflow-hidden focus-within:ring-1 focus-within:ring-[var(--teal)]/30"
               >
                 <div className="px-5 pt-5 pb-4">
-                  {/* Card header row */}
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-sm font-semibold text-[var(--foreground)]">
-                          {meta.label}
-                        </span>
-                        {/* TIM-1476: helper one-liner moved from inline <p> to a "?" popup
-                            next to the question label, mirroring Financial Suite's pattern. */}
-                        <InfoTip label={meta.label}>{meta.hint}</InfoTip>
-                      </div>
-                      {/* TIM-1408: lightbulb icon demoted to a quieter text link */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (openExampleId === meta.id) {
-                            setOpenExampleId(null);
-                          } else {
-                            setOpenExampleId(meta.id);
-                            setExampleIdx(0);
-                          }
-                        }}
-                        aria-expanded={openExampleId === meta.id}
-                        className="mt-1 text-xs text-[var(--teal)] font-medium hover:underline focus-visible:outline-none focus:underline"
-                      >
-                        {openExampleId === meta.id ? "Hide example" : "See an example"}
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {/* TIM-881 + TIM-1408 + TIM-2899: Write with AI is hover/focus-revealed to reduce ambient noise.
-                          TIM-2859: shown on every non-Persona card (target_customer renders the
-                          PersonaSection editor below and has its own authoring flow). */}
-                      {meta.id !== "target_customer" && (
-                        <button
-                          type="button"
-                          onClick={() =>
+                  {/* TIM-3350: canonical SectionHeader replaces Pattern C inline JSX */}
+                  <SectionHeader
+                    title={meta.label}
+                    helpContent={meta.hint}
+                    onWriteWithAi={
+                      meta.id !== "target_customer" && canEdit
+                        ? () =>
                             setAiAssistField({
                               fieldKey: meta.id,
                               label: meta.label,
                               currentValue: latestDocRef.current.components[meta.id].content,
                               onApply: (newValue) => updateContent(meta.id, newValue),
                             })
-                          }
-                          disabled={!canEdit}
-                          className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-                        >
-                          Write with AI
-                        </button>
-                      )}
-                      {/* TIM-2859: per-card In doc / Skip toggle removed. Empty fields are
-                          implicitly skipped (not printed, not counted toward unlock). */}
-                    </div>
-                  </div>
+                        : undefined
+                    }
+                    className="mb-1"
+                  />
+                  {(FIELD_EXAMPLES[meta.id as FieldExampleKey] ?? []).length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (openExampleId === meta.id) {
+                          setOpenExampleId(null);
+                        } else {
+                          setOpenExampleId(meta.id);
+                          setExampleIdx(0);
+                        }
+                      }}
+                      aria-expanded={openExampleId === meta.id}
+                      className="mb-2 text-xs text-[var(--teal)] font-medium hover:underline focus-visible:outline-none focus:underline"
+                    >
+                      {openExampleId === meta.id ? "Hide example" : "See an example"}
+                    </button>
+                  )}
 
                   {/* Example panel — inline, between card header and field */}
                   {openExampleId === meta.id && (() => {
@@ -613,18 +594,10 @@ export function ConceptWorkspace({
         {/* ── Competitors card (TIM-2346) ──────────────────── */}
         <div className="mt-4 group rounded-xl border border-[var(--border)] bg-white transition-all duration-200 overflow-hidden focus-within:ring-1 focus-within:ring-[var(--teal)]/30">
           <div className="px-5 pt-5 pb-4">
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-sm font-semibold text-[var(--foreground)]">
-                    Nearby competitors
-                  </span>
-                  <InfoTip label="Nearby competitors">
-                    Name the specific shops that compete for your customers. The business plan will only cite competitors you list here — it will not invent names. Leave blank and the plan discusses competition qualitatively.
-                  </InfoTip>
-                </div>
-              </div>
-            </div>
+            <SectionHeader
+              title="Nearby competitors"
+              helpContent="Name the specific shops that compete for your customers. The business plan will only cite competitors you list here — it will not invent names. Leave blank and the plan discusses competition qualitatively."
+            />
             <CompetitorSection
               competitors={doc.competitors ?? []}
               noDirectCompetitors={doc.no_direct_competitors_identified ?? false}
