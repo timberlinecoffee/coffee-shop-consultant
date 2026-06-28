@@ -14,6 +14,7 @@ import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProv
 import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { LabelWithHint } from "@/components/ui/label-with-hint";
+import { SectionHeader } from "@/components/section-header";
 import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -472,25 +473,22 @@ function Section({
   }, [id, setOpen]);
   return (
     <div id={id}>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-2 mb-4">
         <button
           type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
-          className="flex items-center gap-2 group"
+          aria-label={`${open ? "Collapse" : "Expand"} ${title}`}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left text-[var(--dark-grey)] hover:text-[var(--muted-foreground)] transition-colors"
         >
-          <span className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
-            {title}
-          </span>
           <ChevronDown
             size={15}
-            className={`text-[var(--dark-grey)] group-hover:text-[var(--muted-foreground)] transition-transform ${
-              open ? "rotate-180" : ""
-            }`}
+            className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
+          <SectionHeader title={title} className="mb-0 flex-1" />
         </button>
-        {help && <SectionHelp title={title}>{help}</SectionHelp>}
+        {help != null && <SectionHelp title={title}>{help}</SectionHelp>}
       </div>
       {open && children}
     </div>

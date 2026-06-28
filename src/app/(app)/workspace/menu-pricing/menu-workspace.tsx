@@ -60,6 +60,7 @@ import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton"
 import { DismissibleCallout } from "@/components/DismissibleCallout";
 import { CategoryPresetPicker } from "@/components/menu-pricing/CategoryPresetPicker";
 import { SectionHelp } from "@/components/ui/section-help";
+import { SectionHeader } from "@/components/section-header";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 // TIM-2482 (F13): menu-side reconciliation banner — shows menu blend vs
 // Forecast Inputs avg ticket and offers a Sync action that opens the
@@ -805,14 +806,13 @@ function IngredientsTab({
     <div className="space-y-4">
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)]">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-1">
-                <p className="text-sm font-semibold text-[var(--foreground)]">Ingredients</p>
-                <SectionHelp title="Ingredients">Track every ingredient, its package size, and cost so recipe lines can compute COGS automatically.</SectionHelp>
-              </div>
-            </div>
-            <span className="text-xs text-[var(--dark-grey)] shrink-0 mt-0.5 whitespace-nowrap">
+          <div className="flex items-center gap-4">
+            <SectionHeader
+              title="Ingredients"
+              helpContent="Track every ingredient, its package size, and cost so recipe lines can compute COGS automatically."
+              className="mb-0 flex-1"
+            />
+            <span className="text-xs text-[var(--dark-grey)] shrink-0 whitespace-nowrap">
               {ingredients.length} {ingredients.length === 1 ? "ingredient" : "ingredients"}
             </span>
           </div>
