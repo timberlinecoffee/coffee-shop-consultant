@@ -28,6 +28,7 @@ import {
   Globe,
   AlertTriangle,
   Download,
+  Sparkles,
 } from "lucide-react";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -38,7 +39,9 @@ import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { useMutationStatus } from "@/hooks/use-mutation-status";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
+import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import type { ApprovedChange } from "@/hooks/useAIReviewModal";
+import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { SectionHelp } from "@/components/ui/section-help";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
@@ -332,6 +335,7 @@ function RoleDetailPanel({
   onUpdate,
   onDelete,
   minimumWage,
+  openJdAIReviewModal,
 }: {
   planId: string;
   role: OrgRole;
@@ -340,6 +344,7 @@ function RoleDetailPanel({
   onUpdate: (patch: Partial<OrgRole>) => void;
   onDelete: () => void;
   minimumWage?: MinWageInfo | null;
+  openJdAIReviewModal: ReturnType<typeof useAIReviewModal>["openAIReviewModal"];
 }) {
   const [jdFields, setJdFields] = useState<JdFields | null>(null);
   const [jdLoading, setJdLoading] = useState(false);
@@ -354,6 +359,13 @@ function RoleDetailPanel({
   const [renameValue, setRenameValue] = useState("");
   const [renamingForm, setRenamingForm] = useState<string | null>(null);
   const [renameFormValue, setRenameFormValue] = useState("");
+
+  const [aiAssistJdField, setAiAssistJdField] = useState<{
+    fieldKey: keyof JdFields;
+    fieldLabel: string;
+    currentValue: string;
+    onApply: (v: string) => void;
+  } | null>(null);
 
   async function loadHub() {
     setHubLoading(true);
@@ -778,6 +790,26 @@ function RoleDetailPanel({
                 <div key={key}>
                   <div className="flex items-center justify-between mb-1">
                     <label className={labelCls}>{label}</label>
+                    {multiline && canEdit && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAiAssistJdField({
+                            fieldKey: key,
+                            fieldLabel: label,
+                            currentValue: jdFields?.[key] ?? "",
+                            onApply: (v) => {
+                              setJdFields((prev) => prev ? { ...prev, [key]: v } : prev);
+                              setJdDirty(true);
+                            },
+                          })
+                        }
+                        className="inline-flex items-center gap-1 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-2 py-0.5 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap shrink-0"
+                      >
+                        <Sparkles size={10} aria-hidden="true" />
+                        Write with AI
+                      </button>
+                    )}
                   </div>
                   {multiline ? (
                     <textarea
@@ -998,6 +1030,22 @@ function RoleDetailPanel({
           </div>
         )}
       </section>
+
+      {/* JD field Write with AI */}
+      {aiAssistJdField && (
+        <AIAssistCallout
+          open={true}
+          onClose={() => setAiAssistJdField(null)}
+          fieldLabel={aiAssistJdField.fieldLabel}
+          moduleLabel="Hiring & Onboarding"
+          fieldKey={aiAssistJdField.fieldKey}
+          workspaceKey="hiring"
+          planId={planId}
+          currentValue={aiAssistJdField.currentValue}
+          onApply={aiAssistJdField.onApply}
+          openAIReviewModal={openJdAIReviewModal}
+        />
+      )}
     </div>
   );
 }
@@ -1017,6 +1065,9 @@ function OrgTab({
   minimumWage?: MinWageInfo | null;
 }) {
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
+
+  // TIM-3367: owned at OrgTab level so the review modal survives role-row collapse (TIM-2858 pattern).
+  const { openAIReviewModal: openJdAIReviewModal, AIReviewModalNode: JdAIReviewModalNode } = useAIReviewModal();
 
   async function addRole() {
     const optimistic: OrgRole = {
@@ -1118,10 +1169,12 @@ function OrgTab({
               onUpdate={(patch) => updateRole(role.id, patch)}
               onDelete={() => deleteRole(role.id)}
               minimumWage={minimumWage}
+              openJdAIReviewModal={openJdAIReviewModal}
             />
           )}
         />
       )}
+      {JdAIReviewModalNode}
     </div>
   );
 }
@@ -1394,6 +1447,13 @@ function OnboardingTab({
   const [creating, setCreating] = useState(false);
   const [collapsedPhases, setCollapsedPhases] = useState<Set<OnboardingPhase>>(new Set());
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+
+  const { openAIReviewModal: openTaskAIReviewModal, AIReviewModalNode: TaskAIReviewModalNode } = useAIReviewModal();
+  const [aiAssistTask, setAiAssistTask] = useState<{
+    taskId: string;
+    taskName: string;
+    currentValue: string;
+  } | null>(null);
 
   const selectedInstance = instances.find((i) => i.id === selectedId) ?? null;
   const instanceTasks = tasks.filter((t) => t.instance_id === selectedId);
@@ -1837,15 +1897,35 @@ function OnboardingTab({
                               {isExpanded && (
                                 <div className="ml-7 rounded-lg bg-[var(--warm-1050)] border border-[var(--neutral-cool-200)] p-3 space-y-2">
                                   {canEdit ? (
-                                    <textarea
-                                      className="w-full text-xs text-[var(--foreground)] bg-transparent resize-none focus-visible:outline-none placeholder-[var(--neutral-cool-400)]"
-                                      rows={3}
-                                      value={t.detail ?? ""}
-                                      onChange={(e) =>
-                                        updateTask(t.id, { detail: e.target.value || null })
-                                      }
-                                      placeholder="Add detail, instructions, or context for this task..."
-                                    />
+                                    <>
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs font-medium text-[var(--muted-foreground)]">Detail</span>
+                                        <button
+                                          type="button"
+                                          disabled={!!aiAssistTask}
+                                          onClick={() =>
+                                            setAiAssistTask({
+                                              taskId: t.id,
+                                              taskName: t.task,
+                                              currentValue: t.detail ?? "",
+                                            })
+                                          }
+                                          className="inline-flex items-center gap-1 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-2 py-0.5 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                          <Sparkles size={10} aria-hidden="true" />
+                                          Write with AI
+                                        </button>
+                                      </div>
+                                      <textarea
+                                        className="w-full text-xs text-[var(--foreground)] bg-transparent resize-none focus-visible:outline-none placeholder-[var(--neutral-cool-400)]"
+                                        rows={3}
+                                        value={t.detail ?? ""}
+                                        onChange={(e) =>
+                                          updateTask(t.id, { detail: e.target.value || null })
+                                        }
+                                        placeholder="Add detail, instructions, or context for this task..."
+                                      />
+                                    </>
                                   ) : t.detail ? (
                                     <p className="text-xs text-[var(--gray-1150)]">{t.detail}</p>
                                   ) : (
@@ -1878,6 +1958,23 @@ function OnboardingTab({
           })}
         </div>
       )}
+
+      {/* Task detail Write with AI */}
+      {aiAssistTask && (
+        <AIAssistCallout
+          open={true}
+          onClose={() => setAiAssistTask(null)}
+          fieldLabel={aiAssistTask.taskName || "Task Detail"}
+          moduleLabel="Onboarding"
+          fieldKey="task-detail"
+          workspaceKey="hiring"
+          planId={planId}
+          currentValue={aiAssistTask.currentValue}
+          onApply={(v) => updateTask(aiAssistTask.taskId, { detail: v.trim() ? v : null })}
+          openAIReviewModal={openTaskAIReviewModal}
+        />
+      )}
+      {TaskAIReviewModalNode}
     </div>
   );
 }
