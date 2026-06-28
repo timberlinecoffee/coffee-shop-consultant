@@ -15,6 +15,7 @@ import { NumericInput } from "@/components/ui/numeric-input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { LabelWithHint } from "@/components/ui/label-with-hint";
 import { SectionHeader } from "@/components/section-header";
+import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { ConflictNoticeBadge } from "@/components/cross-suite/ConflictNoticeBadge";
@@ -478,15 +479,16 @@ function Section({
           onClick={() => setOpen(!open)}
           aria-expanded={open}
           aria-label={`${open ? "Collapse" : "Expand"} ${title}`}
-          className="shrink-0 text-[var(--dark-grey)] hover:text-[var(--muted-foreground)] transition-colors"
+          className="flex items-center gap-2 flex-1 min-w-0 text-left"
         >
           <ChevronDown
             size={15}
-            className={`transition-transform ${open ? "rotate-180" : ""}`}
+            className={`shrink-0 text-[var(--dark-grey)] transition-transform ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
+          <SectionHeader title={title} className="mb-0 flex-1" />
         </button>
-        <SectionHeader title={title} helpContent={help} className="mb-0 flex-1" />
+        {help != null && <SectionHelp title={title}>{help}</SectionHelp>}
       </div>
       {open && children}
     </div>
