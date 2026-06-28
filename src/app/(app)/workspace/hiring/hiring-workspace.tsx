@@ -696,7 +696,7 @@ function RoleDetailPanel({
                 value={compPayAmount}
                 disabled={!canEdit || compLoading}
                 onChange={(e) => {
-                  setCompPayAmount(parseFloat(e.target.value) || "");
+                  setCompPayAmount(e.target.value === "" ? "" : parseFloat(e.target.value));
                   setCompDirty(true);
                 }}
               />
@@ -714,7 +714,7 @@ function RoleDetailPanel({
                 value={compHoursPerWeek}
                 disabled={!canEdit || compLoading}
                 onChange={(e) => {
-                  setCompHoursPerWeek(parseFloat(e.target.value) || "");
+                  setCompHoursPerWeek(e.target.value === "" ? "" : parseFloat(e.target.value));
                   setCompDirty(true);
                 }}
               />
@@ -732,7 +732,7 @@ function RoleDetailPanel({
                 value={compBenefitsPct}
                 disabled={!canEdit || compLoading}
                 onChange={(e) => {
-                  setCompBenefitsPct(parseFloat(e.target.value) || "");
+                  setCompBenefitsPct(e.target.value === "" ? "" : parseFloat(e.target.value));
                   setCompDirty(true);
                 }}
               />
