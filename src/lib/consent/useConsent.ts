@@ -24,6 +24,13 @@ type UseConsent = {
  * store, so a decision in one updates the other in the same tick. The client
  * snapshot reads the cookie synchronously on first render, so there is no flash
  * for visitors who have already chosen.
+ *
+ * TIM-3284: SSR-visible suppression of the banner element for returning visitors
+ * happens via the pre-hydration script in `src/app/layout.tsx` + the
+ * `[data-consent-decided] [data-consent-banner]` CSS rule in `globals.css`. The
+ * banner element stays in the React tree; CSS hides it before paint. React
+ * state still owns the Accept-All / Reject / Cookie-Preferences flow once
+ * hydration completes.
  */
 export function useConsent(): UseConsent {
   const consent = useSyncExternalStore(

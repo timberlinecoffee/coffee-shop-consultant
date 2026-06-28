@@ -28,7 +28,7 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
-import { SaveIndicator } from "@/components/ui/save-indicator";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { SectionHelp } from "@/components/ui/section-help";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -229,6 +229,14 @@ export function MarketingWorkspace({
     };
   }, [doc, save]);
 
+  const handleManualSave = useCallback(() => {
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current);
+      saveTimeout.current = null;
+    }
+    void save();
+  }, [save]);
+
   const updateDoc = useCallback(
     (mut: (d: MarketingDocument) => MarketingDocument) => setDoc((prev) => mut(prev)),
     [],
@@ -357,7 +365,7 @@ export function MarketingWorkspace({
                   <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                   <span>Print view</span>
                 </WorkspaceActionButton>
-                <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
+                <SaveStatusAndButton saving={saving} savedAt={savedAt} unsaved={false} canEdit={canEdit} onSave={handleManualSave} />
               </>
             }
           />

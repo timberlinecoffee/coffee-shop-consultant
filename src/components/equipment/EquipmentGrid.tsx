@@ -158,7 +158,12 @@ function newBlankItem(planId: string, position: number): EquipmentItem {
     position,
     section_id: null,
     name: "",
-    category: "miscellaneous",
+    // TIM-3329: must NOT default to a FUND category (ceramics/glassware/
+    // to_go_ware/miscellaneous), or isFundRow() will hide vendor/model/
+    // supplier/cost/useful_life cells and Tab from the name cell falls
+    // through to <body> because the next column has no input to focus.
+    // Users can change the category in-place after typing the name.
+    category: "furniture_fixtures",
     vendor: null,
     model: null,
     supplier: null,
@@ -215,6 +220,16 @@ function TextCell({
     setDraft(value);
   }, [value]);
 
+  // TIM-3329: Tab/Enter unmounts this input via parent's setEditingCell,
+  // and onBlur on an unmounting element is unreliable. Flush draft FIRST,
+  // then delegate to parent for navigation.
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+      onCommit(draft);
+    }
+    onKeyDown(e);
+  };
+
   const cls =
     "w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none resize-none border-0 p-0 placeholder-[var(--neutral-cool-400)]";
 
@@ -227,9 +242,10 @@ function TextCell({
         placeholder={placeholder}
         disabled={disabled}
         rows={2}
+        autoFocus
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => onCommit(draft)}
-        onKeyDown={onKeyDown}
+        onKeyDown={handleKeyDown}
       />
     );
   }
@@ -242,9 +258,10 @@ function TextCell({
       value={draft}
       placeholder={placeholder}
       disabled={disabled}
+      autoFocus
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => onCommit(draft)}
-      onKeyDown={onKeyDown}
+      onKeyDown={handleKeyDown}
     />
   );
 }
@@ -269,6 +286,14 @@ function CostCell({
     setDraft(valueCents > 0 ? String(valueCents / 100) : "");
   }, [valueCents]);
 
+  // TIM-3329: flush draft on Tab/Enter before parent navigates (see TextCell).
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+      onCommit(Math.round((parseFloat(draft) || 0) * 100));
+    }
+    onKeyDown(e);
+  };
+
   return (
     <div className="flex items-center gap-0.5 w-full h-full">
       <span className="shrink-0 text-xs text-[var(--muted-foreground)]">{symbol}</span>
@@ -281,9 +306,10 @@ function CostCell({
         value={draft}
         placeholder="0"
         disabled={disabled}
+        autoFocus
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => onCommit(Math.round((parseFloat(draft) || 0) * 100))}
-        onKeyDown={onKeyDown}
+        onKeyDown={handleKeyDown}
       />
     </div>
   );
@@ -304,6 +330,13 @@ function UsefulLifeCell({
 }) {
   const [draft, setDraft] = useState(String(value));
   useEffect(() => { setDraft(String(value)); }, [value]);
+  // TIM-3329: flush draft on Tab/Enter before parent navigates (see TextCell).
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+      onCommit(Math.max(1, Math.min(50, Math.round(parseFloat(draft) || 7))));
+    }
+    onKeyDown(e);
+  };
   return (
     <input
       ref={inputRef}
@@ -314,9 +347,10 @@ function UsefulLifeCell({
       className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0"
       value={draft}
       disabled={disabled}
+      autoFocus
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => onCommit(Math.max(1, Math.min(50, Math.round(parseFloat(draft) || 7))))}
-      onKeyDown={onKeyDown}
+      onKeyDown={handleKeyDown}
     />
   );
 }
@@ -342,6 +376,7 @@ function SelectCell({
       className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 cursor-pointer"
       value={value}
       disabled={disabled}
+      autoFocus
       onChange={(e) => onCommit(e.target.value)}
       onKeyDown={onKeyDown}
     >
@@ -512,7 +547,11 @@ interface EquipmentGridProps {
   planId: string;
   canEdit: boolean;
   items: EquipmentItem[];
-  onItemsChange: (items: EquipmentItem[]) => void;
+  // TIM-3329: accept functional updater so synchronous multi-update sequences
+  // (commit-on-Tab + addRow) compose correctly.
+  onItemsChange: (
+    next: EquipmentItem[] | ((prev: EquipmentItem[]) => EquipmentItem[])
+  ) => void;
 }
 
 export function EquipmentGrid({
@@ -561,6 +600,14 @@ export function EquipmentGrid({
   // Input refs for focus management
   const cellInputRefs = useRef<Map<string, HTMLElement | null>>(new Map());
 
+  // TIM-3329: latest items snapshot for use inside async timer callbacks.
+  // Without this, scheduleAutosave closes over a stale `items` array; when the
+  // debounced createRow/patchRow timer fires after the user has moved on to
+  // edit OTHER rows, the closure's `items.map(...)` overwrites those rows
+  // with stale state.
+  const itemsRef = useRef<EquipmentItem[]>(items);
+  useEffect(() => { itemsRef.current = items; }, [items]);
+
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
     setIsMobile(mq.matches);
@@ -605,6 +652,7 @@ export function EquipmentGrid({
     []
   );
 
+  // TIM-3329: read items from itemsRef (latest) to avoid stale-closure overwrites.
   const patchRow = useCallback(async (id: string, patch: Partial<EquipmentItem>) => {
     if (!id || id.startsWith("__new_")) return;
     try {
@@ -615,11 +663,11 @@ export function EquipmentGrid({
       });
       if (!res.ok) return;
       const updated = (await res.json()) as EquipmentItem;
-      onItemsChange(items.map((i) => (i.id === id ? updated : i)));
+      onItemsChange((prev) => prev.map((i) => (i.id === id ? updated : i)));
     } catch {
       // silent — optimistic UI already applied
     }
-  }, [items, onItemsChange]);
+  }, [onItemsChange]);
 
   const deleteRow = useCallback(async (id: string) => {
     if (!id || id.startsWith("__new_")) return;
@@ -634,18 +682,28 @@ export function EquipmentGrid({
 
   const updateItemLocal = useCallback(
     (id: string, patch: Partial<EquipmentItem>) => {
-      onItemsChange(items.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+      // TIM-3329: functional updater so this composes with other state updates
+      // (e.g. an addRow in the same Tab-keydown handler) without overwriting.
+      onItemsChange((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, ...patch } : i))
+      );
     },
-    [items, onItemsChange]
+    [onItemsChange]
   );
 
   const scheduleAutosave = useCallback(
     (id: string, patch: Partial<EquipmentItem>) => {
       if (!canEdit) return;
 
-      // Accumulate patch
+      // Accumulate patch (always — even mid-create, so we don't lose keystrokes)
       const existing = pendingPatches.current.get(id) ?? {};
       pendingPatches.current.set(id, { ...existing, ...patch });
+
+      // TIM-3329: if this tempId is mid-create, do NOT set a new timer.
+      // The in-flight createRow will drain pendingPatches under the real id
+      // when it returns. Otherwise we'd either lose patches (creatingRows
+      // guard returns null) or POST a duplicate row.
+      if (id.startsWith("__new_") && creatingRows.current.has(id)) return;
 
       // Reset debounce
       const existing_timer = debounceTimers.current.get(id);
@@ -658,13 +716,43 @@ export function EquipmentGrid({
 
         if (id.startsWith("__new_")) {
           // Materialize the row
-          const current = items.find((i) => i.id === id);
+          const current = itemsRef.current.find((i) => i.id === id);
           if (!current) return;
           const created = await createRow(id, { ...current, ...accumulated });
           if (created) {
-            onItemsChange(
-              items.map((i) => (i.id === id ? created : i))
+            // Swap tempId → real id using functional updater so concurrent
+            // edits to OTHER rows aren't overwritten by a stale snapshot.
+            onItemsChange((prev) =>
+              prev.map((i) => (i.id === id ? { ...created, ...accumulated } : i))
             );
+            // TIM-3329: re-point editingCell at the new server id so the next
+            // cell stays mounted across the tempId → realId swap. Without this
+            // the active cell unmounts when its row's id changes and focus
+            // drops to <body>, breaking Tab navigation between fields.
+            setEditingCell((prev) =>
+              prev && prev.rowId === id ? { rowId: created.id, colKey: prev.colKey } : prev
+            );
+            // Migrate any cellInputRefs registered under the tempId so a
+            // subsequent focusCell() lookup against the new id finds the
+            // mounted input even before the next ref-callback fires.
+            for (const col of EDITABLE_COLS) {
+              const oldKey = `${id}:${col}`;
+              const ref = cellInputRefs.current.get(oldKey);
+              if (ref) {
+                cellInputRefs.current.set(`${created.id}:${col}`, ref);
+                cellInputRefs.current.delete(oldKey);
+              }
+            }
+            // Drain any patches that accumulated during the in-flight POST.
+            const buffered = pendingPatches.current.get(id);
+            if (buffered) {
+              pendingPatches.current.delete(id);
+              const existingReal = pendingPatches.current.get(created.id) ?? {};
+              pendingPatches.current.set(created.id, { ...existingReal, ...buffered });
+              // Flush buffered patches against the real id via patchRow.
+              await patchRow(created.id, pendingPatches.current.get(created.id)!);
+              pendingPatches.current.delete(created.id);
+            }
           }
         } else {
           await patchRow(id, accumulated);
@@ -673,7 +761,7 @@ export function EquipmentGrid({
 
       debounceTimers.current.set(id, timer);
     },
-    [canEdit, items, createRow, patchRow, onItemsChange]
+    [canEdit, createRow, patchRow, onItemsChange]
   );
 
   const handleCellCommit = useCallback(
@@ -709,36 +797,6 @@ export function EquipmentGrid({
     [canEdit, updateItemLocal, scheduleAutosave]
   );
 
-  // ── Add row ──────────────────────────────────────────────────────────────────
-
-  const addRow = useCallback(() => {
-    if (!canEdit) return;
-    const blank = newBlankItem(planId, items.length);
-    onItemsChange([...items, blank]);
-    // Focus name cell of new row after render
-    setTimeout(() => {
-      setEditingCell({ rowId: blank.id, colKey: "name" });
-    }, 30);
-  }, [canEdit, planId, items, onItemsChange]);
-
-  // ── Delete selected rows ─────────────────────────────────────────────────────
-
-  const deleteSelected = useCallback(() => {
-    const selectedIds = Object.keys(rowSelection).filter((k) => rowSelection[k]);
-    const toDelete = items.filter((i) => selectedIds.includes(i.id));
-    onItemsChange(items.filter((i) => !selectedIds.includes(i.id)));
-    toDelete.forEach((i) => deleteRow(i.id));
-    setRowSelection({});
-  }, [rowSelection, items, onItemsChange, deleteRow]);
-
-  const deleteSingleRow = useCallback(
-    (id: string) => {
-      onItemsChange(items.filter((i) => i.id !== id));
-      deleteRow(id);
-    },
-    [items, onItemsChange, deleteRow]
-  );
-
   // ── Keyboard navigation ──────────────────────────────────────────────────────
 
   const focusCell = useCallback(
@@ -753,29 +811,80 @@ export function EquipmentGrid({
     []
   );
 
+  // ── Add row ──────────────────────────────────────────────────────────────────
+
+  const addRow = useCallback(() => {
+    if (!canEdit) return;
+    // TIM-3329: functional updater — composes with any commit-on-Tab from the
+    // cell that's blurring synchronously in the same handler.
+    let blankId = "";
+    onItemsChange((prev) => {
+      const blank = newBlankItem(planId, prev.length);
+      blankId = blank.id;
+      return [...prev, blank];
+    });
+    // TIM-3329: focus the new row's name input (not just set editingCell) so
+    // the user can start typing immediately — true both for the Add-row button
+    // path AND for the Tab-past-last-column path, where this is the only way
+    // the directive's "5 items in a row using only Tab" flow can land data.
+    setTimeout(() => {
+      if (blankId) focusCell(blankId, "name");
+    }, 30);
+  }, [canEdit, planId, onItemsChange, focusCell]);
+
+  // ── Delete selected rows ─────────────────────────────────────────────────────
+
+  const deleteSelected = useCallback(() => {
+    const selectedIds = Object.keys(rowSelection).filter((k) => rowSelection[k]);
+    const toDelete = items.filter((i) => selectedIds.includes(i.id));
+    onItemsChange((prev) => prev.filter((i) => !selectedIds.includes(i.id)));
+    toDelete.forEach((i) => deleteRow(i.id));
+    setRowSelection({});
+  }, [rowSelection, items, onItemsChange, deleteRow]);
+
+  const deleteSingleRow = useCallback(
+    (id: string) => {
+      onItemsChange((prev) => prev.filter((i) => i.id !== id));
+      deleteRow(id);
+    },
+    [onItemsChange, deleteRow]
+  );
+
   const handleCellKeyDown = useCallback(
     (e: React.KeyboardEvent, rowId: string, colKey: EditableCol) => {
       const sortedRows = table.getSortedRowModel().rows;
-      const colIdx = EDITABLE_COLS.indexOf(colKey);
       const rowIdx = sortedRows.findIndex((r) => r.original.id === rowId);
 
       if (e.key === "Tab") {
         e.preventDefault();
         const dir = e.shiftKey ? -1 : 1;
-        let nextColIdx = colIdx + dir;
+
+        // TIM-3329: navigate only through VISIBLE editable columns. If the
+        // user has hidden e.g. Brand or Cost via the column picker, Tab
+        // would otherwise land on a column whose <td> doesn't render and
+        // autoFocus has no input to grab, dropping focus to <body>.
+        const visibleEditableCols = EDITABLE_COLS.filter(
+          (c) => columnVisibility[c] !== false,
+        );
+        if (visibleEditableCols.length === 0) return;
+        const visIdx = visibleEditableCols.indexOf(colKey);
+        // If current cell isn't in the visible set (shouldn't happen, but
+        // defensive), start from position 0.
+        const fromIdx = visIdx === -1 ? 0 : visIdx;
+        let nextVisIdx = fromIdx + dir;
         let nextRowIdx = rowIdx;
 
-        if (nextColIdx >= EDITABLE_COLS.length) {
-          nextColIdx = 0;
+        if (nextVisIdx >= visibleEditableCols.length) {
+          nextVisIdx = 0;
           nextRowIdx++;
-        } else if (nextColIdx < 0) {
-          nextColIdx = EDITABLE_COLS.length - 1;
+        } else if (nextVisIdx < 0) {
+          nextVisIdx = visibleEditableCols.length - 1;
           nextRowIdx--;
         }
 
         if (nextRowIdx >= 0 && nextRowIdx < sortedRows.length) {
           const nextRow = sortedRows[nextRowIdx];
-          focusCell(nextRow.original.id, EDITABLE_COLS[nextColIdx]);
+          focusCell(nextRow.original.id, visibleEditableCols[nextVisIdx]);
         } else if (nextRowIdx >= sortedRows.length) {
           addRow();
         }
@@ -793,7 +902,7 @@ export function EquipmentGrid({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [focusCell, addRow]
+    [focusCell, addRow, columnVisibility]
   );
 
   // ── Column definitions ────────────────────────────────────────────────────────

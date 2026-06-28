@@ -28,6 +28,7 @@ import {
   LayoutGrid,
   TrendingUp,
   Lock,
+  Printer,
 } from "lucide-react";
 import { z } from "zod";
 import {
@@ -54,6 +55,8 @@ import { TABLE_CELL_TEXT } from "@/lib/workspace-table";
 import { PaywallModal } from "@/components/paywall-modal";
 import { ProUpgradePrompt, type ProFeatureKey } from "@/components/pro-upgrade-prompt";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { useMutationStatus } from "@/hooks/use-mutation-status";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
 import { CategoryPresetPicker } from "@/components/menu-pricing/CategoryPresetPicker";
 import { SectionHelp } from "@/components/ui/section-help";
@@ -3630,6 +3633,7 @@ export function MenuWorkspace({
   const [proPromptFeature, setProPromptFeature] = useState<ProFeatureKey | null>(null);
   const [priceLoading, setPriceLoading] = useState(false);
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
+  const { saving: mutationSaving, savedAt: mutationSavedAt, confirmSaved } = useMutationStatus();
   const [recipeLoading, setRecipeLoading] = useState(false);
   const [recipeError, setRecipeError] = useState<string | null>(null);
   // TIM-1471: AI preparation-steps generator state.
@@ -4443,22 +4447,44 @@ export function MenuWorkspace({
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-4 sm:px-6 pt-8 pb-16">
-        {/* TIM-3150: canonical WorkspaceHeader with Suggest menu items in action cluster. */}
+        {/* TIM-3150: canonical WorkspaceHeader with Suggest menu items in action cluster.
+            TIM-3296: Print Recipe Cards added as a secondary action — opens the
+            printable recipe card page in a new tab. */}
         <WorkspaceHeader
           Icon={Utensils}
           title="Menu & Pricing"
           description="Build your menu, add recipe ingredients to compute COGS, and get AI-suggested retail prices."
-          actions={canEdit ? (
-            <WorkspaceActionButton
-              variant="primary"
-              onClick={suggestMenuItems}
-              aria-label="Suggest menu items"
-              title="Get AI-suggested menu items based on your concept"
-            >
-              <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              Suggest menu items
-            </WorkspaceActionButton>
-          ) : undefined}
+          actions={
+            <>
+              <WorkspaceActionButton
+                variant="secondary"
+                onClick={() => window.open("/workspace/menu-pricing/print", "_blank", "noopener,noreferrer")}
+                aria-label="Print recipe cards"
+                title="Open a print-friendly view of all recipe cards"
+              >
+                <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                Print recipe cards
+              </WorkspaceActionButton>
+              {canEdit && (
+                <WorkspaceActionButton
+                  variant="primary"
+                  onClick={suggestMenuItems}
+                  aria-label="Suggest menu items"
+                  title="Get AI-suggested menu items based on your concept"
+                >
+                  <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                  Suggest menu items
+                </WorkspaceActionButton>
+              )}
+              <SaveStatusAndButton
+                saving={mutationSaving}
+                savedAt={mutationSavedAt}
+                unsaved={false}
+                canEdit={true}
+                onSave={confirmSaved}
+              />
+            </>
+          }
         />
 
         {/* Tab nav — canonical WorkspaceSubNav (TIM-1793).

@@ -25,7 +25,7 @@ import {
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
-import { SaveIndicator } from "@/components/ui/save-indicator";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { SectionHelp } from "@/components/ui/section-help";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -283,6 +283,14 @@ export function OperationsPlaybookWorkspace({
     };
   }, [doc, save]);
 
+  const handleManualSave = useCallback(() => {
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current);
+      saveTimeout.current = null;
+    }
+    void save();
+  }, [save]);
+
   const updateDoc = useCallback(
     (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => {
       setDoc((prev) => mut(prev));
@@ -335,7 +343,7 @@ export function OperationsPlaybookWorkspace({
                 <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                 <span>Print all</span>
               </WorkspaceActionButton>
-              <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
+              <SaveStatusAndButton saving={saving} savedAt={savedAt} unsaved={false} canEdit={canEdit} onSave={handleManualSave} />
             </>
           }
         />

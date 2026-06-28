@@ -23,7 +23,6 @@ export interface SupportTicketReceivedProps {
   subjectLine: string;
 }
 
-const SUBJECT_PREFIX = 'We got your message';
 const PREVIEW = 'A human will respond within one business day.';
 
 export function SupportTicketReceivedTemplate({
@@ -76,7 +75,7 @@ export async function sendSupportTicketReceivedEmail(args: {
 }): Promise<TransactionalSendResult> {
   return sendTransactionalEmail({
     to: args.to,
-    subject: `${SUBJECT_PREFIX} — ${args.props.subjectLine}`,
+    subject: `Re: ${args.props.subjectLine}`,
     preview: PREVIEW,
     react: <SupportTicketReceivedTemplate {...args.props} />,
     text: renderSupportTicketReceivedText(args.props),

@@ -92,6 +92,12 @@ export function writeConsent(choice: Omit<ConsentState, "decidedAt">): ConsentSt
     const value = encodeURIComponent(JSON.stringify(state));
     const secure = typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
     document.cookie = `${CONSENT_COOKIE}=${value}; path=/; max-age=${CONSENT_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
+    // TIM-3284: keep the pre-hydration CSS marker in sync. The next page load's
+    // inline script reads the cookie and re-applies this; setting it here just
+    // makes the same-page accept-then-navigate path consistent in case the
+    // navigation lands on a freshly-mounted layout instance before the script
+    // runs again.
+    document.documentElement.setAttribute("data-consent-decided", "1");
     window.dispatchEvent(new CustomEvent(CONSENT_CHANGE_EVENT, { detail: state }));
   }
   return state;
@@ -116,6 +122,10 @@ export function resetConsent(): void {
   const secure =
     typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
   document.cookie = `${CONSENT_COOKIE}=; path=/; max-age=0; SameSite=Lax${secure}`;
+  // TIM-3284: clear the pre-hydration CSS marker so the banner re-appears
+  // immediately. Without this the CSS rule keeps the banner hidden even after
+  // React decides it should show again.
+  document.documentElement.removeAttribute("data-consent-decided");
   window.dispatchEvent(new CustomEvent(CONSENT_CHANGE_EVENT, { detail: null }));
 }
 

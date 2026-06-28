@@ -30,6 +30,8 @@ import {
   LogOut,
   Moon,
   Sun,
+  LifeBuoy,
+  Shield,
 } from "lucide-react";
 import { Logo, LogoMark } from "@/app/_components/Logo";
 import { RevertToggle } from "@/components/account/RevertToggle";
@@ -326,6 +328,36 @@ function ProfileMenu({
                 Preferences
                 <ChevronRightIcon />
               </button>
+              <div role="separator" className="my-1 mx-2 h-px bg-[var(--border)]" />
+              {/* TIM-3299: Help / Terms / Privacy in-app surfacing. Existing routes
+                  /help (TIM-1941), /terms (TIM-1358), /privacy (TIM-1395). */}
+              <Link
+                href="/help"
+                role="menuitem"
+                onClick={handleNavigate}
+                className="flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors"
+              >
+                <LifeBuoy size={14} strokeWidth={1.75} aria-hidden />
+                Help
+              </Link>
+              <Link
+                href="/terms"
+                role="menuitem"
+                onClick={handleNavigate}
+                className="flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors"
+              >
+                <FileText size={14} strokeWidth={1.75} aria-hidden />
+                Terms of Service
+              </Link>
+              <Link
+                href="/privacy"
+                role="menuitem"
+                onClick={handleNavigate}
+                className="flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors"
+              >
+                <Shield size={14} strokeWidth={1.75} aria-hidden />
+                Privacy Policy
+              </Link>
               <div role="separator" className="my-1 mx-2 h-px bg-[var(--border)]" />
               <Link
                 href="/auth/signout"

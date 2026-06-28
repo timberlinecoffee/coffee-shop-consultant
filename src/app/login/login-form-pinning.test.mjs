@@ -32,12 +32,16 @@ test("handleGoogleSignIn calls supabase.auth.signOut({ scope: 'local' })", () =>
   );
 });
 
-test("signOut runs BEFORE signInWithOAuth (orders the client-init refresh race out of the verifier write)", () => {
+// TIM-3339: OAuth initiation moved server-side to /api/auth/google/start so
+// the verifier lands in a Set-Cookie response header (committed before
+// JS reads the response). The original "client-side signInWithOAuth" call
+// is gone; the ordering invariant now pins signOut BEFORE the server fetch.
+test("signOut runs BEFORE the server OAuth start fetch (orders the client-init refresh race out of the verifier write)", () => {
   const signOutIdx = indexOfFirst("supabase.auth.signOut");
-  const signInIdx = indexOfFirst("supabase.auth.signInWithOAuth");
+  const fetchIdx = indexOfFirst('fetch("/api/auth/google/start"');
   assert.ok(
-    signOutIdx < signInIdx,
-    `signOut at index ${signOutIdx} must precede signInWithOAuth at index ${signInIdx}`,
+    signOutIdx < fetchIdx,
+    `signOut at index ${signOutIdx} must precede /api/auth/google/start fetch at index ${fetchIdx}`,
   );
 });
 
@@ -67,7 +71,7 @@ test("re-entry guard (googleInFlightRef) still gates handler before signOut (TIM
 // verifier between pre-nav and callback. purgeAllSupabaseCookies sits in the
 // gap to clear ALL sb-* zombies (verifier + auth-token) at exact attrs via
 // Cookie Store API, with a broader DOM blast as fallback.
-test("handleGoogleSignIn calls purgeAllSupabaseCookies(defaultPurgeEnv()) after signOut, before signInWithOAuth", () => {
+test("handleGoogleSignIn calls purgeAllSupabaseCookies(defaultPurgeEnv()) after signOut, before the server OAuth start fetch", () => {
   assert.match(
     loginFormSrc,
     /await purgeAllSupabaseCookies\(defaultPurgeEnv\(\)\)/,
@@ -75,10 +79,27 @@ test("handleGoogleSignIn calls purgeAllSupabaseCookies(defaultPurgeEnv()) after 
   );
   const signOutIdx = indexOfFirst("supabase.auth.signOut");
   const purgeIdx = indexOfFirst("purgeAllSupabaseCookies(");
-  const signInIdx = indexOfFirst("supabase.auth.signInWithOAuth");
+  const fetchIdx = indexOfFirst('fetch("/api/auth/google/start"');
   assert.ok(
-    signOutIdx < purgeIdx && purgeIdx < signInIdx,
-    `purge at ${purgeIdx} must sit between signOut at ${signOutIdx} and signInWithOAuth at ${signInIdx}`,
+    signOutIdx < purgeIdx && purgeIdx < fetchIdx,
+    `purge at ${purgeIdx} must sit between signOut at ${signOutIdx} and /api/auth/google/start fetch at ${fetchIdx}`,
+  );
+});
+
+// TIM-3339: OAuth initiation runs server-side so the PKCE verifier ships as
+// Set-Cookie on the response from /api/auth/google/start. The pinning below
+// guards against accidental reversion to client-side signInWithOAuth, which
+// re-introduces the AuthPKCECodeVerifierMissingError pattern captured on
+// TIM-3336's diag deploy (verifier_cookies=0, verifier_pre_nav=absent).
+test("handleGoogleSignIn POSTs to /api/auth/google/start and does NOT call client-side signInWithOAuth", () => {
+  assert.match(
+    loginFormSrc,
+    /fetch\("\/api\/auth\/google\/start"/,
+    "server-side OAuth start fetch missing — TIM-3339 fix regressed to client-side initiation",
+  );
+  assert.ok(
+    !/supabase\.auth\.signInWithOAuth/.test(loginFormSrc),
+    "client-side signInWithOAuth reintroduced — TIM-3339 fix regressed (verifier write becomes non-durable across page-unload)",
   );
 });
 
