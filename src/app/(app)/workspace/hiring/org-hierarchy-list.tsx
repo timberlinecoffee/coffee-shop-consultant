@@ -511,6 +511,8 @@ export function OrgHierarchyList({
   }
 
   async function confirmKbMove() {
+    const movingRole = roles.find((r) => r.id === kbMovingId);
+    if (!movingRole) return;
     setKbMovingId(null);
     setKbSnapshot(null);
     const flat = flattenTree(roles, buildChildMap(roles));
