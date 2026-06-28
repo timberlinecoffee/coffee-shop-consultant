@@ -25,6 +25,7 @@ import {
   type WorkspaceSubNavTab,
 } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { SectionHeader } from "@/components/section-header";
 
 // TIM-1888 H-8: list/calendar view toggle as canonical text-only pills.
 const VIEW_TABS: ReadonlyArray<WorkspaceSubNavTab<"list" | "calendar">> = [
@@ -1394,16 +1395,13 @@ export function OpeningMonthPlanWorkspace({
 
           {/* ── Section 1: Milestones ─────────────────────────────────────── */}
           {showMilestones && (
-          <section aria-labelledby="milestones-heading" className="pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Rocket className="w-4 h-4 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-              <h2 id="milestones-heading" className="text-xl font-bold text-[var(--foreground)] leading-tight">
-                Milestones
-              </h2>
-            </div>
-            <p className="text-xs text-[var(--muted-foreground)] mb-3 leading-relaxed">
-              The dated, gating steps that get you to opening day. Lease, permits, build-out, equipment, hiring, training, soft-open dates.
-            </p>
+          <section aria-label="Milestones" className="pt-4">
+            <SectionHeader
+              title="Milestones"
+              helpContent="The dated, gating steps that get you to opening day. Lease, permits, build-out, equipment, hiring, training, soft-open dates."
+              className="mb-3"
+              headingLevel={2}
+            />
 
             {/* View toggle — canonical pill nav (TIM-1888 H-8) */}
             <WorkspaceSubNav
@@ -1448,16 +1446,13 @@ export function OpeningMonthPlanWorkspace({
 
           {/* ── Section 2: Playbook ──────────────────────────────────────── */}
           {showPlaybook && (
-          <section aria-labelledby="playbook-heading" className={section === "playbook" ? "pt-4" : "pt-8"}>
-            <div className="flex items-center gap-2 mb-3">
-              <ClipboardList className="w-4 h-4 text-[var(--teal)] flex-shrink-0" aria-hidden="true" />
-              <h2 id="playbook-heading" className="text-xl font-bold text-[var(--foreground)] leading-tight">
-                Playbook
-              </h2>
-            </div>
-            <p className="text-xs text-[var(--muted-foreground)] mb-3 leading-relaxed">
-              Week-by-week and day-by-day tasks for the weeks before opening, opening week, and the first 30 days.
-            </p>
+          <section aria-label="Playbook" className={section === "playbook" ? "pt-4" : "pt-8"}>
+            <SectionHeader
+              title="Playbook"
+              helpContent="Week-by-week and day-by-day tasks for the weeks before opening, opening week, and the first 30 days."
+              className="mb-3"
+              headingLevel={2}
+            />
 
             <div className="space-y-4">
               {playbookItems.length === 0 && !playbookLoading && (

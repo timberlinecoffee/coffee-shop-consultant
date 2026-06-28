@@ -9,7 +9,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Megaphone,
-  Sparkles,
   Plus,
   Trash2,
   ArrowUp,
@@ -22,6 +21,7 @@ import {
 } from "lucide-react";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { SectionHeader } from "@/components/section-header";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -30,7 +30,6 @@ import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
-import { SectionHelp } from "@/components/ui/section-help";
 import { InfoTip } from "@/components/ui/info-tip";
 import {
   type MarketingDocument,
@@ -425,20 +424,11 @@ function SectionBody(props: SectionBodyProps) {
   const { label, tagline, canEdit, onGenerate, generating, sectionKey } = props;
   return (
     <div>
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex-1 min-w-0 flex items-center gap-1">
-          <SectionHelp title={label}>{tagline}</SectionHelp>
-        </div>
-        <button
-          type="button"
-          onClick={onGenerate}
-          disabled={!canEdit || generating}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 disabled:text-[var(--dark-grey)] disabled:cursor-not-allowed px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          {generating ? "Generating…" : "Generate with AI"}
-        </button>
-      </div>
+      <SectionHeader
+        title={label}
+        helpContent={tagline}
+        onWriteWithAi={canEdit ? onGenerate : undefined}
+      />
 
       {sectionKey === "overview" && <OverviewEditor {...props} />}
       {sectionKey === "channels" && <ChannelsEditor {...props} />}
