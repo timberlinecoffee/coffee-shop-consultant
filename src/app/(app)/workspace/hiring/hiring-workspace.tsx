@@ -5,7 +5,7 @@
 // dedicated API routes directly with optimistic local state updates.
 // TIM-2968: OrgTab upgraded with drag-and-drop hierarchy list.
 
-import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Users,
   Network,
@@ -40,7 +40,7 @@ import { useMutationStatus } from "@/hooks/use-mutation-status";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
-import { SectionHeader } from "@/components/section-header";
+import { SectionHelp } from "@/components/ui/section-help";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents } from "@/lib/financial-projection";
 import { formatHourlyWage, isBelowMinimumWage, type MinWageInfo } from "@/lib/wages/minimum-wage";
@@ -321,401 +321,24 @@ const JD_FIELD_DEFS: Array<{ key: keyof JdFields; label: string; multiline: bool
   { key: "comp", label: "Compensation & Benefits", multiline: true },
 ];
 
-// TIM-1486: Org chart up top + consolidated role rows.
-// CSS flexbox tree, 1px connector lines via absolute-positioned spans (no SVG, no library).
+// TIM-3355: Inline role detail panel — shown below expanded rows in OrgHierarchyList.
+// Extracted from the former RoleRow expanded section.
 
-function OrgChartNode({
-  role,
-  childMap,
-  onSelect,
-}: {
-  role: OrgRole;
-  childMap: Map<string, OrgRole[]>;
-  onSelect: (id: string) => void;
-}) {
-  const children = childMap.get(role.id) ?? [];
-  const hasChildren = children.length > 0;
-  return (
-    <div className="flex flex-col items-center">
-      <button
-        type="button"
-        onClick={() => onSelect(role.id)}
-        className="flex items-center gap-2 bg-white border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--teal)] focus-visible:outline-none focus-visible:border-[var(--teal)] transition-colors max-w-[220px]"
-      >
-        <Users size={13} className="text-[var(--teal)] shrink-0" />
-        {role.role_title ? (
-          <TruncatedText
-            text={role.role_title}
-            className="text-sm font-medium text-[var(--foreground)]"
-          />
-        ) : (
-          <span className="text-sm font-medium text-[var(--dark-grey)]">Unnamed role</span>
-        )}
-        <span className="text-xs text-[var(--muted-foreground)] shrink-0">×{role.headcount}</span>
-      </button>
-      {hasChildren && (
-        <>
-          <span aria-hidden className="block w-px h-4 bg-[var(--border)]" />
-          <div className="flex items-start gap-6">
-            {children.map((c, idx) => {
-              const isFirst = idx === 0;
-              const isLast = idx === children.length - 1;
-              const isOnly = children.length === 1;
-              return (
-                <div key={c.id} className="relative pt-4 flex flex-col items-center">
-                  {!isOnly && (
-                    <span
-                      aria-hidden
-                      className="absolute top-0 h-px bg-[var(--border)]"
-                      style={{ left: isFirst ? "50%" : 0, right: isLast ? "50%" : 0 }}
-                    />
-                  )}
-                  <span
-                    aria-hidden
-                    className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-4 bg-[var(--border)]"
-                  />
-                  <OrgChartNode role={c} childMap={childMap} onSelect={onSelect} />
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// Scales the tree to fit its container width with no internal scroll.
-// Uses ResizeObserver to recompute when the container resizes.
-function OrgChartFit({
-  rootRoles,
-  childMap,
-  onSelect,
-}: {
-  rootRoles: OrgRole[];
-  childMap: Map<string, OrgRole[]>;
-  onSelect: (id: string) => void;
-}) {
-  const outerRef = useRef<HTMLDivElement>(null);
-  const innerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-  const [wrapH, setWrapH] = useState<number | null>(null);
-
-  useLayoutEffect(() => {
-    const outer = outerRef.current;
-    const inner = innerRef.current;
-    if (!outer || !inner) return;
-
-    function fit() {
-      const saved = inner!.style.transform;
-      inner!.style.transform = "none";
-      const nW = inner!.scrollWidth;
-      const nH = inner!.scrollHeight;
-      inner!.style.transform = saved;
-
-      const avail = outer!.clientWidth;
-      if (avail > 0 && nW > avail) {
-        const s = avail / nW;
-        setScale(s);
-        setWrapH(nH * s);
-      } else {
-        setScale(1);
-        setWrapH(null);
-      }
-    }
-
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(outer);
-    return () => ro.disconnect();
-  }, [rootRoles, childMap]);
-
-  return (
-    <div ref={outerRef} className="w-full overflow-hidden">
-      <div
-        style={wrapH !== null ? { height: `${wrapH}px`, overflow: "hidden" } : undefined}
-      >
-        <div
-          ref={innerRef}
-          style={{
-            transform: scale < 1 ? `scale(${scale})` : undefined,
-            transformOrigin: "top left",
-            display: "inline-block",
-            minWidth: scale >= 1 ? "100%" : undefined,
-          }}
-        >
-          <div className="flex items-start justify-center gap-10 py-2">
-            {rootRoles.map((r) => (
-              <OrgChartNode
-                key={r.id}
-                role={r}
-                childMap={childMap}
-                onSelect={onSelect}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function OrgTab({
-  planId,
-  canEdit,
-  roles,
-  onRolesChange,
-  minimumWage,
-}: {
-  planId: string;
-  canEdit: boolean;
-  roles: OrgRole[];
-  onRolesChange: (r: OrgRole[] | ((prev: OrgRole[]) => OrgRole[])) => void;
-  minimumWage?: MinWageInfo | null;
-}) {
-  const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
-  const [highlightedRoleId, setHighlightedRoleId] = useState<string | null>(null);
-  const rowRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
-
-  async function addRole() {
-    const optimistic: OrgRole = {
-      id: makeLocalId(),
-      plan_id: planId,
-      role_title: "",
-      headcount: 1,
-      start_date: null,
-      monthly_cost_cents: null,
-      notes: null,
-      parent_role_id: null,
-      jd_template_id: null,
-      order_index: roles.filter((r) => !r.parent_role_id).length,
-    };
-    onRolesChange((prev) => [...prev, optimistic]);
-    setExpandedRoleId(optimistic.id);
-
-    const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan_id: planId, role_title: "", headcount: 1 }),
-    });
-    if (res.ok) {
-      const created = (await res.json()) as OrgRole;
-      onRolesChange((prev) => prev.map((r) => (r.id === optimistic.id ? created : r)));
-      setExpandedRoleId(created.id);
-    } else {
-      onRolesChange((prev) => prev.filter((r) => r.id !== optimistic.id));
-    }
-  }
-
-  async function updateRole(id: string, patch: Partial<OrgRole>) {
-    onRolesChange((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-    await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...patch }),
-    });
-  }
-
-  async function deleteRole(id: string) {
-    const snapshot = roles;
-    onRolesChange((prev) => prev.filter((r) => r.id !== id));
-    const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}&id=${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) onRolesChange(snapshot);
-  }
-
-  const childMap = useMemo(() => {
-    const m = new Map<string, OrgRole[]>();
-    for (const r of roles) {
-      if (r.parent_role_id) {
-        const arr = m.get(r.parent_role_id) ?? [];
-        arr.push(r);
-        m.set(r.parent_role_id, arr);
-      }
-    }
-    return m;
-  }, [roles]);
-
-  const rootRoles = useMemo(() => roles.filter((r) => !r.parent_role_id), [roles]);
-
-  // Tree order: roots first, then each root's subtree (depth-first, creation order).
-  const orderedRoles = useMemo(() => {
-    const out: OrgRole[] = [];
-    const visited = new Set<string>();
-    const walk = (r: OrgRole) => {
-      if (visited.has(r.id)) return;
-      visited.add(r.id);
-      out.push(r);
-      for (const c of childMap.get(r.id) ?? []) walk(c);
-    };
-    for (const r of rootRoles) walk(r);
-    // Orphans (parent_role_id set but parent missing) fall to the end.
-    for (const r of roles) if (!visited.has(r.id)) out.push(r);
-    return out;
-  }, [roles, rootRoles, childMap]);
-
-  // Map of id → parent title for the collapsed row header.
-  const parentTitleById = useMemo(() => {
-    const byId = new Map(roles.map((r) => [r.id, r] as const));
-    const m = new Map<string, string>();
-    for (const r of roles) {
-      if (r.parent_role_id) {
-        const p = byId.get(r.parent_role_id);
-        if (p) m.set(r.id, p.role_title || "Unnamed role");
-      }
-    }
-    return m;
-  }, [roles]);
-
-  function handleChartSelect(id: string) {
-    setExpandedRoleId(id);
-    setHighlightedRoleId(id);
-    // Defer scroll to next frame so the row is expanded first.
-    requestAnimationFrame(() => {
-      const node = rowRefs.current.get(id);
-      if (node) node.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-    window.setTimeout(() => {
-      setHighlightedRoleId((curr) => (curr === id ? null : curr));
-    }, 600);
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Org chart — read-only visual preview (TIM-1900 fit-to-width preserved) */}
-      <div className="hidden sm:block rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[var(--border)]">
-          <SectionHeader title="Org Chart" helpContent="Visual preview. Use the hierarchy list below to drag and reorder roles." className="mb-0" />
-        </div>
-        <div className="px-5 py-6">
-          {roles.length === 0 ? (
-            <p className="text-sm text-[var(--dark-grey)] text-center">
-              Add your first role to see your org chart here.
-            </p>
-          ) : rootRoles.length === 0 ? (
-            <p className="text-sm text-[var(--dark-grey)]">
-              No top-level roles yet.
-            </p>
-          ) : (
-            <OrgChartFit
-              rootRoles={rootRoles}
-              childMap={childMap}
-              onSelect={handleChartSelect}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Role Hierarchy — drag-and-drop edit surface (TIM-2968) */}
-      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
-          <SectionHeader title="Role Hierarchy" helpContent="Drag rows to reorder. Drag right to nest under a parent. Use the Edit button to fill in role details below." className="mb-0 flex-1" />
-          {canEdit && (
-            <WorkspaceActionButton
-              variant="primary"
-              onClick={addRole}
-            >
-              <Plus size={WORKSPACE_ACTION_ICON_SIZE} />
-              Add role
-            </WorkspaceActionButton>
-          )}
-        </div>
-
-        {roles.length === 0 ? (
-          <div className="py-10 text-center space-y-3">
-            <p className="text-sm text-[var(--dark-grey)]">No roles yet.</p>
-            {canEdit && (
-              <button
-                type="button"
-                onClick={addRole}
-                className="text-sm text-[var(--teal)] hover:underline font-medium"
-              >
-                Add your first role →
-              </button>
-            )}
-          </div>
-        ) : (
-          <OrgHierarchyList
-            planId={planId}
-            roles={roles}
-            canEdit={canEdit}
-            onRolesChange={(updated) => onRolesChange(updated)}
-            onEditRole={(id) => {
-              setExpandedRoleId(id);
-              setHighlightedRoleId(id);
-              requestAnimationFrame(() => {
-                const node = rowRefs.current.get(id);
-                if (node) node.scrollIntoView({ behavior: "smooth", block: "center" });
-              });
-              window.setTimeout(() => setHighlightedRoleId((c) => (c === id ? null : c)), 600);
-            }}
-            onDeleteRole={deleteRole}
-          />
-        )}
-      </div>
-
-      {/* Role detail cards — shown below the hierarchy list (expandable) */}
-      {orderedRoles.length > 0 && (
-        <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-          <div className="px-5 py-4 border-b border-[var(--border)]">
-            <SectionHeader title="Role Details" className="mb-0" />
-          </div>
-          <div className="divide-y divide-[var(--neutral-cool-100)]">
-            {orderedRoles.map((role) => (
-              <RoleRow
-                key={role.id}
-                planId={planId}
-                role={role}
-                roles={roles}
-                canEdit={canEdit}
-                expanded={expandedRoleId === role.id}
-                highlighted={highlightedRoleId === role.id}
-                parentTitle={parentTitleById.get(role.id) ?? null}
-                onToggleExpand={() =>
-                  setExpandedRoleId(expandedRoleId === role.id ? null : role.id)
-                }
-                onUpdate={(patch) => updateRole(role.id, patch)}
-                onDelete={() => deleteRole(role.id)}
-                registerRef={(node) => {
-                  if (node) rowRefs.current.set(role.id, node);
-                  else rowRefs.current.delete(role.id);
-                }}
-                minimumWage={minimumWage}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RoleRow({
+function RoleDetailPanel({
   planId,
   role,
   roles,
   canEdit,
-  expanded,
-  highlighted,
-  parentTitle,
-  onToggleExpand,
   onUpdate,
   onDelete,
-  registerRef,
   minimumWage,
 }: {
   planId: string;
   role: OrgRole;
   roles: OrgRole[];
   canEdit: boolean;
-  expanded: boolean;
-  highlighted: boolean;
-  parentTitle: string | null;
-  onToggleExpand: () => void;
   onUpdate: (patch: Partial<OrgRole>) => void;
   onDelete: () => void;
-  registerRef: (node: HTMLDivElement | null) => void;
   minimumWage?: MinWageInfo | null;
 }) {
   const [jdFields, setJdFields] = useState<JdFields | null>(null);
@@ -723,7 +346,6 @@ function RoleRow({
   const [jdLoaded, setJdLoaded] = useState(false);
   const [jdDirty, setJdDirty] = useState(false);
 
-  // Scorecard + competency form data (formerly RoleHubPanel)
   const [hubScorecards, setHubScorecards] = useState<InterviewScorecard[]>([]);
   const [hubCompForms, setHubCompForms] = useState<CompetencyFormTemplate[]>([]);
   const [hubLoading, setHubLoading] = useState(false);
@@ -817,20 +439,16 @@ function RoleRow({
     await fetch(`/api/workspaces/hiring/competency-forms?id=${id}`, { method: "DELETE" });
   }
 
-  // Comp framework state (TIM-1303)
   const [compLine, setCompLine] = useState<PersonnelLine | null>(null);
   const [compLoading, setCompLoading] = useState(false);
   const [compDirty, setCompDirty] = useState(false);
   const [compSaving, setCompSaving] = useState(false);
 
-  // Draft edits before save
   const [compPayBasis, setCompPayBasis] = useState<PersonnelPayBasis>("monthly");
   const [compPayAmount, setCompPayAmount] = useState<number | "">(0);
   const [compHoursPerWeek, setCompHoursPerWeek] = useState<number | "">(30);
   const [compBenefitsPct, setCompBenefitsPct] = useState<number | "">(0);
 
-  // TIM-2518: sub-minimum wage check on the comp draft. Convert salary inputs
-  // to an hourly equivalent so the floor applies uniformly to all pay bases.
   const compHourlyForCompare = (() => {
     if (typeof compPayAmount !== "number" || compPayAmount <= 0) return 0;
     if (compPayBasis === "hourly") return Math.round(compPayAmount * 100);
@@ -888,9 +506,7 @@ function RoleRow({
     }
   }
 
-  // Lazy-load all expanded-section data on first expand (TIM-1486)
   useEffect(() => {
-    if (!expanded) return;
     if (!jdLoaded && !jdLoading) loadJd();
     if (!hubLoaded && !hubLoading) loadHub();
     if (role.id.startsWith("local_")) return;
@@ -909,7 +525,7 @@ function RoleRow({
       })
       .finally(() => setCompLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded, role.id]);
+  }, [role.id]);
 
   async function saveComp() {
     if (!canEdit) return;
@@ -941,7 +557,6 @@ function RoleRow({
 
   const { formatMinor } = useCurrency();
 
-  // Live loaded cost preview (from entered fields, not just saved line)
   const compPreviewCents =
     typeof compPayAmount === "number" && compPayAmount > 0
       ? personnelLoadedMonthlyCents({
@@ -959,482 +574,558 @@ function RoleRow({
   const parentOptions = roles.filter((r) => r.id !== role.id);
 
   return (
-    <>
-    <div
-      ref={registerRef}
-      className={`transition-shadow ${highlighted ? "ring-2 ring-[var(--teal)] ring-inset" : ""}`}
-    >
-      {/* Role header row — single expand chevron */}
-      <button
-        type="button"
-        onClick={onToggleExpand}
-        aria-expanded={expanded}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--background)] transition-colors"
-      >
-        <div className="flex-1 min-w-0">
-          {role.role_title ? (
-            <TruncatedText
-              text={role.role_title}
-              className="text-sm font-medium text-[var(--foreground)] block"
+    <div className="border-t border-[var(--neutral-cool-150)] bg-[var(--background)] divide-y divide-[var(--neutral-cool-100)]">
+      {/* 1) Details */}
+      <section className="px-4 py-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Users size={14} className="text-[var(--teal)]" />
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Details</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Role title</label>
+            <input
+              className={inputCls}
+              value={role.role_title}
+              onChange={(e) => onUpdate({ role_title: e.target.value })}
+              placeholder="e.g. Head Barista"
+              disabled={!canEdit}
             />
-          ) : (
-            <span className="text-sm font-medium text-[var(--dark-grey)] block">
-              Unnamed role
+          </div>
+          <div>
+            <label className={labelCls}>Headcount</label>
+            <input
+              className={inputCls}
+              type="number"
+              min={1}
+              value={role.headcount}
+              onChange={(e) =>
+                onUpdate({ headcount: parseInt(e.target.value, 10) || 1 })
+              }
+              disabled={!canEdit}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Reports to</label>
+            <select
+              className={inputCls}
+              value={role.parent_role_id ?? ""}
+              onChange={(e) =>
+                onUpdate({ parent_role_id: e.target.value || null })
+              }
+              disabled={!canEdit}
+            >
+              <option value="">None (top-level)</option>
+              {parentOptions.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.role_title || "Unnamed role"}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelCls}>Notes</label>
+            <input
+              className={inputCls}
+              value={role.notes ?? ""}
+              onChange={(e) => onUpdate({ notes: e.target.value || null })}
+              placeholder="Optional notes"
+              disabled={!canEdit}
+            />
+          </div>
+        </div>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="mt-3 flex items-center gap-1 text-xs text-[var(--dark-grey)] hover:text-[var(--error)] transition-colors"
+          >
+            <Trash2 size={12} />
+            Delete role
+          </button>
+        )}
+      </section>
+
+      {/* 2) Compensation */}
+      <section className="px-4 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Award size={14} className="text-[var(--teal)]" />
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Compensation</p>
+          </div>
+          {compLoading && (
+            <span className="text-[10px] text-[var(--dark-grey)]">Loading…</span>
+          )}
+          {!compLoading && compLine === null && !compDirty && (
+            <span className="text-[10px] text-[var(--dark-grey)]">Not set. Edit fields to link.</span>
+          )}
+          {compPreviewCents !== null && (
+            <span className="text-xs font-semibold text-[var(--teal)]">
+              Loaded: {formatMinor(compPreviewCents)}/mo
             </span>
           )}
-          <span className="text-xs text-[var(--muted-foreground)]">
-            {role.headcount} headcount
-            {role.monthly_cost_cents
-              ? ` · ${formatMinor(role.monthly_cost_cents)}/mo`
-              : ""}
-            {parentTitle ? ` · Reports to ${parentTitle}` : ""}
-          </span>
         </div>
-        <span className="text-[var(--dark-grey)] p-1 shrink-0" aria-hidden>
-          {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-        </span>
-        {canEdit && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                onDelete();
-              }
-            }}
-            title="Delete role"
-            className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1 shrink-0 cursor-pointer"
+        <div className="flex flex-wrap gap-3 items-end bg-white border border-[var(--neutral-cool-200)] rounded-lg p-3">
+          <div className="w-36">
+            <label className={labelCls}>Pay basis</label>
+            <select
+              className={inputCls}
+              value={compPayBasis}
+              disabled={!canEdit || compLoading}
+              onChange={(e) => {
+                const v = e.target.value as PersonnelPayBasis;
+                setCompPayBasis(v);
+                if (v === "hourly" && typeof compHoursPerWeek !== "number") setCompHoursPerWeek(30);
+                setCompDirty(true);
+              }}
+            >
+              {(Object.keys(PAY_BASIS_LABEL) as PersonnelPayBasis[]).map((b) => (
+                <option key={b} value={b}>{PAY_BASIS_LABEL[b]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="w-32">
+            <label className={labelCls}>{compPayBasis === "hourly" ? "Rate / hour" : "Pay amount"}</label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">$</span>
+              <input
+                className={inputCls + " pl-5"}
+                type="number"
+                min={0}
+                step={compPayBasis === "hourly" ? 0.25 : 100}
+                value={compPayAmount}
+                disabled={!canEdit || compLoading}
+                onChange={(e) => {
+                  setCompPayAmount(e.target.value === "" ? "" : parseFloat(e.target.value));
+                  setCompDirty(true);
+                }}
+              />
+            </div>
+          </div>
+          {compPayBasis === "hourly" && (
+            <div className="w-28">
+              <label className={labelCls}>Hours / week</label>
+              <input
+                className={inputCls}
+                type="number"
+                min={0}
+                max={168}
+                step={1}
+                value={compHoursPerWeek}
+                disabled={!canEdit || compLoading}
+                onChange={(e) => {
+                  setCompHoursPerWeek(e.target.value === "" ? "" : parseFloat(e.target.value));
+                  setCompDirty(true);
+                }}
+              />
+            </div>
+          )}
+          <div className="w-24">
+            <label className={labelCls}>Benefits %</label>
+            <div className="relative">
+              <input
+                className={inputCls + " pr-6"}
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={compBenefitsPct}
+                disabled={!canEdit || compLoading}
+                onChange={(e) => {
+                  setCompBenefitsPct(e.target.value === "" ? "" : parseFloat(e.target.value));
+                  setCompDirty(true);
+                }}
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">%</span>
+            </div>
+          </div>
+          {canEdit && compDirty && (
+            <button
+              type="button"
+              onClick={saveComp}
+              disabled={compSaving}
+              className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
+            >
+              {compSaving ? "Saving…" : "Save comp"}
+            </button>
+          )}
+        </div>
+        {compWageBelowFloor && minimumWage && (
+          <p
+            role="alert"
+            className="mt-2 flex items-start gap-2 rounded-lg border border-[var(--error)]/40 bg-[var(--error)]/5 px-3 py-2 text-xs leading-snug text-[var(--error)]"
           >
-            <Trash2 size={13} />
-          </span>
+            <AlertTriangle size={14} className="mt-[1px] shrink-0" aria-hidden="true" />
+            <span>
+              {formatHourlyWage(compHourlyForCompare, minimumWage.currency)}/hr is below {minimumWage.jurisdictionLabel}&apos;s {minimumWage.year} minimum wage of {formatHourlyWage(minimumWage.hourlyMinorUnits, minimumWage.currency)}/hr. This wage is non-compliant.
+            </span>
+          </p>
         )}
-      </button>
+      </section>
 
-      {expanded && (
-        <div className="border-t border-[var(--neutral-cool-150)] bg-[var(--background)] divide-y divide-[var(--neutral-cool-100)]">
-          {/* 1) Details */}
-          <section className="px-4 py-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Users size={14} className="text-[var(--teal)]" />
-              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Details</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Role title</label>
-                <input
-                  className={inputCls}
-                  value={role.role_title}
-                  onChange={(e) => onUpdate({ role_title: e.target.value })}
-                  placeholder="e.g. Head Barista"
-                  disabled={!canEdit}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Headcount</label>
-                <input
-                  className={inputCls}
-                  type="number"
-                  min={1}
-                  value={role.headcount}
-                  onChange={(e) =>
-                    onUpdate({ headcount: parseInt(e.target.value, 10) || 1 })
-                  }
-                  disabled={!canEdit}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Reports to</label>
-                <select
-                  className={inputCls}
-                  value={role.parent_role_id ?? ""}
-                  onChange={(e) =>
-                    onUpdate({ parent_role_id: e.target.value || null })
-                  }
-                  disabled={!canEdit}
-                >
-                  <option value="">None (top-level)</option>
-                  {parentOptions.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.role_title || "Unnamed role"}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="sm:col-span-2">
-                <label className={labelCls}>Notes</label>
-                <input
-                  className={inputCls}
-                  value={role.notes ?? ""}
-                  onChange={(e) => onUpdate({ notes: e.target.value || null })}
-                  placeholder="Optional notes"
-                  disabled={!canEdit}
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* 2) Compensation */}
-          <section className="px-4 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Award size={14} className="text-[var(--teal)]" />
-                <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Compensation</p>
-              </div>
-              {compLoading && (
-                <span className="text-[10px] text-[var(--dark-grey)]">Loading…</span>
-              )}
-              {!compLoading && compLine === null && !compDirty && (
-                <span className="text-[10px] text-[var(--dark-grey)]">Not set. Edit fields to link.</span>
-              )}
-              {compPreviewCents !== null && (
-                <span className="text-xs font-semibold text-[var(--teal)]">
-                  Loaded: {formatMinor(compPreviewCents)}/mo
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-3 items-end bg-white border border-[var(--neutral-cool-200)] rounded-lg p-3">
-              <div className="w-36">
-                <label className={labelCls}>Pay basis</label>
-                <select
-                  className={inputCls}
-                  value={compPayBasis}
-                  disabled={!canEdit || compLoading}
-                  onChange={(e) => {
-                    const v = e.target.value as PersonnelPayBasis;
-                    setCompPayBasis(v);
-                    if (v === "hourly" && typeof compHoursPerWeek !== "number") setCompHoursPerWeek(30);
-                    setCompDirty(true);
-                  }}
-                >
-                  {(Object.keys(PAY_BASIS_LABEL) as PersonnelPayBasis[]).map((b) => (
-                    <option key={b} value={b}>{PAY_BASIS_LABEL[b]}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="w-32">
-                <label className={labelCls}>{compPayBasis === "hourly" ? "Rate / hour" : "Pay amount"}</label>
-                <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">$</span>
-                  <input
-                    className={inputCls + " pl-5"}
-                    type="number"
-                    min={0}
-                    step={compPayBasis === "hourly" ? 0.25 : 100}
-                    value={compPayAmount}
-                    disabled={!canEdit || compLoading}
-                    onChange={(e) => {
-                      setCompPayAmount(parseFloat(e.target.value) || "");
-                      setCompDirty(true);
-                    }}
-                  />
-                </div>
-              </div>
-              {compPayBasis === "hourly" && (
-                <div className="w-28">
-                  <label className={labelCls}>Hours / week</label>
-                  <input
-                    className={inputCls}
-                    type="number"
-                    min={0}
-                    max={168}
-                    step={1}
-                    value={compHoursPerWeek}
-                    disabled={!canEdit || compLoading}
-                    onChange={(e) => {
-                      setCompHoursPerWeek(parseFloat(e.target.value) || "");
-                      setCompDirty(true);
-                    }}
-                  />
-                </div>
-              )}
-              <div className="w-24">
-                <label className={labelCls}>Benefits %</label>
-                <div className="relative">
-                  <input
-                    className={inputCls + " pr-6"}
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={compBenefitsPct}
-                    disabled={!canEdit || compLoading}
-                    onChange={(e) => {
-                      setCompBenefitsPct(parseFloat(e.target.value) || "");
-                      setCompDirty(true);
-                    }}
-                  />
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">%</span>
-                </div>
-              </div>
-              {canEdit && compDirty && (
-                <button
-                  type="button"
-                  onClick={saveComp}
-                  disabled={compSaving}
-                  className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
-                >
-                  {compSaving ? "Saving…" : "Save comp"}
-                </button>
-              )}
-            </div>
-            {/* TIM-2518: sub-minimum wage warning for the comp draft. */}
-            {compWageBelowFloor && minimumWage && (
-              <p
-                role="alert"
-                className="mt-2 flex items-start gap-2 rounded-lg border border-[var(--error)]/40 bg-[var(--error)]/5 px-3 py-2 text-xs leading-snug text-[var(--error)]"
-              >
-                <AlertTriangle size={14} className="mt-[1px] shrink-0" aria-hidden="true" />
-                <span>
-                  {formatHourlyWage(compHourlyForCompare, minimumWage.currency)}/hr is below {minimumWage.jurisdictionLabel}&apos;s {minimumWage.year} minimum wage of {formatHourlyWage(minimumWage.hourlyMinorUnits, minimumWage.currency)}/hr. This wage is non-compliant.
-                </span>
-              </p>
-            )}
-          </section>
-
-          {/* 3) Job Description */}
-          <section className="px-4 py-4">
-            <div className="flex items-center gap-2 mb-3">
-              <FileText size={14} className="text-[var(--teal)]" />
-              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Job Description</p>
-            </div>
-            {jdLoading ? (
-              <p className="text-sm text-[var(--dark-grey)]" role="status">Loading…</p>
-            ) : (
-              <>
-                <div className="space-y-4">
-                  {JD_FIELD_DEFS.map(({ key, label, multiline }) => (
-                    <div key={key}>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className={labelCls}>{label}</label>
-                      </div>
-                      {multiline ? (
-                        <textarea
-                          rows={4}
-                          className={inputCls + " resize-none"}
-                          value={jdFields?.[key] ?? ""}
-                          onChange={(e) => {
-                            setJdFields((prev) => prev ? { ...prev, [key]: e.target.value } : prev);
-                            setJdDirty(true);
-                          }}
-                          disabled={!canEdit}
-                        />
-                      ) : (
-                        <input
-                          className={inputCls}
-                          value={jdFields?.[key] ?? ""}
-                          onChange={(e) => {
-                            setJdFields((prev) => prev ? { ...prev, [key]: e.target.value } : prev);
-                            setJdDirty(true);
-                          }}
-                          disabled={!canEdit}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between pt-3">
-                  {jdFields && role.jd_template_id ? (
-                    <HiringPdfButton
-                      templateId="hiring_job_description"
-                      queryParams={{ role_id: role.id }}
-                      label="Print JD"
+      {/* 3) Job Description */}
+      <section className="px-4 py-4">
+        <div className="flex items-center gap-2 mb-3">
+          <FileText size={14} className="text-[var(--teal)]" />
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Job Description</p>
+        </div>
+        {jdLoading ? (
+          <p className="text-sm text-[var(--dark-grey)]" role="status">Loading…</p>
+        ) : (
+          <>
+            <div className="space-y-4">
+              {JD_FIELD_DEFS.map(({ key, label, multiline }) => (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className={labelCls}>{label}</label>
+                  </div>
+                  {multiline ? (
+                    <textarea
+                      rows={4}
+                      className={inputCls + " resize-none"}
+                      value={jdFields?.[key] ?? ""}
+                      onChange={(e) => {
+                        setJdFields((prev) => prev ? { ...prev, [key]: e.target.value } : prev);
+                        setJdDirty(true);
+                      }}
+                      disabled={!canEdit}
                     />
                   ) : (
-                    <span />
-                  )}
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={saveJd}
-                      disabled={!jdDirty}
-                      className="text-sm font-semibold bg-[var(--teal)] text-white px-5 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
-                    >
-                      Save JD
-                    </button>
+                    <input
+                      className={inputCls}
+                      value={jdFields?.[key] ?? ""}
+                      onChange={(e) => {
+                        setJdFields((prev) => prev ? { ...prev, [key]: e.target.value } : prev);
+                        setJdDirty(true);
+                      }}
+                      disabled={!canEdit}
+                    />
                   )}
                 </div>
-              </>
-            )}
-          </section>
-
-          {/* 4) Scorecards */}
-          <section className="px-4 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <ClipboardCheck size={14} className="text-[var(--teal)]" />
-                <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Scorecards</p>
-              </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between pt-3">
+              {jdFields && role.jd_template_id ? (
+                <HiringPdfButton
+                  templateId="hiring_job_description"
+                  queryParams={{ role_id: role.id }}
+                  label="Print JD"
+                />
+              ) : (
+                <span />
+              )}
               {canEdit && (
                 <button
                   type="button"
-                  onClick={addScorecard}
-                  className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:underline"
+                  onClick={saveJd}
+                  disabled={!jdDirty}
+                  className="text-sm font-semibold bg-[var(--teal)] text-white px-5 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
                 >
-                  <Plus size={12} /> New
+                  Save JD
                 </button>
               )}
             </div>
-            {hubLoading ? (
-              <p className="text-xs text-[var(--dark-grey)]">Loading…</p>
-            ) : hubScorecards.length === 0 ? (
-              <p className="text-xs text-[var(--dark-grey)]">No scorecards yet. Create one above.</p>
-            ) : (
-              <div className="space-y-2">
-                {hubScorecards.map((sc) => (
-                  <div key={sc.id} className="flex items-center gap-2 border border-[var(--border)] rounded-lg px-3 py-2 bg-white">
-                    {renamingScorecard === sc.id ? (
-                      <>
-                        <input
-                          autoFocus
-                          className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus-visible:outline-none focus:border-[var(--teal)]"
-                          value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveRenameScorecard(sc.id);
-                            if (e.key === "Escape") setRenamingScorecard(null);
-                          }}
-                        />
-                        <button type="button" onClick={() => saveRenameScorecard(sc.id)} className="text-[var(--teal)] p-1">
-                          <Check size={13} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex-1 text-sm text-[var(--foreground)] truncate">
-                          {sc.name}
-                          {sc.is_default && (
-                            <span className="ml-2 text-[10px] font-semibold text-[var(--teal)] bg-[var(--teal-bg-50)] px-1.5 py-0.5 rounded-full">Default</span>
-                          )}
-                        </span>
-                        {canEdit && (
-                          <>
-                            <button
-                              type="button"
-                              title="Rename"
-                              onClick={() => { setRenamingScorecard(sc.id); setRenameValue(sc.name); }}
-                              className="text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1"
-                            >
-                              <Pencil size={12} />
-                            </button>
-                            <button
-                              type="button"
-                              title="Duplicate"
-                              onClick={() => duplicateScorecard(sc.id)}
-                              className="text-[var(--dark-grey)] hover:text-[var(--teal)] p-1"
-                            >
-                              <Copy size={12} />
-                            </button>
-                            <HiringPdfButton
-                              templateId="hiring_scorecard_blank"
-                              queryParams={{ scorecard_id: sc.id }}
-                              label=""
-                              iconTitle="Print blank scorecard"
-                            />
-                            <ScorecardWorksheetButton scorecardId={sc.id} />
-                            <button
-                              type="button"
-                              title="Delete"
-                              onClick={() => deleteScorecard(sc.id)}
-                              className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          </>
+        )}
+      </section>
 
-          {/* 5) Competency Forms */}
-          <section className="px-4 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <BookOpen size={14} className="text-[var(--teal)]" />
-                <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Competency Forms</p>
-              </div>
-              {canEdit && (
-                <button
-                  type="button"
-                  onClick={addCompForm}
-                  className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:underline"
-                >
-                  <Plus size={12} /> New
-                </button>
-              )}
-            </div>
-            {hubLoading ? (
-              <p className="text-xs text-[var(--dark-grey)]">Loading…</p>
-            ) : hubCompForms.length === 0 ? (
-              <p className="text-xs text-[var(--dark-grey)]">No competency form template yet. Create one above.</p>
-            ) : (
-              <div className="space-y-2">
-                {hubCompForms.map((cf) => (
-                  <div key={cf.id} className="flex items-center gap-2 border border-[var(--border)] rounded-lg px-3 py-2 bg-white">
-                    {renamingForm === cf.id ? (
-                      <>
-                        <input
-                          autoFocus
-                          className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus-visible:outline-none focus:border-[var(--teal)]"
-                          value={renameFormValue}
-                          onChange={(e) => setRenameFormValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveRenameForm(cf.id);
-                            if (e.key === "Escape") setRenamingForm(null);
-                          }}
-                        />
-                        <button type="button" onClick={() => saveRenameForm(cf.id)} className="text-[var(--teal)] p-1">
-                          <Check size={13} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex-1 text-sm text-[var(--foreground)] truncate">{cf.name}</span>
-                        <HiringPdfButton
-                          templateId="hiring_competency_blank"
-                          queryParams={{ form_template_id: cf.id }}
-                          label=""
-                          iconTitle="Print blank form"
-                        />
-                        {canEdit && (
-                          <>
-                            <button
-                              type="button"
-                              title="Rename"
-                              onClick={() => { setRenamingForm(cf.id); setRenameFormValue(cf.name); }}
-                              className="text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1"
-                            >
-                              <Pencil size={12} />
-                            </button>
-                            <button
-                              type="button"
-                              title="Delete"
-                              onClick={() => deleteCompForm(cf.id)}
-                              className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+      {/* 4) Scorecards */}
+      <section className="px-4 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <ClipboardCheck size={14} className="text-[var(--teal)]" />
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Scorecards</p>
+          </div>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={addScorecard}
+              className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:underline"
+            >
+              <Plus size={12} /> New
+            </button>
+          )}
         </div>
-      )}
+        {hubLoading ? (
+          <p className="text-xs text-[var(--dark-grey)]">Loading…</p>
+        ) : hubScorecards.length === 0 ? (
+          <p className="text-xs text-[var(--dark-grey)]">No scorecards yet. Create one above.</p>
+        ) : (
+          <div className="space-y-2">
+            {hubScorecards.map((sc) => (
+              <div key={sc.id} className="flex items-center gap-2 border border-[var(--border)] rounded-lg px-3 py-2 bg-white">
+                {renamingScorecard === sc.id ? (
+                  <>
+                    <input
+                      autoFocus
+                      className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus-visible:outline-none focus:border-[var(--teal)]"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveRenameScorecard(sc.id);
+                        if (e.key === "Escape") setRenamingScorecard(null);
+                      }}
+                    />
+                    <button type="button" onClick={() => saveRenameScorecard(sc.id)} className="text-[var(--teal)] p-1">
+                      <Check size={13} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm text-[var(--foreground)] truncate">
+                      {sc.name}
+                      {sc.is_default && (
+                        <span className="ml-2 text-[10px] font-semibold text-[var(--teal)] bg-[var(--teal-bg-50)] px-1.5 py-0.5 rounded-full">Default</span>
+                      )}
+                    </span>
+                    {canEdit && (
+                      <>
+                        <button
+                          type="button"
+                          title="Rename"
+                          onClick={() => { setRenamingScorecard(sc.id); setRenameValue(sc.name); }}
+                          className="text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Duplicate"
+                          onClick={() => duplicateScorecard(sc.id)}
+                          className="text-[var(--dark-grey)] hover:text-[var(--teal)] p-1"
+                        >
+                          <Copy size={12} />
+                        </button>
+                        <HiringPdfButton
+                          templateId="hiring_scorecard_blank"
+                          queryParams={{ scorecard_id: sc.id }}
+                          label=""
+                          iconTitle="Print blank scorecard"
+                        />
+                        <ScorecardWorksheetButton scorecardId={sc.id} />
+                        <button
+                          type="button"
+                          title="Delete"
+                          onClick={() => deleteScorecard(sc.id)}
+                          className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 5) Competency Forms */}
+      <section className="px-4 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <BookOpen size={14} className="text-[var(--teal)]" />
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Competency Forms</p>
+          </div>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={addCompForm}
+              className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:underline"
+            >
+              <Plus size={12} /> New
+            </button>
+          )}
+        </div>
+        {hubLoading ? (
+          <p className="text-xs text-[var(--dark-grey)]">Loading…</p>
+        ) : hubCompForms.length === 0 ? (
+          <p className="text-xs text-[var(--dark-grey)]">No competency form template yet. Create one above.</p>
+        ) : (
+          <div className="space-y-2">
+            {hubCompForms.map((cf) => (
+              <div key={cf.id} className="flex items-center gap-2 border border-[var(--border)] rounded-lg px-3 py-2 bg-white">
+                {renamingForm === cf.id ? (
+                  <>
+                    <input
+                      autoFocus
+                      className="flex-1 text-sm border border-[var(--border-medium)] rounded px-2 py-1 focus-visible:outline-none focus:border-[var(--teal)]"
+                      value={renameFormValue}
+                      onChange={(e) => setRenameFormValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveRenameForm(cf.id);
+                        if (e.key === "Escape") setRenamingForm(null);
+                      }}
+                    />
+                    <button type="button" onClick={() => saveRenameForm(cf.id)} className="text-[var(--teal)] p-1">
+                      <Check size={13} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm text-[var(--foreground)] truncate">{cf.name}</span>
+                    <HiringPdfButton
+                      templateId="hiring_competency_blank"
+                      queryParams={{ form_template_id: cf.id }}
+                      label=""
+                      iconTitle="Print blank form"
+                    />
+                    {canEdit && (
+                      <>
+                        <button
+                          type="button"
+                          title="Rename"
+                          onClick={() => { setRenamingForm(cf.id); setRenameFormValue(cf.name); }}
+                          className="text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Delete"
+                          onClick={() => deleteCompForm(cf.id)}
+                          className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
-    </>
   );
 }
+
+// TIM-3355: OrgTab replaced — single list with inline expand. No org chart.
+function OrgTab({
+  planId,
+  canEdit,
+  roles,
+  onRolesChange,
+  minimumWage,
+}: {
+  planId: string;
+  canEdit: boolean;
+  roles: OrgRole[];
+  onRolesChange: (r: OrgRole[] | ((prev: OrgRole[]) => OrgRole[])) => void;
+  minimumWage?: MinWageInfo | null;
+}) {
+  const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
+
+  async function addRole() {
+    const optimistic: OrgRole = {
+      id: makeLocalId(),
+      plan_id: planId,
+      role_title: "",
+      headcount: 1,
+      start_date: null,
+      monthly_cost_cents: null,
+      notes: null,
+      parent_role_id: null,
+      jd_template_id: null,
+      order_index: roles.filter((r) => !r.parent_role_id).length,
+    };
+    onRolesChange((prev) => [...prev, optimistic]);
+    setExpandedRoleId(optimistic.id);
+
+    const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan_id: planId, role_title: "", headcount: 1 }),
+    });
+    if (res.ok) {
+      const created = (await res.json()) as OrgRole;
+      onRolesChange((prev) => prev.map((r) => (r.id === optimistic.id ? created : r)));
+      setExpandedRoleId(created.id);
+    } else {
+      onRolesChange((prev) => prev.filter((r) => r.id !== optimistic.id));
+      setExpandedRoleId(null);
+    }
+  }
+
+  async function updateRole(id: string, patch: Partial<OrgRole>) {
+    onRolesChange((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+    await fetch(`/api/workspaces/hiring/roles?planId=${planId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...patch }),
+    });
+  }
+
+  async function deleteRole(id: string) {
+    const snapshot = roles;
+    if (expandedRoleId === id) setExpandedRoleId(null);
+    onRolesChange((prev) => prev.filter((r) => r.id !== id));
+    const res = await fetch(`/api/workspaces/hiring/roles?planId=${planId}&id=${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) onRolesChange(snapshot);
+  }
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Planned Roles</p>
+          <SectionHelp title="Planned Roles">
+            Drag rows to reorder hierarchy. Drag right to nest a role under a parent. Click any role to expand its details — job description, scorecard, and compensation.
+          </SectionHelp>
+        </div>
+        {canEdit && (
+          <WorkspaceActionButton variant="primary" onClick={addRole}>
+            <Plus size={WORKSPACE_ACTION_ICON_SIZE} />
+            Add role
+          </WorkspaceActionButton>
+        )}
+      </div>
+
+      {/* Empty state */}
+      {roles.length === 0 ? (
+        <div className="py-12 text-center space-y-3">
+          <p className="text-sm text-[var(--dark-grey)]">No roles planned yet.</p>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={addRole}
+              className="text-sm text-[var(--teal)] hover:underline font-medium"
+            >
+              Add your first role →
+            </button>
+          )}
+        </div>
+      ) : (
+        <OrgHierarchyList
+          planId={planId}
+          roles={roles}
+          canEdit={canEdit}
+          onRolesChange={(updated) => onRolesChange(updated)}
+          onDeleteRole={deleteRole}
+          expandedRoleId={expandedRoleId}
+          onExpandChange={setExpandedRoleId}
+          renderExpandedPanel={(role) => (
+            <RoleDetailPanel
+              planId={planId}
+              role={role}
+              roles={roles}
+              canEdit={canEdit}
+              onUpdate={(patch) => updateRole(role.id, patch)}
+              onDelete={() => deleteRole(role.id)}
+              minimumWage={minimumWage}
+            />
+          )}
+        />
+      )}
+    </div>
+  );
+}
+
 
 // ── Interview Scorecard tab ───────────────────────────────────────────────────
 // V1: template-only view. Per-candidate scorecard fill deferred to V2 (TIM-1419).
@@ -1581,8 +1272,13 @@ function InterviewTab({
       {/* Question template */}
       {selectedRoleId && (
         <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-          <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
-            <SectionHeader title="Interview Questions" helpContent="Template questions and weights for this scorecard." className="mb-0 flex-1" />
+          <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1">
+                <p className="text-sm font-semibold text-[var(--foreground)]">Interview Questions</p>
+                <SectionHelp title="Interview Questions">Template questions and weights for this scorecard.</SectionHelp>
+              </div>
+            </div>
             {canEdit && (
               <button
                 type="button"
@@ -1863,8 +1559,8 @@ function OnboardingTab({
     <div className="space-y-5">
       {/* Instance list */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
-          <SectionHeader title="Onboarding Plans" className="mb-0 flex-1" />
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Onboarding Plans</p>
           {canEdit && (
             <button
               type="button"
@@ -2384,8 +2080,13 @@ function CompetencyTab({
     <div className="space-y-5">
       {/* Competency template */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
-          <SectionHeader title="Competency Framework" helpContent="Shared skills and rubric for all staff evaluations." className="mb-0 flex-1" />
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Competency Framework</p>
+              <SectionHelp title="Competency Framework">Shared skills and rubric for all staff evaluations.</SectionHelp>
+            </div>
+          </div>
           {canEdit && (
             <button
               type="button"
@@ -2549,13 +2250,16 @@ function RequirementsTab({
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <SectionHeader
-              title="Hiring Jurisdiction"
-              helpContent={settings.hiring_country
-                ? "Override set. Requirement set sourced from your selection."
-                : "Auto-detected from your signed or primary location candidate."}
-              className="mb-0 flex-1"
-            />
+            <div>
+              <div className="flex items-center gap-1">
+                <p className="text-sm font-semibold text-[var(--foreground)]">Hiring Jurisdiction</p>
+                <SectionHelp title="Hiring Jurisdiction">
+                  {settings.hiring_country
+                    ? "Override set. Requirement set sourced from your selection."
+                    : "Auto-detected from your signed or primary location candidate."}
+                </SectionHelp>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <Globe size={14} className="text-[var(--muted-foreground)]" />
               <select
