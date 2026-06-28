@@ -335,6 +335,7 @@ function RoleDetailPanel({
   onUpdate,
   onDelete,
   minimumWage,
+  openJdAIReviewModal,
 }: {
   planId: string;
   role: OrgRole;
@@ -343,6 +344,7 @@ function RoleDetailPanel({
   onUpdate: (patch: Partial<OrgRole>) => void;
   onDelete: () => void;
   minimumWage?: MinWageInfo | null;
+  openJdAIReviewModal: ReturnType<typeof useAIReviewModal>["openAIReviewModal"];
 }) {
   const [jdFields, setJdFields] = useState<JdFields | null>(null);
   const [jdLoading, setJdLoading] = useState(false);
@@ -358,7 +360,6 @@ function RoleDetailPanel({
   const [renamingForm, setRenamingForm] = useState<string | null>(null);
   const [renameFormValue, setRenameFormValue] = useState("");
 
-  const { openAIReviewModal: openJdAIReviewModal, AIReviewModalNode: JdAIReviewModalNode } = useAIReviewModal();
   const [aiAssistJdField, setAiAssistJdField] = useState<{
     fieldKey: keyof JdFields;
     fieldLabel: string;
@@ -1045,7 +1046,6 @@ function RoleDetailPanel({
           openAIReviewModal={openJdAIReviewModal}
         />
       )}
-      {JdAIReviewModalNode}
     </div>
   );
 }
@@ -1065,6 +1065,9 @@ function OrgTab({
   minimumWage?: MinWageInfo | null;
 }) {
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
+
+  // TIM-3367: owned at OrgTab level so the review modal survives role-row collapse (TIM-2858 pattern).
+  const { openAIReviewModal: openJdAIReviewModal, AIReviewModalNode: JdAIReviewModalNode } = useAIReviewModal();
 
   async function addRole() {
     const optimistic: OrgRole = {
@@ -1166,10 +1169,12 @@ function OrgTab({
               onUpdate={(patch) => updateRole(role.id, patch)}
               onDelete={() => deleteRole(role.id)}
               minimumWage={minimumWage}
+              openJdAIReviewModal={openJdAIReviewModal}
             />
           )}
         />
       )}
+      {JdAIReviewModalNode}
     </div>
   );
 }
@@ -1897,6 +1902,7 @@ function OnboardingTab({
                                         <span className="text-xs font-medium text-[var(--muted-foreground)]">Detail</span>
                                         <button
                                           type="button"
+                                          disabled={!!aiAssistTask}
                                           onClick={() =>
                                             setAiAssistTask({
                                               taskId: t.id,
@@ -1904,7 +1910,7 @@ function OnboardingTab({
                                               currentValue: t.detail ?? "",
                                             })
                                           }
-                                          className="inline-flex items-center gap-1 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-2 py-0.5 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap shrink-0"
+                                          className="inline-flex items-center gap-1 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-2 py-0.5 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
                                           <Sparkles size={10} aria-hidden="true" />
                                           Write with AI
@@ -1960,11 +1966,11 @@ function OnboardingTab({
           onClose={() => setAiAssistTask(null)}
           fieldLabel={aiAssistTask.taskName || "Task Detail"}
           moduleLabel="Onboarding"
-          fieldKey={`task-detail-${aiAssistTask.taskId}`}
+          fieldKey="task-detail"
           workspaceKey="hiring"
           planId={planId}
           currentValue={aiAssistTask.currentValue}
-          onApply={(v) => updateTask(aiAssistTask.taskId, { detail: v || null })}
+          onApply={(v) => updateTask(aiAssistTask.taskId, { detail: v.trim() ? v : null })}
           openAIReviewModal={openTaskAIReviewModal}
         />
       )}
