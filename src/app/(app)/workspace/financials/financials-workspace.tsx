@@ -479,11 +479,11 @@ function Section({
           onClick={() => setOpen(!open)}
           aria-expanded={open}
           aria-label={`${open ? "Collapse" : "Expand"} ${title}`}
-          className="flex items-center gap-2 flex-1 min-w-0 text-left"
+          className="flex items-center gap-2 flex-1 min-w-0 text-left text-[var(--dark-grey)] hover:text-[var(--muted-foreground)] transition-colors"
         >
           <ChevronDown
             size={15}
-            className={`shrink-0 text-[var(--dark-grey)] transition-transform ${open ? "rotate-180" : ""}`}
+            className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
           <SectionHeader title={title} className="mb-0 flex-1" />
