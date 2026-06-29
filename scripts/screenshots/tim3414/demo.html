@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TIM-3414 popover/modal edge-clamp proof</title>
+  <link rel="stylesheet" href="https://groundwork.cafe/_next/static/chunks/0sz.rme-wul68.css?dpl=dpl_7WWfPHMoTV7Dn1EUWUHWpzx1CqDy" />
+  <style>
+    body { background: #f4eee5; font-family: ui-sans-serif, system-ui, sans-serif; margin: 0; padding: 1rem; }
+    h1 { font-size: 14px; margin: 0 0 0.75rem; color: #444; }
+    h2 { font-size: 11px; margin: 1rem 0 0.25rem; color: #666; text-transform: uppercase; letter-spacing: 0.06em; }
+    .viewport-frame { border: 1px dashed #c2b8a4; padding: 0.25rem; margin-bottom: 0.5rem; position: relative; }
+    .viewport-frame::before { content: ""; position: absolute; right: 0; top: 0; width: 8px; height: 100%; background: rgba(255,0,0,0.06); pointer-events: none; }
+    .viewport-frame::after { content: ""; position: absolute; left: 0; top: 0; width: 8px; height: 100%; background: rgba(255,0,0,0.06); pointer-events: none; }
+    .stage { position: relative; min-height: 120px; padding: 0.5rem; background: white; border-radius: 8px; }
+    .anchor-right { display: flex; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+  <h1>TIM-3414 — Popover edge-clamp + modal viewport floors (sha 798f801c)</h1>
+  <p style="font-size:12px;color:#666;margin:0 0 1rem">Red strips mark the 8&nbsp;px viewport edge padding. Every card / popover must stay inside them.</p>
+
+  <h2>1. InfoTip popover (w-64 max-w-[calc(100vw-1rem)])</h2>
+  <div class="viewport-frame">
+    <div class="stage">
+      <span class="relative inline-flex">
+        <button type="button" class="inline-flex items-center justify-center rounded text-[var(--teal)]">?</button>
+        <div role="dialog" class="absolute left-0 top-full z-30 mt-1 w-64 max-w-[calc(100vw-1rem)] rounded-xl border border-[var(--warm-800)] bg-[var(--warm-250)] p-3 shadow-lg">
+          <div class="mb-1.5 flex items-start justify-between gap-2">
+            <span class="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">CAM</span>
+            <button type="button" class="text-[var(--dark-grey)]">×</button>
+          </div>
+          <div class="text-xs leading-relaxed text-[var(--gray-1300)]">Common Area Maintenance. The landlord's monthly fee that covers shared spaces — lobby, hallways, parking, lighting.</div>
+        </div>
+      </span>
+    </div>
+  </div>
+
+  <h2>2. SectionHelp popover (w-72 max-w-[calc(100vw-1rem)])</h2>
+  <div class="viewport-frame">
+    <div class="stage">
+      <span class="relative inline-flex items-center">
+        <button type="button" class="inline-flex items-center justify-center rounded text-[var(--teal)]">?</button>
+        <div role="dialog" class="absolute left-0 top-full z-30 mt-1 w-72 max-w-[calc(100vw-1rem)] rounded-xl border border-[var(--warm-800)] bg-[var(--warm-250)] p-3 shadow-lg">
+          <div class="mb-1.5 flex items-start justify-between gap-2">
+            <span class="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Margin Ranking</span>
+            <button type="button" class="text-[var(--dark-grey)]">×</button>
+          </div>
+          <div class="text-xs leading-relaxed text-[var(--gray-1300)]">Your items from most to least profitable. Set each item's expected popularity here to place it on the grid above.</div>
+        </div>
+      </span>
+    </div>
+  </div>
+
+  <h2>3. FieldExamplePopover (max-w-[min(18rem,calc(100vw-1rem))])</h2>
+  <div class="viewport-frame">
+    <div class="stage">
+      <div class="my-1.5">
+        <button type="button" class="inline-flex items-center justify-center w-5 h-5 rounded text-[var(--teal)]">💡</button>
+        <div class="mt-1 max-w-[min(18rem,calc(100vw-1rem))] bg-[var(--warm-250)] border border-[var(--warm-800)] rounded-xl p-4">
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <p class="text-[10px] font-semibold text-[var(--teal)] uppercase tracking-wider">Hearth &amp; Bean Co.</p>
+              <p class="text-[10px] text-[var(--muted-foreground)] italic mt-0.5">Neighborhood roastery, 1 location</p>
+            </div>
+            <button type="button" class="text-[var(--dark-grey)] ml-2 shrink-0">×</button>
+          </div>
+          <p class="text-sm text-[var(--gray-1200)] leading-relaxed italic border-l-2 border-[var(--warm-950)] pl-3">We are licensed for indoor seating but the city is reviewing our sidewalk café permit. Approval expected by spring.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>4. AccountDataControls delete modal (max-w-[min(28rem,calc(100vw-1rem))] max-h-[100dvh])</h2>
+  <div class="viewport-frame">
+    <div class="stage" style="min-height:280px">
+      <div class="absolute inset-0 z-50 flex items-center justify-center bg-black/40 px-4" role="dialog">
+        <div class="bg-white rounded-2xl border border-[var(--border)] p-6 w-full max-w-[min(28rem,calc(100vw-1rem))] max-h-[100dvh] overflow-y-auto">
+          <h3 class="font-semibold text-[var(--foreground)] mb-2">Delete your account</h3>
+          <p class="text-sm text-[var(--dark-grey)] mb-4">This removes your plan content, AI conversations, and uploaded files. Past invoices are kept for seven years to meet legal requirements. This cannot be undone.</p>
+          <label class="block mb-4">
+            <span class="block text-sm font-medium text-[var(--foreground)] mb-1">Type <span class="font-mono">user@example.com</span> to confirm</span>
+            <input class="w-full border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm" placeholder="user@example.com" />
+          </label>
+          <div class="flex justify-end gap-3">
+            <button class="text-sm border border-[var(--border)] px-4 py-2 rounded-xl">Cancel</button>
+            <button class="text-sm text-white bg-red-600 px-4 py-2 rounded-xl">Delete account</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>5. Paywall &amp; credit-packs &amp; pro-upgrade modal (max-w-[min(24rem,calc(100vw-1rem))] max-h-[100dvh])</h2>
+  <div class="viewport-frame">
+    <div class="stage" style="min-height:320px">
+      <div class="absolute inset-0 z-50 flex items-center justify-center p-4" role="dialog">
+        <div class="absolute inset-0 bg-black/40"></div>
+        <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-[min(24rem,calc(100vw-1rem))] max-h-[100dvh] overflow-y-auto p-8 text-center">
+          <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--teal)]/10"></div>
+          <h2 class="text-lg font-bold text-[var(--foreground)] mb-2">Start a plan to save your work</h2>
+          <p class="text-sm text-[var(--muted-foreground)] leading-relaxed mb-6">You can explore for free. To save your answers and build your full plan, start a 7-day free trial on Starter or Pro.</p>
+          <div class="flex flex-col gap-3">
+            <a class="block bg-[var(--teal)] text-white text-sm font-medium px-5 py-2.5 rounded-xl">Choose a plan</a>
+            <button type="button" class="text-sm text-[var(--dark-grey)] py-1">Not now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
