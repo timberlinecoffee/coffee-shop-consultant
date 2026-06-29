@@ -581,7 +581,7 @@ export async function POST(request: NextRequest) {
 
       const gstRegistered: boolean = platformSettings?.gst_registered ?? false;
       const gstNumber: string | null = platformSettings?.gst_number ?? null;
-      const businessName: string = platformSettings?.business_name ?? "Timberline Coffee School Inc.";
+      const businessName: string = platformSettings?.business_name ?? "Ivy & Rill Consulting Inc.";
       const businessAddressObj = platformSettings?.business_address ?? null;
       const businessAddressStr: string = businessAddressObj
         ? [businessAddressObj.line1, businessAddressObj.city, businessAddressObj.state, businessAddressObj.postal_code, businessAddressObj.country].filter(Boolean).join(", ")
@@ -754,7 +754,7 @@ export async function POST(request: NextRequest) {
 
         const gstRegistered: boolean = platformSettings?.gst_registered ?? false;
         const gstNumber: string | null = platformSettings?.gst_number ?? null;
-        const businessName: string = platformSettings?.business_name ?? "Timberline Coffee School Inc.";
+        const businessName: string = platformSettings?.business_name ?? "Ivy & Rill Consulting Inc.";
         const businessAddressObj = platformSettings?.business_address ?? null;
         const businessAddressStr: string = businessAddressObj
           ? [businessAddressObj.line1, businessAddressObj.city, businessAddressObj.state, businessAddressObj.postal_code, businessAddressObj.country].filter(Boolean).join(", ")

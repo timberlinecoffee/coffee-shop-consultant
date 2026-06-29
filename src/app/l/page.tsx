@@ -79,7 +79,7 @@ export default function LinksPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-[var(--muted-foreground)] mt-10">
-          Timberline Coffee School
+          Ivy &amp; Rill Consulting Inc.
         </p>
       </div>
     </main>

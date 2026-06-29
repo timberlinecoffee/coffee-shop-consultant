@@ -130,7 +130,7 @@ export function HelpFooter() {
           <p
             style={{ color: "var(--neutral-600)", fontSize: "13px" }}
           >
-            &copy; {new Date().getFullYear()} Timberline Coffee School. All
+            &copy; {new Date().getFullYear()} Ivy &amp; Rill Consulting Inc. All
             rights reserved.
           </p>
         </div>

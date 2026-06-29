@@ -2,8 +2,8 @@ import Link from "next/link";
 import { CookiePreferencesLink } from "@/components/consent/CookiePreferencesLink";
 
 export const metadata = {
-  title: "Terms of Service | Timberline Coffee School",
-  description: "Terms of Service for Timberline Coffee School.",
+  title: "Terms of Service | Ivy & Rill Consulting Inc.",
+  description: "Terms of Service for Ivy & Rill Consulting Inc.",
 };
 
 const EFFECTIVE_DATE = "May 22, 2026";
@@ -17,7 +17,7 @@ export default function TermsPage() {
             <div className="w-8 h-8 bg-[var(--teal)] rounded-lg flex items-center justify-center">
               <span className="text-white text-xs font-bold">TCS</span>
             </div>
-            <span className="font-semibold text-[var(--teal)]">Timberline Coffee School</span>
+            <span className="font-semibold text-[var(--teal)]">Ivy &amp; Rill Consulting Inc.</span>
           </Link>
           <Link href="/" className="text-sm text-[var(--teal)] hover:underline">
             Back to home
@@ -31,8 +31,8 @@ export default function TermsPage() {
 
         <div className="prose prose-sm max-w-none text-[var(--foreground)] space-y-8">
           <p>
-            These Terms of Service (&quot;Terms&quot;) govern your use of Timberline Coffee School
-            (&quot;Timberline&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) and the subscription-based
+            These Terms of Service (&quot;Terms&quot;) govern your use of Ivy &amp; Rill Consulting Inc.
+            (&quot;Ivy &amp; Rill&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) and the subscription-based
             platform available at timberlinecoffeeschool.com (the &quot;Service&quot;). By creating an
             account or using the Service, you agree to these Terms.
           </p>
@@ -70,7 +70,7 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold mb-3">3. Intellectual Property</h2>
             <p>
               All content on the Service -- including course videos, written materials, exercises, and
-              platform design -- is owned by Timberline Coffee School or our licensors and is protected
+              platform design -- is owned by Ivy &amp; Rill Consulting Inc. or our licensors and is protected
               by copyright and other intellectual property laws.
             </p>
             <p className="mt-3">
@@ -101,7 +101,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">5. Limitation of Liability</h2>
             <p>
-              To the fullest extent permitted by law, Timberline Coffee School, its officers, employees,
+              To the fullest extent permitted by law, Ivy &amp; Rill Consulting Inc., its officers, employees,
               and partners will not be liable for:
             </p>
             <ul className="list-disc pl-6 space-y-1 mt-2">
@@ -162,7 +162,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">9. Contact</h2>
             <p>
-              Timberline Coffee School
+              Ivy &amp; Rill Consulting Inc.
               <br />
               Email:{" "}
               <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
@@ -175,7 +175,7 @@ export default function TermsPage() {
 
       <footer className="bg-[var(--foreground)] text-[var(--dark-grey)] px-6 py-6 text-sm">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-          <span>&copy; {new Date().getFullYear()} Timberline Coffee School</span>
+          <span>&copy; {new Date().getFullYear()} Ivy &amp; Rill Consulting Inc.</span>
           <div className="flex gap-6 flex-wrap justify-center">
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
