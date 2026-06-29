@@ -281,6 +281,7 @@ export async function sendTrialReminderEmail(
 
   const from =
     process.env.TRIAL_FROM_EMAIL ??
+    process.env.TRANSACTIONAL_FROM_EMAIL ??
     TRANSACTIONAL_FROM;
 
   const rendered = renderTrialReminder(input.day, input);
