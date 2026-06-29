@@ -434,7 +434,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
           type="button"
           onClick={handleResendConfirmation}
           disabled={resendLoading || cooldown > 0}
-          className="w-full text-center text-xs text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-50"
+          className="w-full text-xs text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-50 flex items-center justify-center min-h-[44px]"
         >
           {resendLoading ? "Sending..." : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend confirmation email"}
         </button>
@@ -480,12 +480,12 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
           />
         </div>
         <div>
-          <div className="flex items-baseline justify-between mb-1">
+          <div className="flex items-center justify-between mb-1">
             <label htmlFor="password" className="block text-xs font-medium text-[var(--foreground)]">Password</label>
             {mode === "signin" && (
               <Link
                 href="/forgot-password"
-                className="text-xs text-[var(--teal)] hover:underline"
+                className="text-xs text-[var(--teal)] hover:underline inline-flex items-center min-h-[44px] -my-3 px-1 -mr-1"
               >
                 Forgot Password?
               </Link>
@@ -504,8 +504,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
         </div>
 
         {/* TIM-2430: matches the consent-checkbox pattern in this same form
-            (token-only classes). Sentence-case copy per TIM-1537 Voice rules. */}
-        <label className="flex items-start gap-2 text-xs text-[var(--foreground)] leading-relaxed pt-1">
+            (token-only classes). Sentence-case copy per TIM-1537 Voice rules.
+            TIM-3428: min-h-[44px] makes the whole label a WCAG-compliant tap target. */}
+        <label className="flex items-start gap-2 text-xs text-[var(--foreground)] leading-relaxed min-h-[44px] py-2">
           <input
             type="checkbox"
             checked={rememberMe}
@@ -516,7 +517,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
         </label>
 
         {mode === "signup" && (
-          <label className="flex items-start gap-2 text-xs text-[var(--foreground)] leading-relaxed pt-1">
+          <label className="flex items-start gap-2 text-xs text-[var(--foreground)] leading-relaxed min-h-[44px] py-2">
             <input
               type="checkbox"
               checked={consent}
@@ -556,7 +557,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
 
       <button
         onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-        className="w-full text-center text-xs text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
+        className="w-full text-xs text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors flex items-center justify-center min-h-[44px]"
       >
         {mode === "signin" ? "New here? Create a free account instead" : "Already have an account? Sign in"}
       </button>

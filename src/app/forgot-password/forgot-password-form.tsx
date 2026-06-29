@@ -61,7 +61,7 @@ export function ForgotPasswordForm({ errorMessage }: { errorMessage?: string | n
             setError(null);
           }}
           disabled={cooldown > 0}
-          className="w-full text-center text-xs text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-50"
+          className="w-full text-xs text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-50 flex items-center justify-center min-h-[44px]"
         >
           {cooldown > 0 ? `Send another link in ${cooldown}s` : "Send to a different email"}
         </button>

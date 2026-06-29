@@ -47,7 +47,7 @@ export function WorkspaceTopBar({ items }: WorkspaceTopBarProps) {
       {/* TIM-3403: hamburger restored on mobile — Menu tab reverted, drawer is the primary mobile nav trigger */}
       <button
         onClick={openSidebar}
-        className="lg:hidden text-[var(--foreground)] hover:text-[var(--teal)] transition-colors flex-shrink-0"
+        className="lg:hidden text-[var(--foreground)] hover:text-[var(--teal)] transition-colors flex-shrink-0 h-11 w-11 -ml-2 flex items-center justify-center"
         aria-label="Open navigation"
       >
         <HamburgerIcon />

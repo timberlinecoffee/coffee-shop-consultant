@@ -95,14 +95,20 @@ export default async function LoginPage({
           {isSignup ? (
             <>
               Already have an account?{" "}
-              <Link href="/login" className="text-[var(--teal)] font-medium hover:underline">
+              <Link
+                href="/login"
+                className="text-[var(--teal)] font-medium hover:underline inline-flex items-center min-h-[44px] -my-3 px-1 -mx-1"
+              >
                 Sign in
               </Link>
             </>
           ) : (
             <>
               Don&apos;t have an account?{" "}
-              <Link href="/login?mode=signup" className="text-[var(--teal)] font-medium hover:underline">
+              <Link
+                href="/login?mode=signup"
+                className="text-[var(--teal)] font-medium hover:underline inline-flex items-center min-h-[44px] -my-3 px-1 -mx-1"
+              >
                 Start for Free
               </Link>
             </>
@@ -112,11 +118,17 @@ export default async function LoginPage({
 
       <p className="text-xs text-[var(--dark-grey)] mt-8 text-center max-w-xs">
         By continuing, you agree to our{" "}
-        <Link href="/terms" className="underline hover:text-[var(--teal)]">
+        <Link
+          href="/terms"
+          className="underline hover:text-[var(--teal)] inline-flex items-center min-h-[44px] -my-3 px-1 -mx-1"
+        >
           Terms of Service
         </Link>{" "}
         and{" "}
-        <Link href="/privacy" className="underline hover:text-[var(--teal)]">
+        <Link
+          href="/privacy"
+          className="underline hover:text-[var(--teal)] inline-flex items-center min-h-[44px] -my-3 px-1 -mx-1"
+        >
           Privacy Policy
         </Link>
         .
