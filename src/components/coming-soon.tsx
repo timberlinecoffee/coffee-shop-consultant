@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 interface ComingSoonProps {
   title: string;
@@ -38,7 +37,6 @@ export function ComingSoon({ title, description, icon, shipsWith }: ComingSoonPr
           </div>
         </div>
       </div>
-      <BottomTabBar />
     </div>
   );
 }

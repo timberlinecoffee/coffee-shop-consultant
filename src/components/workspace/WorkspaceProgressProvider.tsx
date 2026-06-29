@@ -18,7 +18,6 @@ import {
 import { useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarV2, type SidebarV2UserInfo } from "@/components/SidebarV2";
-import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { WorkspaceTopBar } from "@/components/workspace/WorkspaceTopBar";
 import {
   isWorkspaceStatus,
@@ -210,8 +209,7 @@ export function WorkspaceProgressProvider({
           <WorkspaceTopBar items={navItems} />
           <main className="flex-1">{children}</main>
         </div>
-        {/* TIM-2591: mobile bottom tab bar (v2 only, self-gated on flag) */}
-        <BottomTabBar />
+
       </div>
     </WorkspaceStatusContext.Provider>
   );

@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { LogoMark } from "@/app/_components/Logo";
-import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { UpgradeGate } from "@/components/upgrade-gate";
 import { PaywallModal } from "@/components/paywall-modal";
 import { usePaywallGuard } from "@/lib/use-paywall-guard";
@@ -1395,7 +1394,7 @@ export function ModuleClient({
     !freePreview && SECTIONS.every((s) => isSectionComplete(s.key));
 
   return (
-    <div className="min-h-screen bg-neutral-100 flex flex-col pb-36 lg:pb-0">
+    <div className="min-h-screen bg-neutral-100 flex flex-col">
       {/* Top nav */}
       <nav className="bg-white border-b border-grey-light px-6 py-4 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -1727,7 +1726,6 @@ export function ModuleClient({
         guardedFetch={guardedFetch}
       />
       <PaywallModal open={paywalled} onClose={dismissPaywall} />
-      <BottomTabBar />
     </div>
   );
 }
