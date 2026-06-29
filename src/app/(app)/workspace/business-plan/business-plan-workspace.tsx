@@ -224,6 +224,8 @@ export function BusinessPlanWorkspace({
   // Dirty buffer for custom section content autosave, keyed by custom section id.
   const customDirtyBuffersRef = useRef<Map<string, string | null>>(new Map());
   const customPendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // TIM-3111: tracks which custom section (if any) is streaming a Write with AI response.
+  const [customStreamingId, setCustomStreamingId] = useState<string | null>(null);
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isPrintingPdf, setIsPrintingPdf] = useState(false);
@@ -875,6 +877,100 @@ export function BusinessPlanWorkspace({
     });
   }, [customSections]);
 
+  const handleCustomSectionWriteWithAi = useCallback(async (id: string) => {
+    if (!canEdit || customStreamingId !== null) return;
+    const cs = customSections.find((c) => c.id === id);
+    if (!cs) return;
+
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    let cancelledByUser = false;
+    const cancelOverlay = () => {
+      cancelledByUser = true;
+      controller.abort();
+      closeProgressOverlay();
+      setCustomStreamingId(null);
+      updateCustomSection(id, { isGenerating: false });
+    };
+    openProgressOverlay({ total: 1, onCancel: cancelOverlay });
+    updateCustomSection(id, { isGenerating: true });
+    setCustomStreamingId(id);
+
+    try {
+      await fetchSse(
+        "/api/business-plan/improve",
+        {
+          sectionKey: "custom",
+          sectionTitle: cs.title,
+          currentContent: cs.userContent?.trim() || `Write a first draft for the "${cs.title}" section.`,
+          shopName,
+        },
+        () => {},
+        (full) => {
+          updateProgressOverlay({ completed: 1 });
+          closeProgressOverlay();
+          setCustomStreamingId(null);
+          updateCustomSection(id, { isGenerating: false });
+          if (cancelledByUser) return;
+          openAIReviewModal({
+            suggestions: [
+              {
+                id: `custom-${id}`,
+                fieldId: id,
+                fieldLabel: cs.title,
+                originalValue: cs.userContent ?? "",
+                proposedValue: full,
+                isStructured: false,
+                consistencyContradictions: [],
+              },
+            ],
+            context: { workspace: "Business Plan", section: cs.title },
+            onApply: async () => {
+              const res = await fetch(`/api/business-plan/custom-sections/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_content: full }),
+              });
+              if (!res.ok) throw new Error("Could not save. Please try again.");
+              setCustomSections((prev) =>
+                prev.map((s) =>
+                  s.id !== id ? s : { ...s, userContent: full, editBuffer: full, isEditing: false }
+                )
+              );
+              setSaveState({ kind: "saved", at: new Date().toISOString() });
+            },
+          });
+        },
+        (msg) => {
+          closeProgressOverlay();
+          setCustomStreamingId(null);
+          updateCustomSection(id, { isGenerating: false });
+          if (!cancelledByUser) setGlobalError(msg);
+        },
+        controller.signal
+      );
+    } catch (err: unknown) {
+      closeProgressOverlay();
+      setCustomStreamingId(null);
+      updateCustomSection(id, { isGenerating: false });
+      if (err instanceof Error && err.name !== "AbortError" && !cancelledByUser) {
+        setGlobalError(err.message);
+      }
+    }
+  }, [
+    canEdit,
+    customStreamingId,
+    customSections,
+    shopName,
+    closeProgressOverlay,
+    openProgressOverlay,
+    updateProgressOverlay,
+    updateCustomSection,
+    openAIReviewModal,
+  ]);
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   const visibleCount = sections.filter((s) => s.isVisible).length;
@@ -1140,6 +1236,7 @@ export function BusinessPlanWorkspace({
                 onDelete={() => handleDeleteCustomSection(cs.id)}
                 onMoveUp={() => handleCustomSectionReorder(cs.id, "up")}
                 onMoveDown={() => handleCustomSectionReorder(cs.id, "down")}
+                onWriteWithAi={() => void handleCustomSectionWriteWithAi(cs.id)}
               />
             ))}
           </div>
@@ -1659,6 +1756,7 @@ interface CustomSectionCardProps {
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onWriteWithAi?: () => void;
 }
 
 function CustomSectionCard({
@@ -1679,6 +1777,7 @@ function CustomSectionCard({
   onDelete,
   onMoveUp,
   onMoveDown,
+  onWriteWithAi,
 }: CustomSectionCardProps) {
   const displayContent = section.isEditing ? section.editBuffer : (section.userContent ?? "");
   const hasContent = Boolean(displayContent.trim());
@@ -1764,6 +1863,18 @@ function CustomSectionCard({
               >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
+            )}
+            {canEdit && section.isExpanded && !section.isTitleEditing && onWriteWithAi && !section.isGenerating && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onWriteWithAi(); }}
+                className="hidden sm:inline-flex text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                Write with AI
+              </button>
+            )}
+            {section.isGenerating && (
+              <Loader2 className="w-3.5 h-3.5 text-[var(--teal)] animate-spin" />
             )}
             <button
               onClick={onToggleVisible}
