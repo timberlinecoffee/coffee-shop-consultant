@@ -1,0 +1,32 @@
+{
+  "privacy-375": {
+    "url": "https://groundwork.cafe/privacy",
+    "viewport": {
+      "w": 375,
+      "h": 1200
+    },
+    "scrollWidth": 375,
+    "clientWidth": 375,
+    "hasDocHscroll": false
+  },
+  "privacy-700": {
+    "url": "https://groundwork.cafe/privacy",
+    "viewport": {
+      "w": 700,
+      "h": 1200
+    },
+    "scrollWidth": 700,
+    "clientWidth": 700,
+    "hasDocHscroll": false
+  },
+  "help-375": {
+    "url": "https://groundwork.cafe/help",
+    "viewport": {
+      "w": 375,
+      "h": 900
+    },
+    "scrollWidth": 375,
+    "clientWidth": 375,
+    "hasDocHscroll": false
+  }
+}
