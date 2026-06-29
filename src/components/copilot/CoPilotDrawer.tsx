@@ -535,8 +535,10 @@ export function CoPilotDrawer({
 
   // Derived constants — placed before effects so they're stable references in deps arrays.
   // TIM-3413: mobile threshold inclusive at 640px to match audit DONE-criteria
-  // (≤640px = full-screen) and Tailwind `sm` breakpoint.
+  // (≤640px = full-screen) and Tailwind `sm` breakpoint. Tablet (641-1024px)
+  // is fixed-width; drag-resize only applies on desktop (≥1025px).
   const isMobile = viewportWidth <= 640;
+  const isTablet = viewportWidth > 640 && viewportWidth <= 1024;
   const sheetOpen = open && isMobile;
 
   const {
@@ -1226,17 +1228,17 @@ export function CoPilotDrawer({
   // - ≤640px (mobile): full-screen overlay, no PANEL_MIN_WIDTH floor — audit
   //   TIM-3411 Top-10 #1: the 360px floor pushed underlying content off-edge
   //   on 375px viewports.
-  // - 641-1024px (tablet): pin to PANEL_MIN_WIDTH but cap at viewportWidth-24
-  //   so the backdrop stays tappable.
-  // - ≥1025px (desktop): existing resizable behavior unchanged.
+  // - 641-1024px (tablet): fixed at PANEL_MIN_WIDTH so the backdrop stays
+  //   tappable (audit spec: cap = min(360, viewportWidth-24), which collapses
+  //   to 360 across the tier). Drag handle is hidden on this tier so a
+  //   would-be user-set width never silently snaps back.
+  // - ≥1025px (desktop): existing resizable behavior unchanged — drag handle
+  //   active, user width persisted, clamped to [PANEL_MIN_WIDTH, PANEL_MAX_WIDTH].
   // - Expanded mode (founder feedback, TIM-1151) keeps full-viewport.
   const computedPanelWidth = useMemo(() => {
     if (viewportWidth <= 640) return viewportWidth;
     if (isExpanded) return viewportWidth;
-    if (viewportWidth <= 1024) {
-      const cap = Math.min(PANEL_MIN_WIDTH, viewportWidth - 24);
-      return Math.max(PANEL_MIN_WIDTH, cap);
-    }
+    if (viewportWidth <= 1024) return PANEL_MIN_WIDTH;
     return Math.max(
       PANEL_MIN_WIDTH,
       Math.min(PANEL_MAX_WIDTH, panelWidth, viewportWidth - 16),
@@ -1355,10 +1357,11 @@ export function CoPilotDrawer({
             exit={{ x: "100%" }}
             transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            {/* TIM-1149: drag-to-resize handle on the left edge. Hidden on
-                mobile and when the panel is expanded to full-width (no room
-                to resize). */}
-            {!isMobile && !isExpanded && (
+            {/* TIM-1149 / TIM-3413: drag-to-resize handle on the left edge.
+                Hidden on mobile (full-screen sheet), on tablet (fixed-width
+                tier — drag would no-op against the constant width), and when
+                the panel is expanded to full-viewport. */}
+            {!isMobile && !isTablet && !isExpanded && (
               <div
                 role="separator"
                 aria-orientation="vertical"
