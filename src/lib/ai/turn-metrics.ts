@@ -36,6 +36,20 @@ export type PlanTier =
   | "free"
   | "unknown"
 
+// TIM-3463: Scout multi-model story. Provider is the upstream we billed
+// against; lane is the routing taxonomy id (scout-lane.ts); latency_ms is wall
+// time from request open to last token; error_class is set when the turn
+// failed; fallback_used is true when the row recorded the secondary provider
+// firing per plan §7.
+export type TurnMetricProvider = "anthropic" | "deepseek"
+export type TurnMetricErrorClass =
+  | "rate_limit"
+  | "auth"
+  | "server"
+  | "timeout"
+  | "content_policy"
+  | "unknown"
+
 export interface TurnMetricInput {
   route: string
   model: string
@@ -44,6 +58,12 @@ export interface TurnMetricInput {
   toolCalls?: number
   userId: string | null
   planTier: PlanTier
+  // TIM-3463 — defaults preserve current behavior for un-migrated call sites.
+  provider?: TurnMetricProvider
+  lane?: string
+  latencyMs?: number
+  errorClass?: TurnMetricErrorClass | null
+  fallbackUsed?: boolean
 }
 
 export interface TurnMetricRecord {
@@ -59,6 +79,13 @@ export interface TurnMetricRecord {
   cost_usd_estimate: number
   user_id: string | null
   plan_tier: PlanTier
+  // TIM-3463 columns. Defaults mirror the new migration so a legacy call site
+  // building a record still maps to the schema cleanly.
+  provider: TurnMetricProvider
+  lane: string
+  latency_ms: number
+  error_class: TurnMetricErrorClass | null
+  fallback_used: boolean
 }
 
 /** Build a single ai_turn_metrics row + the credit breakdown that fed it. */
@@ -106,6 +133,11 @@ export function buildTurnMetricRecord(input: TurnMetricInput): {
       cost_usd_estimate: Number(costUsd.toFixed(6)),
       user_id: input.userId,
       plan_tier: input.planTier,
+      provider: input.provider ?? "anthropic",
+      lane: input.lane ?? "unknown",
+      latency_ms: Math.max(0, Math.round(input.latencyMs ?? 0)),
+      error_class: input.errorClass ?? null,
+      fallback_used: input.fallbackUsed ?? false,
     },
     creditBreakdown,
   }

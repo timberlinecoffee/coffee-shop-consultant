@@ -44,12 +44,31 @@ export function creditTierForModel(model: string): CreditModelTier {
 export interface ModelPricing {
   inputPerM: number
   outputPerM: number
+  // TIM-3463: DeepSeek charges an absolute cache-hit input rate (~50x cheaper
+  // than miss). Anthropic uses a 0.1x multiplier on input rate for cache reads
+  // (applied directly in computeTurnCostUsd). When this field is set, the
+  // multiplier is bypassed and this absolute rate is used.
+  cacheHitInputPerM?: number
 }
+
+// TIM-3463: DeepSeek v4-flash model id. Plan §1 (TIM-3333 rev 94e4b911) verified
+// against the live pricing page on 2026-06-27. Non-thinking mode is requested
+// via a request-level parameter (`thinking:{type:"disabled"}`); the model id
+// itself is the same for both modes.
+export const DEEPSEEK_CHAT_MODEL = "deepseek-v4-flash"
+
 export const MODEL_PRICING_PER_M: Record<string, ModelPricing> = {
   // Haiku 4.5: $0.80 input / $4.00 output per 1M tokens.
   [PLATFORM_AI_MODEL]: { inputPerM: 0.8, outputPerM: 4 },
   // Sonnet 4.6: $3.00 input / $15.00 output per 1M tokens.
   [RESEARCH_AI_MODEL]: { inputPerM: 3, outputPerM: 15 },
+  // TIM-3463: DeepSeek v4-flash. $0.14 input miss / $0.0028 input hit / $0.28
+  // output. Cache create is the same as miss (no premium; auto-managed on disk).
+  [DEEPSEEK_CHAT_MODEL]: {
+    inputPerM: 0.14,
+    outputPerM: 0.28,
+    cacheHitInputPerM: 0.0028,
+  },
 }
 
 export const COST_USD_PER_WEB_SEARCH = 0.01
@@ -74,9 +93,14 @@ export function computeTurnCostUsd(input: {
   const cacheCreateT = Math.max(0, input.cacheCreateTokens || 0)
   const outputT = Math.max(0, input.outputTokens || 0)
   const webSearch = Math.max(0, input.webSearchRequests || 0)
+  // TIM-3463: DeepSeek lists an absolute cache-hit rate; Anthropic does not, so
+  // we fall back to the 0.1x base-input multiplier when cacheHitInputPerM is
+  // not set on the pricing entry.
+  const cacheReadRate =
+    pricing.cacheHitInputPerM ?? pricing.inputPerM * 0.1
   return (
     (inputT * pricing.inputPerM +
-      cacheReadT * pricing.inputPerM * 0.1 +
+      cacheReadT * cacheReadRate +
       cacheCreateT * pricing.inputPerM * 1.25 +
       outputT * pricing.outputPerM) /
       1_000_000 +
