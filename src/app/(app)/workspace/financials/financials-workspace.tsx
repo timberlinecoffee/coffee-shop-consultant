@@ -15,6 +15,7 @@ import { NumericInput } from "@/components/ui/numeric-input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { LabelWithHint } from "@/components/ui/label-with-hint";
+import { SectionHeader } from "@/components/section-header";
 import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -76,8 +77,6 @@ import { PersonnelEditor } from "./personnel-editor";
 import { OrgSyncPanel } from "./org-sync-panel";
 import { GuidedTour, type TourStep } from "./guided-tour";
 import type { CritiqueResult } from "@/lib/financials";
-import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
@@ -222,7 +221,7 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
-type Tab = "forecast" | "personnel" | "funding" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup" | "depreciation" | "how-you-compare";
+type Tab = "forecast" | "personnel" | "funding" | "projections" | "balance-sheet" | "cash-flow" | "break-even" | "ratios" | "startup" | "depreciation";
 
 // TIM-1257: deriveFinancialInputs + findForecastLineByKey now live in
 // @/lib/financial-projection (single source of truth, unit-testable).
@@ -474,25 +473,22 @@ function Section({
   }, [id, setOpen]);
   return (
     <div id={id}>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-2 mb-4">
         <button
           type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
-          className="flex items-center gap-2 group"
+          aria-label={`${open ? "Collapse" : "Expand"} ${title}`}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left text-[var(--dark-grey)] hover:text-[var(--muted-foreground)] transition-colors"
         >
-          <span className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
-            {title}
-          </span>
           <ChevronDown
             size={15}
-            className={`text-[var(--dark-grey)] group-hover:text-[var(--muted-foreground)] transition-transform ${
-              open ? "rotate-180" : ""
-            }`}
+            className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
+          <SectionHeader title={title} className="mb-0 flex-1" />
         </button>
-        {help && <SectionHelp title={title}>{help}</SectionHelp>}
+        {help != null && <SectionHelp title={title}>{help}</SectionHelp>}
       </div>
       {open && children}
     </div>
@@ -733,7 +729,11 @@ function ForecastTab({
         open={sections.isOpen("operating-schedule")}
         onOpenChange={(n) => sections.setOpen("operating-schedule", n)}
       >
-        <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden relative">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-8 bg-gradient-to-l from-white to-transparent sm:hidden"
+          />
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px]">
               <thead>
@@ -2317,9 +2317,6 @@ export function FinancialsWorkspace({
     setTourOpen(false);
   }
 
-  const [benchmarkYellowCount, setBenchmarkYellowCount] = useState(0);
-  const { openAIReviewModal, AIReviewModalNode: benchmarkAIReviewModalNode } = useAIReviewModal();
-
   // TIM-2594: branch to v2 layout when ui_revamp_v2 flag is on.
   const uiRevampV2 = useUiRevamp();
 
@@ -2360,8 +2357,6 @@ export function FinancialsWorkspace({
         minimumWage={minimumWage}
         paywallOpen={paywallOpen}
         onPaywallClose={() => setPaywallOpen(false)}
-        benchmarkYellowCount={benchmarkYellowCount}
-        onBenchmarkYellowCountChange={setBenchmarkYellowCount}
         onOpenWizard={openWizard}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
@@ -2380,7 +2375,6 @@ export function FinancialsWorkspace({
     { id: "ratios", label: "Health Check" },
     { id: "startup", label: "Startup Costs" },
     { id: "depreciation", label: "Depreciation Schedule" },
-    { id: "how-you-compare", label: "How You Compare", badge: benchmarkYellowCount || undefined },
   ];
 
   const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
@@ -2608,50 +2602,6 @@ export function FinancialsWorkspace({
             onGoToProjections={() => setActiveTab("projections")}
           />
         )}
-        {activeTab === "how-you-compare" && (
-          <BenchmarkDashboard
-            workspaceSlug="financials"
-            onYellowCountChange={setBenchmarkYellowCount}
-            onAskBenchmark={(metricId, metricLabel) => {
-              // TIM-2450: hand off to the Scout drawer in Benchmark mode with
-              // the metric the founder clicked from already in scope.
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(
-                  new CustomEvent("copilot:open-in-mode", {
-                    detail: {
-                      mode: "check",
-                      scope: "financials",
-                      focus: { metricId, metricLabel },
-                    },
-                  }),
-                );
-              }
-            }}
-            onApplySuggestion={(drilldown) => {
-              const proposed = drilldown.proposedFormatted ?? drilldown.userValue;
-              const original = drilldown.userValue;
-              openAIReviewModal({
-                suggestions: [
-                  {
-                    id: `bench:${drilldown.metricId}`,
-                    fieldId: drilldown.metricId,
-                    fieldLabel: drilldown.metricLabel,
-                    originalValue: original,
-                    proposedValue: proposed,
-                  },
-                ],
-                context: { workspace: "financials", section: "How You Compare" },
-                onApply: async () => {
-                  // Phase 3: review-modal-only path. Per-metric write paths land
-                  // in a follow-up child (TIM-2450b) — Apply here closes the
-                  // modal without mutating plan fields. The review gate is
-                  // honored; per [[feedback_ai_never_auto_apply]] this is the
-                  // safest interim state.
-                },
-              });
-            }}
-          />
-        )}
       </div>
 
       {tourOpen && canEdit && (
@@ -2666,7 +2616,6 @@ export function FinancialsWorkspace({
         />
       )}
 
-      {benchmarkAIReviewModalNode}
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} variant="copilot_trial" />
     </div>
   );

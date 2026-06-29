@@ -60,6 +60,47 @@ export interface InterviewScorecard {
   name: string
   is_default: boolean
   order_index: number
+  legacy_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+// TIM-3370: Scorecard grid types — competencies (columns), candidates (rows), cell scores.
+
+export interface ScorecardCompetency {
+  id: string
+  scorecard_id: string
+  plan_id: string
+  label: string
+  multiplier: number
+  description: string | null
+  linked_question_ids: string[]
+  order_index: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ScorecardGridCandidate {
+  id: string
+  scorecard_id: string
+  plan_id: string
+  name: string
+  email: string | null
+  interviewed_at: string | null
+  interviewer: string | null
+  order_index: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ScorecardCellScore {
+  id: string
+  scorecard_id: string
+  candidate_id: string
+  competency_id: string
+  plan_id: string
+  score: number | null
+  notes: string | null
   created_at: string
   updated_at: string
 }

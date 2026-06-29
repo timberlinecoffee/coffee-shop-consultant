@@ -24,6 +24,14 @@ export default async function LoginPage({
   const { mode, next, error, diag, expired, corr } = await searchParams;
   const initialMode = mode === "signup" ? "signup" : "signin";
   const isSignup = initialMode === "signup";
+  // TIM-3327: hide the raw diagnostic panel in production. The board reported
+  // that even gated behind a `<details>` summary, exposing `stage=exchange_failed
+  // err=...` to end users reads as a broken product. Diagnostics still emit to
+  // Vercel runtime logs (callback_exchange_fail) and the `?diag=` query param
+  // is still set on the redirect so the channel is unchanged for engineering.
+  // VERCEL_ENV is `production` only on the prod alias deploy; preview + dev
+  // keep the panel for live debugging.
+  const showDiagPanel = process.env.VERCEL_ENV !== "production";
   // TIM-2732: surface a session-expiry banner when the (app) layout or proxy
   // bounced the visitor here with `?expired=1`. Signed-in users redirect away
   // before reaching the render path so the banner only appears for the actual
@@ -34,19 +42,18 @@ export default async function LoginPage({
   // their next destination so revisiting /login does not look like a re-login
   // prompt. Skip the bounce when ?error= is present — they came here because
   // an auth flow failed and the error message belongs in front of them.
-  if (!error) {
-    try {
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // TIM-2730: use the shared allowlist (resolveNext) — same path-only +
-        // prefix-allowlist guard used by /auth/callback and (app)/layout.tsx so
-        // the open-redirect check is identical across every honor-?next= site.
-        const safeNext = resolveNext(typeof next === "string" ? next : null);
-        redirect(safeNext ?? "/dashboard");
-      }
-    } catch {
-      // Supabase unavailable (e.g. CI without credentials) — fall through to login form
+  //
+  // TIM-3011: guard on env vars so createClient() is not called when Supabase
+  // is not configured (CI without secrets) — avoids an "Invalid URL" crash.
+  if (!error && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      // TIM-2730: use the shared allowlist (resolveNext) — same path-only +
+      // prefix-allowlist guard used by /auth/callback and (app)/layout.tsx so
+      // the open-redirect check is identical across every honor-?next= site.
+      const safeNext = resolveNext(typeof next === "string" ? next : null);
+      redirect(safeNext ?? "/dashboard");
     }
   }
 
@@ -75,7 +82,7 @@ export default async function LoginPage({
         {error === "auth_failed" && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
             <p className="font-medium mb-1">Sign-in didn&apos;t complete. Please try again.</p>
-            {typeof diag === "string" && diag.length > 0 && (
+            {showDiagPanel && typeof diag === "string" && diag.length > 0 && (
               <details className="mt-2">
                 <summary className="cursor-pointer text-red-600 font-medium select-none">Diagnostic detail (TIM-2327)</summary>
                 <code className="block mt-1 text-[10px] break-all text-red-800 font-mono">{diag}</code>
@@ -88,14 +95,20 @@ export default async function LoginPage({
           {isSignup ? (
             <>
               Already have an account?{" "}
-              <Link href="/login" className="text-[var(--teal)] font-medium hover:underline">
+              <Link
+                href="/login"
+                className="text-[var(--teal)] font-medium hover:underline inline-flex items-center min-h-[44px] -my-3 px-1 -mx-1"
+              >
                 Sign in
               </Link>
             </>
           ) : (
             <>
               Don&apos;t have an account?{" "}
-              <Link href="/login?mode=signup" className="text-[var(--teal)] font-medium hover:underline">
+              <Link
+                href="/login?mode=signup"
+                className="text-[var(--teal)] font-medium hover:underline inline-flex items-center min-h-[44px] -my-3 px-1 -mx-1"
+              >
                 Start for Free
               </Link>
             </>
@@ -105,11 +118,17 @@ export default async function LoginPage({
 
       <p className="text-xs text-[var(--dark-grey)] mt-8 text-center max-w-xs">
         By continuing, you agree to our{" "}
-        <Link href="/terms" className="underline hover:text-[var(--teal)]">
+        <Link
+          href="/terms"
+          className="underline hover:text-[var(--teal)] inline-flex items-center min-h-[44px] -my-3 px-1 -mx-1"
+        >
           Terms of Service
         </Link>{" "}
         and{" "}
-        <Link href="/privacy" className="underline hover:text-[var(--teal)]">
+        <Link
+          href="/privacy"
+          className="underline hover:text-[var(--teal)] inline-flex items-center min-h-[44px] -my-3 px-1 -mx-1"
+        >
           Privacy Policy
         </Link>
         .

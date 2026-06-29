@@ -43,3 +43,7 @@ next-env.d.ts
 
 # TIM-2413 live-verify artifacts (local screenshots, not committed)
 verify-tim2413/
+
+# TIM-3284 repro artifacts
+tim3284-repro-screenshots/
+tim3284-session-screenshots/

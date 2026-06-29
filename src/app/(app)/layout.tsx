@@ -16,6 +16,12 @@ import {
   getUiRevampSetting,
   resolveUiRevamp,
 } from "@/lib/ui-revamp";
+import {
+  HIRING_REVAMP_COOKIE,
+  HIRING_REVAMP_OVERRIDE_COOKIE,
+  getHiringRevampSetting,
+  resolveHiringRevamp,
+} from "@/lib/hiring-revamp";
 import { effectivePlanForGating } from "@/lib/access";
 import { ShellCopilot } from "./_components/ShellCopilot";
 
@@ -52,9 +58,10 @@ export default async function AppLayout({
     redirect(buildSessionExpiredLoginUrl(safeNext));
   }
 
-  const [settings, dbUiRevamp, profileRow, planRow] = await Promise.all([
+  const [settings, dbUiRevamp, dbHiringRevamp, profileRow, planRow] = await Promise.all([
     getAccountSettings(supabase, user.id),
     getUiRevampSetting(supabase, user.id),
+    getHiringRevampSetting(supabase, user.id),
     supabase
       .from("users")
       .select("full_name, subscription_tier, subscription_status, trial_ends_at, paused_from_tier")
@@ -80,6 +87,11 @@ export default async function AppLayout({
     overrideCookie: cookieStore.get(UI_REVAMP_OVERRIDE_COOKIE)?.value,
     mirrorCookie: cookieStore.get(UI_REVAMP_COOKIE)?.value,
   });
+  const hiringRevamp = resolveHiringRevamp({
+    dbValue: dbHiringRevamp,
+    overrideCookie: cookieStore.get(HIRING_REVAMP_OVERRIDE_COOKIE)?.value,
+    mirrorCookie: cookieStore.get(HIRING_REVAMP_COOKIE)?.value,
+  });
 
   // TIM-2590: derive user info for SidebarV2 ProfileMenu.
   const planTier = profileRow
@@ -96,6 +108,7 @@ export default async function AppLayout({
     displayName: (profileRow as { full_name?: string | null } | null)?.full_name ?? null,
     planLabel,
     uiRevampEnabled: uiRevamp,
+    hiringRevampEnabled: hiringRevamp,
     isPro: planTier === "pro",
   };
 

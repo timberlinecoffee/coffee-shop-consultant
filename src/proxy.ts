@@ -6,7 +6,9 @@ import {
   adjustOptionsForRemember,
   parseRememberPreference,
 } from './lib/auth/remember-me'
+import { shouldSuppressSetAll } from './lib/auth/cookie-deletion-guard'
 import { UI_REVAMP_OVERRIDE_COOKIE } from './lib/ui-revamp'
+import { HIRING_REVAMP_OVERRIDE_COOKIE } from './lib/hiring-revamp'
 import { resolveNext } from './lib/safe-next'
 import { buildSessionExpiredLoginUrl } from './lib/session-expired'
 
@@ -51,26 +53,37 @@ export async function proxy(request: NextRequest) {
   // cookies that clear on browser close.
   const remember = parseRememberPreference(request.cookies.get(REMEMBER_ME_COOKIE)?.value)
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
+  // TIM-3011: guard against empty env vars (CI without Supabase secrets).
+  // createServerClient throws "Invalid URL" when the URL is an empty string,
+  // crashing every route with a 500. Degrade gracefully: treat as unauthenticated.
+  let user: unknown = null
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            // TIM-3330: drop refresh-token-race wipes when the inbound request
+            // still carries a valid Supabase auth-token. See cookie-deletion-guard.
+            if (shouldSuppressSetAll(cookiesToSet, request.cookies, { path: pathname })) {
+              return
+            }
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+            supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, adjustOptionsForRemember(name, options, remember))
+            )
+          },
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, adjustOptionsForRemember(name, options, remember))
-          )
-        },
-      },
-    }
-  )
-
-  const { data: { user } } = await supabase.auth.getUser()
+      }
+    )
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  }
 
   // TIM-2589 / TIM-2598: ?ui=v1 or ?ui=v2 sets a persistent override cookie so
   // SSR branches correctly on first paint without a DB write. Phase 5.0 ships
@@ -80,6 +93,20 @@ export async function proxy(request: NextRequest) {
   const uiParam = searchParams.get('ui')
   if (uiParam === 'v1' || uiParam === 'v2') {
     supabaseResponse.cookies.set(UI_REVAMP_OVERRIDE_COOKIE, uiParam, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 365,
+    })
+  }
+
+  // TIM-3369: ?hiring=v1/v2 sets a persistent override cookie for the Hiring
+  // workspace IA revamp, parallel to ?ui=. Lets the board flip per-account
+  // during the revert window without hitting Preferences.
+  const hiringParam = searchParams.get('hiring')
+  if (hiringParam === 'v1' || hiringParam === 'v2') {
+    supabaseResponse.cookies.set(HIRING_REVAMP_OVERRIDE_COOKIE, hiringParam, {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',

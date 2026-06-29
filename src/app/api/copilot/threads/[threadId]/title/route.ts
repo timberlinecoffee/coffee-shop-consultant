@@ -8,6 +8,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeAIOutput } from "@/lib/normalize"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 const TITLE_MODEL = "claude-haiku-4-5-20251001"
 const MAX_WORDS = 6
@@ -55,6 +56,15 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "copilot:thread-title",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  })
+  if (rateLimited) return rateLimited
 
   // Confirm the thread exists and belongs to the caller (RLS enforces plan ownership).
   const { data: existing, error: lookupError } = await supabase

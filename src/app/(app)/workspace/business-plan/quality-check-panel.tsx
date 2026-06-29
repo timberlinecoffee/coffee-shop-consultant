@@ -14,13 +14,15 @@
 //     auto-applies; spec line 235 + memory).
 //   - Go to source emits an action the parent wires (deep-link into the
 //     target workspace).
-//   - Dismiss hides the card locally; the next re-check re-surfaces it.
+//   - Dismiss (TIM-3253): persistent via user_ui_prefs; does not re-surface on reload.
+//   - Snooze (TIM-3253): hides for 24h, persists across reloads; shows "Snoozed until" badge.
 //
 // Tokens locked to UX spec §4 — neutral palette + teal accent, rounded-xl
 // borders, matching the Equipment-table row/divider scale.
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ShieldCheck, RefreshCw, ExternalLink } from "lucide-react";
+import { usePlanNotifsMap } from "@/lib/use-plan-notification-pref";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -63,9 +65,11 @@ interface FindingCardProps {
   onApply: (finding: AuditFinding) => void;
   onGoToSource: (finding: AuditFinding) => void;
   onDismiss: (id: string) => void;
+  onSnooze: (id: string) => void;
+  snoozedUntil?: Date | null;
 }
 
-function FindingCard({ finding, onApply, onGoToSource, onDismiss }: FindingCardProps) {
+function FindingCard({ finding, onApply, onGoToSource, onDismiss, onSnooze, snoozedUntil }: FindingCardProps) {
   const canApply = Boolean(finding.suggested_replacement);
   // Plain-language synthesis fields are the headline; raw_message is the
   // fallback when synthesis failed for this finding (Haiku timeout, etc.).
@@ -77,6 +81,22 @@ function FindingCard({ finding, onApply, onGoToSource, onDismiss }: FindingCardP
         ? `Apply the suggested fix to update ${finding.target.field_label ?? finding.target.workspace_label}.`
         : `Open the ${finding.target.workspace_label} workspace to address this.`),
   );
+
+  if (snoozedUntil) {
+    const formatted = snoozedUntil.toLocaleString(undefined, {
+      month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    });
+    return (
+      <div className="bg-white px-4 py-3 flex items-center gap-3">
+        <SeverityChip level={finding.severity} />
+        <p className="text-xs text-neutral-500 flex-1 min-w-0 truncate">{issue}</p>
+        <span className="text-xs text-neutral-400 whitespace-nowrap flex-shrink-0">
+          Snoozed Until {formatted}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white px-4 py-4">
       <div className="flex items-start gap-3">
@@ -116,6 +136,13 @@ function FindingCard({ finding, onApply, onGoToSource, onDismiss }: FindingCardP
         <button
           type="button"
           className="text-xs font-semibold text-neutral-400 hover:text-neutral-500"
+          onClick={() => onSnooze(finding.id)}
+        >
+          Snooze 24h
+        </button>
+        <button
+          type="button"
+          className="text-xs font-semibold text-neutral-400 hover:text-neutral-500"
           onClick={() => onDismiss(finding.id)}
         >
           Dismiss
@@ -144,19 +171,26 @@ export function QualityCheckPanel({
   onApply,
   onGoToSource,
 }: QualityCheckPanelProps) {
-  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
-  const handleDismiss = useCallback((id: string) => {
-    setDismissed((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-  }, []);
+  const { isLoaded, storeVersion, getState, dismiss, snooze } = usePlanNotifsMap();
 
   const visibleFindings = useMemo(() => {
     if (!report) return [] as AuditFinding[];
-    return report.findings.filter((f) => !dismissed.has(f.id));
-  }, [report, dismissed]);
+    if (!isLoaded) return report.findings;
+    return report.findings.filter((f) => {
+      const s = getState(f.id);
+      return !s.isDismissed && !s.isSnoozed;
+    });
+  // storeVersion changes on every dismiss/snooze, ensuring the memo recomputes
+  // even though getState is a stable callback that reads module-scope store.map.
+  }, [report, isLoaded, getState, storeVersion]);
+
+  const snoozedFindings = useMemo(() => {
+    if (!report || !isLoaded) return [] as AuditFinding[];
+    return report.findings.filter((f) => {
+      const s = getState(f.id);
+      return !s.isDismissed && s.isSnoozed;
+    });
+  }, [report, isLoaded, getState, storeVersion]);
 
   const grouped = useMemo(() => {
     const buckets: Record<AuditSeverity, AuditFinding[]> = { critical: [], warning: [], info: [] };
@@ -210,6 +244,7 @@ export function QualityCheckPanel({
   const formattedDate = checkedAt.toLocaleString(undefined, {
     month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
   });
+  const hiddenCount = report.findings.length - visibleFindings.length - snoozedFindings.length;
 
   // State 3: Populated (or All-clear when 0 visible).
   return (
@@ -217,7 +252,7 @@ export function QualityCheckPanel({
       <div className="flex items-center justify-between">
         <p className="text-xs text-neutral-500">
           Checked {formattedDate} &mdash; {totalCount} {totalCount === 1 ? "item" : "items"} found
-          {report.stats.total !== totalCount ? ` (${report.stats.total - totalCount} dismissed)` : ""}
+          {hiddenCount > 0 ? ` (${hiddenCount} dismissed)` : ""}
         </p>
         <WorkspaceActionButton onClick={onCheckPlan} disabled={isChecking} aria-label="Re-check">
           <RefreshCw size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
@@ -243,7 +278,8 @@ export function QualityCheckPanel({
                 finding={f}
                 onApply={onApply}
                 onGoToSource={onGoToSource}
-                onDismiss={handleDismiss}
+                onDismiss={(id) => dismiss(id, "quality_check")}
+                onSnooze={(id) => snooze(id, "quality_check")}
               />
             ))}
           </div>
@@ -262,7 +298,8 @@ export function QualityCheckPanel({
                 finding={f}
                 onApply={onApply}
                 onGoToSource={onGoToSource}
-                onDismiss={handleDismiss}
+                onDismiss={(id) => dismiss(id, "quality_check")}
+                onSnooze={(id) => snooze(id, "quality_check")}
               />
             ))}
           </div>
@@ -281,19 +318,50 @@ export function QualityCheckPanel({
                 finding={f}
                 onApply={onApply}
                 onGoToSource={onGoToSource}
-                onDismiss={handleDismiss}
+                onDismiss={(id) => dismiss(id, "quality_check")}
+                onSnooze={(id) => snooze(id, "quality_check")}
               />
             ))}
           </div>
         </section>
       )}
 
-      {totalCount === 0 && (
+      {snoozedFindings.length > 0 && (
+        <section aria-label="Snoozed findings">
+          <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-3">
+            Snoozed
+          </h2>
+          <div className="border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
+            {snoozedFindings.map((f) => (
+              <FindingCard
+                key={f.id}
+                finding={f}
+                onApply={onApply}
+                onGoToSource={onGoToSource}
+                onDismiss={(id) => dismiss(id, "quality_check")}
+                onSnooze={(id) => snooze(id, "quality_check")}
+                snoozedUntil={getState(f.id).snoozedUntil}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {totalCount === 0 && snoozedFindings.length === 0 && hiddenCount === 0 && (
         <div className="bg-white rounded-2xl border border-[var(--border)] p-8 flex flex-col items-center justify-center text-center">
           <ShieldCheck className="w-10 h-10 text-[var(--teal)] mb-4" aria-hidden="true" />
           <p className="text-sm font-medium text-neutral-950 mb-1">No issues found</p>
           <p className="text-sm text-neutral-500">
             Your plan looks consistent across all workspaces. Good to go.
+          </p>
+        </div>
+      )}
+      {totalCount === 0 && snoozedFindings.length === 0 && hiddenCount > 0 && (
+        <div className="bg-white rounded-2xl border border-[var(--border)] p-8 flex flex-col items-center justify-center text-center">
+          <ShieldCheck className="w-10 h-10 text-neutral-300 mb-4" aria-hidden="true" />
+          <p className="text-sm font-medium text-neutral-950 mb-1">All Findings Dismissed</p>
+          <p className="text-sm text-neutral-500">
+            {hiddenCount} {hiddenCount === 1 ? "finding" : "findings"} dismissed. Re-check any time to re-scan.
           </p>
         </div>
       )}

@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { buildAiLanguageDirective, SUPPORTED_LANGUAGES } from "@/lib/account-settings";
 import { normalizeAIOutput } from "@/lib/normalize";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   type MarketingDocument,
   type MarketingSectionKey,
@@ -203,6 +204,15 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "marketing:generate",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   const { data: profile } = await supabase
     .from("users")

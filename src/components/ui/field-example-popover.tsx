@@ -55,7 +55,7 @@ export function FieldExamplePopover({ examples }: FieldExamplePopoverProps) {
 
       {open && (
         <div
-          className="mt-1 max-w-72 bg-[var(--warm-250)] border border-[var(--warm-800)] rounded-xl p-4"
+          className="mt-1 max-w-[min(18rem,calc(100vw-1rem))] bg-[var(--warm-250)] border border-[var(--warm-800)] rounded-xl p-4"
           role="region"
           aria-label="Sample answer from a fictional coffee shop"
         >

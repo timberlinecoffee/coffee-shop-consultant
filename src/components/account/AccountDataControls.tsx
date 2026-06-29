@@ -139,7 +139,7 @@ export function AccountDataControls({ userEmail, variant = "stacked-card" }: Pro
           aria-modal="true"
           aria-labelledby="delete-account-title"
         >
-          <div className="bg-white rounded-2xl border border-[var(--border)] p-6 w-full max-w-md">
+          <div className="bg-white rounded-2xl border border-[var(--border)] p-6 w-full max-w-[min(28rem,calc(100vw-1rem))] max-h-[100dvh] overflow-y-auto">
             <h3
               id="delete-account-title"
               className="font-semibold text-[var(--foreground)] mb-2"

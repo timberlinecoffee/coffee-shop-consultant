@@ -48,7 +48,6 @@ const TIERS: Tier[] = [
       "100 AI planning credits/month",
     ],
     notIncluded: [
-      "Coffee Shop World benchmarking",
       "Weekly Live Office Hours Q&A",
       "Deeper insights",
       "Unlimited locations and projects",
@@ -68,7 +67,6 @@ const TIERS: Tier[] = [
     highlight: true,
     features: [
       "Everything in Starter",
-      "Coffee Shop World benchmarking vs. real shops",
       "Weekly Live Office Hours Q&A + recordings",
       "Deeper insights: deep market research and longer Scout chains",
       "Unlimited locations and projects",
@@ -131,6 +129,9 @@ function PricingPageInner() {
   const returnPath = searchParams.get("return");
 
   useEffect(() => {
+    // TIM-3011: guard against empty env vars in CI — same pattern as proxy.ts
+    // and login/page. createClient() throws "Invalid URL" when the URL is "".
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
     const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
       const logged = !!session;

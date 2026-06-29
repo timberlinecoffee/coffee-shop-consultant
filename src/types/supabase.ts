@@ -16,7 +16,6 @@ export type WorkspaceKey =
   | 'marketing'
   | 'suppliers'
   | 'operations_playbook'
-  | 'benchmarks'
   | 'business_plan'
   | 'dashboard'
 

@@ -17,6 +17,12 @@ import {
   getUiRevampSetting,
   resolveUiRevamp,
 } from "@/lib/ui-revamp";
+import {
+  HIRING_REVAMP_COOKIE,
+  HIRING_REVAMP_OVERRIDE_COOKIE,
+  getHiringRevampSetting,
+  resolveHiringRevamp,
+} from "@/lib/hiring-revamp";
 import { effectivePlanForGating } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
@@ -33,9 +39,10 @@ export default async function AccountLayout({
 
   if (!user) redirect("/login");
 
-  const [settings, dbUiRevamp, profileRow] = await Promise.all([
+  const [settings, dbUiRevamp, dbHiringRevamp, profileRow] = await Promise.all([
     getAccountSettings(supabase, user.id),
     getUiRevampSetting(supabase, user.id),
+    getHiringRevampSetting(supabase, user.id),
     supabase
       .from("users")
       .select("full_name, subscription_tier, subscription_status, trial_ends_at, paused_from_tier")
@@ -70,6 +77,11 @@ export default async function AccountLayout({
     overrideCookie: cookieStore.get(UI_REVAMP_OVERRIDE_COOKIE)?.value,
     mirrorCookie: cookieStore.get(UI_REVAMP_COOKIE)?.value,
   });
+  const hiringRevamp = resolveHiringRevamp({
+    dbValue: dbHiringRevamp,
+    overrideCookie: cookieStore.get(HIRING_REVAMP_OVERRIDE_COOKIE)?.value,
+    mirrorCookie: cookieStore.get(HIRING_REVAMP_COOKIE)?.value,
+  });
 
   const planTier = profileRow
     ? effectivePlanForGating(profileRow as {
@@ -85,6 +97,7 @@ export default async function AccountLayout({
     displayName: (profileRow as { full_name?: string | null } | null)?.full_name ?? null,
     planLabel,
     uiRevampEnabled: uiRevamp,
+    hiringRevampEnabled: hiringRevamp,
     isPro: planTier === "pro",
   };
 

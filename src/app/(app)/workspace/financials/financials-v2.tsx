@@ -6,6 +6,7 @@
 
 import { useState, useCallback } from "react";
 import { BarChart2, ChevronDown, CheckCircle, Circle, Minus } from "lucide-react";
+import { SectionHeader } from "@/components/section-header";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
@@ -24,7 +25,6 @@ import { PersonnelEditor } from "./personnel-editor";
 import { OrgSyncPanel } from "./org-sync-panel";
 import { ForecastLinesEditor } from "./forecast-lines-editor";
 import { PaywallModal } from "@/components/paywall-modal";
-import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { LabelWithHint } from "@/components/ui/label-with-hint";
@@ -53,7 +53,6 @@ import {
   manualOverrideCountsByLine,
   fiscalYearMonthLabels,
 } from "@/lib/financial-projection";
-import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import type { CritiqueResult } from "@/lib/financials";
 import type { MinWageInfo } from "@/lib/wages/minimum-wage";
 import type { OpeningRunwayResult } from "@/lib/business-plan/opening-runway";
@@ -61,7 +60,7 @@ import type { EquipmentItem } from "./financials-workspace";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type V2Tab = "inputs" | "reports" | "compare";
+type V2Tab = "inputs" | "reports";
 type SectionStatus = "complete" | "in_progress" | "empty";
 
 // ── Shared day constants ───────────────────────────────────────────────────────
@@ -124,13 +123,13 @@ function AccordionSection({
         aria-expanded={open}
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--background)] transition-colors"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           <ChevronDown
             size={16}
             className={`text-[var(--muted-foreground)] transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
-          <span className="text-sm font-semibold text-[var(--foreground)]">{title}</span>
+          <SectionHeader title={title} className="mb-0 flex-1" />
         </div>
         <StatusBadge status={status} />
       </button>
@@ -258,8 +257,6 @@ export interface FinancialsV2Props {
   minimumWage: MinWageInfo | null;
   paywallOpen: boolean;
   onPaywallClose: () => void;
-  benchmarkYellowCount: number;
-  onBenchmarkYellowCountChange: (n: number) => void;
   onOpenWizard: () => void;
   initialTrialMessagesUsed?: number;
 }
@@ -348,10 +345,14 @@ function DailyTrafficContent({
       </div>
 
       {/* Operating schedule */}
-      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden relative">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] px-4 pt-4 pb-2">
           Operating Schedule
         </p>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-0 top-10 bottom-0 z-10 w-8 bg-gradient-to-l from-white to-transparent sm:hidden"
+        />
         <div className="overflow-x-auto">
           <table className="w-full min-w-[440px]">
             <thead>
@@ -1291,14 +1292,10 @@ export function FinancialsV2({
   minimumWage,
   paywallOpen,
   onPaywallClose,
-  benchmarkYellowCount,
-  onBenchmarkYellowCountChange,
   onOpenWizard,
   initialTrialMessagesUsed,
 }: FinancialsV2Props) {
   const [activeTab, setActiveTab] = useState<V2Tab>("inputs");
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
-
   const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
   const currencyCode = mp.currency_code ?? "USD";
   const manualLines = mp.manual_lines ?? [];
@@ -1314,7 +1311,6 @@ export function FinancialsV2({
   const tabs: { id: V2Tab; label: string; badge?: number }[] = [
     { id: "inputs", label: "Inputs" },
     { id: "reports", label: "Reports" },
-    { id: "compare", label: "Compare", badge: benchmarkYellowCount || undefined },
   ];
 
   const lastSavedAt =
@@ -1322,7 +1318,6 @@ export function FinancialsV2({
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      {AIReviewModalNode}
       <div className="w-full px-6 pt-8 pb-16">
         <WorkspaceHeader
           Icon={BarChart2}
@@ -1474,37 +1469,6 @@ export function FinancialsV2({
           />
         )}
 
-        {/* ── Compare tab ───────────────────────────────────────────────────── */}
-        {activeTab === "compare" && (
-          <BenchmarkDashboard
-            workspaceSlug="financials"
-            onYellowCountChange={onBenchmarkYellowCountChange}
-            onAskBenchmark={(metricId, metricLabel) => {
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(
-                  new CustomEvent("copilot:open-in-mode", {
-                    detail: { mode: "check", scope: "financials", focus: { metricId, metricLabel } },
-                  })
-                );
-              }
-            }}
-            onApplySuggestion={(drilldown) => {
-              openAIReviewModal({
-                suggestions: [
-                  {
-                    id: `bench:${drilldown.metricId}`,
-                    fieldId: drilldown.metricId,
-                    fieldLabel: drilldown.metricLabel,
-                    originalValue: drilldown.userValue,
-                    proposedValue: drilldown.proposedFormatted ?? drilldown.userValue,
-                  },
-                ],
-                context: { workspace: "financials", section: "How You Compare" },
-                onApply: async () => {},
-              });
-            }}
-          />
-        )}
       </div>
 
       <PaywallModal open={paywallOpen} onClose={onPaywallClose} variant="copilot_trial" />

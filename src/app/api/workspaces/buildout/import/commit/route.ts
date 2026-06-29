@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   if (!plan) return Response.json({ error: "No plan found" }, { status: 404 });
 
-  let body: { rows: ParsedRow[] };
+  let body: { rows: ParsedRow[]; replaceExisting?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -48,6 +48,19 @@ export async function POST(request: NextRequest) {
   const rows = (body.rows ?? []).filter((r) => !r.skip && r.name?.trim());
   if (rows.length === 0) {
     return Response.json({ inserted: 0 });
+  }
+
+  // TIM-3242: collect IDs of existing items to archive BEFORE inserting so we can exclude
+  // the newly inserted items. We archive AFTER a successful insert so that if the insert
+  // fails the existing list is untouched (insert-then-replace avoids data loss on partial failure).
+  let itemIdsToArchive: string[] = [];
+  if (body.replaceExisting) {
+    const { data: existingItems } = await supabase
+      .from("buildout_equipment_items")
+      .select("id")
+      .eq("plan_id", plan.id)
+      .eq("archived", false);
+    itemIdsToArchive = (existingItems ?? []).map((i) => i.id as string);
   }
 
   // Collect unique station names
@@ -127,6 +140,18 @@ export async function POST(request: NextRequest) {
   if (error) {
     console.error("buildout_equipment_items bulk insert error:", error);
     return Response.json({ error: "Failed to insert equipment items" }, { status: 500 });
+  }
+
+  // Archive old items only after a successful insert — if archive fails the new items are
+  // still live; old items remain visible temporarily but no data is lost.
+  if (itemIdsToArchive.length > 0) {
+    const { error: archiveError } = await supabase
+      .from("buildout_equipment_items")
+      .update({ archived: true })
+      .in("id", itemIdsToArchive);
+    if (archiveError) {
+      console.error("buildout archive-existing error (non-fatal, new items inserted):", archiveError);
+    }
   }
 
   return Response.json({ inserted: inserted?.length ?? 0 });

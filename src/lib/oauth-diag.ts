@@ -20,6 +20,7 @@
 
 export type OAuthDiagEvent =
   | "callback_entry"           // /auth/callback GET handler reached
+  | "callback_pre_exchange"    // TIM-3327: cookie re-read immediately before exchangeCodeForSession
   | "callback_exchange_ok"     // exchangeCodeForSession returned no error
   | "callback_exchange_fail"   // exchangeCodeForSession returned an error
   | "callback_no_code"         // /auth/callback hit with no `code` param

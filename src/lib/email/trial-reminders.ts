@@ -14,6 +14,7 @@ import {
   type DueTrialReminder,
   type TrialReminderDay,
 } from "@/lib/trial-reminders";
+import { TRANSACTIONAL_FROM } from "../../components/email/tokens.ts";
 
 export interface TrialReminderSendInput extends DueTrialReminder {
   // Site origin used to construct the cancel link (https://...).
@@ -280,7 +281,8 @@ export async function sendTrialReminderEmail(
 
   const from =
     process.env.TRIAL_FROM_EMAIL ??
-    "Groundwork <hello@timberline.coffee>";
+    process.env.TRANSACTIONAL_FROM_EMAIL ??
+    TRANSACTIONAL_FROM;
 
   const rendered = renderTrialReminder(input.day, input);
 

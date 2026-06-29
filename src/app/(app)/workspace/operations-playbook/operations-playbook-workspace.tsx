@@ -17,19 +17,15 @@ import {
   Sparkles,
   ExternalLink,
   Printer,
-  TrendingUp,
   ChevronDown,
   CheckCircle,
   Circle,
   Minus,
 } from "lucide-react";
 import { PaywallModal } from "@/components/paywall-modal";
-import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
-import { BenchmarkDashboard } from "@/components/benchmark/BenchmarkDashboard";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
-import { SaveIndicator } from "@/components/ui/save-indicator";
-import { SectionHelp } from "@/components/ui/section-help";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import {
@@ -37,6 +33,7 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { SectionHeader } from "@/components/section-header";
 import {
   type OperationsPlaybookDocument,
   type SopCategoryKey,
@@ -214,7 +211,7 @@ interface Props {
 }
 
 type GeneratableSection = SopCategoryKey | "roles" | "vendor_contacts" | "training";
-type OperationsView = "playbook" | "how-you-compare";
+type OperationsView = "playbook";
 
 export function OperationsPlaybookWorkspace({
   planId,
@@ -230,14 +227,10 @@ export function OperationsPlaybookWorkspace({
     "no_subscription" | "paused" | "expired" | null
   >(null);
   const [generating, setGenerating] = useState<GeneratableSection | null>(null);
-  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
-  const { openAIReviewModal: openBenchmarkAIReviewModal, AIReviewModalNode: benchmarkAIReviewModalNode } = useAIReviewModal();
   const [activeView, setActiveView] = useState<OperationsView>("playbook");
-  const [benchmarkYellowCount, setBenchmarkYellowCount] = useState(0);
 
-  const opsTabs: { id: OperationsView; label: string; Icon?: typeof TrendingUp; badge?: number }[] = [
+  const opsTabs: { id: OperationsView; label: string }[] = [
     { id: "playbook", label: "Playbook" },
-    { id: "how-you-compare", label: "How You Compare", Icon: TrendingUp, badge: benchmarkYellowCount || undefined },
   ];
 
   const { promoteOnEdit } = useWorkspaceStatus();
@@ -290,39 +283,20 @@ export function OperationsPlaybookWorkspace({
     };
   }, [doc, save]);
 
+  const handleManualSave = useCallback(() => {
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current);
+      saveTimeout.current = null;
+    }
+    void save();
+  }, [save]);
+
   const updateDoc = useCallback(
     (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => {
       setDoc((prev) => mut(prev));
     },
     [],
   );
-
-  // TIM-1561: routes AI result through unified review modal before applying.
-  // TIM-2382: apply Scout suggest_workspace_changes proposals for operations playbook.
-  // fieldId = "sectionKey" (full section JSON replacement) or "sectionKey.intro"
-  // (intro text only). Doc autosaves via useEffect watcher.
-  const handleApplyPlaybookSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
-    setDoc((prev) => {
-      let next = { ...prev };
-      for (const c of accepted) {
-        const dotIdx = c.fieldId.indexOf(".");
-        const section = dotIdx === -1 ? c.fieldId : c.fieldId.slice(0, dotIdx);
-        const subField = dotIdx === -1 ? "" : c.fieldId.slice(dotIdx + 1);
-        if (subField === "intro") {
-          const s = next[section as keyof OperationsPlaybookDocument] as { intro: string };
-          if (s && typeof s === "object" && "intro" in s) {
-            next = { ...next, [section]: { ...s, intro: c.finalValue } };
-          }
-        } else {
-          try {
-            const val = JSON.parse(c.finalValue) as OperationsPlaybookDocument[keyof OperationsPlaybookDocument];
-            next = { ...next, [section as keyof OperationsPlaybookDocument]: val };
-          } catch { /* ignore non-JSON */ }
-        }
-      }
-      return next;
-    });
-  }, []);
 
   // Section statuses for progress bar
   const statuses = OPERATIONS_SECTION_KEYS.map((key) =>
@@ -331,8 +305,6 @@ export function OperationsPlaybookWorkspace({
 
   return (
     <>
-    {AIReviewModalNode}
-    {benchmarkAIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1894: canonical WorkspaceHeader — description in the left column
@@ -371,15 +343,15 @@ export function OperationsPlaybookWorkspace({
                 <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
                 <span>Print all</span>
               </WorkspaceActionButton>
-              <SaveIndicator saving={saving} savedAt={savedAt} canEdit={canEdit} />
+              <SaveStatusAndButton saving={saving} savedAt={savedAt} unsaved={false} canEdit={canEdit} onSave={handleManualSave} />
             </>
           }
         />
 
-        {/* TIM-2472: top-level view switcher — Playbook vs How You Compare */}
+        {/* TIM-2472: top-level view switcher — Playbook */}
         <div className="mb-5">
           <WorkspaceSubNav
-            tabs={opsTabs.map((t) => ({ key: t.id, label: t.label, Icon: t.Icon, badge: t.badge }))}
+            tabs={opsTabs.map((t) => ({ key: t.id, label: t.label }))}
             active={activeView}
             onSelect={setActiveView}
             ariaLabel="Operations Playbook views"
@@ -454,46 +426,6 @@ export function OperationsPlaybookWorkspace({
           </div>
         )}
 
-        {activeView === "how-you-compare" && (
-          <BenchmarkDashboard
-            workspaceSlug="operations-playbook"
-            onYellowCountChange={setBenchmarkYellowCount}
-            onAskBenchmark={(metricId, metricLabel) => {
-              // TIM-2450: hand off to the Scout drawer in Benchmark mode with
-              // the metric in scope.
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(
-                  new CustomEvent("copilot:open-in-mode", {
-                    detail: {
-                      mode: "check",
-                      scope: "operations_playbook",
-                      focus: { metricId, metricLabel },
-                    },
-                  }),
-                );
-              }
-            }}
-            onApplySuggestion={(drilldown) => {
-              const proposed = drilldown.proposedFormatted ?? drilldown.userValue;
-              openBenchmarkAIReviewModal({
-                suggestions: [
-                  {
-                    id: `bench:${drilldown.metricId}`,
-                    fieldId: drilldown.metricId,
-                    fieldLabel: drilldown.metricLabel,
-                    originalValue: drilldown.userValue,
-                    proposedValue: proposed,
-                  },
-                ],
-                context: { workspace: "operations_playbook", section: "How You Compare" },
-                onApply: async () => {
-                  // Phase 3: review-modal-only path; per-metric write paths
-                  // follow in a child issue.
-                },
-              });
-            }}
-          />
-        )}
       </div>
 
 
@@ -597,11 +529,7 @@ function CategoryEditor({
 
   return (
     <div>
-      <SectionHeader
-        label={label}
-        tagline={tagline}
-        printDocKey={categoryKey}
-      />
+      <SectionHeader title={label} helpContent={tagline} />
 
       <div className="mb-5">
         {/* TIM-1477: helper one-liner moved into a "?" popup beside the
@@ -717,36 +645,6 @@ function CategoryEditor({
   );
 }
 
-function SectionHeader({
-  label,
-  tagline,
-  printDocKey,
-}: {
-  label: string;
-  tagline: string;
-  canEdit?: boolean;
-  printDocKey?: string;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4 mb-4">
-      <div className="flex-1 min-w-0 flex items-center gap-1">
-        <SectionHelp title={label}>{tagline}</SectionHelp>
-      </div>
-      {printDocKey && (
-        <Link
-          href={`/workspace/operations-playbook/print?doc=${printDocKey}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors flex-shrink-0"
-          aria-label={`Print ${label}`}
-        >
-          <Printer className="w-3.5 h-3.5" />
-          Print
-        </Link>
-      )}
-    </div>
-  );
-}
 
 function LastGeneratedAt({ at }: { at: string }) {
   return (
@@ -999,33 +897,29 @@ function RecipesPanel({ cards }: { cards: OperationsRecipeCard[] }) {
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex-1 min-w-0 flex items-center gap-1">
-          <SectionHelp title="Drink Recipes">
-            Read-only view of the recipes you build in the Menu workspace. Edit
-            a recipe by opening the menu item. Tip: add the prep notes and
-            ingredients on each menu item. They print here for the bar.
-          </SectionHelp>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-          <Link
-            href="/workspace/operations-playbook/print?doc=recipes"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
-            aria-label="Print drink recipes"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            Print
-          </Link>
-          <Link
-            href="/workspace/menu-pricing"
-            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Open Menu workspace
-          </Link>
-        </div>
+      <SectionHeader
+        title="Drink Recipes"
+        helpContent="Read-only view of the recipes you build in the Menu workspace. Edit a recipe by opening the menu item. Tip: add the prep notes and ingredients on each menu item. They print here for the bar."
+        className="mb-2"
+      />
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <Link
+          href="/workspace/operations-playbook/print?doc=recipes"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+          aria-label="Print drink recipes"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          Print
+        </Link>
+        <Link
+          href="/workspace/menu-pricing"
+          className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          Open Menu workspace
+        </Link>
       </div>
 
       {cards.length === 0 ? (
@@ -1171,11 +1065,19 @@ function RolesEditor({
 
   return (
     <div>
-      <SectionHeader
-        label={label}
-        tagline={tagline}
-        printDocKey="roles"
-      />
+      <SectionHeader title={label} helpContent={tagline} className="mb-2" />
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <Link
+          href="/workspace/operations-playbook/print?doc=roles"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+          aria-label="Print roles"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          Print
+        </Link>
+      </div>
 
       <div className="mb-5">
         <label className={labelCls}>How roles work in your shop</label>
@@ -1341,11 +1243,19 @@ function VendorContactsEditor({
 
   return (
     <div>
-      <SectionHeader
-        label={label}
-        tagline={tagline}
-        printDocKey="vendor_contacts"
-      />
+      <SectionHeader title={label} helpContent={tagline} className="mb-2" />
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <Link
+          href="/workspace/operations-playbook/print?doc=vendor_contacts"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+          aria-label="Print vendor contacts"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          Print
+        </Link>
+      </div>
 
       <div className="mb-5">
         <label className={labelCls}>How to use this card</label>
@@ -1548,11 +1458,19 @@ function TrainingEditor({
 
   return (
     <div>
-      <SectionHeader
-        label={label}
-        tagline={tagline}
-        printDocKey="training"
-      />
+      <SectionHeader title={label} helpContent={tagline} className="mb-2" />
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <Link
+          href="/workspace/operations-playbook/print?doc=training"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-3 py-1.5 rounded-lg border border-[var(--teal)]/30 transition-colors"
+          aria-label="Print training"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          Print
+        </Link>
+      </div>
 
       <div className="mb-5">
         <label className={labelCls}>How training works in your shop</label>

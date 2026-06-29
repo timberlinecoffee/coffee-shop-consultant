@@ -99,7 +99,7 @@ export function PaywallModal({
       />
 
       {/* Card */}
-      <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-8 text-center">
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-[min(24rem,calc(100vw-1rem))] max-h-[100dvh] overflow-y-auto p-8 text-center">
         <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--teal)]/10 flex items-center justify-center">
           <svg
             width="22"

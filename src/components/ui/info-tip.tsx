@@ -9,6 +9,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { HelpCircle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useEdgeClamp } from '@/lib/use-edge-clamp'
 
 export function InfoTip({
   label,
@@ -21,6 +22,7 @@ export function InfoTip({
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const panelRef = useEdgeClamp(open)
 
   useEffect(() => {
     if (!open) return
@@ -59,9 +61,10 @@ export function InfoTip({
 
       {open && (
         <div
+          ref={panelRef}
           role="dialog"
           aria-label={`${label} explanation`}
-          className="absolute left-0 top-full z-30 mt-1 w-64 rounded-xl border border-[var(--warm-800)] bg-[var(--warm-250)] p-3 shadow-lg"
+          className="absolute left-0 top-full z-30 mt-1 w-64 max-w-[calc(100vw-1rem)] rounded-xl border border-[var(--warm-800)] bg-[var(--warm-250)] p-3 shadow-lg"
         >
           <div className="mb-1.5 flex items-start justify-between gap-2">
             <span className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">

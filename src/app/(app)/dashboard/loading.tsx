@@ -1,6 +1,6 @@
 export default function DashboardLoading() {
   return (
-    <div className="min-h-screen bg-[var(--background)] pb-16 lg:pb-0 animate-pulse">
+    <div className="min-h-screen bg-[var(--background)] animate-pulse">
       {/* Top bar */}
       <nav className="bg-white border-b border-[var(--border)] px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
