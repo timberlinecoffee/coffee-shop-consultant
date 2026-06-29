@@ -7,10 +7,21 @@
 // before returning ok. We return 200 only after both the profile-create and
 // list-add succeed (Standing Rule 5: sanitized error to client, full reason
 // to server log).
+//
+// TIM-3448: Added CASL s.10(1) consent capture.
+// - `marketing_consent` bool in request body — validated server-side (SR #3).
+// - Every signup writes an email_consent_log row regardless of checkbox state.
+// - When consent=true, also calls setKlaviyoSubscribed() to queue a
+//   profile-subscription-bulk-create-job setting SUBSCRIBED on the profile.
+// - Both operations are non-fatal to the signup flow; failures are logged.
 import type { NextRequest } from "next/server";
 import { enforceRateLimit, clientIp } from "@/lib/rate-limit";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { subscribeToWaitlist } from "@/lib/waitlist/klaviyo-subscribe";
+import {
+  subscribeToWaitlist,
+  setKlaviyoSubscribed,
+} from "@/lib/waitlist/klaviyo-subscribe";
+import { writeConsentRecord } from "@/lib/waitlist/consent-log";
 
 // Conservative RFC 5322-ish email regex — good enough for a waitlist form.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -19,6 +30,7 @@ type SubscribeBody = {
   email?: unknown;
   cf_turnstile_token?: unknown;
   source?: unknown;
+  marketing_consent?: unknown;
 };
 
 export async function POST(request: NextRequest) {
@@ -48,6 +60,9 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  // Server-side validation of marketing_consent (SR #3): must be boolean.
+  const marketingConsent = body.marketing_consent === true;
 
   const captcha = await verifyTurnstileToken(
     typeof body.cf_turnstile_token === "string" ? body.cf_turnstile_token : null,
@@ -88,6 +103,37 @@ export async function POST(request: NextRequest) {
       { status: 502 },
     );
   }
+
+  const consentedAt = new Date();
+
+  // CASL s.10(1): set Klaviyo SUBSCRIBED when user explicitly opted in.
+  let klaviyoSubscribed: boolean | null = null;
+  if (marketingConsent) {
+    const subResult = await setKlaviyoSubscribed(
+      apiKey,
+      emailRaw,
+      result.profileId,
+      consentedAt.toISOString(),
+    );
+    if (subResult.ok) {
+      klaviyoSubscribed = true;
+    } else {
+      klaviyoSubscribed = false;
+      console.error(`[waitlist] klaviyo set-subscribed failed: ${subResult.reason}`);
+    }
+  }
+
+  // CASL s.10(1): write audit row regardless of checkbox state.
+  await writeConsentRecord({
+    email: emailRaw,
+    consentType: marketingConsent ? "express" : "implied",
+    consentSource: "waitlist_signup",
+    marketingOptedIn: marketingConsent,
+    klaviyoSubscribed,
+    klaviyoProfileId: result.profileId,
+    ipAddress: ip === "anon" ? null : ip,
+    consentedAt,
+  });
 
   return Response.json({ ok: true });
 }
