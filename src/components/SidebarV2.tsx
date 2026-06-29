@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { Logo, LogoMark } from "@/app/_components/Logo";
 import { RevertToggle } from "@/components/account/RevertToggle";
+import { HiringRevertToggle } from "@/components/account/HiringRevertToggle";
 import { ProjectSwitcher } from "@/components/project-switcher";
 
 export interface SidebarV2UserInfo {
@@ -42,6 +43,7 @@ export interface SidebarV2UserInfo {
   displayName: string | null;
   planLabel: string;
   uiRevampEnabled: boolean;
+  hiringRevampEnabled: boolean;
   isPro: boolean;
 }
 
@@ -415,6 +417,13 @@ function ProfileMenu({
               {/* RevertToggle (Use new UI) */}
               <div className="px-3 py-1">
                 <RevertToggle initialEnabled={userInfo.uiRevampEnabled} />
+              </div>
+
+              {/* TIM-3369 HiringRevertToggle */}
+              <div className="px-3 py-1">
+                <HiringRevertToggle
+                  initialEnabled={userInfo.hiringRevampEnabled}
+                />
               </div>
             </>
           )}

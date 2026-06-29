@@ -8,6 +8,7 @@ import {
 } from './lib/auth/remember-me'
 import { shouldSuppressSetAll } from './lib/auth/cookie-deletion-guard'
 import { UI_REVAMP_OVERRIDE_COOKIE } from './lib/ui-revamp'
+import { HIRING_REVAMP_OVERRIDE_COOKIE } from './lib/hiring-revamp'
 import { resolveNext } from './lib/safe-next'
 import { buildSessionExpiredLoginUrl } from './lib/session-expired'
 
@@ -92,6 +93,20 @@ export async function proxy(request: NextRequest) {
   const uiParam = searchParams.get('ui')
   if (uiParam === 'v1' || uiParam === 'v2') {
     supabaseResponse.cookies.set(UI_REVAMP_OVERRIDE_COOKIE, uiParam, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 365,
+    })
+  }
+
+  // TIM-3369: ?hiring=v1/v2 sets a persistent override cookie for the Hiring
+  // workspace IA revamp, parallel to ?ui=. Lets the board flip per-account
+  // during the revert window without hitting Preferences.
+  const hiringParam = searchParams.get('hiring')
+  if (hiringParam === 'v1' || hiringParam === 'v2') {
+    supabaseResponse.cookies.set(HIRING_REVAMP_OVERRIDE_COOKIE, hiringParam, {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
