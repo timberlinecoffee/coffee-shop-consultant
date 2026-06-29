@@ -22,6 +22,7 @@ import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
 import { FinancialDocumentsPanel, type FinancialDocumentState } from "./financial-documents-panel";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { WorkspaceActionButton } from "@/components/workspace/WorkspaceActionButton";
 import {
   WorkspaceActionMenu,
   WorkspaceActionMenuItem,
@@ -725,12 +726,11 @@ export function BusinessPlanWorkspace({
           description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI."
           actions={
             <>
-              <button
+              <WorkspaceActionButton
                 onClick={() => setSections((prev) => prev.map((s) => ({ ...s, isExpanded: !allExpanded })))}
-                className="text-sm text-[var(--muted-foreground)] hover:text-foreground underline underline-offset-2 cursor-pointer"
               >
                 {allExpanded ? "Collapse all" : "Expand all"}
-              </button>
+              </WorkspaceActionButton>
               {/* TIM-2382: Scout-as-hub — top-level AskScoutButton on the
                   Business Plan workspace replaces the legacy auto-apply
                   Generate/Improve flow. Suggestions route through chat +
