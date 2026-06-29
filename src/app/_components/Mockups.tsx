@@ -228,13 +228,16 @@ export function MenuMockup() {
         <span className="rounded px-2 py-0.5" style={{ background: "rgba(118,179,157,0.12)", color: "var(--sage)", fontSize: "10px", fontWeight: 600 }}>4 items</span>
       </div>
       <div className="rounded-lg overflow-hidden border" style={{ borderColor: "var(--border-subtle)" }}>
-        <div className="grid grid-cols-4 px-3 py-1.5" style={{ background: "var(--warm-surface)" }}>
+        {/* TIM-3417 (TIM-3411 #6 BLOCK): grid-cols-2 sm:grid-cols-4 — at <640px
+            the table reflows to 2×2 cells per row so 11px labels never get
+            clipped at 375px; ≥640px keep the canonical 4-col table look. */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 px-3 py-1.5" style={{ background: "var(--warm-surface)" }}>
           {["Item", "Cost", "Price", "Margin"].map((h) => (
             <p key={h} style={{ fontSize: "9px", color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</p>
           ))}
         </div>
         {items.map((item, i) => (
-          <div key={item.name} className="grid grid-cols-4 px-3 py-2" style={{ background: "white", borderTop: i > 0 ? "1px solid var(--warm-surface)" : "none" }}>
+          <div key={item.name} className="grid grid-cols-2 sm:grid-cols-4 px-3 py-2" style={{ background: "white", borderTop: i > 0 ? "1px solid var(--warm-surface)" : "none" }}>
             <p style={{ fontSize: "11px", color: "var(--teal)", fontWeight: 500 }}>{item.name}</p>
             <p style={{ fontSize: "11px", color: "var(--neutral-500)" }}>{item.cost}</p>
             <p style={{ fontSize: "11px", color: "var(--neutral-700)" }}>{item.price}</p>

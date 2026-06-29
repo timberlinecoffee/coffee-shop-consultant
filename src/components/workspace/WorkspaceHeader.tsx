@@ -47,19 +47,25 @@ export function WorkspaceHeader({
   actions,
   className,
 }: WorkspaceHeaderProps) {
+  // TIM-3417 (TIM-3411 #9 SERIOUS): at ≤640px stack title above actions in a
+  // stable, predictable order — title row first, action cluster on its own row
+  // below, right-aligned wrap. Title gets `truncate min-w-0` so a long title
+  // never pushes the action cluster around. ≥640px–1199px keep the same-row
+  // attempt with predictable wrap; ≥1200px keep the canonical Financials
+  // single-row layout.
   return (
     <header
-      className={`flex flex-wrap items-start justify-between gap-4 min-[1200px]:flex-nowrap ${
+      className={`flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4 min-[1200px]:flex-nowrap ${
         className ?? "mb-6"
       }`}
     >
       <div className="min-w-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 min-w-0">
           <Icon
             className="w-5 h-5 text-[var(--teal)] flex-shrink-0"
             aria-hidden="true"
           />
-          <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight">
+          <h1 className="text-[28px] font-bold text-[var(--foreground)] leading-tight truncate min-w-0">
             {title}
           </h1>
         </div>
@@ -68,7 +74,7 @@ export function WorkspaceHeader({
         </p>
       </div>
       {actions ? (
-        <div className="flex items-center gap-3 shrink-0 ml-auto flex-wrap min-[1200px]:flex-nowrap">
+        <div className="flex flex-wrap items-center justify-end gap-3 sm:shrink-0 sm:ml-auto min-[1200px]:flex-nowrap">
           {actions}
         </div>
       ) : null}
