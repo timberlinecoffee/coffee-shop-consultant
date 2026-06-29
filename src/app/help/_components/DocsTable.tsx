@@ -20,7 +20,11 @@ export function DocsTable() {
     `px-3 py-2 text-left ${TABLE_HEADER_TEXT} text-[var(--muted-foreground)] border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none`;
 
   return (
-    <div className="border border-[var(--border)] rounded-xl overflow-hidden bg-white">
+    <div className="border border-[var(--border)] rounded-xl overflow-hidden bg-white relative">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-8 bg-gradient-to-l from-white to-transparent sm:hidden"
+      />
       <div className="overflow-x-auto">
         <table className="w-full border-collapse min-w-[640px]">
           <thead>

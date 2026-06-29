@@ -344,10 +344,14 @@ function DailyTrafficContent({
       </div>
 
       {/* Operating schedule */}
-      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden relative">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] px-4 pt-4 pb-2">
           Operating Schedule
         </p>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-0 top-10 bottom-0 z-10 w-8 bg-gradient-to-l from-white to-transparent sm:hidden"
+        />
         <div className="overflow-x-auto">
           <table className="w-full min-w-[440px]">
             <thead>

@@ -94,58 +94,52 @@ export default function PrivacyPage() {
               data-protection law requires us to state a legal basis for each processing activity. The
               relevant bases are:
             </p>
-            <div className="overflow-x-auto mt-3">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="py-2 pr-4 font-semibold align-top">Processing activity</th>
-                    <th className="py-2 font-semibold align-top">Legal basis</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Creating and managing your account</td>
-                    <td className="py-2 align-top">Performance of contract -- Art. 6(1)(b) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Processing subscription payments</td>
-                    <td className="py-2 align-top">Performance of contract -- Art. 6(1)(b) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Sending transactional emails (receipts, resets, notices)</td>
-                    <td className="py-2 align-top">Performance of contract -- Art. 6(1)(b) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Delivering and improving the Service and course content</td>
-                    <td className="py-2 align-top">Legitimate interests -- Art. 6(1)(f) GDPR (our interest in providing a working, improving product)</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Analytics cookies (e.g. Google Analytics 4)</td>
-                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Marketing / advertising cookies and CAPI (Meta, Google Ads)</td>
-                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Hashed-PII sharing with Meta / Google for ad measurement</td>
-                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Sending marketing emails</td>
-                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Fraud prevention and security</td>
-                    <td className="py-2 align-top">Legitimate interests -- Art. 6(1)(f) GDPR (our interest in protecting the Service and users)</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Complying with legal obligations</td>
-                    <td className="py-2 align-top">Legal obligation -- Art. 6(1)(c) GDPR</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            {(() => {
+              const rows = [
+                ["Creating and managing your account", "Performance of contract -- Art. 6(1)(b) GDPR"],
+                ["Processing subscription payments", "Performance of contract -- Art. 6(1)(b) GDPR"],
+                ["Sending transactional emails (receipts, resets, notices)", "Performance of contract -- Art. 6(1)(b) GDPR"],
+                ["Delivering and improving the Service and course content", "Legitimate interests -- Art. 6(1)(f) GDPR (our interest in providing a working, improving product)"],
+                ["Analytics cookies (e.g. Google Analytics 4)", "Your consent -- Art. 6(1)(a) GDPR"],
+                ["Marketing / advertising cookies and CAPI (Meta, Google Ads)", "Your consent -- Art. 6(1)(a) GDPR"],
+                ["Hashed-PII sharing with Meta / Google for ad measurement", "Your consent -- Art. 6(1)(a) GDPR"],
+                ["Sending marketing emails", "Your consent -- Art. 6(1)(a) GDPR"],
+                ["Fraud prevention and security", "Legitimate interests -- Art. 6(1)(f) GDPR (our interest in protecting the Service and users)"],
+                ["Complying with legal obligations", "Legal obligation -- Art. 6(1)(c) GDPR"],
+              ];
+              return (
+                <>
+                  <div className="hidden sm:block overflow-x-auto mt-3">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] text-left">
+                          <th className="py-2 pr-4 font-semibold align-top">Processing activity</th>
+                          <th className="py-2 font-semibold align-top">Legal basis</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(([activity, basis]) => (
+                          <tr key={activity} className="border-b border-[var(--border)]">
+                            <td className="py-2 pr-4 align-top">{activity}</td>
+                            <td className="py-2 align-top">{basis}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <dl className="sm:hidden mt-3 border-t border-[var(--border)]">
+                    {rows.map(([activity, basis]) => (
+                      <div key={activity} className="border-b border-[var(--border)] py-3">
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Processing activity</dt>
+                        <dd className="text-sm mt-1">{activity}</dd>
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mt-2">Legal basis</dt>
+                        <dd className="text-sm mt-1">{basis}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
+              );
+            })()}
             <p className="mt-3">
               Where we rely on legitimate interests, you have the right to object to that processing (see
               Your Rights).
@@ -162,34 +156,46 @@ export default function PrivacyPage() {
               We share certain data with the following US-based third parties and rely on the following
               transfer mechanisms for transfers from the EEA or UK:
             </p>
-            <div className="overflow-x-auto mt-3">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="py-2 pr-4 font-semibold align-top">Recipient</th>
-                    <th className="py-2 font-semibold align-top">Transfer mechanism</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top"><strong>Meta Platforms, Inc.</strong></td>
-                    <td className="py-2 align-top">EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top"><strong>Google LLC</strong></td>
-                    <td className="py-2 align-top">EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top"><strong>Stripe, Inc.</strong></td>
-                    <td className="py-2 align-top">Standard Contractual Clauses (SCCs) / EU-US DPF -- see stripe.com/legal/dpa</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top"><strong>Supabase</strong></td>
-                    <td className="py-2 align-top">Standard Contractual Clauses (SCCs) -- see supabase.com/privacy</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            {(() => {
+              const rows = [
+                ["Meta Platforms, Inc.", "EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF"],
+                ["Google LLC", "EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF"],
+                ["Stripe, Inc.", "Standard Contractual Clauses (SCCs) / EU-US DPF -- see stripe.com/legal/dpa"],
+                ["Supabase", "Standard Contractual Clauses (SCCs) -- see supabase.com/privacy"],
+              ];
+              return (
+                <>
+                  <div className="hidden sm:block overflow-x-auto mt-3">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] text-left">
+                          <th className="py-2 pr-4 font-semibold align-top">Recipient</th>
+                          <th className="py-2 font-semibold align-top">Transfer mechanism</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(([recipient, mechanism]) => (
+                          <tr key={recipient} className="border-b border-[var(--border)]">
+                            <td className="py-2 pr-4 align-top"><strong>{recipient}</strong></td>
+                            <td className="py-2 align-top">{mechanism}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <dl className="sm:hidden mt-3 border-t border-[var(--border)]">
+                    {rows.map(([recipient, mechanism]) => (
+                      <div key={recipient} className="border-b border-[var(--border)] py-3">
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Recipient</dt>
+                        <dd className="text-sm mt-1"><strong>{recipient}</strong></dd>
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mt-2">Transfer mechanism</dt>
+                        <dd className="text-sm mt-1">{mechanism}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
+              );
+            })()}
             <p className="mt-3">
               You may request a copy of the relevant transfer safeguards by contacting us at{" "}
               <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
