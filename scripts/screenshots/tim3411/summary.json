@@ -1,0 +1,332 @@
+[
+  {
+    "slug": "landing",
+    "path": "/",
+    "vp": "375",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 375,
+    "winW": 375,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/landing-375.png"
+  },
+  {
+    "slug": "pricing",
+    "path": "/pricing",
+    "vp": "375",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 375,
+    "winW": 375,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/pricing-375.png"
+  },
+  {
+    "slug": "login",
+    "path": "/login",
+    "vp": "375",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 375,
+    "winW": 375,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/login-375.png"
+  },
+  {
+    "slug": "signup",
+    "path": "/signup",
+    "vp": "375",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 375,
+    "winW": 375,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/signup-375.png"
+  },
+  {
+    "slug": "forgot-password",
+    "path": "/forgot-password",
+    "vp": "375",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 375,
+    "winW": 375,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/forgot-password-375.png"
+  },
+  {
+    "slug": "help",
+    "path": "/help",
+    "vp": "375",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 375,
+    "winW": 375,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/help-375.png"
+  },
+  {
+    "slug": "privacy",
+    "path": "/privacy",
+    "vp": "375",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 375,
+    "winW": 375,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/privacy-375.png"
+  },
+  {
+    "slug": "terms",
+    "path": "/terms",
+    "vp": "375",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 375,
+    "winW": 375,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/terms-375.png"
+  },
+  {
+    "slug": "subscription-terms",
+    "path": "/subscription-terms",
+    "vp": "375",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 375,
+    "winW": 375,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/subscription-terms-375.png"
+  },
+  {
+    "slug": "coming-soon",
+    "path": "/coming-soon",
+    "vp": "375",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 375,
+    "winW": 375,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/coming-soon-375.png"
+  },
+  {
+    "slug": "affiliates-apply",
+    "path": "/affiliates/apply",
+    "vp": "375",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 375,
+    "winW": 375,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/affiliates-apply-375.png"
+  },
+  {
+    "slug": "landing",
+    "path": "/",
+    "vp": "360",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 360,
+    "winW": 360,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/landing-360.png"
+  },
+  {
+    "slug": "pricing",
+    "path": "/pricing",
+    "vp": "360",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 360,
+    "winW": 360,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/pricing-360.png"
+  },
+  {
+    "slug": "login",
+    "path": "/login",
+    "vp": "360",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 360,
+    "winW": 360,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/login-360.png"
+  },
+  {
+    "slug": "signup",
+    "path": "/signup",
+    "vp": "360",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 360,
+    "winW": 360,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/signup-360.png"
+  },
+  {
+    "slug": "forgot-password",
+    "path": "/forgot-password",
+    "vp": "360",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 360,
+    "winW": 360,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/forgot-password-360.png"
+  },
+  {
+    "slug": "help",
+    "path": "/help",
+    "vp": "360",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 362,
+    "winW": 362,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/help-360.png"
+  },
+  {
+    "slug": "privacy",
+    "path": "/privacy",
+    "vp": "360",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 360,
+    "winW": 360,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/privacy-360.png"
+  },
+  {
+    "slug": "terms",
+    "path": "/terms",
+    "vp": "360",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 360,
+    "winW": 360,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/terms-360.png"
+  },
+  {
+    "slug": "subscription-terms",
+    "path": "/subscription-terms",
+    "vp": "360",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 360,
+    "winW": 360,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/subscription-terms-360.png"
+  },
+  {
+    "slug": "coming-soon",
+    "path": "/coming-soon",
+    "vp": "360",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 360,
+    "winW": 360,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/coming-soon-360.png"
+  },
+  {
+    "slug": "affiliates-apply",
+    "path": "/affiliates/apply",
+    "vp": "360",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 360,
+    "winW": 360,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/affiliates-apply-360.png"
+  },
+  {
+    "slug": "landing",
+    "path": "/",
+    "vp": "414",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 414,
+    "winW": 414,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/landing-414.png"
+  },
+  {
+    "slug": "pricing",
+    "path": "/pricing",
+    "vp": "414",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 414,
+    "winW": 414,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/pricing-414.png"
+  },
+  {
+    "slug": "login",
+    "path": "/login",
+    "vp": "414",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 414,
+    "winW": 414,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/login-414.png"
+  },
+  {
+    "slug": "signup",
+    "path": "/signup",
+    "vp": "414",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 414,
+    "winW": 414,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/signup-414.png"
+  },
+  {
+    "slug": "forgot-password",
+    "path": "/forgot-password",
+    "vp": "414",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 414,
+    "winW": 414,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/forgot-password-414.png"
+  },
+  {
+    "slug": "help",
+    "path": "/help",
+    "vp": "414",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 414,
+    "winW": 414,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/help-414.png"
+  },
+  {
+    "slug": "privacy",
+    "path": "/privacy",
+    "vp": "414",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 414,
+    "winW": 414,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/privacy-414.png"
+  },
+  {
+    "slug": "terms",
+    "path": "/terms",
+    "vp": "414",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 414,
+    "winW": 414,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/terms-414.png"
+  },
+  {
+    "slug": "subscription-terms",
+    "path": "/subscription-terms",
+    "vp": "414",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 414,
+    "winW": 414,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/subscription-terms-414.png"
+  },
+  {
+    "slug": "coming-soon",
+    "path": "/coming-soon",
+    "vp": "414",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 414,
+    "winW": 414,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/coming-soon-414.png"
+  },
+  {
+    "slug": "affiliates-apply",
+    "path": "/affiliates/apply",
+    "vp": "414",
+    "status": 200,
+    "hasHscroll": false,
+    "docW": 414,
+    "winW": 414,
+    "out": "/home/briefli/.paperclip/instances/default/workspaces/c0528b72-ac51-4031-82ec-b0240550413f/coffee-shop-consultant/scripts/screenshots/tim3411/affiliates-apply-414.png"
+  }
+]
