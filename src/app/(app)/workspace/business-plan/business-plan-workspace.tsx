@@ -729,7 +729,7 @@ export function BusinessPlanWorkspace({
               <WorkspaceActionButton
                 onClick={() => setSections((prev) => prev.map((s) => ({ ...s, isExpanded: !allExpanded })))}
               >
-                {allExpanded ? "Collapse all" : "Expand all"}
+                {allExpanded ? "Collapse All" : "Expand All"}
               </WorkspaceActionButton>
               {/* TIM-2382: Scout-as-hub — top-level AskScoutButton on the
                   Business Plan workspace replaces the legacy auto-apply
