@@ -46,21 +46,26 @@ export function SettingsShell({
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="max-w-5xl mx-auto px-6 py-10">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
         <h1 className="text-3xl font-bold text-[var(--foreground)] mb-8">
           Settings
         </h1>
 
-        <div className="flex gap-8">
-          {/* Left-rail nav */}
-          <nav aria-label="Settings categories" className="w-44 flex-shrink-0">
-            <ul className="space-y-0.5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:gap-8">
+          {/* Categories nav: horizontal scroll strip on mobile, left rail on ≥640px.
+              Mobile uses overflow-x-auto on a flex-row list so the short tab set
+              stays one tap away without consuming vertical space (board directive §5). */}
+          <nav
+            aria-label="Settings categories"
+            className="w-full sm:w-44 sm:flex-shrink-0 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto sm:overflow-visible"
+          >
+            <ul className="flex flex-row gap-1 sm:flex-col sm:gap-0 sm:space-y-0.5 min-w-max sm:min-w-0">
               {SETTINGS_TABS.map((tab) => (
-                <li key={tab.id}>
+                <li key={tab.id} className="flex-shrink-0 sm:flex-shrink">
                   <button
                     onClick={() => setActiveTab(tab.id)}
                     aria-current={activeTab === tab.id ? "page" : undefined}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                    className={`w-full text-left whitespace-nowrap sm:whitespace-normal px-3 py-2 rounded-lg text-sm transition-colors ${
                       activeTab === tab.id
                         ? "bg-[var(--teal-bg-100)] text-[var(--teal)] font-medium"
                         : "text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]"
@@ -133,38 +138,38 @@ function AccountTabContent({
   return (
     <>
       {/* Profile card */}
-      <Card>
+      <Card className="max-w-full">
         <CardHeader>
           <CardTitle>Profile</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
               <span className="text-[var(--dark-grey)]">Name</span>
               <ProfileNameEditor initialName={profile?.full_name ?? null} />
             </div>
-            <div className="flex justify-between">
-              <span className="text-[var(--dark-grey)]">Email</span>
-              <span className="text-[var(--foreground)]">{userEmail}</span>
+            <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center min-w-0">
+              <span className="text-[var(--dark-grey)] flex-shrink-0">Email</span>
+              <span className="text-[var(--foreground)] break-all sm:text-right">{userEmail}</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Subscription card */}
-      <Card>
+      <Card className="max-w-full">
         <CardHeader>
           <CardTitle>Subscription</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
+            <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
               <span className="text-[var(--dark-grey)]">Plan</span>
               <span className="text-[var(--foreground)]">{tierDisplayName}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-[var(--dark-grey)]">AI coaching</span>
-              <span className="text-[var(--foreground)]">
+            <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:justify-between sm:items-center sm:gap-2">
+              <span className="text-[var(--dark-grey)] flex-shrink-0">AI coaching</span>
+              <span className="text-[var(--foreground)] break-words sm:text-right">
                 {isTrial
                   ? `${Math.max(0, trialRemaining)} of 5 trial messages left`
                   : `${profile?.ai_credits_remaining ?? 0} messages left this month`}
