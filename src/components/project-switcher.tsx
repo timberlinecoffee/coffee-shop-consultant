@@ -134,7 +134,7 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
 
       <button
         onClick={() => setMenuOpen((o) => !o)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--border)] bg-white text-left hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50"
+        className="w-full flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-xl border border-[var(--border)] bg-white text-left hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50"
         aria-expanded={menuOpen}
         aria-haspopup="listbox"
       >

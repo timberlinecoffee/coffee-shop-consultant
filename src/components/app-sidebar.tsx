@@ -515,7 +515,7 @@ function SidebarContent({
             {onClose && (
               <button
                 onClick={onClose}
-                className="lg:hidden text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1 transition-colors"
+                className="lg:hidden text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors h-11 w-11 flex items-center justify-center"
                 aria-label="Close navigation"
               >
                 <CloseIcon />

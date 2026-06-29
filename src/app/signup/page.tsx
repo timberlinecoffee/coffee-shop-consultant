@@ -21,7 +21,10 @@ export default function SignupPage() {
         <LoginForm initialMode="signup" />
         <p className="text-center text-sm text-[var(--dark-grey)] mt-6">
           Already have an account?{" "}
-          <Link href="/login" className="text-[var(--teal)] font-medium hover:underline">
+          <Link
+            href="/login"
+            className="text-[var(--teal)] font-medium hover:underline inline-flex items-center min-h-[44px] -my-3 px-1 -mx-1"
+          >
             Sign In
           </Link>
         </p>
@@ -29,11 +32,17 @@ export default function SignupPage() {
 
       <p className="text-xs text-[var(--dark-grey)] mt-8 text-center max-w-xs">
         By continuing, you agree to our{" "}
-        <Link href="/terms" className="underline hover:text-[var(--teal)]">
+        <Link
+          href="/terms"
+          className="underline hover:text-[var(--teal)] inline-flex items-center min-h-[44px] -my-3 px-1 -mx-1"
+        >
           Terms of Service
         </Link>{" "}
         and{" "}
-        <Link href="/privacy" className="underline hover:text-[var(--teal)]">
+        <Link
+          href="/privacy"
+          className="underline hover:text-[var(--teal)] inline-flex items-center min-h-[44px] -my-3 px-1 -mx-1"
+        >
           Privacy Policy
         </Link>
         .

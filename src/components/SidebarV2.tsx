@@ -529,7 +529,7 @@ function SidebarV2Content({
         {onClose && (
           <button
             onClick={onClose}
-            className="lg:hidden text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1 transition-colors"
+            className="lg:hidden text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors h-11 w-11 flex items-center justify-center"
             aria-label="Close navigation"
           >
             <CloseIcon />
@@ -557,7 +557,7 @@ function SidebarV2Content({
                     href={cat.href}
                     aria-current={active ? "page" : undefined}
                     onClick={onClose}
-                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors ${
+                    className={`flex items-center gap-2.5 px-3 py-2.5 min-h-[44px] rounded-lg transition-colors ${
                       active
                         ? "border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
                         : "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
@@ -582,7 +582,7 @@ function SidebarV2Content({
                   type="button"
                   onClick={() => toggle(cat.key)}
                   aria-expanded={expanded}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 w-full rounded-lg transition-colors ${
+                  className={`flex items-center gap-2.5 px-3 py-2.5 min-h-[44px] w-full rounded-lg transition-colors ${
                     anyCatSubActive
                       ? "border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
                       : "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
@@ -611,7 +611,7 @@ function SidebarV2Content({
                               tabIndex={expanded ? undefined : -1}
                               aria-current={subActive ? "page" : undefined}
                               onClick={onClose}
-                              className={`flex items-center pr-3 py-2 rounded-lg transition-colors text-sm ${
+                              className={`flex items-center pr-3 py-2 min-h-[44px] rounded-lg transition-colors text-sm ${
                                 subActive
                                   ? "border-l-2 border-[var(--teal)] pl-[34px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
                                   : "pl-9 text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
