@@ -899,12 +899,6 @@ export function CoPilotDrawer({
       const trimmed = prompt.trim();
       if (!trimmed || isStreaming) return;
 
-      // TIM-819: Gate at attempt time if trial already exhausted (e.g. dismissed modal on msg 5).
-      if (trialMessagesUsed >= COPILOT_FREE_TRIAL_LIMIT) {
-        setTrialModalOpen(true);
-        return;
-      }
-
       setPendingRetry(trimmed);
       const optimistic: CopilotMessage = { role: "user", content: trimmed };
       const nextHistory = [...messages, optimistic];
@@ -964,7 +958,6 @@ export function CoPilotDrawer({
       messages,
       planId,
       send,
-      trialMessagesUsed,
     ],
   );
 
