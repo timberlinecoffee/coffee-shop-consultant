@@ -321,7 +321,11 @@ export function SuppliesDesktopTable({
       )}
 
       {/* Sectioned table */}
-      <div className="border border-[var(--border)] rounded-xl overflow-hidden">
+      <div className="border border-[var(--border)] rounded-xl overflow-hidden relative">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-8 bg-gradient-to-l from-white to-transparent sm:hidden"
+        />
         <div className="overflow-x-auto">
           <table
             className={`w-full border-collapse min-w-[700px] ${TABLE_CELL_TEXT}`}
