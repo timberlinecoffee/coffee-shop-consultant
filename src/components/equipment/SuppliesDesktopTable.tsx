@@ -1,12 +1,18 @@
 "use client";
 
 // TIM-2779 (Phase 6): v2 Supplies desktop table.
-// Uses workspace-table.ts canonical tokens (TABLE_CELL_TEXT, TABLE_HEADER_TEXT).
-// Renders at md+ when ui_revamp_v2 is on; mobile uses SuppliesMobileV2.
+// TIM-3251: TABLE_ROW_PADDING / TABLE_PRICE_CLS / TABLE_QUICK_ADD_ROW_CLS /
+//           TABLE_QUICK_ADD_INPUT_CLS styling tokens; alternating stripe rows;
+//           inline quick-add row; nameBold / muted EditableCell variants.
+// TIM-3331: Restructured to sections-based layout with SectionHeaderRow,
+//           SectionSubtotalRow, GrandTotalRow; per-section add; collapsible
+//           sections with localStorage persistence.
+// Uses workspace-table.ts canonical tokens. Renders at md+ when ui_revamp_v2 is on.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
+import { MoneyInput } from "@/components/ui/money-input";
 import {
   TABLE_CELL_TEXT,
   TABLE_HEADER_TEXT,
@@ -16,9 +22,30 @@ import {
   TABLE_QUICK_ADD_ROW_CLS,
   TABLE_QUICK_ADD_INPUT_CLS,
 } from "@/lib/workspace-table";
+import {
+  SectionHeaderRow,
+  SectionSubtotalRow,
+  GrandTotalRow,
+} from "@/lib/workspace-table-rows";
 import { formatMinor } from "@/lib/formatters";
 
 const AUTOSAVE_DEBOUNCE_MS = 400;
+const SECTION_COLLAPSE_KEY = "tcs-supplies-section-collapse";
+const TOTAL_COLS = 8; // name, vendor, unit, qty, unitCost, total, notes, delete
+
+function loadCollapsed(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(SECTION_COLLAPSE_KEY);
+    if (raw) return JSON.parse(raw) as Record<string, boolean>;
+  } catch { /* ignore */ }
+  return {};
+}
+
+function saveCollapsed(v: Record<string, boolean>) {
+  try {
+    localStorage.setItem(SECTION_COLLAPSE_KEY, JSON.stringify(v));
+  } catch { /* ignore */ }
+}
 
 interface Props {
   planId: string;
@@ -29,11 +56,15 @@ interface Props {
   currencyCode: string;
 }
 
-function newBlankItem(planId: string, position: number): SuppliesItem {
+function newBlankItem(
+  planId: string,
+  position: number,
+  sectionId: string | null,
+): SuppliesItem {
   return {
-    id: `__new_${Date.now()}`,
+    id: `__new_${Date.now()}_${Math.random().toString(36).slice(2)}`,
     plan_id: planId,
-    section_id: null,
+    section_id: sectionId,
     name: "",
     vendor: null,
     unit_type: "unit",
@@ -57,9 +88,11 @@ export function SuppliesDesktopTable({
   currencyCode,
 }: Props) {
   const [editingCell, setEditingCell] = useState<{ rowId: string; key: EditKey } | null>(null);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const pendingPatches = useRef<Map<string, Partial<SuppliesItem>>>(new Map());
   const creatingRows = useRef<Set<string>>(new Set());
+
   // TIM-3251: inline quick-add row state.
   const [qaName, setQaName] = useState("");
   const [qaVendor, setQaVendor] = useState("");
@@ -67,14 +100,66 @@ export function SuppliesDesktopTable({
   const [qaQty, setQaQty] = useState("1");
   const [qaCost, setQaCost] = useState("");
   const qaNameRef = useRef<HTMLInputElement>(null);
+
   // Always reflects the latest items so rapid Enter-Enter doesn't read a stale closure.
   const latestItemsRef = useRef(items);
-  latestItemsRef.current = items;
+  useEffect(() => { latestItemsRef.current = items; }, [items]);
 
-  const sectionsById = new Map(sections.map((s) => [s.id, s]));
+  useEffect(() => {
+    setCollapsed(loadCollapsed());
+  }, []);
+
+  useEffect(() => {
+    const timers = debounceTimers.current;
+    return () => { timers.forEach((t) => clearTimeout(t)); };
+  }, []);
 
   const active = items.filter((i) => !i.archived);
   const grandTotal = active.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0);
+
+  // Build section list: explicit sections in order, then "Uncategorized" for orphaned items
+  const activeSectionIds = new Set(sections.map((s) => s.id));
+  const uncategorizedItems = active.filter(
+    (i) => !i.section_id || !activeSectionIds.has(i.section_id)
+  );
+  const sectionsWithItems = sections.filter((s) =>
+    active.some((i) => i.section_id === s.id)
+  );
+
+  // Ordered display groups: named sections first, then uncategorized
+  const displayGroups: Array<{
+    id: string;
+    label: string;
+    items: SuppliesItem[];
+    sectionId: string | null;
+  }> = [
+    ...sectionsWithItems.map((s) => ({
+      id: s.id,
+      label: s.name,
+      items: active.filter((i) => i.section_id === s.id).sort((a, b) => a.position - b.position),
+      sectionId: s.id,
+    })),
+    ...(uncategorizedItems.length > 0
+      ? [{
+          id: "__uncategorized",
+          label: "Uncategorized",
+          items: uncategorizedItems.sort((a, b) => a.position - b.position),
+          sectionId: null,
+        }]
+      : []),
+  ];
+
+  // ── Section collapse ─────────────────────────────────────────────────────────
+
+  function toggleSection(id: string) {
+    setCollapsed((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      saveCollapsed(next);
+      return next;
+    });
+  }
+
+  // ── API helpers ──────────────────────────────────────────────────────────────
 
   const createRow = useCallback(async (tempId: string, item: SuppliesItem) => {
     if (creatingRows.current.has(tempId)) return null;
@@ -91,6 +176,7 @@ export function SuppliesDesktopTable({
           unit_cost_cents: item.unit_cost_cents,
           notes: item.notes,
           position: item.position,
+          section_id: item.section_id,
         }),
       });
       if (!res.ok) throw new Error(`create failed ${res.status}`);
@@ -126,6 +212,8 @@ export function SuppliesDesktopTable({
     } catch { /* silent */ }
   }, []);
 
+  // ── Autosave ─────────────────────────────────────────────────────────────────
+
   const scheduleAutosave = useCallback(
     (id: string, patch: Partial<SuppliesItem>, currentItems: SuppliesItem[]) => {
       if (!canEdit) return;
@@ -151,7 +239,7 @@ export function SuppliesDesktopTable({
     [canEdit, createRow, patchRow, onItemsChange]
   );
 
-  function handleCommit(id: string, key: EditKey, rawValue: unknown, currentItems: SuppliesItem[]) {
+  function handleCommit(id: string, key: EditKey, rawValue: unknown) {
     if (!canEdit) return;
     let patch: Partial<SuppliesItem> = {};
     if (key === "name") patch = { name: rawValue as string };
@@ -160,9 +248,21 @@ export function SuppliesDesktopTable({
     else if (key === "quantity") patch = { quantity: Math.max(1, parseInt(rawValue as string, 10) || 1) };
     else if (key === "unit_cost_cents") patch = { unit_cost_cents: Math.round((parseFloat(rawValue as string) || 0) * 100) };
     else if (key === "notes") patch = { notes: (rawValue as string) || null };
-    const next = currentItems.map((i) => (i.id === id ? { ...i, ...patch } : i));
+    const next = items.map((i) => (i.id === id ? { ...i, ...patch } : i));
     onItemsChange(next);
     scheduleAutosave(id, patch, next);
+    setEditingCell(null);
+  }
+
+  function addItemToSection(sectionId: string | null) {
+    if (!canEdit) return;
+    const blank = newBlankItem(planId, active.length, sectionId);
+    const next = [...items, blank];
+    onItemsChange(next);
+    // Ensure section is expanded
+    const key = sectionId ?? "__uncategorized";
+    if (collapsed[key]) toggleSection(key);
+    setTimeout(() => setEditingCell({ rowId: blank.id, key: "name" }), 30);
   }
 
   function deleteSingleRow(id: string) {
@@ -171,17 +271,12 @@ export function SuppliesDesktopTable({
     deleteRow(id);
   }
 
-  // Cleanup debounce timers on unmount.
-  useEffect(() => {
-    const timers = debounceTimers.current;
-    return () => { timers.forEach((t) => clearTimeout(t)); };
-  }, []);
-
-  // TIM-3251: inline quick-add commit.
+  // TIM-3251: inline quick-add commit. Uses latestItemsRef so rapid Enter-Enter
+  // always reads the most-recently-committed list without waiting for React state.
   function commitQuickAdd() {
     if (!canEdit || !qaName.trim()) return;
     const current = latestItemsRef.current;
-    const blank = newBlankItem(planId, current.filter((i) => !i.archived).length);
+    const blank = newBlankItem(planId, current.filter((i) => !i.archived).length, null);
     const qty = Math.max(1, parseInt(qaQty, 10) || 1);
     const costCents = Math.round((parseFloat(qaCost) || 0) * 100);
     const patched: SuppliesItem = {
@@ -217,27 +312,34 @@ export function SuppliesDesktopTable({
         <div className="flex items-center gap-4 px-1 text-xs text-[var(--muted-foreground)]">
           <span>{active.length} item{active.length !== 1 ? "s" : ""}</span>
           <span className="text-[var(--border)]">|</span>
+          <span>{displayGroups.length} section{displayGroups.length !== 1 ? "s" : ""}</span>
+          <span className="text-[var(--border)]">|</span>
           <span className="font-semibold text-[var(--foreground)]">
             Total: {formatMinor(grandTotal, currencyCode)}
           </span>
         </div>
       )}
 
-      {/* Table */}
+      {/* Sectioned table */}
       <div className="border border-[var(--border)] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className={`w-full border-collapse min-w-[700px] ${TABLE_CELL_TEXT}`} style={{ tableLayout: "fixed" }}>
+          <table
+            className={`w-full border-collapse min-w-[700px] ${TABLE_CELL_TEXT}`}
+            style={{ tableLayout: "fixed" }}
+          >
             <colgroup>
-              <col style={{ width: 220 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 100 }} />
-              <col style={{ width: 80 }} />
-              <col style={{ width: 110 }} />
-              <col style={{ width: 110 }} />
-              <col style={{ width: 180 }} />
-              <col style={{ width: 36 }} />
+              <col style={{ width: 200 }} /> {/* name */}
+              <col style={{ width: 130 }} /> {/* vendor */}
+              <col style={{ width: 80 }} />  {/* unit */}
+              <col style={{ width: 60 }} />  {/* qty */}
+              <col style={{ width: 100 }} /> {/* unit cost */}
+              <col style={{ width: 100 }} /> {/* total */}
+              <col style={{ width: 170 }} /> {/* notes */}
+              <col style={{ width: 36 }} />  {/* delete */}
             </colgroup>
-            <thead>
+
+            {/* Sticky column headers */}
+            <thead className="sticky top-0 z-10">
               <tr className="border-b border-[var(--neutral-cool-150)]">
                 <th className={headerCellCls}>Name</th>
                 <th className={headerCellCls}>Vendor</th>
@@ -249,192 +351,245 @@ export function SuppliesDesktopTable({
                 <th className={headerCellCls} />
               </tr>
             </thead>
+
             <tbody>
-              {active.length === 0 && (
+              {displayGroups.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-sm text-[var(--dark-grey)]">
+                  <td colSpan={TOTAL_COLS} className="py-10 text-center text-sm text-[var(--dark-grey)]">
                     No supplies added yet.
                   </td>
                 </tr>
               )}
-              {/* TIM-3251: alternating row stripe (even=background, odd=white). */}
-              {active.map((it, rowIdx) => {
-                const rowTotal = it.unit_cost_cents * it.quantity;
-                const stripeBg = rowIdx % 2 === 0 ? "bg-white" : "bg-[var(--background)]";
+
+              {displayGroups.map(({ id, label, items: groupItems, sectionId }) => {
+                const isCollapsed = !!collapsed[id];
+                const subtotal = groupItems.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0);
+
                 return (
-                  <tr
-                    key={it.id}
-                    className={`border-b border-[var(--neutral-cool-100)] last:border-b-0 transition-colors hover:brightness-[0.97] ${stripeBg}`}
-                  >
-                    {/* Name — font-medium per Menu ingredients-tab canon. */}
-                    <td className={cellCls}>
-                      <EditableCell
-                        value={it.name}
-                        placeholder="Item name"
-                        nameBold
-                        active={editingCell?.rowId === it.id && editingCell.key === "name"}
-                        canEdit={canEdit}
-                        onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "name" })}
-                        onCommit={(v) => { handleCommit(it.id, "name", v, items); setEditingCell(null); }}
-                      />
-                    </td>
-                    {/* Vendor */}
-                    <td className={cellCls}>
-                      <EditableCell
-                        value={it.vendor ?? ""}
-                        placeholder="Vendor"
-                        active={editingCell?.rowId === it.id && editingCell.key === "vendor"}
-                        canEdit={canEdit}
-                        onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "vendor" })}
-                        onCommit={(v) => { handleCommit(it.id, "vendor", v, items); setEditingCell(null); }}
-                      />
-                    </td>
-                    {/* Unit type — muted grey per Menu unit-label treatment. */}
-                    <td className={cellCls}>
-                      <EditableCell
-                        value={it.unit_type}
-                        placeholder="unit"
-                        muted
-                        active={editingCell?.rowId === it.id && editingCell.key === "unit_type"}
-                        canEdit={canEdit}
-                        onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "unit_type" })}
-                        onCommit={(v) => { handleCommit(it.id, "unit_type", v || "unit", items); setEditingCell(null); }}
-                      />
-                    </td>
-                    {/* Quantity */}
-                    <td className={cellCls}>
-                      <EditableCell
-                        value={String(it.quantity)}
-                        placeholder="1"
-                        inputType="number"
-                        active={editingCell?.rowId === it.id && editingCell.key === "quantity"}
-                        canEdit={canEdit}
-                        onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "quantity" })}
-                        onCommit={(v) => { handleCommit(it.id, "quantity", v, items); setEditingCell(null); }}
-                      />
-                    </td>
-                    {/* Unit cost */}
-                    <td className={cellCls}>
-                      <EditableCell
-                        value={it.unit_cost_cents > 0 ? String(it.unit_cost_cents / 100) : ""}
-                        placeholder="0"
-                        inputType="number"
-                        active={editingCell?.rowId === it.id && editingCell.key === "unit_cost_cents"}
-                        canEdit={canEdit}
-                        onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "unit_cost_cents" })}
-                        onCommit={(v) => { handleCommit(it.id, "unit_cost_cents", v, items); setEditingCell(null); }}
-                        displayValue={formatMinor(it.unit_cost_cents, currencyCode)}
-                      />
-                    </td>
-                    {/* Total (read-only) — teal semibold per Menu price treatment. */}
-                    <td className={cellCls}>
-                      <span className={TABLE_PRICE_CLS}>
-                        {formatMinor(rowTotal, currencyCode)}
-                      </span>
-                    </td>
-                    {/* Notes */}
-                    <td className={cellCls}>
-                      <EditableCell
-                        value={it.notes ?? ""}
-                        placeholder="Notes"
-                        active={editingCell?.rowId === it.id && editingCell.key === "notes"}
-                        canEdit={canEdit}
-                        onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "notes" })}
-                        onCommit={(v) => { handleCommit(it.id, "notes", v, items); setEditingCell(null); }}
-                      />
-                    </td>
-                    {/* Delete */}
-                    <td className={cellCls}>
-                      {canEdit && (
-                        <button
-                          type="button"
-                          onClick={() => deleteSingleRow(it.id)}
-                          className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] transition-colors p-0.5"
-                          aria-label="Delete row"
+                  <React.Fragment key={id}>
+                    {/* Section header */}
+                    <SectionHeaderRow
+                      colSpan={TOTAL_COLS}
+                      title={label}
+                      collapsed={isCollapsed}
+                      onToggle={() => toggleSection(id)}
+                      onAddItem={() => addItemToSection(sectionId)}
+                      canEdit={canEdit}
+                    />
+
+                    {/* Item rows */}
+                    {!isCollapsed && groupItems.map((it, rowIdx) => {
+                      const rowTotal = it.unit_cost_cents * it.quantity;
+                      // TIM-3251: alternating row stripe (even=background, odd=white).
+                      const stripeBg = rowIdx % 2 === 0 ? "bg-white" : "bg-[var(--background)]";
+                      return (
+                        <tr
+                          key={it.id}
+                          className={`border-b border-[var(--neutral-cool-100)] last:border-b-0 transition-colors hover:brightness-[0.97] ${stripeBg}`}
                         >
-                          <Trash2 size={TABLE_ACTION_ICON_SIZE} />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
+                          {/* Name — font-medium per Menu ingredients-tab canon. */}
+                          <td className={cellCls}>
+                            <EditableCell
+                              value={it.name}
+                              placeholder="Item name"
+                              nameBold
+                              active={editingCell?.rowId === it.id && editingCell.key === "name"}
+                              canEdit={canEdit}
+                              onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "name" })}
+                              onCommit={(v) => handleCommit(it.id, "name", v)}
+                            />
+                          </td>
+                          {/* Vendor */}
+                          <td className={cellCls}>
+                            <EditableCell
+                              value={it.vendor ?? ""}
+                              placeholder="Vendor"
+                              active={editingCell?.rowId === it.id && editingCell.key === "vendor"}
+                              canEdit={canEdit}
+                              onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "vendor" })}
+                              onCommit={(v) => handleCommit(it.id, "vendor", v)}
+                            />
+                          </td>
+                          {/* Unit type — muted grey per Menu unit-label treatment. */}
+                          <td className={cellCls}>
+                            <EditableCell
+                              value={it.unit_type}
+                              placeholder="unit"
+                              muted
+                              active={editingCell?.rowId === it.id && editingCell.key === "unit_type"}
+                              canEdit={canEdit}
+                              onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "unit_type" })}
+                              onCommit={(v) => handleCommit(it.id, "unit_type", v || "unit")}
+                            />
+                          </td>
+                          {/* Quantity */}
+                          <td className={cellCls}>
+                            <EditableCell
+                              value={String(it.quantity)}
+                              placeholder="1"
+                              inputType="number"
+                              active={editingCell?.rowId === it.id && editingCell.key === "quantity"}
+                              canEdit={canEdit}
+                              onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "quantity" })}
+                              onCommit={(v) => handleCommit(it.id, "quantity", v)}
+                            />
+                          </td>
+                          {/* Unit cost */}
+                          <td className={cellCls}>
+                            <EditableCell
+                              value={it.unit_cost_cents > 0 ? String(it.unit_cost_cents / 100) : ""}
+                              placeholder="0"
+                              inputType="number"
+                              active={editingCell?.rowId === it.id && editingCell.key === "unit_cost_cents"}
+                              canEdit={canEdit}
+                              onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "unit_cost_cents" })}
+                              onCommit={(v) => handleCommit(it.id, "unit_cost_cents", v)}
+                              displayValue={formatMinor(it.unit_cost_cents, currencyCode)}
+                            />
+                          </td>
+                          {/* Total (read-only) — teal semibold per Menu price treatment. */}
+                          <td className={cellCls}>
+                            <span className={TABLE_PRICE_CLS}>
+                              {formatMinor(rowTotal, currencyCode)}
+                            </span>
+                          </td>
+                          {/* Notes */}
+                          <td className={cellCls}>
+                            <EditableCell
+                              value={it.notes ?? ""}
+                              placeholder="Notes"
+                              active={editingCell?.rowId === it.id && editingCell.key === "notes"}
+                              canEdit={canEdit}
+                              onActivate={() => canEdit && setEditingCell({ rowId: it.id, key: "notes" })}
+                              onCommit={(v) => handleCommit(it.id, "notes", v)}
+                            />
+                          </td>
+                          {/* Delete */}
+                          <td className={cellCls}>
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => deleteSingleRow(it.id)}
+                                className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] transition-colors p-0.5"
+                                aria-label="Delete row"
+                              >
+                                <Trash2 size={TABLE_ACTION_ICON_SIZE} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {/* Section subtotal */}
+                    {!isCollapsed && (
+                      <SectionSubtotalRow
+                        key={`sub-${id}`}
+                        colSpan={TOTAL_COLS}
+                        label={`${label} Total`}
+                        subtotalDisplay={formatMinor(subtotal, currencyCode)}
+                      />
+                    )}
+                  </React.Fragment>
                 );
               })}
+
+              {/* Grand total */}
+              {displayGroups.length > 0 && (
+                <GrandTotalRow
+                  colSpan={TOTAL_COLS}
+                  label="Grand Total"
+                  totalDisplay={formatMinor(grandTotal, currencyCode)}
+                />
+              )}
             </tbody>
           </table>
+
           {/* TIM-3251: inline quick-add row — inside overflow-x-auto so it scrolls with columns. */}
           {canEdit && (
             <div
-              className={`min-w-[700px] grid grid-cols-[220px_140px_100px_80px_110px_110px_minmax(0,1fr)_36px] gap-1.5 px-2.5 py-2 ${TABLE_QUICK_ADD_ROW_CLS}`}
+              className={`min-w-[700px] grid grid-cols-[200px_130px_80px_60px_100px_100px_minmax(0,1fr)_36px] gap-1.5 px-2.5 py-2 ${TABLE_QUICK_ADD_ROW_CLS}`}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitQuickAdd(); } }}
             >
-            <input
-              ref={qaNameRef}
-              type="text"
-              className={TABLE_QUICK_ADD_INPUT_CLS}
-              value={qaName}
-              placeholder="Add a Supply…"
-              autoComplete="off"
-              aria-label="New supply name"
-              onChange={(e) => setQaName(e.target.value)}
-            />
-            <input
-              type="text"
-              className={TABLE_QUICK_ADD_INPUT_CLS}
-              value={qaVendor}
-              placeholder="Vendor"
-              autoComplete="off"
-              aria-label="Vendor"
-              onChange={(e) => setQaVendor(e.target.value)}
-            />
-            <input
-              type="text"
-              className={TABLE_QUICK_ADD_INPUT_CLS}
-              value={qaUnit}
-              placeholder="unit"
-              aria-label="Unit"
-              onChange={(e) => setQaUnit(e.target.value)}
-            />
-            <input
-              type="number"
-              className={TABLE_QUICK_ADD_INPUT_CLS + " tabular-nums"}
-              value={qaQty}
-              placeholder="1"
-              min={1}
-              aria-label="Quantity"
-              onChange={(e) => setQaQty(e.target.value)}
-            />
-            <input
-              type="number"
-              className={TABLE_QUICK_ADD_INPUT_CLS + " tabular-nums"}
-              value={qaCost}
-              placeholder="0.00"
-              min={0}
-              step="0.01"
-              aria-label="Unit cost"
-              onChange={(e) => setQaCost(e.target.value)}
-            />
-            <span className="px-2 text-xs text-[var(--muted-foreground)] flex items-center tabular-nums">
-              {qaCost && qaQty
-                ? formatMinor(Math.round((parseFloat(qaCost) || 0) * 100) * (parseInt(qaQty, 10) || 1), currencyCode)
-                : "—"}
-            </span>
-            <span /> {/* notes — empty */}
-            <div className="flex items-center justify-center">
-              <button
-                type="button"
-                onClick={commitQuickAdd}
-                disabled={!qaName.trim()}
-                title="Add supply (Enter)"
-                aria-label="Add supply"
-                className="flex items-center justify-center w-7 h-7 rounded-md bg-[var(--teal)] text-white hover:bg-[var(--teal-dark)] disabled:bg-[var(--teal-bg-soft)] disabled:cursor-not-allowed transition-colors"
-              >
-                <Plus size={14} />
-              </button>
+              <input
+                ref={qaNameRef}
+                type="text"
+                className={TABLE_QUICK_ADD_INPUT_CLS}
+                value={qaName}
+                placeholder="Add a Supply…"
+                autoComplete="off"
+                aria-label="New supply name"
+                onChange={(e) => setQaName(e.target.value)}
+              />
+              <input
+                type="text"
+                className={TABLE_QUICK_ADD_INPUT_CLS}
+                value={qaVendor}
+                placeholder="Vendor"
+                autoComplete="off"
+                aria-label="Vendor"
+                onChange={(e) => setQaVendor(e.target.value)}
+              />
+              <input
+                type="text"
+                className={TABLE_QUICK_ADD_INPUT_CLS}
+                value={qaUnit}
+                placeholder="unit"
+                aria-label="Unit"
+                onChange={(e) => setQaUnit(e.target.value)}
+              />
+              <input
+                type="number"
+                className={TABLE_QUICK_ADD_INPUT_CLS + " tabular-nums"}
+                value={qaQty}
+                placeholder="1"
+                min={1}
+                aria-label="Quantity"
+                onChange={(e) => setQaQty(e.target.value)}
+              />
+              <MoneyInput
+                className={TABLE_QUICK_ADD_INPUT_CLS + " tabular-nums"}
+                value={qaCost}
+                placeholder="0.00"
+                min={0}
+                step={0.01}
+                aria-label="Unit cost"
+                onChange={(e) => setQaCost(e.target.value)}
+              />
+              <span className="px-2 text-xs text-[var(--muted-foreground)] flex items-center tabular-nums">
+                {qaCost && qaQty
+                  ? formatMinor(Math.round((parseFloat(qaCost) || 0) * 100) * (parseInt(qaQty, 10) || 1), currencyCode)
+                  : "—"}
+              </span>
+              <span /> {/* notes — empty */}
+              <div className="flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={commitQuickAdd}
+                  disabled={!qaName.trim()}
+                  title="Add supply (Enter)"
+                  aria-label="Add supply"
+                  className="flex items-center justify-center w-7 h-7 rounded-md bg-[var(--teal)] text-white hover:bg-[var(--teal-dark)] disabled:bg-[var(--teal-bg-soft)] disabled:cursor-not-allowed transition-colors"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
             </div>
-          </div>
           )}
         </div>
       </div>
+
+      {/* When there are no items at all, still show an add-item button */}
+      {canEdit && displayGroups.length === 0 && (
+        <button
+          type="button"
+          onClick={() => addItemToSection(sections[0]?.id ?? null)}
+          className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors w-full justify-center"
+        >
+          <Plus size={14} aria-hidden="true" />
+          Add item
+        </button>
+      )}
     </div>
   );
 }
