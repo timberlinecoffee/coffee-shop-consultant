@@ -21,6 +21,7 @@ import type {
 import { currencySymbol } from "@/lib/currency";
 import { fmtPct, fmtIntegerPct } from "@/lib/formatters";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { TruncatedText } from "@/components/ui/TruncatedText";
 import { InfoTip } from "@/components/ui/info-tip";
 import { SyncedFromBadge } from "@/app/_components/SyncedFromBadge";
@@ -291,28 +292,24 @@ function LineRow({ line, canEdit, onChange, onDelete, currencyCode, streamOption
               </span>
             </>
           ) : line.mode === "flat" || isRevenue ? (
-            <>
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">
-                {sym}
-              </span>
-              <NumericInput
-                className={`${inputCls} w-full pl-5`}
-                type="number"
-                min={0}
-                step={50}
-                value={isRevenue && line.mode !== "flat" ? "" : line.value ? line.value / 100 : ""}
-                onChange={(e) =>
-                  onChange({
-                    ...line,
-                    mode: "flat",
-                    value: Math.round((parseFloat(e.target.value) || 0) * 100),
-                  })
-                }
-                placeholder="0"
-                disabled={!canEdit}
-                aria-label="Amount"
-              />
-            </>
+            <MoneyInput
+              currencyCode={currencyCode}
+              compact
+              className={`${inputCls} w-full`}
+              min={0}
+              step={50}
+              value={isRevenue && line.mode !== "flat" ? "" : line.value ? line.value / 100 : ""}
+              onChange={(e) =>
+                onChange({
+                  ...line,
+                  mode: "flat",
+                  value: Math.round((parseFloat(e.target.value) || 0) * 100),
+                })
+              }
+              placeholder="0"
+              disabled={!canEdit}
+              aria-label="Amount"
+            />
           ) : (
             <>
               <NumericInput

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { type ForecastLine, type FundingSourceLine, type StartupCosts, fmt, loanMonthlyPaymentCents } from "@/lib/financial-projection";
-import { NumericInput } from "@/components/ui/numeric-input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
 import type { OpeningRunwayResult } from "@/lib/business-plan/opening-runway";
@@ -412,20 +412,19 @@ export function StartupTab({
                   </span>
                 </td>
                 <td className="py-3 pr-5 text-right align-top">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span className="text-xs text-[var(--dark-grey)]">{currencyCode}</span>
-                    <NumericInput
-                      id={`startup-${fld.key}`}
-                      className={inputCls}
-                      type="number"
-                      min={0}
-                      step={100}
-                      value={(startupCosts[fld.key] as number) ? (startupCosts[fld.key] as number) / 100 : ""}
-                      onChange={(e) => onUpdateField(fld.key, (parseFloat(e.target.value) || 0) * 100)}
-                      placeholder="0"
-                      disabled={!canEdit}
-                    />
-                  </div>
+                  <MoneyInput
+                    id={`startup-${fld.key}`}
+                    currencyCode={currencyCode}
+                    compact
+                    min={0}
+                    step={100}
+                    value={(startupCosts[fld.key] as number) ? (startupCosts[fld.key] as number) / 100 : ""}
+                    onChange={(e) => onUpdateField(fld.key, Math.round((parseFloat(e.target.value) || 0) * 100))}
+                    placeholder="0"
+                    disabled={!canEdit}
+                    wrapperClassName="w-32"
+                    className={inputCls}
+                  />
                 </td>
               </tr>
             ))}
