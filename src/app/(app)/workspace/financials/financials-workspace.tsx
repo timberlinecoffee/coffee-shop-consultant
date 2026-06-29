@@ -380,7 +380,8 @@ function OwnerContributionsEditor({
                 ),
               })
             }
-            className={rowCls + " flex-1 text-right"}
+            wrapperClassName="flex-1"
+            className={rowCls + " text-right"}
             aria-label="Contribution amount"
           />
           {canEdit && (

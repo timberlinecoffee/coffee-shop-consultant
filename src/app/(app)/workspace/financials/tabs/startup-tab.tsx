@@ -419,9 +419,10 @@ export function StartupTab({
                     min={0}
                     step={100}
                     value={(startupCosts[fld.key] as number) ? (startupCosts[fld.key] as number) / 100 : ""}
-                    onChange={(e) => onUpdateField(fld.key, (parseFloat(e.target.value) || 0) * 100)}
+                    onChange={(e) => onUpdateField(fld.key, Math.round((parseFloat(e.target.value) || 0) * 100))}
                     placeholder="0"
                     disabled={!canEdit}
+                    wrapperClassName="w-32"
                     className={inputCls}
                   />
                 </td>

@@ -4,10 +4,10 @@
 // as a leading adornment so every price/cost/fee/revenue field shows the right
 // symbol without each caller hardcoding "$". Drop-in for `<input type="number">`
 // — forwards every prop and keeps the caller's value / onChange contract
-// (onChange still reads `e.target.value`). Strips leading zeros the same way
-// `NumericInput` does, so this is also the leading-zero fix from TIM-1261.
+// (onChange still reads `e.target.value`).
 
 import * as React from "react";
+import { twMerge } from "tailwind-merge";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { currencySymbol, DEFAULT_CURRENCY_CODE } from "@/lib/currency";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,7 @@ export function MoneyInput({
   const padLeft = compact ? "pl-6" : "pl-7";
 
   return (
-    <span className={cn("relative inline-block w-full", wrapperClassName)}>
+    <span className={twMerge("relative inline-block w-full", wrapperClassName)}>
       <span
         aria-hidden="true"
         className={cn(
@@ -64,7 +64,7 @@ export function MoneyInput({
         type="number"
         value={value === 0 ? "" : value}
         placeholder={placeholder ?? "0"}
-        className={cn(padLeft, className)}
+        className={twMerge(padLeft, className)}
         onChange={(e) => {
           const el = e.currentTarget;
           const stripped = el.value.replace(/^(-?)0+(?=\d)/, "$1");

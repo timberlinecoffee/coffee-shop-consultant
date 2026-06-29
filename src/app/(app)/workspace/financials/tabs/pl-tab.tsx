@@ -271,6 +271,7 @@ function EditableLineRow({
                   if (e.key === "Enter") commit(i);
                   else if (e.key === "Escape") setEditingCol(null);
                 }}
+                wrapperClassName="w-24"
                 className="w-24 text-right text-xs border border-[var(--teal)] rounded pr-1.5 py-1 focus-visible:outline-none"
               />
             </td>
