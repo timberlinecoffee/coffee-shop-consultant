@@ -1,8 +1,10 @@
 // TIM-3369: Feature-flag infrastructure for the Hiring & Onboarding IA
 // restructure (left nav of roles + role page with accordion sections).
-// Parallels src/lib/ui-revamp.ts. Ships to prod default-false; board flips
-// per-account via Preferences toggle or ?hiring=v2 URL override. After the
-// 14-day revert window passes with no holds, SA-2 flips default to true.
+// Parallels src/lib/ui-revamp.ts.
+// TIM-3431: default flipped to TRUE per board directive on TIM-3354 —
+// existing false rows backfilled, column DEFAULT true, hard fallback true so
+// missing row / read error lands on v2. HiringRevertToggle in Preferences
+// still writes false on per-user opt-out per feedback_big_ui_revamps_need_revert_flag.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -13,8 +15,8 @@ export const HIRING_REVAMP_COOKIE = "gw_hiring_revamp_v2";
 
 /**
  * Resolve the effective Hiring-revamp flag from DB value + cookies.
- * Override cookie wins, then mirror cookie, then DB value. Default is false
- * (v1 inline-expand list) until SA-2 flip.
+ * Override cookie wins, then mirror cookie, then DB value. Post-TIM-3431
+ * default is true (v2 left-nav-of-roles).
  */
 export function resolveHiringRevamp(opts: {
   dbValue: boolean;
@@ -30,9 +32,10 @@ export function resolveHiringRevamp(opts: {
 }
 
 /**
- * Read hiring_revamp_v2 from the users row. Returns false on missing row /
- * read error so anyone without an explicit opt-in lands on v1 — matches the
- * "ship default-false, opt-in for revert window" plan.
+ * Read hiring_revamp_v2 from the users row. Returns true (v2 by default) so
+ * missing rows + read errors land on v2, matching the post-TIM-3431 default.
+ * A row whose column is explicitly false (HiringRevertToggle opt-out) is
+ * honored as-is — the fallback only fires when there's no value to read.
  */
 export async function getHiringRevampSetting(
   supabase: SupabaseClient,
@@ -44,10 +47,10 @@ export async function getHiringRevampSetting(
       .select("hiring_revamp_v2")
       .eq("id", userId)
       .maybeSingle();
-    if (error || !data) return false;
+    if (error || !data) return true;
     const row = data as { hiring_revamp_v2?: unknown };
-    return typeof row.hiring_revamp_v2 === "boolean" ? row.hiring_revamp_v2 : false;
+    return typeof row.hiring_revamp_v2 === "boolean" ? row.hiring_revamp_v2 : true;
   } catch {
-    return false;
+    return true;
   }
 }
