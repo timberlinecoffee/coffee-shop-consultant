@@ -9,6 +9,12 @@ import {
   newCorrId,
   tail4,
 } from "@/lib/oauth-diag";
+// TIM-3449: CASL s.10(3) marketing consent capture for Google OAuth signups.
+import {
+  subscribeToWaitlist,
+  setKlaviyoSubscribed,
+} from "@/lib/waitlist/klaviyo-subscribe";
+import { writeConsentRecord } from "@/lib/waitlist/consent-log";
 
 // TIM-3148 (2026-06-26): explicit dynamic + zero-revalidate so the route is
 // never edge-cached. Reading `cookies()` already opts out of static rendering
@@ -39,6 +45,8 @@ const HANDOFF_COOKIES = [
   // TIM-2327 (2026-06-25): zombie-cookie purge telemetry. See login-form.tsx.
   "gw_oauth_purge_method",
   "gw_oauth_purge_total",
+  // TIM-3449: CASL s.10(3) marketing consent passed through OAuth round-trip.
+  "gw_oauth_marketing_consent",
 ] as const;
 
 function clearHandoffCookies(res: NextResponse) {
@@ -258,6 +266,42 @@ export async function GET(request: Request) {
             searchParams.get("signup_source") ||
             "direct";
           await supabase.from("users").update({ signup_source: signupSource }).eq("id", user.id);
+        }
+
+        // TIM-3449: CASL s.10(3) marketing consent for new Google OAuth signups.
+        // Only record on first-time signups (onboarding_completed=false). The
+        // gw_oauth_marketing_consent handoff cookie is "1" if the user ticked the
+        // checkbox in login-form.tsx before the OAuth redirect, "0" otherwise.
+        if (user?.email && !profile?.onboarding_completed) {
+          const oauthMarketingConsent =
+            cookieStore.get("gw_oauth_marketing_consent")?.value === "1";
+          const consentedAt = new Date();
+          let klaviyoProfileId: string | null = null;
+          let klaviyoSubscribed: boolean | null = null;
+          if (oauthMarketingConsent) {
+            const apiKey = process.env.KLAVIYO_PRIVATE_API_KEY;
+            if (apiKey) {
+              const sub = await subscribeToWaitlist(apiKey, user.email, "groundwork-ai-signup");
+              if (sub.ok) {
+                klaviyoProfileId = sub.profileId;
+                const sr = await setKlaviyoSubscribed(
+                  apiKey,
+                  user.email,
+                  sub.profileId,
+                  consentedAt.toISOString(),
+                );
+                klaviyoSubscribed = sr.ok;
+              }
+            }
+          }
+          await writeConsentRecord({
+            email: user.email,
+            consentType: "express",
+            consentSource: "signup_form",
+            marketingOptedIn: oauthMarketingConsent,
+            klaviyoSubscribed,
+            klaviyoProfileId,
+          });
         }
 
         if (!profile?.onboarding_completed) {

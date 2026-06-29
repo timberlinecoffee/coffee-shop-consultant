@@ -6,7 +6,7 @@
 
 import { createServiceClient } from "@/lib/supabase/service";
 
-export type ConsentSource = "waitlist_signup" | "waitlist_backfill_pre_casl";
+export type ConsentSource = "waitlist_signup" | "waitlist_backfill_pre_casl" | "signup_form";
 export type ConsentType = "express" | "implied";
 
 export interface WriteConsentRecordInput {

@@ -71,6 +71,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [consent, setConsent] = useState(false);
+  // TIM-3449: marketing consent is separate from ToS (CASL s.10(3) bundling
+  // prohibition). Unchecked by default — express opt-in only.
+  const [marketingConsent, setMarketingConsent] = useState(false);
   // TIM-2430: client-side state defaults to true on the server render so the
   // checkbox SSR pre-fill never flickers off; useEffect below syncs it to the
   // actual stored preference once the component mounts.
@@ -107,6 +110,16 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     const id = setTimeout(() => setCooldown(c => c - 1), 1000);
     return () => clearTimeout(id);
   }, [cooldown]);
+
+  // TIM-3449: fire-and-forget marketing consent capture — called after
+  // supabase.auth.signUp() succeeds. Non-fatal; never blocks the signup flow.
+  function recordSignupConsent(email: string, opted: boolean) {
+    fetch("/api/auth/signup-consent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, marketing_consent: opted }),
+    }).catch(() => {});
+  }
 
   function getSignupSource(): string {
     const params = new URLSearchParams(window.location.search);
@@ -184,6 +197,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
     // for this round-trip.
     const purgeResult = await purgeAllSupabaseCookies(defaultPurgeEnv());
     setHandoffCookie("gw_oauth_signup_source", getSignupSource());
+    // TIM-3449: pass marketing consent through OAuth round-trip. Callback reads
+    // this and records the consent audit row for new signups.
+    setHandoffCookie("gw_oauth_marketing_consent", marketingConsent ? "1" : "0");
     const next = getNextParam();
     if (next) setHandoffCookie("gw_oauth_next", next);
     // TIM-2786: mint a correlation id and hand it off so /auth/callback can
@@ -358,10 +374,15 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
       if (error) {
         setError(error.message);
       } else if (data.session === null) {
-        // Email confirmation is required — no session until the user clicks the link
+        // Email confirmation is required — no session until the user clicks the link.
+        // TIM-3449: record consent now (before email confirmation) so the CASL
+        // audit trail is written at the moment of the user's decision.
+        recordSignupConsent(email, marketingConsent);
         setEmailConfirmationSent(true);
         setCooldown(RESEND_COOLDOWN_SECONDS);
       } else {
+        // TIM-3449: immediate session path (no email confirmation required).
+        recordSignupConsent(email, marketingConsent);
         // TIM-2430: Supabase SSR hard-codes 400d maxAge on the freshly-set
         // auth cookies; downgrade them to session-scope if user opted out.
         if (!rememberMe) downgradeAuthCookiesToSessionScope();
@@ -537,6 +558,21 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
               </Link>
               .
             </span>
+          </label>
+        )}
+
+        {/* TIM-3449: CASL s.10(3) — marketing consent must be separate from
+            ToS acceptance. Unchecked by default; optional (not required). Legal
+            wording pending TIM-3464 Legal Analyst review. */}
+        {mode === "signup" && (
+          <label className="flex items-start gap-2 text-xs text-[var(--foreground)] leading-relaxed min-h-[44px] py-2">
+            <input
+              type="checkbox"
+              checked={marketingConsent}
+              onChange={e => setMarketingConsent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-[var(--dark-grey)] text-[var(--teal)] focus:ring-[var(--teal)]"
+            />
+            <span>Send me product updates and tips by email from Timberline Coffee School. You can unsubscribe anytime.</span>
           </label>
         )}
 
