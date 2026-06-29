@@ -10,7 +10,7 @@ interface ComingSoonProps {
 
 export function ComingSoon({ title, description, icon, shipsWith }: ComingSoonProps) {
   return (
-    <div className="min-h-screen bg-[var(--background)] pb-16 lg:pb-0">
+    <div className="min-h-screen bg-[var(--background)]">
       <nav className="bg-white border-b border-[var(--border)] px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link href="/dashboard" className="text-sm text-[var(--teal)] font-medium hover:underline">

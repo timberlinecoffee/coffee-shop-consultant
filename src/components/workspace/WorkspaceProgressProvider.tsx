@@ -208,8 +208,7 @@ export function WorkspaceProgressProvider({
           className={`flex-1 min-w-0 ${contentPadding} flex flex-col transition-all duration-200`}
         >
           <WorkspaceTopBar items={navItems} />
-          {/* TIM-2591: bottom padding clears the fixed tab bar on mobile */}
-          <main className={`flex-1 ${uiRevamp ? "pb-20 lg:pb-0" : ""}`}>{children}</main>
+          <main className="flex-1">{children}</main>
         </div>
         {/* TIM-2591: mobile bottom tab bar (v2 only, self-gated on flag) */}
         <BottomTabBar />

@@ -1694,8 +1694,8 @@ export function ModuleClient({
         </main>
       </div>
 
-      {/* Mobile Coach FAB — bottom-right, above BottomTabBar */}
-      <div className="lg:hidden fixed bottom-[72px] right-4 z-30">
+      {/* Mobile Coach FAB — bottom-right */}
+      <div className="lg:hidden fixed bottom-4 right-4 z-30">
         <button
           onClick={() => setCoachOpen((o) => !o)}
           aria-label="Open AI Coach"
