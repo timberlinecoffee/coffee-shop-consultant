@@ -95,19 +95,19 @@ export default async function AccountPage() {
 
   return (
     <div className="bg-[var(--background)]">
-      <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-6">
         <h1 className="text-3xl font-bold text-[var(--foreground)]">Account Settings</h1>
 
-        <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
+        <div className="bg-white rounded-2xl border border-[var(--border)] p-4 sm:p-6 max-w-full">
           <h2 className="font-semibold text-[var(--foreground)] mb-4">Profile</h2>
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
               <span className="text-[var(--dark-grey)]">Name</span>
               <ProfileNameEditor initialName={profile?.full_name ?? null} />
             </div>
-            <div className="flex justify-between">
-              <span className="text-[var(--dark-grey)]">Email</span>
-              <span className="text-[var(--foreground)]">{user.email}</span>
+            <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center min-w-0">
+              <span className="text-[var(--dark-grey)] flex-shrink-0">Email</span>
+              <span className="text-[var(--foreground)] break-all sm:text-right">{user.email}</span>
             </div>
           </div>
         </div>
@@ -116,16 +116,16 @@ export default async function AccountPage() {
 
         <LocalizationSettingsCard initial={accountSettings} />
 
-        <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
+        <div className="bg-white rounded-2xl border border-[var(--border)] p-4 sm:p-6 max-w-full">
           <h2 className="font-semibold text-[var(--foreground)] mb-4">Subscription</h2>
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
+            <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
               <span className="text-[var(--dark-grey)]">Plan</span>
               <span className="text-[var(--foreground)]">{tierDisplayName}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-[var(--dark-grey)]">AI coaching</span>
-              <span className="text-[var(--foreground)]">
+            <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:justify-between sm:items-center sm:gap-2">
+              <span className="text-[var(--dark-grey)] flex-shrink-0">AI coaching</span>
+              <span className="text-[var(--foreground)] break-words sm:text-right">
                 {isTrial
                   ? `${Math.max(0, trialRemaining)} of ${FREE_TRIAL_COPILOT_LIMIT} trial messages left`
                   : `${profile?.ai_credits_remaining ?? 0} messages left this month`}
@@ -144,7 +144,7 @@ export default async function AccountPage() {
 
         {/* TIM-2434: Imported Documents entry. Persistent access to
             re-import, re-run extraction, or remove past imports. */}
-        <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
+        <div className="bg-white rounded-2xl border border-[var(--border)] p-4 sm:p-6 max-w-full">
           <h2 className="font-semibold text-[var(--foreground)] mb-2">
             Imported Documents
           </h2>
@@ -165,7 +165,7 @@ export default async function AccountPage() {
         {/* TIM-2589: Preferences — feature-flag toggles. RevertToggle will
             also appear in the Phase 5.2 profile popover; this card keeps it
             accessible from Account Settings in the interim. */}
-        <div className="bg-white rounded-2xl border border-[var(--border)] p-6">
+        <div className="bg-white rounded-2xl border border-[var(--border)] p-4 sm:p-6 max-w-full">
           <h2 className="font-semibold text-[var(--foreground)] mb-1">Preferences</h2>
           <p className="text-xs text-[var(--muted-foreground)] mb-4">
             Appearance and experience options for your account.
