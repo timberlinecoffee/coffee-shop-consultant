@@ -183,6 +183,7 @@ interface CustomSectionState extends CustomSectionData {
   titleBuffer: string;
   isSaving: boolean;
   isGenerating?: boolean;
+  isDeleting?: boolean;
 }
 
 export function BusinessPlanWorkspace({
@@ -764,6 +765,12 @@ export function BusinessPlanWorkspace({
       );
       setSaveState({ kind: "saved", at: new Date().toISOString() });
     } catch {
+      // Re-queue failed entries so the next manual save or debounce can retry them.
+      snapshot.forEach((val, id) => {
+        if (!customDirtyBuffersRef.current.has(id)) {
+          customDirtyBuffersRef.current.set(id, val);
+        }
+      });
       setSaveState({ kind: "error", message: "Could not save. Try again." });
     }
   }, [canEdit]);
@@ -833,18 +840,19 @@ export function BusinessPlanWorkspace({
 
   const handleDeleteCustomSection = useCallback(async (id: string) => {
     const snapshot = customSections.find((cs) => cs.id === id);
-    setCustomSections((prev) => prev.filter((cs) => cs.id !== id));
+    if (!snapshot || snapshot.isDeleting) return;
+    updateCustomSection(id, { isDeleting: true });
     setCustomSectionError(null);
     try {
       const res = await fetch(`/api/business-plan/custom-sections/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("delete failed");
+      setCustomSections((prev) => prev.filter((cs) => cs.id !== id));
     } catch {
-      if (snapshot) {
-        setCustomSections((prev) => [...prev, snapshot].sort((a, b) => a.sortOrder - b.sortOrder));
-      }
+      updateCustomSection(id, { isDeleting: false });
+      setCustomSections((prev) => [...prev, snapshot].sort((a, b) => a.sortOrder - b.sortOrder));
       setCustomSectionError("Could not delete section. Try again.");
     }
-  }, [customSections]);
+  }, [customSections, updateCustomSection]);
 
   const handleCustomSectionVisibility = useCallback(async (id: string, current: boolean) => {
     const next = !current;
@@ -863,6 +871,9 @@ export function BusinessPlanWorkspace({
     if (swapWith < 0 || swapWith >= customSections.length) return;
     const next = [...customSections];
     [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
+    // Keep sortOrder in sync so delete-rollback re-sorts to the current visual order.
+    next[idx] = { ...next[idx], sortOrder: idx };
+    next[swapWith] = { ...next[swapWith], sortOrder: swapWith };
     setCustomSections(next);
     // Fetches fire exactly once per user action — outside any state updater.
     void fetch(`/api/business-plan/custom-sections/${next[idx].id}`, {
@@ -878,11 +889,12 @@ export function BusinessPlanWorkspace({
   }, [customSections]);
 
   const handleCustomSectionWriteWithAi = useCallback(async (id: string) => {
-    if (!canEdit || customStreamingId !== null) return;
+    // Guard both: a custom section already streaming, and a standard section streaming.
+    // Do NOT abort abortRef (standard sections share it) — only block while either is running.
+    if (!canEdit || customStreamingId !== null || streamingKey !== null) return;
     const cs = customSections.find((c) => c.id === id);
     if (!cs) return;
 
-    if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -962,6 +974,7 @@ export function BusinessPlanWorkspace({
   }, [
     canEdit,
     customStreamingId,
+    streamingKey,
     customSections,
     shopName,
     closeProgressOverlay,
@@ -1232,7 +1245,10 @@ export function BusinessPlanWorkspace({
                     setSaveState({ kind: "error", message: "Could not save. Try again." });
                   });
                 }}
-                onEditCancel={() => updateCustomSection(cs.id, { isEditing: false, editBuffer: cs.userContent ?? "" })}
+                onEditCancel={() => {
+                  customDirtyBuffersRef.current.delete(cs.id);
+                  updateCustomSection(cs.id, { isEditing: false, editBuffer: cs.userContent ?? "" });
+                }}
                 onDelete={() => handleDeleteCustomSection(cs.id)}
                 onMoveUp={() => handleCustomSectionReorder(cs.id, "up")}
                 onMoveDown={() => handleCustomSectionReorder(cs.id, "down")}
