@@ -10,6 +10,7 @@ import { ProFeatureEntries } from "@/components/account/ProFeatureEntries";
 import { AccountDataControls } from "@/components/account/AccountDataControls";
 import { GuidedNoticesCard } from "@/components/account/GuidedNoticesCard";
 import { RevertToggle } from "@/components/account/RevertToggle";
+import { HiringRevertToggle } from "@/components/account/HiringRevertToggle";
 import { effectivePlanForGating } from "@/lib/access";
 import { SettingsShell } from "@/components/account/settings/SettingsShell";
 import { ProfileNameEditor } from "@/components/account/ProfileNameEditor";
@@ -19,6 +20,12 @@ import {
   getUiRevampSetting,
   resolveUiRevamp,
 } from "@/lib/ui-revamp";
+import {
+  HIRING_REVAMP_COOKIE,
+  HIRING_REVAMP_OVERRIDE_COOKIE,
+  getHiringRevampSetting,
+  resolveHiringRevamp,
+} from "@/lib/hiring-revamp";
 
 export const dynamic = 'force-dynamic';
 
@@ -47,9 +54,10 @@ export default async function AccountPage() {
       }) === "pro"
     : false;
 
-  const [accountSettings, dbUiRevamp] = await Promise.all([
+  const [accountSettings, dbUiRevamp, dbHiringRevamp] = await Promise.all([
     getAccountSettings(supabase, user.id),
     getUiRevampSetting(supabase, user.id),
+    getHiringRevampSetting(supabase, user.id),
   ]);
 
   const cookieStore = await cookies();
@@ -57,6 +65,11 @@ export default async function AccountPage() {
     dbValue: dbUiRevamp,
     overrideCookie: cookieStore.get(UI_REVAMP_OVERRIDE_COOKIE)?.value,
     mirrorCookie: cookieStore.get(UI_REVAMP_COOKIE)?.value,
+  });
+  const hiringRevampEnabled = resolveHiringRevamp({
+    dbValue: dbHiringRevamp,
+    overrideCookie: cookieStore.get(HIRING_REVAMP_OVERRIDE_COOKIE)?.value,
+    mirrorCookie: cookieStore.get(HIRING_REVAMP_COOKIE)?.value,
   });
 
   const tierDisplayName = PLAN_DISPLAY_NAMES[profile?.subscription_tier ?? "free"] ?? "Free";
@@ -158,6 +171,10 @@ export default async function AccountPage() {
             Appearance and experience options for your account.
           </p>
           <RevertToggle initialEnabled={uiRevampEnabled} />
+          <div className="border-t border-[var(--border)] mt-3 pt-3">
+            {/* TIM-3369: per-workspace Hiring revamp toggle, parallel to RevertToggle. */}
+            <HiringRevertToggle initialEnabled={hiringRevampEnabled} />
+          </div>
         </div>
 
         <AccountDataControls userEmail={userEmail} variant="stacked-card" />
