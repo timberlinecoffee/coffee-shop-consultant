@@ -534,7 +534,9 @@ export function CoPilotDrawer({
   const hydratedRef = useRef(false);
 
   // Derived constants — placed before effects so they're stable references in deps arrays.
-  const isMobile = viewportWidth < 640;
+  // TIM-3413: mobile threshold inclusive at 640px to match audit DONE-criteria
+  // (≤640px = full-screen) and Tailwind `sm` breakpoint.
+  const isMobile = viewportWidth <= 640;
   const sheetOpen = open && isMobile;
 
   const {
@@ -1167,6 +1169,19 @@ export function CoPilotDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [sheetOpen, closeDrawer]);
 
+  // TIM-3413: background scroll-lock while the mobile full-screen drawer is
+  // open — audit DONE-criteria. Restore the prior overflow value on close to
+  // avoid clobbering other modals/sheets that touched it.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (!sheetOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [sheetOpen]);
+
   // TIM-662: hydrate messages for the restored thread on first mount.
   useEffect(() => {
     if (hydratedRef.current) return;
@@ -1207,14 +1222,21 @@ export function CoPilotDrawer({
     return deriveTitle(messages);
   }, [activeThreadTitle, isStreaming, messages]);
 
-  // TIM-1149 / TIM-1151: compute the on-screen panel width. Expanded mode is a
-  // true full-width overlay over the workspace (founder feedback) — bypass the
-  // PANEL_MAX_WIDTH clamp so the chat takes the entire viewport. Default mode
-  // stays clamped to a comfortable reading width. On phones we always go
-  // full-bleed so the drawer stays usable.
+  // TIM-1149 / TIM-1151 / TIM-3413: compute the on-screen panel width.
+  // - ≤640px (mobile): full-screen overlay, no PANEL_MIN_WIDTH floor — audit
+  //   TIM-3411 Top-10 #1: the 360px floor pushed underlying content off-edge
+  //   on 375px viewports.
+  // - 641-1024px (tablet): pin to PANEL_MIN_WIDTH but cap at viewportWidth-24
+  //   so the backdrop stays tappable.
+  // - ≥1025px (desktop): existing resizable behavior unchanged.
+  // - Expanded mode (founder feedback, TIM-1151) keeps full-viewport.
   const computedPanelWidth = useMemo(() => {
-    if (viewportWidth < 640) return viewportWidth;
+    if (viewportWidth <= 640) return viewportWidth;
     if (isExpanded) return viewportWidth;
+    if (viewportWidth <= 1024) {
+      const cap = Math.min(PANEL_MIN_WIDTH, viewportWidth - 24);
+      return Math.max(PANEL_MIN_WIDTH, cap);
+    }
     return Math.max(
       PANEL_MIN_WIDTH,
       Math.min(PANEL_MAX_WIDTH, panelWidth, viewportWidth - 16),
@@ -1415,9 +1437,13 @@ export function CoPilotDrawer({
                 type="button"
                 aria-label="Close"
                 onClick={closeDrawer}
-                className="mt-0.5 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0"
+                /* TIM-3413: ≥44x44 tap target on mobile per audit DONE-criteria. */
+                className={cn(
+                  "mt-0.5 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0",
+                  isMobile ? "w-11 h-11" : "w-8 h-8",
+                )}
               >
-                <X className="w-4 h-4" />
+                <X className={cn(isMobile ? "w-5 h-5" : "w-4 h-4")} />
               </button>
             </header>
 
