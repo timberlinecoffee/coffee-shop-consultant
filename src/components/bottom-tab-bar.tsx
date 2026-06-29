@@ -16,14 +16,12 @@ import {
   Layers,
   BarChart2,
   ClipboardList,
-  Menu,
 } from "lucide-react";
 import { useUiRevamp } from "@/hooks/useUiRevamp";
 
 interface TabItem {
   label: string;
-  href?: string;
-  action?: () => void;
+  href: string;
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; "aria-hidden"?: boolean }>;
   matchPrefixes: string[];
 }
@@ -68,12 +66,6 @@ const TABS: TabItem[] = [
     icon: ClipboardList,
     matchPrefixes: ["/workspace/operations-playbook", "/workspace/marketing"],
   },
-  {
-    label: "Menu",
-    icon: Menu,
-    matchPrefixes: [],
-    action: () => window.dispatchEvent(new Event("workspace-sidebar-open")),
-  },
 ];
 
 export function BottomTabBar() {
@@ -95,41 +87,19 @@ export function BottomTabBar() {
         {TABS.map((tab) => {
           const active = isActive(tab);
           const Icon = tab.icon;
-          const sharedClassName = `flex-1 flex flex-col items-center justify-center py-3 min-h-[56px] gap-1 transition-colors`;
-          const content = (
-            <>
-              <Icon size={20} strokeWidth={1.75} aria-hidden />
-              <span className="text-[10px] font-medium leading-none">{tab.label}</span>
-            </>
-          );
-
-          if (tab.action) {
-            return (
-              <button
-                key={tab.label}
-                type="button"
-                onClick={tab.action}
-                aria-haspopup="dialog"
-                aria-label="Open navigation menu"
-                className={`${sharedClassName} text-[var(--muted-foreground)] hover:text-[var(--foreground)]`}
-              >
-                {content}
-              </button>
-            );
-          }
-
           return (
             <Link
               key={tab.href}
-              href={tab.href!}
+              href={tab.href}
               aria-current={active ? "page" : undefined}
-              className={`${sharedClassName} ${
+              className={`flex-1 flex flex-col items-center justify-center py-3 min-h-[56px] gap-1 transition-colors ${
                 active
                   ? "text-[var(--teal)]"
                   : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               }`}
             >
-              {content}
+              <Icon size={20} strokeWidth={1.75} aria-hidden />
+              <span className="text-[10px] font-medium leading-none">{tab.label}</span>
             </Link>
           );
         })}
