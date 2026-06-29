@@ -6,7 +6,7 @@
 // Style-guide refs: Settings shell · left-rail nav; Cards · Plan/Payment/Invoices.
 // Visual reference: src/components/ui/card.tsx; Financials page header chrome.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
 import { LanguageSettingsCard } from "@/components/account/LanguageSettingsCard";
@@ -43,6 +43,17 @@ export function SettingsShell({
   trialRemaining,
 }: Props) {
   const [activeTab, setActiveTab] = useState("account");
+  const activeTabBtnRef = useRef<HTMLButtonElement | null>(null);
+  // Keep the active mobile-strip pill in view when the user taps a tab further
+  // to the right than the initial viewport — desktop left-rail is always visible
+  // so this only matters for the horizontal-scroll mobile path.
+  useEffect(() => {
+    activeTabBtnRef.current?.scrollIntoView({
+      inline: "center",
+      block: "nearest",
+      behavior: "smooth",
+    });
+  }, [activeTab]);
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
@@ -61,8 +72,9 @@ export function SettingsShell({
           >
             <ul className="flex flex-row gap-1 sm:flex-col sm:gap-0 sm:space-y-0.5 min-w-max sm:min-w-0">
               {SETTINGS_TABS.map((tab) => (
-                <li key={tab.id} className="flex-shrink-0 sm:flex-shrink">
+                <li key={tab.id} className="flex-shrink-0">
                   <button
+                    ref={activeTab === tab.id ? activeTabBtnRef : null}
                     onClick={() => setActiveTab(tab.id)}
                     aria-current={activeTab === tab.id ? "page" : undefined}
                     className={`w-full text-left whitespace-nowrap sm:whitespace-normal px-3 py-2 rounded-lg text-sm transition-colors ${
