@@ -14,8 +14,7 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models";
-import Anthropic from "@anthropic-ai/sdk";
+import { runScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { hasWriteAccess } from "@/lib/access";
 import { enforceRateLimit } from "@/lib/rate-limit";
@@ -262,32 +261,25 @@ export async function POST(request: NextRequest) {
   // ── Pass 2 — critical-reader LLM (advisory; failures degrade silently). ────
   if (includePass2 && sectionTexts.size > 0) {
     try {
-      const client = new Anthropic();
-      // AbortController bounds the call independently of maxDuration so a
-      // hung Anthropic call can't keep the connection open.
-      const ac = new AbortController();
-      const timer = setTimeout(() => ac.abort(), PASS2_TIMEOUT_MS);
-      try {
-        const resp = await client.messages.create(
-          {
-            model: PLATFORM_AI_MODEL,
-            max_tokens: PASS2_MAX_TOKENS,
-            system: PASS2_SYSTEM_PROMPT,
-            messages: [{ role: "user", content: buildPass2UserMessage(shopName, sectionTexts) }],
-          },
-          { signal: ac.signal },
-        );
-        const text = resp.content
-          .filter((b): b is Anthropic.TextBlock => b.type === "text")
-          .map((b) => b.text)
-          .join("");
-        const qualitative = parsePass2Response(text);
-        // TIM-2340: append rather than replace so the programmatic
-        // local-claims / geography findings stay in the report.
-        report.qualitative_findings = [...report.qualitative_findings, ...qualitative];
-      } finally {
-        clearTimeout(timer);
-      }
+      // TIM-3468: routed through runScoutTurn under the audit lane. Adapter's
+      // internal timeout is via the underlying SDK; we keep an outer timer
+      // for the soft-degrade pattern.
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Pass 2 timeout")), PASS2_TIMEOUT_MS);
+      });
+      const scoutPromise = runScoutTurn({
+        lane: "business_plan_audit",
+        systemBlocks: [{ text: PASS2_SYSTEM_PROMPT }],
+        messages: [{ role: "user", content: buildPass2UserMessage(shopName, sectionTexts) }],
+        maxTokens: PASS2_MAX_TOKENS,
+        userId: user.id,
+        routeTag: "/api/business-plan/validate",
+      });
+      const result = await Promise.race([scoutPromise, timeoutPromise]);
+      const qualitative = parsePass2Response(result.text);
+      // TIM-2340: append rather than replace so the programmatic
+      // local-claims / geography findings stay in the report.
+      report.qualitative_findings = [...report.qualitative_findings, ...qualitative];
     } catch (err) {
       // Advisory pass — don't break the gate. Log the failure and surface
       // a single soft advisory note so the user knows the qualitative

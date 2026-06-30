@@ -196,6 +196,11 @@ export async function POST(req: Request) {
       },
       userId: user.id,
       planTier,
+      // TIM-3468: provider/lane/latencyMs/fallbackUsed from the adapter envelope.
+      provider: result.provider,
+      lane: "document_import_extract",
+      latencyMs: result.latencyMs,
+      fallbackUsed: result.fallbackUsed,
     });
     const charged = metric.creditBreakdown.credits;
     if (!isUnlimited && charged > 0) {

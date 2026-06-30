@@ -7,9 +7,8 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics";
-import Anthropic from "@anthropic-ai/sdk";
+import { streamScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot";
@@ -222,6 +221,13 @@ export async function POST(request: NextRequest) {
       let fullText = "";
       let inputTokens = 0;
       let outputTokens = 0;
+      let cacheReadTokens = 0;
+      let cacheCreateTokens = 0;
+      let webSearchRequests = 0;
+      let toolCalls = 0;
+      let provider: "anthropic" | "deepseek" = "anthropic";
+      let modelId = "";
+      let latencyMs = 0;
 
       let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
       let ttftTimer: ReturnType<typeof setTimeout> | null = null;
@@ -277,34 +283,40 @@ export async function POST(request: NextRequest) {
       }, TTFT_MS);
 
       try {
-        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-
-        const stream = anthropic.messages.stream({
-          model: PLATFORM_AI_MODEL,
-          max_tokens: 1_024,
-          system: systemPrompt,
+        const t0 = Date.now();
+        const stream = streamScoutTurn({
+          lane: "chat_improve",
+          systemBlocks: [{ text: systemPrompt }],
           messages: [{ role: "user", content: userMessage }],
+          maxTokens: 1_024,
+          userId: user.id,
+          routeTag: "/api/copilot/improve",
         });
 
         for await (const event of stream) {
           if (closed) break;
 
-          if (event.type === "content_block_delta") {
-            if (event.delta.type === "text_delta") {
-              if (!firstToken) {
-                firstToken = true;
-                if (ttftTimer) clearTimeout(ttftTimer);
-              }
-              resetGapTimer();
-              fullText += event.delta.text;
-              send(sse("text", { delta: event.delta.text }));
+          if (event.kind === "decision") {
+            provider = event.provider;
+            modelId = event.modelId;
+          } else if (event.kind === "text_delta") {
+            if (!firstToken) {
+              firstToken = true;
+              if (ttftTimer) clearTimeout(ttftTimer);
             }
-          } else if (event.type === "message_delta" && event.usage) {
-            outputTokens = event.usage.output_tokens ?? 0;
-          } else if (event.type === "message_start" && event.message?.usage) {
-            inputTokens = event.message.usage.input_tokens ?? 0;
+            resetGapTimer();
+            fullText += event.text;
+            send(sse("text", { delta: event.text }));
+          } else if (event.kind === "usage") {
+            inputTokens = event.usage.inputTokensUncached;
+            outputTokens = event.usage.outputTokens;
+            cacheReadTokens = event.usage.inputTokensCachedRead;
+            cacheCreateTokens = event.usage.inputTokensCacheCreate;
+            webSearchRequests = event.usage.webSearchRequests;
+            toolCalls = event.usage.toolCalls;
           }
         }
+        latencyMs = Date.now() - t0;
 
         if (!closed) {
           clearTimers();
@@ -352,14 +364,25 @@ export async function POST(request: NextRequest) {
             },
             {
               route: "/api/copilot/improve",
-              model: PLATFORM_AI_MODEL,
-              usage: { input_tokens: inputTokens, output_tokens: outputTokens },
+              model: modelId,
+              usage: {
+                input_tokens: inputTokens,
+                output_tokens: outputTokens,
+                cache_read_input_tokens: cacheReadTokens,
+                cache_creation_input_tokens: cacheCreateTokens,
+              },
+              webSearchRequests,
+              toolCalls,
               userId: user.id,
               planTier: resolvePlanTier(profile),
+              provider,
+              lane: "chat_improve",
+              latencyMs,
+              fallbackUsed: false,
             },
           );
 
-          send(sse("done", { text: normalizeAIOutput(fullText), modelUsed: PLATFORM_AI_MODEL }));
+          send(sse("done", { text: normalizeAIOutput(fullText), modelUsed: modelId }));
           controller.close();
         }
       } catch (err: unknown) {

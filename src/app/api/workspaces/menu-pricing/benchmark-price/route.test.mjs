@@ -63,35 +63,47 @@ test("benchmark-price records a turn metric with RESEARCH_AI_MODEL", () => {
   );
 });
 
-test("area-analysis imports RESEARCH_AI_MODEL (not PLATFORM_AI_MODEL)", () => {
+// TIM-3468 rewires area-analysis through runScoutTurn under the
+// `location_area_analysis` lane. That lane lives in
+// REQUIRES_RESEARCH_MODEL_LANES (src/lib/ai/scout-lane.ts), so the router
+// returns RESEARCH_AI_MODEL automatically — the route itself no longer
+// names the model constant. The Sonnet pin moves from "this file uses
+// RESEARCH_AI_MODEL" to "this file uses the lane that pins to Sonnet".
+
+test("area-analysis routes through runScoutTurn", () => {
   assert.ok(
-    /import\s+\{[^}]*RESEARCH_AI_MODEL[^}]*\}\s+from\s+"@\/lib\/ai\/models"/.test(
+    /import\s+\{[^}]*runScoutTurn[^}]*\}\s+from\s+"@\/lib\/ai\/scout-adapter"/.test(
       AREA_SRC,
     ),
-    "expected RESEARCH_AI_MODEL import",
+    "expected runScoutTurn import from @/lib/ai/scout-adapter",
   );
   assert.ok(
-    !/^[^/]*PLATFORM_AI_MODEL/m.test(stripLineComments(AREA_SRC)),
-    "PLATFORM_AI_MODEL must not appear in area-analysis after the flip",
+    /runScoutTurn\(\s*\{[\s\S]*?lane:\s*"location_area_analysis"/m.test(
+      AREA_SRC,
+    ),
+    "expected runScoutTurn({ lane: \"location_area_analysis\", ... })",
   );
 });
 
-test("area-analysis passes RESEARCH_AI_MODEL to anthropic.messages.create", () => {
+test("area-analysis lane is pinned to the research model", () => {
+  // Authority of the Sonnet pin moves to the lane registry — verifying it
+  // here keeps the wire-through pin paired with the model decision.
+  const laneSrc = readRoute("../../../../../lib/ai/scout-lane.ts");
   assert.ok(
-    /anthropic\.messages\.create\(\s*\{[\s\S]*?model:\s*RESEARCH_AI_MODEL/m.test(
-      AREA_SRC,
+    /REQUIRES_RESEARCH_MODEL_LANES[\s\S]*?"location_area_analysis"/m.test(
+      laneSrc,
     ),
-    "expected anthropic.messages.create({ model: RESEARCH_AI_MODEL, ... })",
+    "location_area_analysis must remain in REQUIRES_RESEARCH_MODEL_LANES (the router pin to Sonnet 4.6)",
   );
 });
 
-test("area-analysis records a turn metric with RESEARCH_AI_MODEL", () => {
+test("area-analysis records a turn metric with the lane tag", () => {
   assert.ok(
     /recordTurnMetric\(/.test(AREA_SRC),
     "expected recordTurnMetric call",
   );
   assert.ok(
-    /model:\s*RESEARCH_AI_MODEL/.test(AREA_SRC),
-    "expected recordTurnMetric input { model: RESEARCH_AI_MODEL }",
+    /lane:\s*"location_area_analysis"/.test(AREA_SRC),
+    "expected recordTurnMetric input { lane: \"location_area_analysis\" }",
   );
 });

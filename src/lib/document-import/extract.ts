@@ -9,8 +9,15 @@
 //
 // Returns the extracted document + the Anthropic usage block so the route can
 // `await recordTurnMetric(...)` per the Vercel await rule (TIM-2361).
+//
+// TIM-3468: Routed through runScoutTurn under the `document_import_extract`
+// lane. The lane is in FORCE_ANTHROPIC_LANES (vision required — DeepSeek's
+// text-only endpoint cannot accept document/image content blocks), so the
+// adapter always picks Anthropic. We override `preferProvider: "anthropic"`
+// here to keep the model tier intact: Haiku for short docs, Sonnet for long.
 
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
+import { runScoutTurn } from "../ai/scout-adapter.ts";
 import { PLATFORM_AI_MODEL, RESEARCH_AI_MODEL } from "../ai/models.ts";
 import type { ParsedDocument } from "./parsers.ts";
 import {
@@ -66,6 +73,11 @@ export interface ExtractOutput {
     cache_read_input_tokens: number;
     cache_creation_input_tokens: number;
   };
+  // TIM-3468: surfaced from runScoutTurn so the route's recordTurnMetric()
+  // can populate the TIM-3463 provider/latencyMs/fallbackUsed columns.
+  provider: "anthropic" | "deepseek";
+  latencyMs: number;
+  fallbackUsed: boolean;
   errorCode?: "extraction_failed" | "no_content";
 }
 
@@ -95,6 +107,9 @@ export async function extractDocument(input: ExtractInput): Promise<ExtractOutpu
         cache_read_input_tokens: 0,
         cache_creation_input_tokens: 0,
       },
+      provider: "anthropic",
+      latencyMs: 0,
+      fallbackUsed: false,
       errorCode: "no_content",
     };
   }
@@ -111,23 +126,19 @@ export async function extractDocument(input: ExtractInput): Promise<ExtractOutpu
         cache_read_input_tokens: 0,
         cache_creation_input_tokens: 0,
       },
+      provider: "anthropic",
+      latencyMs: 0,
+      fallbackUsed: false,
       errorCode: "extraction_failed",
     };
   }
 
-  const client = new Anthropic({ apiKey });
-
-  // Use SDK content-block typing via `as never` on each block. The SDK accepts
-  // image + document base64 blocks; we keep the block array loosely typed
-  // because the public ContentBlockParam union is wide and we don't import it
-  // explicitly. Anthropic API rejects unknown blocks with 400, so a malformed
-  // shape would fail at call time and be caught below.
-  type ContentBlock = {
-    type: "text" | "image" | "document";
-    text?: string;
-    source?: { type: "base64"; media_type: string; data: string };
-  };
-  const content: ContentBlock[] = [
+  // Build the content block array — text + optional image/document base64.
+  // ContentBlockParam shapes are wide; we keep the array loosely typed
+  // because the SDK accepts the same shapes whether we import the union or
+  // not, and the adapter passes Anthropic.ContentBlockParam[] through
+  // unchanged.
+  const content: Anthropic.ContentBlockParam[] = [
     {
       type: "text",
       text: `File name: ${fileName}\n\nDocument text (may be truncated):\n${parsed.text.slice(0, 60000)}`,
@@ -158,48 +169,48 @@ export async function extractDocument(input: ExtractInput): Promise<ExtractOutpu
   }
 
   try {
-    const res = await client.messages.create({
-      model,
-      max_tokens: 4000,
-      system: SYSTEM_PROMPT,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      messages: [{ role: "user", content: content as any }],
+    // TIM-3468: route via runScoutTurn under document_import_extract lane.
+    // The lane is in FORCE_ANTHROPIC_LANES, so the router always picks
+    // Anthropic; the modelOverride preserves the existing Haiku-short /
+    // Sonnet-long tier policy at the call site.
+    const result = await runScoutTurn({
+      lane: "document_import_extract",
+      systemBlocks: [{ text: SYSTEM_PROMPT }],
+      messages: [{ role: "user", content }],
+      maxTokens: 4000,
+      userId: null,
+      routeTag: "/api/document-import/extract",
+      modelOverride: model,
     });
-    const text =
-      res.content
-        .map((c) =>
-          c.type === "text" ? c.text : "",
-        )
-        .join("")
-        .trim() || "{}";
+    const text = result.text.trim() || "{}";
     const parsedJson = safeParseJson(text);
     const validated = ExtractedDocumentSchema.safeParse(parsedJson);
+    const usage = {
+      input_tokens: result.usage.inputTokensUncached,
+      output_tokens: result.usage.outputTokens,
+      cache_read_input_tokens: result.usage.inputTokensCachedRead,
+      cache_creation_input_tokens: result.usage.inputTokensCacheCreate,
+    };
     if (!validated.success) {
       return {
         extracted: { proposedChanges: [] },
         tier,
-        modelUsed: model,
-        usage: {
-          input_tokens: res.usage?.input_tokens ?? 0,
-          output_tokens: res.usage?.output_tokens ?? 0,
-          cache_read_input_tokens: res.usage?.cache_read_input_tokens ?? 0,
-          cache_creation_input_tokens:
-            res.usage?.cache_creation_input_tokens ?? 0,
-        },
+        modelUsed: result.modelId,
+        usage,
+        provider: result.provider,
+        latencyMs: result.latencyMs,
+        fallbackUsed: result.fallbackUsed,
         errorCode: "extraction_failed",
       };
     }
     return {
       extracted: validated.data,
       tier,
-      modelUsed: model,
-      usage: {
-        input_tokens: res.usage?.input_tokens ?? 0,
-        output_tokens: res.usage?.output_tokens ?? 0,
-        cache_read_input_tokens: res.usage?.cache_read_input_tokens ?? 0,
-        cache_creation_input_tokens:
-          res.usage?.cache_creation_input_tokens ?? 0,
-      },
+      modelUsed: result.modelId,
+      usage,
+      provider: result.provider,
+      latencyMs: result.latencyMs,
+      fallbackUsed: result.fallbackUsed,
       errorCode:
         validated.data.proposedChanges.length === 0 ? "no_content" : undefined,
     };
@@ -214,6 +225,9 @@ export async function extractDocument(input: ExtractInput): Promise<ExtractOutpu
         cache_read_input_tokens: 0,
         cache_creation_input_tokens: 0,
       },
+      provider: "anthropic",
+      latencyMs: 0,
+      fallbackUsed: false,
       errorCode: "extraction_failed",
     };
   }

@@ -5,9 +5,8 @@
 export const runtime = "nodejs"
 export const maxDuration = 60
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
-import Anthropic from "@anthropic-ai/sdk"
+import { runScoutTurn, toTurnMetricArgs } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import type { NextRequest } from "next/server"
@@ -250,23 +249,27 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const prompt = buildPrompt(candidateList, scoresByCandidate, leaseByCandidate)
 
   let raw: string
   try {
-    const message = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 2048,
+    const scoutResult = await runScoutTurn({
+      lane: "location_tradeoff",
+      systemBlocks: [{
+        text: "You are a knowledgeable coffee shop site-selection advisor. Reply ONLY with the JSON object the user asks for. No prose outside the JSON. Use plain English in the reasoning fields — direct, opinionated, no filler.",
+      }],
       messages: [{ role: "user", content: prompt }],
-      system:
-        "You are a knowledgeable coffee shop site-selection advisor. Reply ONLY with the JSON object the user asks for. No prose outside the JSON. Use plain English in the reasoning fields — direct, opinionated, no filler.",
+      maxTokens: 2048,
+      userId: user.id,
+      routeTag: "/api/workspaces/location-lease/tradeoff",
     })
 
     // TIM-2509: record per-turn telemetry into ai_turn_metrics on every
-    // successful Anthropic call. resolvePlanTier handles a partially-populated
+    // successful AI call. resolvePlanTier handles a partially-populated
     // profile gracefully (no beta_waiver_until → not beta_waived).
+    // TIM-3463: provider/lane/latencyMs/fallbackUsed populated from envelope.
     const telemetrySvc = createServiceClient()
+    const metricArgs = toTurnMetricArgs(scoutResult, "location_tradeoff")
     await recordTurnMetric(
       {
         async insert(row) {
@@ -275,18 +278,16 @@ export async function POST(request: NextRequest) {
       },
       {
         route: "/api/workspaces/location-lease/tradeoff",
-        model: PLATFORM_AI_MODEL,
-        usage: message.usage,
+        ...metricArgs,
         userId: user.id,
         planTier: resolvePlanTier(profile ?? {}),
       },
     )
 
-    const firstBlock = message.content[0]
-    if (!firstBlock || firstBlock.type !== "text") {
+    if (!scoutResult.text) {
       return Response.json({ error: "AI returned no text." }, { status: 502 })
     }
-    raw = firstBlock.text
+    raw = scoutResult.text
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "AI tradeoff failed."
     return Response.json({ error: msg }, { status: 502 })

@@ -5,9 +5,9 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics";
-import Anthropic from "@anthropic-ai/sdk";
+import { streamScoutTurn, toTurnMetricArgs, runScoutTurn } from "@/lib/ai/scout-adapter";
+import type { ScoutLane } from "@/lib/ai/scout-lane";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
@@ -279,7 +279,12 @@ export async function POST(request: NextRequest) {
     preferredLanguage,
   });
 
-  const client = new Anthropic();
+  // TIM-3468: lane chosen by section. "executive-summary" is the synthesis
+  // section that fuses every suite; all other sections are individual section
+  // generations. Both pinned to Anthropic in the router today (gate closed).
+  const scoutLane: ScoutLane = sectionKey === "executive-summary"
+    ? "write_executive_summary"
+    : "generate_business_plan_section";
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -309,37 +314,49 @@ export async function POST(request: NextRequest) {
       }, TTFT_MS);
 
       try {
-        const response = await client.messages.stream({
-          model: PLATFORM_AI_MODEL,
-          max_tokens: maxTokens,
-          system: systemPrompt,
+        const t0 = Date.now();
+        const response = streamScoutTurn({
+          lane: scoutLane,
+          systemBlocks: [{ text: systemPrompt }],
           messages: [{ role: "user", content: userMessage }],
+          maxTokens,
+          userId: user.id,
+          routeTag: "/api/business-plan/generate",
         });
 
         if (ttftTimer) { clearTimeout(ttftTimer); ttftTimer = null; }
 
         let fullText = "";
         // TIM-2509: capture per-turn usage for ai_turn_metrics.
+        // TIM-3468: provider/modelId captured from the adapter decision event.
+        let provider: "anthropic" | "deepseek" = "anthropic";
+        let modelId = "";
         let inputTokens = 0;
         let outputTokens = 0;
         let cacheReadTokens = 0;
         let cacheCreateTokens = 0;
+        let webSearchRequests = 0;
+        let toolCallCount = 0;
 
         for await (const event of response) {
           if (done) break;
 
           if (gapTimer) { clearTimeout(gapTimer); gapTimer = null; }
 
-          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            const chunk = event.delta.text;
+          if (event.kind === "decision") {
+            provider = event.provider;
+            modelId = event.modelId;
+          } else if (event.kind === "text_delta") {
+            const chunk = event.text;
             fullText += chunk;
             controller.enqueue(enc.encode(sse("text", { text: chunk })));
-          } else if (event.type === "message_start" && event.message?.usage) {
-            inputTokens = event.message.usage.input_tokens ?? 0;
-            cacheReadTokens = event.message.usage.cache_read_input_tokens ?? 0;
-            cacheCreateTokens = event.message.usage.cache_creation_input_tokens ?? 0;
-          } else if (event.type === "message_delta" && event.usage) {
-            outputTokens = event.usage.output_tokens ?? 0;
+          } else if (event.kind === "usage") {
+            inputTokens = event.usage.inputTokensUncached;
+            cacheReadTokens = event.usage.inputTokensCachedRead;
+            cacheCreateTokens = event.usage.inputTokensCacheCreate;
+            outputTokens = event.usage.outputTokens;
+            webSearchRequests = event.usage.webSearchRequests;
+            toolCallCount = event.usage.toolCalls;
           }
 
           gapTimer = setTimeout(() => {
@@ -350,6 +367,7 @@ export async function POST(request: NextRequest) {
             }
           }, GAP_MS);
         }
+        const latencyMs = Date.now() - t0;
 
         cleanup();
 
@@ -377,15 +395,21 @@ export async function POST(request: NextRequest) {
           },
           {
             route: "/api/business-plan/generate",
-            model: PLATFORM_AI_MODEL,
+            model: modelId,
             usage: {
               input_tokens: inputTokens,
               output_tokens: outputTokens,
               cache_read_input_tokens: cacheReadTokens,
               cache_creation_input_tokens: cacheCreateTokens,
             },
+            webSearchRequests,
+            toolCalls: toolCallCount,
             userId: user.id,
             planTier: resolvePlanTier(profile),
+            provider,
+            lane: scoutLane,
+            latencyMs,
+            fallbackUsed: false,
           },
         );
 
@@ -405,7 +429,9 @@ export async function POST(request: NextRequest) {
         // re-check. Any surviving contradictions surface to the modal as
         // advisory.
         let contradictions = await runSelfConsistencyCheck({
-          client,
+          lane: scoutLane,
+          userId: user.id,
+          routeTag: "/api/business-plan/generate",
           sectionKey,
           sectionTitle,
           sectionText: canon.text,
@@ -414,7 +440,9 @@ export async function POST(request: NextRequest) {
         if (contradictions.length > 0) {
           regenAttempted = true;
           const regen = await regenerateWithFixDirective({
-            client,
+            lane: scoutLane,
+            userId: user.id,
+            routeTag: "/api/business-plan/generate",
             baseSystemPrompt: systemPrompt,
             baseUserMessage: userMessage,
             contradictions,
@@ -424,7 +452,9 @@ export async function POST(request: NextRequest) {
             workingText = normalizeAIOutput(regen);
             canon = canonicalizeNarrative(workingText, planState.entities);
             contradictions = await runSelfConsistencyCheck({
-              client,
+              lane: scoutLane,
+              userId: user.id,
+              routeTag: "/api/business-plan/generate",
               sectionKey,
               sectionTitle,
               sectionText: canon.text,

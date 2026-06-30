@@ -74,6 +74,12 @@ export interface ScoutTurnInput {
   preferProvider?: ScoutProvider
   // Override the router. Tests + the QA harness use this.
   forceProvider?: ScoutProvider
+  // TIM-3468: Override the model id chosen by the router. Use this only when
+  // the call site owns a deterministic model-tier policy (today: document
+  // extraction picks Haiku-vs-Sonnet on parsed-doc length). Caller is
+  // responsible for keeping the override compatible with the routed provider —
+  // e.g. only pass an Anthropic model when lane resolves to Anthropic.
+  modelOverride?: string
   // Test seam: caller can inject a transport so unit tests don't need an HTTP
   // mock library. Defaults to the live SDK clients.
   transport?: ScoutTransport
@@ -105,6 +111,9 @@ export interface ScoutTurnOutput {
 }
 
 export type ScoutStreamEvent =
+  // First event the stream emits. Lets routes record provider + modelId in
+  // their telemetry without re-running the router (TIM-3468).
+  | { kind: "decision"; provider: ScoutProvider; modelId: string }
   | { kind: "text_delta"; text: string }
   | { kind: "tool_use_start"; id: string; name: string; input: unknown }
   | { kind: "tool_use_delta"; id: string; jsonDelta: string }
@@ -479,7 +488,10 @@ export async function runScoutTurn(
   const transport = input.transport ?? liveTransport
   const primary: ScoutTransportCallInput = {
     provider: decision.provider,
-    modelId: decision.modelId,
+    // TIM-3468: respect caller-supplied modelOverride for sites that own a
+    // deterministic tier policy (document extraction Haiku-vs-Sonnet). Without
+    // an override, take the router's chosen modelId.
+    modelId: input.modelOverride ?? decision.modelId,
     systemBlocks: input.systemBlocks,
     messages: input.messages,
     tools: input.tools,
@@ -513,14 +525,23 @@ export async function* streamScoutTurn(
 ): AsyncIterable<ScoutStreamEvent> {
   const decision = decideRoute(input)
   const transport = input.transport ?? liveTransport
+  // TIM-3468: respect modelOverride symmetrically with runScoutTurn.
+  const effectiveModelId = input.modelOverride ?? decision.modelId
   const primary: ScoutTransportCallInput = {
     provider: decision.provider,
-    modelId: decision.modelId,
+    modelId: effectiveModelId,
     systemBlocks: input.systemBlocks,
     messages: input.messages,
     tools: input.tools,
     maxTokens: input.maxTokens,
     temperature: input.temperature,
+  }
+  // TIM-3468: announce routing decision so callers can stamp telemetry with
+  // provider + modelId without re-running the router.
+  yield {
+    kind: "decision",
+    provider: decision.provider,
+    modelId: effectiveModelId,
   }
   for await (const event of transport.stream(primary)) {
     yield event
@@ -535,6 +556,48 @@ export interface ScoutTurnMetricExtras {
   latencyMs: number
   fallbackUsed: boolean
   errorClass?: ScoutErrorClass
+}
+
+// TIM-3468: Convert a ScoutTurnOutput envelope into the shape the existing
+// recordTurnMetric() helper expects. Folds NormalizedUsage back into the legacy
+// AnthropicUsage field names so existing telemetry code paths keep working
+// while TIM-3463's new TIM_3463 columns (provider/lane/latencyMs/fallbackUsed)
+// are populated from the same envelope.
+export interface ScoutEnvelopeMetricArgs {
+  model: string
+  usage: {
+    input_tokens: number
+    output_tokens: number
+    cache_read_input_tokens: number
+    cache_creation_input_tokens: number
+  }
+  webSearchRequests: number
+  toolCalls: number
+  provider: ScoutProvider
+  lane: ScoutLane
+  latencyMs: number
+  fallbackUsed: boolean
+}
+
+export function toTurnMetricArgs(
+  envelope: ScoutTurnOutput,
+  lane: ScoutLane,
+): ScoutEnvelopeMetricArgs {
+  return {
+    model: envelope.modelId,
+    usage: {
+      input_tokens: envelope.usage.inputTokensUncached,
+      output_tokens: envelope.usage.outputTokens,
+      cache_read_input_tokens: envelope.usage.inputTokensCachedRead,
+      cache_creation_input_tokens: envelope.usage.inputTokensCacheCreate,
+    },
+    webSearchRequests: envelope.usage.webSearchRequests,
+    toolCalls: envelope.usage.toolCalls,
+    provider: envelope.provider,
+    lane,
+    latencyMs: envelope.latencyMs,
+    fallbackUsed: envelope.fallbackUsed,
+  }
 }
 
 export { PLATFORM_AI_MODEL, DEEPSEEK_CHAT_MODEL }

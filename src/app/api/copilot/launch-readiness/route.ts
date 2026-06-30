@@ -11,13 +11,12 @@
 export const runtime = "nodejs"
 export const maxDuration = 60
 
-import Anthropic from "@anthropic-ai/sdk"
+import { streamScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { isSubscriptionActive } from "@/lib/access"
 import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
 import { rateLimit } from "@/lib/rate-limit"
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite"
@@ -220,9 +219,9 @@ export async function POST(request: NextRequest) {
   const svcClient = createServiceClient()
   const { snapshots } = await composeAllWorkspacesSnapshot(planId, svcClient)
 
-  // TIM-1897: all platform AI runs on Claude Haiku (src/lib/ai/models.ts).
-  const modelId = PLATFORM_AI_MODEL
-
+  // TIM-3468: streamScoutTurn's `decision` event reports the actual provider +
+  // modelId at stream start; chat_launch_readiness lane defaults to DeepSeek
+  // when the prod gate is on, falls back to Haiku otherwise.
   const workspaceDataSection = snapshots
     .map((s) => `### ${WORKSPACE_LABELS[s.key] ?? s.key}\n${s.text}`)
     .join("\n\n")
@@ -277,49 +276,53 @@ export async function POST(request: NextRequest) {
       }, TTFT_MS)
 
       try {
-        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-
-        const stream = anthropic.messages.stream({
-          model: modelId,
-          max_tokens: 4_000,
-          // TIM-1897: no `thinking` — Haiku 4.5 does not support extended thinking.
-          system: SYSTEM_PROMPT,
+        // TIM-3468: routed through streamScoutTurn. The `decision` event reports
+        // the actual provider + modelId; `text_delta` carries the streamed
+        // content; `usage` carries the final normalized usage. Haiku/DeepSeek
+        // don't emit thinking_delta, so we don't handle it here.
+        const t0 = Date.now()
+        const stream = streamScoutTurn({
+          lane: "chat_launch_readiness",
+          systemBlocks: [{ text: SYSTEM_PROMPT }],
           messages: [{ role: "user", content: userMessage }],
+          maxTokens: 4_000,
+          userId: user.id,
+          routeTag: "/api/copilot/launch-readiness",
         })
 
-        // TIM-2509: capture per-turn usage for ai_turn_metrics.
+        let provider: "anthropic" | "deepseek" = "anthropic"
+        let modelId = ""
         let inputTokens = 0
         let outputTokens = 0
         let cacheReadTokens = 0
         let cacheCreateTokens = 0
+        let webSearchRequests = 0
+        let toolCalls = 0
+        let latencyMs = 0
 
         for await (const event of stream) {
           if (closed) break
 
-          if (event.type === "content_block_delta") {
-            if (event.delta.type === "thinking_delta") {
-              if (!firstToken) {
-                firstToken = true
-                if (ttftTimer) clearTimeout(ttftTimer)
-              }
-              resetGapTimer()
-              send(sse("thinking", { delta: event.delta.thinking }))
-            } else if (event.delta.type === "text_delta") {
-              if (!firstToken) {
-                firstToken = true
-                if (ttftTimer) clearTimeout(ttftTimer)
-              }
-              resetGapTimer()
-              fullText += event.delta.text
+          if (event.kind === "decision") {
+            provider = event.provider
+            modelId = event.modelId
+          } else if (event.kind === "text_delta") {
+            if (!firstToken) {
+              firstToken = true
+              if (ttftTimer) clearTimeout(ttftTimer)
             }
-          } else if (event.type === "message_start" && event.message?.usage) {
-            inputTokens = event.message.usage.input_tokens ?? 0
-            cacheReadTokens = event.message.usage.cache_read_input_tokens ?? 0
-            cacheCreateTokens = event.message.usage.cache_creation_input_tokens ?? 0
-          } else if (event.type === "message_delta" && event.usage) {
-            outputTokens = event.usage.output_tokens ?? 0
+            resetGapTimer()
+            fullText += event.text
+          } else if (event.kind === "usage") {
+            inputTokens = event.usage.inputTokensUncached
+            cacheReadTokens = event.usage.inputTokensCachedRead
+            cacheCreateTokens = event.usage.inputTokensCacheCreate
+            outputTokens = event.usage.outputTokens
+            webSearchRequests = event.usage.webSearchRequests
+            toolCalls = event.usage.toolCalls
           }
         }
+        latencyMs = Date.now() - t0
 
         if (!closed) {
           clearTimers()
@@ -396,8 +399,14 @@ export async function POST(request: NextRequest) {
                 cache_read_input_tokens: cacheReadTokens,
                 cache_creation_input_tokens: cacheCreateTokens,
               },
+              webSearchRequests,
+              toolCalls,
               userId: user.id,
               planTier: resolvePlanTier(profile),
+              provider,
+              lane: "chat_launch_readiness",
+              latencyMs,
+              fallbackUsed: false,
             },
           )
 
