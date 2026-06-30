@@ -2141,7 +2141,9 @@ export function FinancialsWorkspace({
           return;
         }
         if (!res.ok) throw new Error(`save failed (${res.status})`);
+        if (controller.signal.aborted) return;
         const data = (await res.json()) as { updated_at?: string };
+        if (controller.signal.aborted) return;
         setSaveState({ kind: "saved", at: data?.updated_at ?? new Date().toISOString() });
       } catch (err) {
         if (controller.signal.aborted) return;
