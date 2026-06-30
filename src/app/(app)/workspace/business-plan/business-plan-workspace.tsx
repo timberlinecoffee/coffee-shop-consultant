@@ -5,7 +5,7 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Download, ChevronDown, ChevronUp, Circle, CheckCircle, Loader2, Plus, Trash2, ArrowUp, ArrowDown, Pencil, Sparkles } from "lucide-react";
+import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, ArrowUp, ArrowDown, Pencil, Sparkles } from "lucide-react";
 import { SectionHelp } from "@/components/ui/section-help";
 import { CollapseButton } from "@/components/ui/CollapseButton";
 import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
@@ -164,7 +164,7 @@ function determineInitialExpanded(
   section: BusinessPlanSectionData,
   allSections: BusinessPlanSectionData[]
 ): boolean {
-  // Align with StatusChip: any non-empty saved content = done
+  // Any non-empty saved content collapses on initial render.
   if (section.userContent && section.userContent.trim().length > 0) return false;
   const firstUnreviewed = allSections.find(
     (s) => s.autoContent && (!s.userContent || !s.userContent.trim().length)
@@ -1477,30 +1477,6 @@ function MarkdownContent({ content }: { content: string }) {
   );
 }
 
-function StatusChip({ section }: { section: SectionState }) {
-  const isDone = Boolean(section.userContent && section.userContent.trim().length > 0);
-  const isGenerating = section.isGenerating;
-  if (isGenerating) {
-    return (
-      <span className="flex items-center gap-1 text-[var(--teal)] shrink-0">
-        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-      </span>
-    );
-  }
-  if (isDone) {
-    return (
-      <span className="flex items-center gap-1 text-[var(--sage)] shrink-0">
-        <CheckCircle className="w-3.5 h-3.5" />
-      </span>
-    );
-  }
-  return (
-    <span className="flex items-center gap-1 text-[var(--neutral-cool-500)] shrink-0">
-      <Circle className="w-3.5 h-3.5" />
-    </span>
-  );
-}
-
 function SectionCard({
   section,
   canEdit,
@@ -1591,20 +1567,17 @@ function SectionCard({
               </h2>
             </button>
           )}
-          <div className="flex items-center gap-2 shrink-0">
-            <StatusChip section={section} />
-            {section.isExpanded && canEdit && !section.isEditing && !isStreaming && onWriteWithAi && (
-              <button
-                type="button"
-                onClick={onWriteWithAi}
-                aria-label={`Write ${section.title} with AI`}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap"
-              >
-                <Sparkles size={12} aria-hidden="true" />
-                Write with AI
-              </button>
-            )}
-          </div>
+          {section.isExpanded && canEdit && !section.isEditing && !isStreaming && onWriteWithAi && (
+            <button
+              type="button"
+              onClick={onWriteWithAi}
+              aria-label={`Write ${section.title} with AI`}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap shrink-0"
+            >
+              <Sparkles size={12} aria-hidden="true" />
+              Write with AI
+            </button>
+          )}
         </div>
 
         {/* Sub-header: source label + Edited badge (expanded), or blurb (collapsed) */}
