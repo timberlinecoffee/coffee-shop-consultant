@@ -21,7 +21,6 @@
 import {
   type CSSProperties,
   type HTMLAttributes,
-  type ReactNode,
   forwardRef,
 } from "react";
 import {
@@ -129,20 +128,3 @@ export function useCanonicalSensors(opts: CanonicalSensorsOptions = {}) {
   );
 }
 
-// ── SortableDropLine ────────────────────────────────────────────────────────
-// Inline drop-indicator stripe rendered ABOVE the row when the dnd-kit
-// active-over sentinel says this row will receive the drop. Use when a
-// consumer wants a visible insertion line in addition to the default
-// transform-shuffle animation. Optional — most consumers don't need it
-// because the row-shuffle is already visible feedback.
-
-export function SortableDropLine({ children }: { children?: ReactNode }) {
-  return (
-    <div
-      role="presentation"
-      className="relative -mt-1 mb-1 h-0.5 rounded-full bg-[var(--teal)] opacity-80"
-    >
-      {children}
-    </div>
-  );
-}

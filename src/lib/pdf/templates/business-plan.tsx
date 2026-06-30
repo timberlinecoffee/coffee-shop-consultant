@@ -34,6 +34,7 @@ import {
   assembleRisksPlaceholderSection,
   BUSINESS_PLAN_SECTIONS,
   BUSINESS_PLAN_GROUPS,
+  DEFAULT_BUSINESS_PLAN_SECTION_ORDER,
   type BpLocationCandidate,
   type BpEquipmentItem,
   type BpMenuItem,
@@ -446,7 +447,9 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       { data: financialDocRows },
       { data: customSectionRows },
     ] = await Promise.all([
-      supabase.from("coffee_shop_plans").select("id, plan_name").eq("id", planId).single(),
+      // TIM-3490: include business_plan_section_order so the exported PDF
+      // renders sections in the user's persisted order, not the default.
+      supabase.from("coffee_shop_plans").select("id, plan_name, business_plan_section_order").eq("id", planId).single(),
       supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
       // TIM-2341: include city + country so plan_state.lender_metrics inherits
       // the region-aware tax + lender posture in the exported PDF.
@@ -526,17 +529,44 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       "appendix-monthly-statements": "Monthly P&L, cash flow, and balance sheet statements appear in the Financial Appendix pages that follow.",
     };
 
-    const sections: BusinessPlanSectionData[] = BUSINESS_PLAN_SECTIONS.map((meta) => {
-      const saved = savedMap.get(meta.key) as { user_content: string | null; is_visible: boolean } | undefined;
-      return {
-        key: meta.key,
-        title: meta.title,
-        sourceLabel: meta.sourceLabel,
-        autoContent: autoContent[meta.key] ?? "",
-        userContent: saved?.user_content ?? null,
-        isVisible: saved?.is_visible ?? meta.defaultVisible,
-      };
-    });
+    // TIM-3490: sort sections by the persisted per-plan order. Empty array
+    // falls back to default. Custom sections are rendered separately by the
+    // PDF template (they're not in BUSINESS_PLAN_SECTIONS); standard sections
+    // are reordered here so the rendered PDF mirrors the workspace order.
+    const persistedSectionOrder = Array.isArray(
+      (plan as { business_plan_section_order?: unknown } | null)?.business_plan_section_order,
+    )
+      ? ((plan as { business_plan_section_order: unknown[] }).business_plan_section_order.filter(
+          (v): v is string => typeof v === "string",
+        ))
+      : [];
+    const standardKeySet = new Set<string>(DEFAULT_BUSINESS_PLAN_SECTION_ORDER);
+    const persistedStandardOrder: string[] = [];
+    const seenPersisted = new Set<string>();
+    for (const id of persistedSectionOrder) {
+      if (standardKeySet.has(id) && !seenPersisted.has(id)) {
+        persistedStandardOrder.push(id);
+        seenPersisted.add(id);
+      }
+    }
+    for (const key of DEFAULT_BUSINESS_PLAN_SECTION_ORDER) {
+      if (!seenPersisted.has(key)) persistedStandardOrder.push(key);
+    }
+    const sectionMetaByKey = new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m]));
+    const sections: BusinessPlanSectionData[] = persistedStandardOrder
+      .map((key) => sectionMetaByKey.get(key as (typeof BUSINESS_PLAN_SECTIONS)[number]["key"]))
+      .filter((meta): meta is (typeof BUSINESS_PLAN_SECTIONS)[number] => Boolean(meta))
+      .map((meta) => {
+        const saved = savedMap.get(meta.key) as { user_content: string | null; is_visible: boolean } | undefined;
+        return {
+          key: meta.key,
+          title: meta.title,
+          sourceLabel: meta.sourceLabel,
+          autoContent: autoContent[meta.key] ?? "",
+          userContent: saved?.user_content ?? null,
+          isVisible: saved?.is_visible ?? meta.defaultVisible,
+        };
+      });
 
     // Download logo bytes when a path is set.
     let logoData: { data: Buffer; format: "png" | "jpg" } | undefined;

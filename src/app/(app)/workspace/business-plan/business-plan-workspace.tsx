@@ -1663,6 +1663,16 @@ function ResetOrderConfirmationModal({
   onCancel: () => void;
   onConfirm: () => void | Promise<void>;
 }) {
+  // TIM-3490: Escape-key dismiss + auto-focus the cancel button. /code-review
+  // catch: matches the CategorySettingsPanel modal's keyboard pattern.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onCancel();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
   return (
     <div
       role="dialog"
@@ -1689,6 +1699,7 @@ function ResetOrderConfirmationModal({
           <button
             type="button"
             onClick={onCancel}
+            autoFocus
             className="text-sm font-medium text-[var(--neutral-cool-700)] px-4 py-2 rounded-xl border border-[var(--neutral-cool-200)] hover:bg-[var(--neutral-cool-50)] transition-colors"
           >
             Cancel
