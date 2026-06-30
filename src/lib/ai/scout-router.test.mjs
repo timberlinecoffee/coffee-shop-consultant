@@ -41,9 +41,10 @@ test("default-flag-OFF (prod today) → every lane routes to Anthropic", () => {
   }
 })
 
-test("default-flag-ON (post-flip) → chat lanes go DeepSeek; pinned lanes stay Anthropic", () => {
+test("default-flag-ON (post-flip), non-EU caller → chat lanes go DeepSeek; pinned lanes stay Anthropic", () => {
   for (const lane of SCOUT_LANES) {
-    const d = routeScoutTurn({ lane, deepseekProdEnabled: true })
+    // country='US' so the EU geo-gate (TIM-3460) does not block DeepSeek.
+    const d = routeScoutTurn({ lane, deepseekProdEnabled: true, country: "US" })
     if (REQUIRES_RESEARCH_MODEL_LANES.has(lane)) {
       assert.equal(d.provider, "anthropic", `Rule 2: ${lane}`)
       assert.equal(d.modelId, RESEARCH_AI_MODEL)
@@ -156,4 +157,117 @@ test("research-required lane set is exactly menu_benchmark_price + location_area
   assert.equal(REQUIRES_RESEARCH_MODEL_LANES.size, 2)
   assert.ok(REQUIRES_RESEARCH_MODEL_LANES.has("menu_benchmark_price"))
   assert.ok(REQUIRES_RESEARCH_MODEL_LANES.has("location_area_analysis"))
+})
+
+// ── TIM-3460 — EU geo-gate (wires src/lib/regions/eea.ts into the router) ────
+
+test("EU gate: country=DE + gate=true → Anthropic Haiku + eu_gate_blocked + fallback_used=true", () => {
+  const d = routeScoutTurn({
+    lane: "chat_general",
+    deepseekProdEnabled: true,
+    country: "DE",
+  })
+  assert.equal(d.provider, "anthropic")
+  assert.equal(d.modelId, PLATFORM_AI_MODEL)
+  assert.equal(d.reason, "eu_gate_blocked")
+  assert.equal(d.errorClass, "eu_gate_blocked")
+  assert.equal(d.fallbackUsed, true)
+})
+
+test("EU gate: country=US + gate=true → DeepSeek (gate does NOT apply outside the EEA+UK+CH list)", () => {
+  const d = routeScoutTurn({
+    lane: "chat_general",
+    deepseekProdEnabled: true,
+    country: "US",
+  })
+  assert.equal(d.provider, "deepseek")
+  assert.equal(d.modelId, DEEPSEEK_CHAT_MODEL)
+  assert.equal(d.reason, "default_cheap")
+  assert.equal(d.errorClass, undefined)
+  assert.equal(d.fallbackUsed, undefined)
+})
+
+test("EU gate: unknown country (null/undefined) + gate=true → conservatively blocked → unknown_region_blocked", () => {
+  for (const country of [null, undefined, ""]) {
+    const d = routeScoutTurn({
+      lane: "chat_general",
+      deepseekProdEnabled: true,
+      country,
+    })
+    assert.equal(d.provider, "anthropic", `country=${JSON.stringify(country)}`)
+    assert.equal(d.reason, "unknown_region_blocked")
+    assert.equal(d.errorClass, "unknown_region_blocked")
+    assert.equal(d.fallbackUsed, true)
+  }
+})
+
+test("EU gate: every EEA+UK+CH country code maps to eu_gate_blocked when DeepSeek would otherwise win", () => {
+  const eea = [
+    "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR",
+    "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL",
+    "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+    "IS", "LI", "NO",
+    "GB", "CH",
+  ]
+  for (const country of eea) {
+    const d = routeScoutTurn({
+      lane: "chat_general",
+      deepseekProdEnabled: true,
+      country,
+    })
+    assert.equal(d.provider, "anthropic", `country=${country}`)
+    assert.equal(d.reason, "eu_gate_blocked", `country=${country}`)
+  }
+})
+
+test("EU gate: country is case-insensitive (lowercase 'de' still blocks)", () => {
+  const d = routeScoutTurn({
+    lane: "chat_general",
+    deepseekProdEnabled: true,
+    country: "de",
+  })
+  assert.equal(d.provider, "anthropic")
+  assert.equal(d.reason, "eu_gate_blocked")
+})
+
+test("EU gate: gate=false (prod flag off) short-circuits BEFORE the geo-gate — single fallback reason 'gate_closed'", () => {
+  // When the flag is off, no DeepSeek call would happen anyway. The router must
+  // not mislabel that as a geo-gate event, even if the country is in the EEA.
+  const d = routeScoutTurn({
+    lane: "chat_general",
+    deepseekProdEnabled: false,
+    country: "DE",
+  })
+  assert.equal(d.provider, "anthropic")
+  assert.equal(d.reason, "gate_closed")
+  assert.equal(d.errorClass, undefined)
+  assert.equal(d.fallbackUsed, undefined)
+})
+
+test("EU gate: Rule 1 lane_pin lanes never trigger the gate (already pinned to Anthropic)", () => {
+  // generate_business_plan_section is in FORCE_ANTHROPIC_LANES — would never
+  // have routed to DeepSeek, so the geo-gate should be irrelevant.
+  const d = routeScoutTurn({
+    lane: "generate_business_plan_section",
+    deepseekProdEnabled: true,
+    country: "DE",
+  })
+  assert.equal(d.provider, "anthropic")
+  assert.match(d.reason, /^lane_pin:/)
+  assert.equal(d.errorClass, undefined)
+  assert.equal(d.fallbackUsed, undefined)
+})
+
+test("EU gate: forceProvider='deepseek' bypasses the gate (QA harness override only)", () => {
+  // Tests + the QA harness use forceProvider to side-step routing. The gate
+  // applies only to the production routing rules; explicit overrides preserve
+  // their pre-TIM-3460 behavior.
+  const d = routeScoutTurn({
+    lane: "chat_general",
+    deepseekProdEnabled: true,
+    country: "DE",
+    forceProvider: "deepseek",
+  })
+  assert.equal(d.provider, "deepseek")
+  assert.equal(d.reason, "force:deepseek")
 })
