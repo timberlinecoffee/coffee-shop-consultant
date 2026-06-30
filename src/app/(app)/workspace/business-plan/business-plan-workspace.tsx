@@ -5,7 +5,8 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Eye, EyeOff, RotateCcw, Download, ChevronDown, ChevronUp, X, Circle, CheckCircle, Loader2, Plus, Trash2, ArrowUp, ArrowDown, Pencil } from "lucide-react";
+import { FileText, Download, ChevronDown, ChevronUp, X, Circle, CheckCircle, Loader2, Plus, Trash2, ArrowUp, ArrowDown, Pencil, Sparkles } from "lucide-react";
+import { SectionHelp } from "@/components/ui/section-help";
 import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -18,7 +19,6 @@ import type {
 } from "@/lib/business-plan";
 import { BUSINESS_PLAN_GROUPS, BUSINESS_PLAN_SECTIONS } from "@/lib/business-plan";
 import { BP_FIELD_EXAMPLES, type BPFieldExample, type BPFieldExampleKey } from "@/lib/business-plan-field-examples";
-import { SectionHeader } from "@/components/section-header/SectionHeader";
 import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
 import { FinancialDocumentsPanel, type FinancialDocumentState } from "./financial-documents-panel";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -1538,82 +1538,88 @@ function SectionCard({
         section.isVisible ? "border-[var(--border)] opacity-100" : "border-[var(--neutral-cool-200)] opacity-60"
       }`}
     >
-      {/* Header */}
+      {/* Header — TIM-3492: identical title styling in collapsed & expanded
+          (text-xl font-semibold per TIM-3491 directive — intentionally diverges
+          from the canonical SectionHeader's text-sm because BP cards are
+          top-level expandable sections, not sub-section headers).
+          Only chevron direction + content-area visibility + help/Write-with-AI
+          appearance change on toggle. Visibility (Eye) and reset-to-auto
+          (RotateCcw) moved out per TIM-3300 canon; follow-up TIM-3499 relocates
+          them. Collapsed-row tap target preserved per TIM-3428 (full row is
+          the expand button); expanded uses a chevron-only collapse button so
+          clicks in the title area during edit don't accidentally collapse. */}
       <div className="px-4 sm:px-5 py-4">
-        {section.isExpanded ? (
-          /* TIM-3350: SectionHeader replaces Pattern B inline markup when expanded */
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={onToggleExpand}
-              aria-expanded={true}
-              aria-label={`Collapse ${section.title}`}
-              className="flex-shrink-0 p-0.5 rounded hover:bg-[var(--neutral-cool-100)] transition-colors"
-            >
-              <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)]" />
-            </button>
-            <div className="flex-1 min-w-0">
-              <SectionHeader
-                title={section.title}
-                helpContent={blurb || undefined}
-                onWriteWithAi={canEdit && !section.isEditing && !isStreaming && onWriteWithAi ? onWriteWithAi : undefined}
-                className="mb-0"
-              />
-              <div className="flex items-center gap-2 mt-0.5">
-                <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
-                {hasUserOverride && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
-                    Edited
-                  </span>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {section.isExpanded ? (
+            <>
+              <button
+                type="button"
+                onClick={onToggleExpand}
+                aria-expanded={true}
+                aria-label={`Collapse ${section.title}`}
+                className="flex-shrink-0 p-0.5 rounded hover:bg-[var(--neutral-cool-100)] transition-colors"
+              >
+                <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)]" />
+              </button>
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                <h2
+                  className="text-xl font-semibold text-[var(--foreground)] truncate min-w-0"
+                  title={section.title}
+                >
+                  {section.title}
+                </h2>
+                {blurb && (
+                  <SectionHelp title={section.title}>{blurb}</SectionHelp>
                 )}
               </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {canEdit && hasUserOverride && !section.isEditing && (
-                <button
-                  onClick={onResetToAuto}
-                  title="Reset to auto-generated content"
-                  className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-              )}
-              <button
-                onClick={onToggleVisible}
-                title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
-                className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
-              >
-                {section.isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* Collapsed: standard card title row */
-          <div className="flex items-center gap-2 sm:gap-3">
+            </>
+          ) : (
             <button
+              type="button"
               onClick={onToggleExpand}
-              className="flex-1 flex items-center gap-2 text-left min-w-0"
               aria-expanded={false}
+              aria-label={`Expand ${section.title}`}
+              className="flex-1 flex items-center gap-2 sm:gap-3 text-left min-w-0"
             >
               <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-xl font-semibold text-[var(--foreground)] truncate">{section.title}</h2>
-                  <StatusChip section={section} />
-                </div>
-                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{blurb}</p>
-              </div>
+              <h2
+                className="text-xl font-semibold text-[var(--foreground)] truncate min-w-0 flex-1"
+                title={section.title}
+              >
+                {section.title}
+              </h2>
             </button>
-            <button
-              onClick={onToggleVisible}
-              title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
-              className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
-            >
-              {section.isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            </button>
+          )}
+          <div className="flex items-center gap-2 shrink-0">
+            <StatusChip section={section} />
+            {section.isExpanded && canEdit && !section.isEditing && !isStreaming && onWriteWithAi && (
+              <button
+                type="button"
+                onClick={onWriteWithAi}
+                aria-label={`Write ${section.title} with AI`}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap"
+              >
+                <Sparkles size={12} aria-hidden="true" />
+                Write with AI
+              </button>
+            )}
           </div>
+        </div>
+
+        {/* Sub-header: source label + Edited badge (expanded), or blurb (collapsed) */}
+        {section.isExpanded ? (
+          <div className="flex items-center gap-2 mt-1 pl-6">
+            <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
+            {hasUserOverride && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
+                Edited
+              </span>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-[var(--muted-foreground)] mt-0.5 pl-6">{blurb}</p>
         )}
 
-        {/* "See an example" link — below SectionHeader when expanded */}
         {section.isExpanded && bpExamples.length > 0 && (
           <div className="pl-6 mt-1">
             <button
@@ -1892,17 +1898,9 @@ function CustomSectionCard({
             {section.isGenerating && (
               <Loader2 className="w-3.5 h-3.5 text-[var(--teal)] animate-spin" />
             )}
-            <button
-              onClick={onToggleVisible}
-              title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
-              className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
-            >
-              {section.isVisible ? (
-                <Eye className="w-3.5 h-3.5" />
-              ) : (
-                <EyeOff className="w-3.5 h-3.5" />
-              )}
-            </button>
+            {/* TIM-3492: visibility (Eye) removed from section header per
+                TIM-3300 canon ("nothing else on the right"); follow-up child
+                relocates the toggle elsewhere. */}
             {canEdit && (
               <button
                 type="button"
