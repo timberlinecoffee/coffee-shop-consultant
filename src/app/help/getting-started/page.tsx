@@ -23,7 +23,7 @@ export default function GettingStartedDocPage() {
       />
       <DocProse>
         <p>
-          Groundwork is the planning platform from Timberline Coffee School. It
+          Groundwork is the planning platform from Ivy &amp; Rill Consulting Inc. It
           walks you through every decision that goes into opening a coffee
           shop, in the order you actually have to make them. This article gets
           you from sign-up to your first plan.

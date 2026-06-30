@@ -807,7 +807,7 @@ export default async function ComingSoonPage({
             style={{ borderColor: "rgba(255,255,255,0.08)" }}
           >
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}>
-              &copy; {new Date().getFullYear()} Timberline Coffee School. Groundwork.AI is a product of Timberline Coffee School.
+              &copy; {new Date().getFullYear()} Ivy &amp; Rill Consulting Inc. Groundwork.AI is a product of Ivy &amp; Rill Consulting Inc.
             </p>
             <nav className="flex items-center gap-5" aria-label="Footer">
               <Link

@@ -76,7 +76,7 @@ export function resolveBrand(config: BrandConfig): BrandTokens {
 // full config model + UI lands in follow-up work. These helpers are the single
 // source of truth for the brand strings that appear in every export.
 
-// PDF document metadata. Never emit "Timberline Coffee School" — use the shop
+// PDF document metadata. Never emit any platform entity name — use the shop
 // name when known, otherwise leave the field empty (neutral, no Groundwork).
 export function pdfDocMeta(shopName: string | null | undefined) {
   const name = (shopName ?? "").trim()

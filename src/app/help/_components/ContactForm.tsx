@@ -108,7 +108,7 @@ export function ContactForm() {
           Message sent
         </p>
         <p className="text-sm text-[var(--foreground)]">
-          Thanks. A human at Timberline Coffee School will get back to you
+          Thanks. A human at Ivy &amp; Rill Consulting Inc. will get back to you
           within one business day. We&rsquo;ve also emailed{" "}
           <a
             href="mailto:hello@timberline.coffee"
