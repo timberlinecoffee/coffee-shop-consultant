@@ -45,8 +45,13 @@ export const spacing = {
   componentPadding: '16px',
 } as const;
 
+// TIM-3022: production logo hosted on groundwork.cafe (the verified prod domain
+// where /brand/* assets are served by Next.js). The earlier app.groundwork.coffee
+// host returned a 195-byte HTML holding page instead of the PNG, so every Resend
+// transactional email rendered with a broken-image placeholder where the header
+// logo should be.
 export const LOGO_URL =
-  'https://app.groundwork.coffee/brand/groundwork-logo-color.png';
+  'https://groundwork.cafe/brand/groundwork-logo-color.png';
 export const LOGO_WIDTH = 140;
 export const LOGO_HEIGHT = 35;
 
