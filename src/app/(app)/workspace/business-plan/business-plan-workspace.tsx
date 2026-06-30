@@ -5,7 +5,7 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, ArrowUp, ArrowDown, Pencil, Sparkles } from "lucide-react";
+import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, ArrowUp, ArrowDown, Pencil, Sparkles, Eye, EyeOff, RotateCcw, MoreVertical } from "lucide-react";
 import { SectionHelp } from "@/components/ui/section-help";
 import { CollapseButton } from "@/components/ui/CollapseButton";
 import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
@@ -1494,6 +1494,8 @@ function SectionCard({
 }: SectionCardProps) {
   const [openExample, setOpenExample] = useState(false);
   const [exampleIdx, setExampleIdx] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const hasUserOverride = section.userContent !== null;
   const displayContent = section.isEditing
     ? section.editBuffer
@@ -1509,24 +1511,105 @@ function SectionCard({
     displayContent.includes("Complete the Marketing") ||
     displayContent.includes("click the text field");
 
+  // TIM-3501: dismiss card overflow menu on outside click or Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onMouse = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onMouse);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onMouse);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
   return (
     <div
-      className={`group rounded-xl border bg-white transition-opacity ${
+      className={`group relative rounded-xl border bg-white transition-opacity ${
         section.isVisible ? "border-[var(--border)] opacity-100" : "border-[var(--neutral-cool-200)] opacity-60"
       }`}
     >
+      {/* TIM-3501: card-level overflow menu (kebab) for low-frequency actions
+          that TIM-3492 removed from the header row per TIM-3300 canon
+          ([Title] [Help(?)] ——— [Write with AI]). Hide-from-PDF + reset-to-auto
+          live here so the canon stays clean AND hidden sections always have a
+          reveal path (no stranded state). Pattern matches suppliers-workspace
+          custom-category kebab (MoreVertical 14 + absolute popover). */}
+      {canEdit && (
+        <div ref={menuRef} className="absolute top-2 right-2 z-10">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label={`Section options for ${section.title}`}
+            className="p-1.5 rounded-lg text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+          >
+            <MoreVertical size={14} aria-hidden="true" />
+          </button>
+          {menuOpen && (
+            <div
+              role="menu"
+              aria-label={`${section.title} options`}
+              className="absolute right-0 top-9 bg-white border border-[var(--border)] rounded-lg shadow-lg py-1 min-w-[200px]"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onToggleVisible();
+                  setMenuOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--neutral-cool-50)] flex items-center gap-2"
+              >
+                {section.isVisible ? (
+                  <>
+                    <EyeOff size={14} aria-hidden="true" className="text-[var(--neutral-cool-600)]" />
+                    Hide from PDF
+                  </>
+                ) : (
+                  <>
+                    <Eye size={14} aria-hidden="true" className="text-[var(--neutral-cool-600)]" />
+                    Show in PDF
+                  </>
+                )}
+              </button>
+              {hasUserOverride && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onResetToAuto();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--neutral-cool-50)] flex items-center gap-2"
+                >
+                  <RotateCcw size={14} aria-hidden="true" className="text-[var(--neutral-cool-600)]" />
+                  Reset to AI-generated
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Header — TIM-3492: identical title styling in collapsed & expanded
           (text-xl font-semibold per TIM-3491 directive — intentionally diverges
           from the canonical SectionHeader's text-sm because BP cards are
           top-level expandable sections, not sub-section headers).
-          Only chevron direction + content-area visibility + help/Write-with-AI
-          appearance change on toggle. Visibility (Eye) and reset-to-auto
-          (RotateCcw) moved out per TIM-3300 canon; follow-up TIM-3499 relocates
-          them. Collapsed-row tap target preserved per TIM-3428 (full row is
-          the expand button); expanded uses a chevron-only collapse button so
-          clicks in the title area during edit don't accidentally collapse. */}
+          TIM-3501: right side stays strictly [Write with AI] per TIM-3300.
+          (StatusChip was removed entirely by TIM-3506 board redirect.)
+          Collapsed-row tap target preserved per TIM-3428 (full row is the
+          expand button); expanded uses a chevron-only collapse button so
+          clicks in the title area during edit don't accidentally collapse.
+          pr-12 on the inner header flex reserves room for the kebab. */}
       <div className="px-4 sm:px-5 py-4">
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 pr-12">
           {section.isExpanded ? (
             <>
               <button
@@ -1572,7 +1655,7 @@ function SectionCard({
               type="button"
               onClick={onWriteWithAi}
               aria-label={`Write ${section.title} with AI`}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap shrink-0"
+              className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap"
             >
               <Sparkles size={12} aria-hidden="true" />
               Write with AI
@@ -1580,9 +1663,12 @@ function SectionCard({
           )}
         </div>
 
-        {/* Sub-header: source label + Edited badge (expanded), or blurb (collapsed) */}
+        {/* Sub-header: source label + Edited badge (expanded), or blurb (collapsed).
+            TIM-3501: pl tracks chevron-button width + flex gap to align under
+            the title — expanded chevron has p-0.5 (≈20px), collapsed is plain
+            (16px); inner gap is gap-2 sm:gap-3. */}
         {section.isExpanded ? (
-          <div className="flex items-center gap-2 mt-1 pl-6">
+          <div className="flex items-center gap-2 mt-1 pl-7 sm:pl-8">
             <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
             {hasUserOverride && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
@@ -1591,11 +1677,11 @@ function SectionCard({
             )}
           </div>
         ) : (
-          <p className="text-xs text-[var(--muted-foreground)] mt-0.5 pl-6">{blurb}</p>
+          <p className="text-xs text-[var(--muted-foreground)] mt-0.5 pl-6 sm:pl-7">{blurb}</p>
         )}
 
         {section.isExpanded && bpExamples.length > 0 && (
-          <div className="pl-6 mt-1">
+          <div className="pl-7 sm:pl-8 mt-1">
             <button
               type="button"
               onClick={() => {
@@ -1870,9 +1956,22 @@ function CustomSectionCard({
             {section.isGenerating && (
               <Loader2 className="w-3.5 h-3.5 text-[var(--teal)] animate-spin" />
             )}
-            {/* TIM-3492: visibility (Eye) removed from section header per
-                TIM-3300 canon ("nothing else on the right"); follow-up child
-                relocates the toggle elsewhere. */}
+            {/* TIM-3501: visibility toggle restored to the existing action row
+                (custom-section pattern — reorder/rename/Write/visibility/delete
+                were always icon-clustered here, unlike standard SectionCard
+                which routes visibility through the kebab to keep TIM-3300
+                header canon). Discoverable on hover/focus alongside siblings. */}
+            {canEdit && (
+              <button
+                type="button"
+                onClick={onToggleVisible}
+                title={section.isVisible ? "Hide from PDF" : "Show in PDF"}
+                aria-label={section.isVisible ? `Hide ${section.title} from PDF` : `Show ${section.title} in PDF`}
+                className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                {section.isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              </button>
+            )}
             {canEdit && (
               <button
                 type="button"
