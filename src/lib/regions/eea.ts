@@ -21,7 +21,7 @@ export type EuGateCountry = (typeof EEA_COUNTRIES)[number] | (typeof EXTRA_RESTR
 
 export function isEea(country: string | null | undefined): boolean {
   if (!country) return false;
-  return EU_GATE_COUNTRY_SET.has(country.toUpperCase());
+  return EU_GATE_COUNTRY_SET.has(country.trim().toUpperCase());
 }
 
 export type DeepSeekRouteDecision = {

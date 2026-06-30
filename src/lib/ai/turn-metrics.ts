@@ -42,6 +42,11 @@ export type PlanTier =
 // failed; fallback_used is true when the row recorded the secondary provider
 // firing per plan §7.
 export type TurnMetricProvider = "anthropic" | "deepseek"
+// TIM-3460 — eu_gate_blocked / unknown_region_blocked are NOT upstream errors;
+// they signal that the router diverted a DeepSeek-eligible turn to Anthropic
+// for PIPEDA/EU compliance. Pair with `fallback_used=true`. Dashboards segment
+// by error_class so compliance fallbacks are visible separately from 5xx/429
+// upstream failover.
 export type TurnMetricErrorClass =
   | "rate_limit"
   | "auth"
@@ -49,6 +54,8 @@ export type TurnMetricErrorClass =
   | "timeout"
   | "content_policy"
   | "unknown"
+  | "eu_gate_blocked"
+  | "unknown_region_blocked"
 
 export interface TurnMetricInput {
   route: string

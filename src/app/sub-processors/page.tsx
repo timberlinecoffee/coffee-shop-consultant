@@ -9,6 +9,9 @@ export const metadata = {
 };
 
 const LAST_UPDATED = "June 30, 2026";
+// Last revision: TIM-3471 — DeepSeek Safeguards now confirms the EU geo-gate
+// is live (TIM-3460 PR-A shipped /sub-processors without the gate sentence
+// because the router wiring had not landed yet).
 
 type Row = {
   vendor: string;
@@ -39,7 +42,7 @@ const ROWS: Row[] = [
       "Scout text inputs (user queries to Scout); AI-generated outputs; business operational data included in prompts",
     region: "People’s Republic of China — Hangzhou",
     safeguards:
-      "Disclosure and consent in Privacy Policy (PIPEDA Principles 1, 4.3, and 4.8). No Data Processing Agreement executed (none offered by DeepSeek). No Standard Contractual Clauses or adequacy decision available. Chinese state-access risk (National Intelligence Law 2017, Cybersecurity Law 2017, Data Security Law 2021) explicitly disclosed in Privacy Policy. DeepSeek routing is currently disabled in production by feature flag; the flag will only be enabled after an EU geo-gate has been verified live so EU users are never routed to DeepSeek.",
+      "Disclosure and consent in Privacy Policy (PIPEDA Principles 1, 4.3, and 4.8). No Data Processing Agreement executed (none offered by DeepSeek). No Standard Contractual Clauses or adequacy decision available. Chinese state-access risk (National Intelligence Law 2017, Cybersecurity Law 2017, Data Security Law 2021) explicitly disclosed in Privacy Policy. EU users excluded from DeepSeek routing via geo-gate.",
   },
   {
     vendor: "Supabase Inc.",

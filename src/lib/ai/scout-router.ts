@@ -22,6 +22,7 @@ import {
   REQUIRES_RESEARCH_MODEL_LANES,
   type ScoutLane,
 } from "./scout-lane.ts"
+import { evaluateDeepSeekGeoGate } from "../regions/eea.ts"
 
 export type ScoutProvider = "anthropic" | "deepseek"
 
@@ -33,15 +34,31 @@ export interface ScoutRouteInput {
   //   deepseekProdEnabled = process.env.SCOUT_DEEPSEEK_PROD_ENABLED === "true"
   // and threads it here. Pure function stays decoupled from process.env.
   deepseekProdEnabled: boolean
+  // ISO-3166-1 alpha-2 country code resolved by the caller for the EU geo-gate
+  // (TIM-3460). Priority documented in scout-adapter.decideRoute:
+  //   1. user.regulatoryRegion === 'EU' (session/profile-derived)
+  //   2. x-vercel-ip-country header (Vercel edge geo)
+  //   3. null/unknown → conservative block (treated as in-region)
+  country?: string | null
   // Optional escape hatch — tests, the side-by-side QA harness (§8), and the
   // staging-overlay tooling can force a provider regardless of routing rules.
   forceProvider?: ScoutProvider
 }
 
+export type ScoutRouteErrorClass =
+  | "eu_gate_blocked"
+  | "unknown_region_blocked"
+
 export interface ScoutRouteDecision {
   provider: ScoutProvider
   modelId: string
   reason: string
+  // TIM-3460 — set when the EU geo-gate diverted a DeepSeek-eligible turn to
+  // Anthropic. Plumb through to `ai_turn_metrics.error_class` and
+  // `fallback_used=true` so dashboards can attribute compliance-driven fallbacks
+  // separately from upstream provider errors.
+  errorClass?: ScoutRouteErrorClass
+  fallbackUsed?: boolean
 }
 
 // Plan §3 Rule 3 — DeepSeek-eligible lanes that go over this length fall back
@@ -109,6 +126,24 @@ export function routeScoutTurn(input: ScoutRouteInput): ScoutRouteDecision {
       reason: "gate_closed",
     }
   }
+
+  // EU geo-gate (TIM-3460) — DeepSeek processes in mainland China with no
+  // SCCs / no adequacy decision. EU/EEA/UK/CH users (and any request whose
+  // region we cannot determine, conservatively) MUST be routed to Anthropic
+  // even when the flag is on. Stamp the metric with `eu_gate_blocked` /
+  // `unknown_region_blocked` + `fallback_used=true` so the disclosure on
+  // /sub-processors stays auditable.
+  const gate = evaluateDeepSeekGeoGate(input.country)
+  if (gate.reason === "eu_gate_blocked" || gate.reason === "unknown_region_blocked") {
+    return {
+      provider: "anthropic",
+      modelId: PLATFORM_AI_MODEL,
+      reason: gate.reason,
+      errorClass: gate.reason,
+      fallbackUsed: true,
+    }
+  }
+
   return {
     provider: "deepseek",
     modelId: DEEPSEEK_CHAT_MODEL,

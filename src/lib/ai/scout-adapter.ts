@@ -37,6 +37,7 @@ import {
   routeScoutTurn,
   type ScoutProvider,
   type ScoutRouteDecision,
+  type ScoutRouteErrorClass,
 } from "./scout-router.ts"
 import type { ScoutLane } from "./scout-lane.ts"
 
@@ -87,6 +88,11 @@ export interface ScoutTurnInput {
   // upstream call keeps running until Vercel maxDuration burns the function
   // budget and the credit-spend continues unchecked.
   signal?: AbortSignal
+  // ISO-3166-1 alpha-2 country code for the EU geo-gate (TIM-3460). Source
+  // priority resolved by the route caller (see scout-adapter.routeCountryFor
+  // contract below): user.regulatoryRegion → x-vercel-ip-country → null/unknown.
+  // null is treated as "block DeepSeek" by the router.
+  country?: string | null
   // Test seam: caller can inject a transport so unit tests don't need an HTTP
   // mock library. Defaults to the live SDK clients.
   transport?: ScoutTransport
@@ -115,6 +121,12 @@ export interface ScoutTurnOutput {
   modelId: string
   latencyMs: number
   fallbackUsed: boolean
+  // TIM-3460 — populated when the router diverted a DeepSeek-eligible turn to
+  // Anthropic for EU/UK/CH compliance. Route callers map this into
+  // `recordTurnMetric({ errorClass, fallbackUsed: true })` so dashboards can
+  // attribute compliance fallbacks separately from upstream provider errors.
+  routeErrorClass?: ScoutRouteErrorClass
+  routeReason: string
 }
 
 export type ScoutStreamEvent =
@@ -442,6 +454,10 @@ async function callWithFailover(
   // capability gates and preserves the caller's tier policy on retry.
   lane: ScoutLane,
   modelOverride: string | undefined,
+  // When set (e.g. EU geo-gate routed the turn to Anthropic), cross-provider
+  // failover is suppressed — we must not switch to DeepSeek on Anthropic 5xx
+  // or we defeat the PIPEDA compliance gate. Same-provider retry still fires.
+  lockedToProvider?: ScoutProvider,
 ): Promise<{
   result: ScoutTransportCallOutput
   provider: ScoutProvider
@@ -484,10 +500,14 @@ async function callWithFailover(
       if (BLOCK_CROSS_PROVIDER_FAILOVER_LANES.has(lane)) {
         throw retryErr
       }
-      // Cross-provider failover. The override doesn't apply across providers
-      // (an Anthropic model id is meaningless to DeepSeek and vice-versa) —
-      // drop it explicitly. Routes that depend on the override should be in
-      // BLOCK_CROSS_PROVIDER_FAILOVER_LANES so we never get here.
+      // Cross-provider failover — also skipped when the router locked the
+      // provider for compliance (EU geo-gate, TIM-3471). Rethrow to preserve
+      // the upstream error rather than routing EU traffic to DeepSeek.
+      if (lockedToProvider !== undefined) {
+        throw retryErr
+      }
+      // The override doesn't apply across providers (an Anthropic model id is
+      // meaningless to DeepSeek and vice-versa) — drop it explicitly.
       void modelOverride
       const failoverProvider = otherProvider(primary.provider)
       const failoverInput: ScoutTransportCallInput = {
@@ -540,6 +560,7 @@ function decideRoute(input: ScoutTurnInput): ScoutRouteDecision {
     estimatedInputTokens: estimateInputTokens(input),
     messageCount: input.messages.length,
     deepseekProdEnabled: readDeepseekProdGate(),
+    country: input.country,
     forceProvider: input.forceProvider ?? input.preferProvider,
   })
 }
@@ -576,7 +597,15 @@ export async function runScoutTurn(
     primary,
     input.lane,
     input.modelOverride,
+    // Lock to Anthropic when the EU geo-gate diverted the turn — prevents
+    // a provider 5xx from silently failing over to DeepSeek and bypassing
+    // the PIPEDA compliance gate.
+    decision.errorClass !== undefined ? decision.provider : undefined,
   )
+  // EU geo-gate diverts count as fallback_used even when the resulting
+  // Anthropic call succeeds on the first try — preserve the higher-precedence
+  // signal (cross-provider failover from a 5xx) when both apply.
+  const gateFallback = decision.fallbackUsed ?? false
   return {
     text: result.text,
     toolUses: result.toolUses,
@@ -584,7 +613,9 @@ export async function runScoutTurn(
     provider,
     modelId,
     latencyMs: Date.now() - t0,
-    fallbackUsed,
+    fallbackUsed: fallbackUsed || gateFallback,
+    routeErrorClass: decision.errorClass,
+    routeReason: decision.reason,
   }
 }
 
