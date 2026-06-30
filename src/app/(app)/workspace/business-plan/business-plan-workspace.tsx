@@ -5,7 +5,7 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Eye, EyeOff, RotateCcw, Download, ChevronDown, ChevronUp, X, Circle, CheckCircle, Loader2 } from "lucide-react";
+import { FileText, Eye, EyeOff, RotateCcw, Download, ChevronDown, ChevronUp, X, Circle, CheckCircle, Loader2, Plus, Trash2, ArrowUp, ArrowDown, Pencil } from "lucide-react";
 import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -14,6 +14,7 @@ import type {
   BusinessPlanSectionData,
   BusinessPlanSectionKey,
   BusinessPlanGroupKey,
+  CustomSectionData,
 } from "@/lib/business-plan";
 import { BUSINESS_PLAN_GROUPS, BUSINESS_PLAN_SECTIONS } from "@/lib/business-plan";
 import { BP_FIELD_EXAMPLES, type BPFieldExample, type BPFieldExampleKey } from "@/lib/business-plan-field-examples";
@@ -50,6 +51,8 @@ interface Props {
   planId: string;
   shopName: string;
   initialSections: BusinessPlanSectionData[];
+  // TIM-3111: custom sections are first-class entities separate from the fixed taxonomy.
+  initialCustomSections: CustomSectionData[];
   canEdit: boolean;
   initialTrialMessagesUsed?: number;
   initialCoverSettings: CoverSettings;
@@ -171,10 +174,23 @@ function determineInitialExpanded(
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+// TIM-3111: Custom section runtime state.
+interface CustomSectionState extends CustomSectionData {
+  isExpanded: boolean;
+  isEditing: boolean;
+  editBuffer: string;
+  isTitleEditing: boolean;
+  titleBuffer: string;
+  isSaving: boolean;
+  isGenerating?: boolean;
+  isDeleting?: boolean;
+}
+
 export function BusinessPlanWorkspace({
   planId,
   shopName,
   initialSections,
+  initialCustomSections,
   canEdit,
   initialTrialMessagesUsed,
   initialCoverSettings,
@@ -191,6 +207,26 @@ export function BusinessPlanWorkspace({
       isSaving: false,
     }))
   );
+
+  // TIM-3111: custom section state.
+  const [customSections, setCustomSections] = useState<CustomSectionState[]>(
+    initialCustomSections.map((cs) => ({
+      ...cs,
+      isExpanded: true,
+      isEditing: false,
+      editBuffer: cs.userContent ?? "",
+      isTitleEditing: false,
+      titleBuffer: cs.title,
+      isSaving: false,
+    }))
+  );
+  const [isAddingCustomSection, setIsAddingCustomSection] = useState(false);
+  const [customSectionError, setCustomSectionError] = useState<string | null>(null);
+  // Dirty buffer for custom section content autosave, keyed by custom section id.
+  const customDirtyBuffersRef = useRef<Map<string, string | null>>(new Map());
+  const customPendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // TIM-3111: tracks which custom section (if any) is streaming a Write with AI response.
+  const [customStreamingId, setCustomStreamingId] = useState<string | null>(null);
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isPrintingPdf, setIsPrintingPdf] = useState(false);
@@ -630,6 +666,17 @@ export function BusinessPlanWorkspace({
       }
     });
     void persistDirty();
+    // Flush custom section dirty buffers too.
+    if (customPendingSaveTimer.current) {
+      clearTimeout(customPendingSaveTimer.current);
+      customPendingSaveTimer.current = null;
+    }
+    customSections.forEach((cs) => {
+      if (cs.isEditing && !customDirtyBuffersRef.current.has(cs.id)) {
+        customDirtyBuffersRef.current.set(cs.id, cs.editBuffer || null);
+      }
+    });
+    void persistCustomDirty();
   }
 
   const handleSectionPatchedFromGate = useCallback((sectionKey: string, newContent: string) => {
@@ -689,6 +736,253 @@ export function BusinessPlanWorkspace({
       await saveSection(sectionKey, c.finalValue);
     }
   }, [sections, saveSection]);
+
+  // ── TIM-3111: Custom section handlers ───────────────────────────────────────
+
+  const updateCustomSection = useCallback((id: string, patch: Partial<CustomSectionState>) => {
+    setCustomSections((prev) => prev.map((cs) => (cs.id === id ? { ...cs, ...patch } : cs)));
+  }, []);
+
+  const persistCustomDirty = useCallback(async () => {
+    if (!canEdit) return;
+    const snapshot = new Map(customDirtyBuffersRef.current);
+    customDirtyBuffersRef.current.clear();
+    if (snapshot.size === 0) return;
+    setSaveState({ kind: "saving" });
+    try {
+      await Promise.all(
+        Array.from(snapshot.entries()).map(async ([id, userContent]) => {
+          const res = await fetch(`/api/business-plan/custom-sections/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_content: userContent }),
+          });
+          if (!res.ok) throw new Error(`custom section save failed (${res.status})`);
+          setCustomSections((prev) =>
+            prev.map((cs) => (cs.id !== id ? cs : { ...cs, userContent, isSaving: false }))
+          );
+        })
+      );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    } catch {
+      // Re-queue failed entries so the next manual save or debounce can retry them.
+      snapshot.forEach((val, id) => {
+        if (!customDirtyBuffersRef.current.has(id)) {
+          customDirtyBuffersRef.current.set(id, val);
+        }
+      });
+      setSaveState({ kind: "error", message: "Could not save. Try again." });
+    }
+  }, [canEdit]);
+
+  const scheduleCustomSave = useCallback(
+    (id: string, val: string | null) => {
+      customDirtyBuffersRef.current.set(id, val);
+      setSaveState({ kind: "dirty" });
+      if (customPendingSaveTimer.current) clearTimeout(customPendingSaveTimer.current);
+      customPendingSaveTimer.current = setTimeout(() => {
+        customPendingSaveTimer.current = null;
+        void persistCustomDirty();
+      }, AUTOSAVE_DEBOUNCE_MS);
+    },
+    [persistCustomDirty]
+  );
+
+  const handleAddCustomSection = useCallback(async () => {
+    if (!canEdit || isAddingCustomSection) return;
+    setIsAddingCustomSection(true);
+    setCustomSectionError(null);
+    try {
+      const res = await fetch("/api/business-plan/custom-sections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Custom Section" }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({})) as Record<string, unknown>;
+        setCustomSectionError((j.error as string) ?? "Could not add custom section.");
+        return;
+      }
+      const data = await res.json() as { customSection: { id: string; title: string; user_content: string | null; is_visible: boolean; sort_order: number } };
+      const cs = data.customSection;
+      setCustomSections((prev) => [
+        ...prev,
+        {
+          id: cs.id,
+          title: cs.title,
+          userContent: cs.user_content,
+          isVisible: cs.is_visible,
+          sortOrder: cs.sort_order,
+          isExpanded: true,
+          isEditing: false,
+          editBuffer: cs.user_content ?? "",
+          isTitleEditing: true,
+          titleBuffer: cs.title,
+          isSaving: false,
+        },
+      ]);
+    } catch {
+      setCustomSectionError("Could not add custom section. Try again.");
+    } finally {
+      setIsAddingCustomSection(false);
+    }
+  }, [canEdit, isAddingCustomSection]);
+
+  const handleCustomSectionTitleSave = useCallback(async (id: string, title: string) => {
+    const trimmed = title.trim() || "Custom Section";
+    updateCustomSection(id, { isTitleEditing: false, title: trimmed, titleBuffer: trimmed });
+    await fetch(`/api/business-plan/custom-sections/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: trimmed }),
+    });
+  }, [updateCustomSection]);
+
+  const handleDeleteCustomSection = useCallback(async (id: string) => {
+    const snapshot = customSections.find((cs) => cs.id === id);
+    if (!snapshot || snapshot.isDeleting) return;
+    updateCustomSection(id, { isDeleting: true });
+    setCustomSectionError(null);
+    try {
+      const res = await fetch(`/api/business-plan/custom-sections/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("delete failed");
+      setCustomSections((prev) => prev.filter((cs) => cs.id !== id));
+    } catch {
+      updateCustomSection(id, { isDeleting: false });
+      setCustomSections((prev) => [...prev, snapshot].sort((a, b) => a.sortOrder - b.sortOrder));
+      setCustomSectionError("Could not delete section. Try again.");
+    }
+  }, [customSections, updateCustomSection]);
+
+  const handleCustomSectionVisibility = useCallback(async (id: string, current: boolean) => {
+    const next = !current;
+    updateCustomSection(id, { isVisible: next });
+    await fetch(`/api/business-plan/custom-sections/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_visible: next }),
+    });
+  }, [updateCustomSection]);
+
+  const handleCustomSectionReorder = useCallback((id: string, direction: "up" | "down") => {
+    const idx = customSections.findIndex((cs) => cs.id === id);
+    if (idx < 0) return;
+    const swapWith = direction === "up" ? idx - 1 : idx + 1;
+    if (swapWith < 0 || swapWith >= customSections.length) return;
+    const next = [...customSections];
+    [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
+    // Keep sortOrder in sync so delete-rollback re-sorts to the current visual order.
+    next[idx] = { ...next[idx], sortOrder: idx };
+    next[swapWith] = { ...next[swapWith], sortOrder: swapWith };
+    setCustomSections(next);
+    // Fetches fire exactly once per user action — outside any state updater.
+    void fetch(`/api/business-plan/custom-sections/${next[idx].id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sort_order: idx }),
+    });
+    void fetch(`/api/business-plan/custom-sections/${next[swapWith].id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sort_order: swapWith }),
+    });
+  }, [customSections]);
+
+  const handleCustomSectionWriteWithAi = useCallback(async (id: string) => {
+    // Guard both: a custom section already streaming, and a standard section streaming.
+    // Do NOT abort abortRef (standard sections share it) — only block while either is running.
+    if (!canEdit || customStreamingId !== null || streamingKey !== null) return;
+    const cs = customSections.find((c) => c.id === id);
+    if (!cs) return;
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    let cancelledByUser = false;
+    const cancelOverlay = () => {
+      cancelledByUser = true;
+      controller.abort();
+      closeProgressOverlay();
+      setCustomStreamingId(null);
+      updateCustomSection(id, { isGenerating: false });
+    };
+    openProgressOverlay({ total: 1, onCancel: cancelOverlay });
+    updateCustomSection(id, { isGenerating: true });
+    setCustomStreamingId(id);
+
+    try {
+      await fetchSse(
+        "/api/business-plan/improve",
+        {
+          sectionKey: "custom",
+          sectionTitle: cs.title,
+          currentContent: cs.userContent?.trim() || `Write a first draft for the "${cs.title}" section.`,
+          shopName,
+        },
+        () => {},
+        (full) => {
+          updateProgressOverlay({ completed: 1 });
+          closeProgressOverlay();
+          setCustomStreamingId(null);
+          updateCustomSection(id, { isGenerating: false });
+          if (cancelledByUser) return;
+          openAIReviewModal({
+            suggestions: [
+              {
+                id: `custom-${id}`,
+                fieldId: id,
+                fieldLabel: cs.title,
+                originalValue: cs.userContent ?? "",
+                proposedValue: full,
+                isStructured: false,
+                consistencyContradictions: [],
+              },
+            ],
+            context: { workspace: "Business Plan", section: cs.title },
+            onApply: async () => {
+              const res = await fetch(`/api/business-plan/custom-sections/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_content: full }),
+              });
+              if (!res.ok) throw new Error("Could not save. Please try again.");
+              setCustomSections((prev) =>
+                prev.map((s) =>
+                  s.id !== id ? s : { ...s, userContent: full, editBuffer: full, isEditing: false }
+                )
+              );
+              setSaveState({ kind: "saved", at: new Date().toISOString() });
+            },
+          });
+        },
+        (msg) => {
+          closeProgressOverlay();
+          setCustomStreamingId(null);
+          updateCustomSection(id, { isGenerating: false });
+          if (!cancelledByUser) setGlobalError(msg);
+        },
+        controller.signal
+      );
+    } catch (err: unknown) {
+      closeProgressOverlay();
+      setCustomStreamingId(null);
+      updateCustomSection(id, { isGenerating: false });
+      if (err instanceof Error && err.name !== "AbortError" && !cancelledByUser) {
+        setGlobalError(err.message);
+      }
+    }
+  }, [
+    canEdit,
+    customStreamingId,
+    streamingKey,
+    customSections,
+    shopName,
+    closeProgressOverlay,
+    openProgressOverlay,
+    updateProgressOverlay,
+    updateCustomSection,
+    openAIReviewModal,
+  ]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -905,6 +1199,91 @@ export function BusinessPlanWorkspace({
           onGenerateExec={handleGenerate}
           onImprove={handleImprove}
         />
+
+        {/* TIM-3111: Custom sections — rendered below standard section tree */}
+        {customSections.length > 0 && (
+          <div className="mt-6 space-y-3">
+            <h2 className="text-base font-semibold text-[var(--foreground)] tracking-tight px-1">
+              Custom Sections
+            </h2>
+            {customSections.map((cs, idx) => (
+              <CustomSectionCard
+                key={cs.id}
+                section={cs}
+                canEdit={canEdit}
+                isFirst={idx === 0}
+                isLast={idx === customSections.length - 1}
+                onToggleExpand={() => updateCustomSection(cs.id, { isExpanded: !cs.isExpanded })}
+                onToggleVisible={() => handleCustomSectionVisibility(cs.id, cs.isVisible)}
+                onTitleEditStart={() => updateCustomSection(cs.id, { isTitleEditing: true, titleBuffer: cs.title })}
+                onTitleChange={(val) => updateCustomSection(cs.id, { titleBuffer: val })}
+                onTitleSave={() => handleCustomSectionTitleSave(cs.id, cs.titleBuffer)}
+                onTitleCancel={() => updateCustomSection(cs.id, { isTitleEditing: false, titleBuffer: cs.title })}
+                onEditStart={() => updateCustomSection(cs.id, { isEditing: true, editBuffer: cs.userContent ?? "" })}
+                onEditChange={(val) => {
+                  updateCustomSection(cs.id, { editBuffer: val });
+                  scheduleCustomSave(cs.id, val || null);
+                }}
+                onEditSave={() => {
+                  customDirtyBuffersRef.current.delete(cs.id);
+                  updateCustomSection(cs.id, { isSaving: true });
+                  void fetch(`/api/business-plan/custom-sections/${cs.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_content: cs.editBuffer || null }),
+                  }).then(() => {
+                    setCustomSections((prev) =>
+                      prev.map((s) =>
+                        s.id !== cs.id
+                          ? s
+                          : { ...s, userContent: cs.editBuffer || null, isEditing: false, isSaving: false }
+                      )
+                    );
+                    setSaveState({ kind: "saved", at: new Date().toISOString() });
+                  }).catch(() => {
+                    updateCustomSection(cs.id, { isSaving: false });
+                    setSaveState({ kind: "error", message: "Could not save. Try again." });
+                  });
+                }}
+                onEditCancel={() => {
+                  customDirtyBuffersRef.current.delete(cs.id);
+                  updateCustomSection(cs.id, { isEditing: false, editBuffer: cs.userContent ?? "" });
+                }}
+                onDelete={() => handleDeleteCustomSection(cs.id)}
+                onMoveUp={() => handleCustomSectionReorder(cs.id, "up")}
+                onMoveDown={() => handleCustomSectionReorder(cs.id, "down")}
+                onWriteWithAi={() => void handleCustomSectionWriteWithAi(cs.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* TIM-3111: Add Custom Section entry point */}
+        {canEdit && (
+          <div className="mt-6">
+            {customSectionError && (
+              <div className="mb-3 px-4 py-2 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+                {customSectionError}
+                <button onClick={() => setCustomSectionError(null)} className="ml-3 underline text-xs">
+                  Dismiss
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleAddCustomSection}
+              disabled={isAddingCustomSection}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-[var(--neutral-cool-400)] text-sm font-medium text-[var(--neutral-cool-600)] hover:border-[var(--teal)] hover:text-[var(--teal)] hover:bg-[var(--teal)]/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isAddingCustomSection ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              Add Custom Section
+            </button>
+          </div>
+        )}
       </div>
     </div>
     {/* TIM-2416 — the AI companion mounts inside the Business Plan workspace
@@ -1363,6 +1742,222 @@ function SectionCard({
                   <MarkdownContent content={displayContent} />
                 ) : (
                   <span className="text-[var(--dark-grey)] italic text-sm">No content yet. Use Write with AI to generate this section.</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── TIM-3111: CustomSectionCard ───────────────────────────────────────────────
+
+interface CustomSectionCardProps {
+  section: CustomSectionState;
+  canEdit: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  onToggleExpand: () => void;
+  onToggleVisible: () => void;
+  onTitleEditStart: () => void;
+  onTitleChange: (val: string) => void;
+  onTitleSave: () => void;
+  onTitleCancel: () => void;
+  onEditStart: () => void;
+  onEditChange: (val: string) => void;
+  onEditSave: () => void;
+  onEditCancel: () => void;
+  onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onWriteWithAi?: () => void;
+}
+
+function CustomSectionCard({
+  section,
+  canEdit,
+  isFirst,
+  isLast,
+  onToggleExpand,
+  onToggleVisible,
+  onTitleEditStart,
+  onTitleChange,
+  onTitleSave,
+  onTitleCancel,
+  onEditStart,
+  onEditChange,
+  onEditSave,
+  onEditCancel,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  onWriteWithAi,
+}: CustomSectionCardProps) {
+  const displayContent = section.isEditing ? section.editBuffer : (section.userContent ?? "");
+  const hasContent = Boolean(displayContent.trim());
+
+  return (
+    <div
+      className={`group rounded-xl border bg-white transition-opacity ${
+        section.isVisible ? "border-[var(--border)] opacity-100" : "border-[var(--neutral-cool-200)] opacity-60"
+      }`}
+    >
+      {/* Header */}
+      <div className="px-4 sm:px-5 py-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Toggle expand + title */}
+          <button
+            onClick={onToggleExpand}
+            className="flex-1 flex items-center gap-2 text-left min-w-0"
+            aria-expanded={section.isExpanded}
+          >
+            {section.isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
+            )}
+            <div className="flex-1 min-w-0">
+              {section.isTitleEditing ? (
+                <input
+                  type="text"
+                  value={section.titleBuffer}
+                  onChange={(e) => onTitleChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); onTitleSave(); }
+                    if (e.key === "Escape") onTitleCancel();
+                  }}
+                  onBlur={onTitleSave}
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                  maxLength={200}
+                  placeholder="Section name"
+                  className="w-full text-base font-semibold text-[var(--foreground)] border-b border-[var(--teal)] bg-transparent outline-none pb-0.5"
+                />
+              ) : (
+                <h2 className="text-base font-semibold text-[var(--foreground)] truncate">
+                  {section.title}
+                </h2>
+              )}
+              {!section.isExpanded && !section.isTitleEditing && (
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                  {hasContent ? "Has content" : "No content yet"}
+                </p>
+              )}
+            </div>
+          </button>
+
+          {/* Action row: reorder, rename, Write with AI, visibility, delete */}
+          <div className="flex items-center gap-1 shrink-0">
+            {canEdit && !isFirst && (
+              <button
+                type="button"
+                onClick={onMoveUp}
+                title="Move up"
+                className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {canEdit && !isLast && (
+              <button
+                type="button"
+                onClick={onMoveDown}
+                title="Move down"
+                className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {canEdit && section.isExpanded && !section.isTitleEditing && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onTitleEditStart(); }}
+                title="Rename section"
+                className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {canEdit && section.isExpanded && !section.isTitleEditing && onWriteWithAi && !section.isGenerating && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onWriteWithAi(); }}
+                className="hidden sm:inline-flex text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                Write with AI
+              </button>
+            )}
+            {section.isGenerating && (
+              <Loader2 className="w-3.5 h-3.5 text-[var(--teal)] animate-spin" />
+            )}
+            <button
+              onClick={onToggleVisible}
+              title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
+              className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+            >
+              {section.isVisible ? (
+                <Eye className="w-3.5 h-3.5" />
+              ) : (
+                <EyeOff className="w-3.5 h-3.5" />
+              )}
+            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={onDelete}
+                title="Delete section"
+                className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-red-600 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      {section.isExpanded && (
+        <div className="px-5 pb-5">
+          <div className="border-t border-[var(--neutral-cool-150)] pt-4">
+            {section.isEditing ? (
+              <div>
+                <textarea
+                  value={section.editBuffer}
+                  onChange={(e) => onEditChange(e.target.value)}
+                  className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed"
+                  placeholder="Write your custom section content here..."
+                  disabled={section.isSaving}
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={onEditSave}
+                    disabled={section.isSaving}
+                    className="px-3 py-1.5 rounded-lg bg-[var(--teal)] text-white text-xs font-medium hover:bg-[var(--teal-850)] transition-colors disabled:opacity-50"
+                  >
+                    {section.isSaving ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={onEditCancel}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[var(--gray-1150)] text-xs font-medium hover:bg-[var(--neutral-cool-100)] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={canEdit ? onEditStart : undefined}
+                className={canEdit ? "cursor-text rounded-lg hover:bg-[var(--neutral-cool-50)] -mx-1 px-1 py-0.5 transition-colors" : ""}
+                title={canEdit ? "Click to edit" : undefined}
+              >
+                {hasContent ? (
+                  <MarkdownContent content={displayContent} />
+                ) : (
+                  <span className="text-[var(--dark-grey)] italic text-sm">
+                    Click to add content for this section.
+                  </span>
                 )}
               </div>
             )}

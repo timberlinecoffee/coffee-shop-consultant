@@ -130,6 +130,16 @@ export interface BusinessPlanSectionData {
   isVisible: boolean;
 }
 
+// ── TIM-3111: Custom sections ─────────────────────────────────────────────────
+
+export interface CustomSectionData {
+  id: string;
+  title: string;
+  userContent: string | null;
+  isVisible: boolean;
+  sortOrder: number;
+}
+
 // ── Data-loading types (row shapes from Supabase) ─────────────────────────────
 
 export interface BpLocationCandidate {

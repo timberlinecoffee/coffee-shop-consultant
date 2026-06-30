@@ -10,7 +10,7 @@ import { PdfDocument } from "../components/PdfDocument";
 import { PdfHeader } from "../components/PdfHeader";
 import { PdfFooter } from "../components/PdfFooter";
 import type { PdfTemplate } from "../registry";
-import type { BusinessPlanSectionData } from "@/lib/business-plan";
+import type { BusinessPlanSectionData, CustomSectionData } from "@/lib/business-plan";
 import { buildFinancialDocVisibility, type FinancialDocumentVisibility } from "@/lib/business-plan-financials";
 import { renderCover } from "@/lib/pdf/business-plan/covers";
 import { MarkdownBlocks } from "@/lib/pdf/business-plan/markdown-blocks";
@@ -67,6 +67,8 @@ export interface BusinessPlanCoverData {
 export interface BusinessPlanPdfContent {
   shopName: string | null;
   sections: BusinessPlanSectionData[];
+  // TIM-3111: custom sections rendered after standard sections.
+  customSections?: CustomSectionData[];
   cover: BusinessPlanCoverData;
   financialData?: { mp: MonthlyProjections; equipment: EquipmentSummary };
   financialDocVisibility?: FinancialDocumentVisibility;
@@ -174,10 +176,11 @@ function makeStyles(brand: BrandTokens) {
 // TIM-1498: two-level TOC. Top-level sections (Executive Summary) appear in
 // their own row. Grouped subsections appear under a bold group header with
 // indented child rows. Page numbers are per subsection.
-function TocPage({ sections, shopName, date, brand, accentColor }: { sections: BusinessPlanSectionData[]; shopName: string; date: string; brand: BrandTokens; accentColor?: string | null }) {
+function TocPage({ sections, customSections, shopName, date, brand, accentColor }: { sections: BusinessPlanSectionData[]; customSections?: CustomSectionData[]; shopName: string; date: string; brand: BrandTokens; accentColor?: string | null }) {
   const S = makeStyles(brand);
   const tocColor = accentColor || brand.colors.accent;
   const visible = sections.filter((s) => s.isVisible);
+  const visibleCustom = (customSections ?? []).filter((cs) => cs.isVisible);
   const sectionMetaByKey = new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m]));
 
   // TOC content starts on page 2 (cover is page 1); first visible section page
@@ -187,10 +190,14 @@ function TocPage({ sections, shopName, date, brand, accentColor }: { sections: B
     pageNumber: 3 + idx,
   }));
 
+  const customStartPage = 3 + visible.length;
+
   type TocRow =
     | { kind: "section"; section: BusinessPlanSectionData; page: number }
     | { kind: "group"; title: string }
-    | { kind: "sub"; section: BusinessPlanSectionData; page: number };
+    | { kind: "sub"; section: BusinessPlanSectionData; page: number }
+    | { kind: "custom-group" }
+    | { kind: "custom"; title: string; page: number };
 
   const rows: TocRow[] = [];
   const seenGroups = new Set<string>();
@@ -212,6 +219,14 @@ function TocPage({ sections, shopName, date, brand, accentColor }: { sections: B
     rows.push({ kind: "sub", section, page: pageNumber });
   }
 
+  // TIM-3111: custom section TOC rows.
+  if (visibleCustom.length > 0) {
+    rows.push({ kind: "custom-group" });
+    visibleCustom.forEach((cs, idx) => {
+      rows.push({ kind: "custom", title: cs.title, page: customStartPage + idx });
+    });
+  }
+
   return (
     <Page size={brand.page.size} style={S.page}>
       <PdfHeader shopName={shopName} workspaceName="Business Plan" brand={brand} />
@@ -229,6 +244,22 @@ function TocPage({ sections, shopName, date, brand, accentColor }: { sections: B
           return (
             <View key={`s-${row.section.key}-${i}`} style={S.tocSubRow}>
               <Text style={S.tocLabel}>{row.section.title}</Text>
+              <Text style={S.tocNumber}>{row.page}</Text>
+            </View>
+          );
+        }
+        if (row.kind === "custom-group") {
+          return (
+            <View key={`cg-${i}`} style={S.tocGroupRow}>
+              <Text style={S.tocGroupLabel}>Custom Sections</Text>
+              <Text style={S.tocNumber} />
+            </View>
+          );
+        }
+        if (row.kind === "custom") {
+          return (
+            <View key={`cs-${row.title}-${i}`} style={S.tocSubRow}>
+              <Text style={S.tocLabel}>{row.title}</Text>
               <Text style={S.tocNumber}>{row.page}</Text>
             </View>
           );
@@ -287,6 +318,42 @@ function SectionPage({
   );
 }
 
+// TIM-3111: Custom section PDF page — same chrome as SectionPage but no sourceLabel.
+function CustomSectionPage({
+  section,
+  shopName,
+  date,
+  brand,
+  accentColor,
+}: {
+  section: CustomSectionData;
+  shopName: string;
+  date: string;
+  brand: BrandTokens;
+  accentColor?: string | null;
+}) {
+  const S = makeStyles(brand);
+  const content = section.userContent ?? "";
+  const isEmpty = !content.trim();
+  const titleColor = accentColor || brand.colors.accent;
+  return (
+    <Page size={brand.page.size} style={S.page}>
+      <PdfHeader shopName={shopName} workspaceName="Business Plan" brand={brand} />
+      <View style={{ marginBottom: 8 }}>
+        <Text style={[S.sectionEyebrow, { color: brand.colors.muted }]}>Custom Section</Text>
+        <Text style={[S.sectionTitle, { color: titleColor }]}>{section.title}</Text>
+        <View style={[S.rule, { borderBottomColor: titleColor }]} />
+        {isEmpty ? (
+          <Text style={S.noContent}>No content added for this section.</Text>
+        ) : (
+          <MarkdownBlocks content={content} brand={brand} accentColor={accentColor ?? null} />
+        )}
+      </View>
+      <PdfFooter generatedDate={date} brand={brand} />
+    </Page>
+  );
+}
+
 // ── Template ──────────────────────────────────────────────────────────────────
 
 export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
@@ -294,10 +361,11 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
   render(ctx) {
     const { content } = ctx;
     const brand = ctx.brand;
-    const { shopName, sections, cover, financialData, financialDocVisibility } = content;
+    const { shopName, sections, customSections, cover, financialData, financialDocVisibility } = content;
     const displayName = shopName ?? "Coffee Shop Business Plan";
     const date = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     const visible = sections.filter((s) => s.isVisible);
+    const visibleCustom = (customSections ?? []).filter((cs) => cs.isVisible);
 
     const sectionMetaByKey = new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m]));
     const groupTitleByKey = new Map(BUSINESS_PLAN_GROUPS.map((g) => [g.key, g.title]));
@@ -313,7 +381,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
           accentColor: cover.accent_color ?? undefined,
           logo: cover.logo,
         }, brand)}
-        <TocPage sections={sections} shopName={displayName} date={date} brand={brand} accentColor={cover.accent_color} />
+        <TocPage sections={sections} customSections={customSections} shopName={displayName} date={date} brand={brand} accentColor={cover.accent_color} />
         {visible.map((section) => {
           const meta = sectionMetaByKey.get(section.key as never);
           const groupTitle = meta?.groupKey ? groupTitleByKey.get(meta.groupKey) : undefined;
@@ -329,6 +397,17 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
             />
           );
         })}
+        {/* TIM-3111: custom section pages rendered after standard sections */}
+        {visibleCustom.map((cs) => (
+          <CustomSectionPage
+            key={cs.id}
+            section={cs}
+            shopName={displayName}
+            date={date}
+            brand={brand}
+            accentColor={cover.accent_color}
+          />
+        ))}
         {financialData && (
           <FinancialPlanPages
             mp={financialData.mp}
@@ -365,6 +444,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       { data: savedSections },
       { data: coverRow },
       { data: financialDocRows },
+      { data: customSectionRows },
     ] = await Promise.all([
       supabase.from("coffee_shop_plans").select("id, plan_name").eq("id", planId).single(),
       supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
@@ -382,6 +462,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       supabase.from("business_plan_sections").select("section_key, user_content, is_visible").eq("plan_id", planId),
       supabase.from("business_plan_cover").select("template_id, accent_color, logo_path, tagline, prepared_for, author_name").eq("plan_id", planId).maybeSingle(),
       supabase.from("business_plan_financial_documents").select("document_key, is_visible").eq("plan_id", planId),
+      supabase.from("business_plan_custom_sections").select("id, title, user_content, is_visible, sort_order").eq("plan_id", planId).order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
     ]);
 
     const savedMap = new Map(
@@ -500,9 +581,21 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       (financialDocRows ?? []) as { document_key: string; is_visible: boolean }[]
     );
 
+    // TIM-3111: map custom section DB rows to CustomSectionData.
+    const customSections: CustomSectionData[] = (customSectionRows ?? []).map(
+      (row: { id: string; title: string; user_content: string | null; is_visible: boolean; sort_order: number }) => ({
+        id: row.id,
+        title: row.title ?? "Custom Section",
+        userContent: row.user_content ?? null,
+        isVisible: row.is_visible ?? true,
+        sortOrder: row.sort_order ?? 0,
+      })
+    );
+
     return {
       shopName: plan?.plan_name ?? null,
       sections,
+      customSections,
       cover,
       financialData,
       financialDocVisibility,
