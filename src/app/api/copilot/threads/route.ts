@@ -6,6 +6,7 @@ export const runtime = "nodejs"
 
 import { NextResponse, type NextRequest } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { enforceRateLimit } from "@/lib/rate-limit"
 import type { WorkspaceKey } from "@/types/supabase"
 
 interface ThreadRow {
@@ -31,6 +32,15 @@ export async function GET(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Rule 4: rate-limit a DB-heavy route (TIM-3453).
+  const rateLimited = await enforceRateLimit({
+    bucket: "copilot:threads",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  })
+  if (rateLimited) return rateLimited
 
   const planId = request.nextUrl.searchParams.get("planId")
   if (!planId) return NextResponse.json({ error: "planId is required" }, { status: 400 })

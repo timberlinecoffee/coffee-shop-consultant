@@ -6,6 +6,7 @@ export const runtime = "nodejs"
 
 import { NextResponse, type NextRequest } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { enforceRateLimit } from "@/lib/rate-limit"
 import type { WorkspaceKey } from "@/types/supabase"
 
 interface ThreadDetailRow {
@@ -37,6 +38,15 @@ export async function GET(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Rule 4: rate-limit (TIM-3453).
+  const rateLimitedGet = await enforceRateLimit({
+    bucket: "copilot:thread",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  })
+  if (rateLimitedGet) return rateLimitedGet
 
   const { data, error } = await supabase
     .from("ai_conversations")
@@ -82,6 +92,15 @@ export async function PATCH(
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
+  // Rule 4: rate-limit (TIM-3453).
+  const rateLimitedPatch = await enforceRateLimit({
+    bucket: "copilot:thread",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  })
+  if (rateLimitedPatch) return rateLimitedPatch
+
   let body: unknown
   try {
     body = await request.json()
@@ -124,6 +143,15 @@ export async function DELETE(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Rule 4: rate-limit (TIM-3453).
+  const rateLimitedDelete = await enforceRateLimit({
+    bucket: "copilot:thread",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  })
+  if (rateLimitedDelete) return rateLimitedDelete
 
   const { error } = await supabase
     .from("ai_conversations")
