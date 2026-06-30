@@ -154,6 +154,78 @@ async function addProfileToWaitlist(
   return { ok: false, status: 502, reason: `list-add-${res.status}: ${errText.slice(0, 200)}` };
 }
 
+// TIM-3448: set Klaviyo SUBSCRIBED consent status via the bulk-create-jobs
+// endpoint (the only path that records legal consent per the CASL audit).
+// Returns ok:true when the job is queued (202 Accepted). The job is async —
+// Klaviyo processes it within seconds. Failures are non-fatal: the profile
+// is still on the list; we record the klaviyo_subscribed=false state in the
+// consent audit log so the gap is visible.
+export type SubscribeConsentResult =
+  | { ok: true; queued: true }
+  | { ok: false; status: number; reason: string };
+
+export async function setKlaviyoSubscribed(
+  apiKey: string,
+  email: string,
+  profileId: string,
+  consentedAtIso: string,
+): Promise<SubscribeConsentResult> {
+  const payload = {
+    data: {
+      type: "profile-subscription-bulk-create-job",
+      attributes: {
+        profiles: {
+          data: [
+            {
+              type: "profile",
+              id: profileId,
+              attributes: {
+                email,
+                subscriptions: {
+                  email: {
+                    marketing: {
+                      consent: "SUBSCRIBED",
+                      consented_at: consentedAtIso,
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+      relationships: {
+        list: {
+          data: { type: "list", id: WAITLIST_LIST_ID },
+        },
+      },
+    },
+  };
+
+  let res: Response;
+  try {
+    res = await fetch(
+      `${KLAVIYO_BASE}/api/profile-subscription-bulk-create-jobs/`,
+      {
+        method: "POST",
+        headers: klaviyoHeaders(apiKey),
+        body: JSON.stringify(payload),
+      },
+    );
+  } catch (err) {
+    return { ok: false, status: 0, reason: `subscribe-network: ${String(err)}` };
+  }
+
+  if (res.status === 202) return { ok: true, queued: true };
+  if (res.status === 429) return { ok: false, status: 429, reason: "subscribe-rate-limited" };
+  const text = await res.text().catch(() => "");
+  return {
+    ok: false,
+    status: res.status,
+    reason: `subscribe-${res.status}: ${text.slice(0, 200)}`,
+  };
+}
+
 export async function subscribeToWaitlist(
   apiKey: string,
   email: string,
