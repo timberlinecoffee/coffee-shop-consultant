@@ -424,10 +424,12 @@ export async function POST(request: NextRequest): Promise<Response> {
             maxTokens,
             userId: user.id,
             routeTag: "/api/business-plan/regenerate-all",
+            // TIM-3468: signal propagates to the SDK fetch so the
+            // PER_SECTION_TIMEOUT_MS bound actually cancels in-flight HTTP,
+            // not just stops awaiting after the next yielded event.
+            signal: sectionAbort.signal,
           });
 
-          // TIM-3468: AbortSignal on streamScoutTurn would need adapter support;
-          // for now keep the same 60s timeout behavior by checking aborted flag.
           for await (const event of response) {
             if (closed) break;
             if (sectionAbort.signal.aborted) {

@@ -80,6 +80,13 @@ export interface ScoutTurnInput {
   // responsible for keeping the override compatible with the routed provider —
   // e.g. only pass an Anthropic model when lane resolves to Anthropic.
   modelOverride?: string
+  // TIM-3468: AbortSignal threaded into the SDK call so per-route timeouts
+  // (audit SYNTHESIS_TIMEOUT_MS, regenerate-all PER_SECTION_TIMEOUT_MS,
+  // validate PASS2_TIMEOUT_MS) actually cancel the in-flight HTTP request
+  // instead of just polling between stream events. Without this, a stalled
+  // upstream call keeps running until Vercel maxDuration burns the function
+  // budget and the credit-spend continues unchecked.
+  signal?: AbortSignal
   // Test seam: caller can inject a transport so unit tests don't need an HTTP
   // mock library. Defaults to the live SDK clients.
   transport?: ScoutTransport
@@ -133,6 +140,10 @@ export interface ScoutTransportCallInput {
   tools: ScoutToolDefinition[] | undefined
   maxTokens: number
   temperature: number | undefined
+  // TIM-3468: optional caller-supplied AbortSignal. liveTransport forwards
+  // it to Anthropic.RequestOptions.signal so the SDK cancels the HTTP fetch
+  // when the caller's timer fires.
+  signal?: AbortSignal
 }
 
 export interface ScoutTransportCallOutput {
@@ -252,13 +263,24 @@ function classifyAnthropicError(
   })
 }
 
+// TIM-3468: assemble the SDK RequestOptions so caller AbortSignal and
+// DeepSeek extra-body coexist on the same object. The Anthropic SDK accepts
+// `signal` as a top-level option on every call/stream entry point.
+function buildRequestOptions(input: ScoutTransportCallInput) {
+  const opts: { signal?: AbortSignal; headers?: Record<string, string>; query?: Record<string, unknown>; body?: Record<string, unknown> } = {}
+  if (input.signal) opts.signal = input.signal
+  if (input.provider === "deepseek") {
+    opts.headers = {}
+    opts.query = {}
+    opts.body = deepseekExtraBody()
+  }
+  return Object.keys(opts).length > 0 ? opts : undefined
+}
+
 const liveTransport: ScoutTransport = {
   async call(input) {
     const client = getAnthropicClient(input.provider)
-    const extra =
-      input.provider === "deepseek"
-        ? { headers: {}, query: {}, body: deepseekExtraBody() }
-        : undefined
+    const extra = buildRequestOptions(input)
     try {
       const message = await client.messages.create(
         {
@@ -303,10 +325,7 @@ const liveTransport: ScoutTransport = {
 
   async *stream(input) {
     const client = getAnthropicClient(input.provider)
-    const extra =
-      input.provider === "deepseek"
-        ? { headers: {}, query: {}, body: deepseekExtraBody() }
-        : undefined
+    const extra = buildRequestOptions(input)
     try {
       const stream = client.messages.stream(
         {
@@ -399,6 +418,18 @@ function fallbackModelFor(provider: ScoutProvider): string {
   return provider === "anthropic" ? PLATFORM_AI_MODEL : DEEPSEEK_CHAT_MODEL
 }
 
+// TIM-3468: lanes whose primary provider has a capability the failover
+// provider cannot match — failing over would 400 on the secondary endpoint
+// anyway, so we throw upstream instead of attempting a doomed swap. Vision
+// (document/image content blocks) only Anthropic accepts; web_search hosted
+// tool only Anthropic offers. Both lanes are pinned to Anthropic at routing
+// time so the failover would always be DeepSeek → 400.
+const BLOCK_CROSS_PROVIDER_FAILOVER_LANES = new Set<ScoutLane>([
+  "document_import_extract",
+  "menu_benchmark_price",
+  "location_area_analysis",
+])
+
 // Plan §7: single same-provider retry (250ms backoff) on failover-eligible
 // errors, then cross-provider failover. NOT-eligible classes return upstream
 // to the caller without retry.
@@ -407,6 +438,10 @@ const RETRY_BACKOFF_MS = 250
 async function callWithFailover(
   transport: ScoutTransport,
   primary: ScoutTransportCallInput,
+  // TIM-3468: lane + modelOverride threaded through so failover honors
+  // capability gates and preserves the caller's tier policy on retry.
+  lane: ScoutLane,
+  modelOverride: string | undefined,
 ): Promise<{
   result: ScoutTransportCallOutput
   provider: ScoutProvider
@@ -426,7 +461,7 @@ async function callWithFailover(
     if (!(err instanceof ScoutAdapterError) || !isFailoverEligible(err.errorClass)) {
       throw err
     }
-    // Same-provider retry with short backoff.
+    // Same-provider retry with short backoff — preserves modelOverride.
     await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS))
     try {
       const result = await transport.call(primary)
@@ -443,7 +478,17 @@ async function callWithFailover(
       ) {
         throw retryErr
       }
-      // Cross-provider failover.
+      // TIM-3468: capability-gated lanes (vision, web_search) cannot
+      // failover to the other provider — throw the second-attempt error
+      // upstream instead of sending content the secondary will 400 on.
+      if (BLOCK_CROSS_PROVIDER_FAILOVER_LANES.has(lane)) {
+        throw retryErr
+      }
+      // Cross-provider failover. The override doesn't apply across providers
+      // (an Anthropic model id is meaningless to DeepSeek and vice-versa) —
+      // drop it explicitly. Routes that depend on the override should be in
+      // BLOCK_CROSS_PROVIDER_FAILOVER_LANES so we never get here.
+      void modelOverride
       const failoverProvider = otherProvider(primary.provider)
       const failoverInput: ScoutTransportCallInput = {
         ...primary,
@@ -463,10 +508,36 @@ async function callWithFailover(
 
 // ── Public entry points ──────────────────────────────────────────────────────
 
+// TIM-3468: cheap heuristic so Rule 3 (>30k token fallback to Haiku) can fire.
+// True tokenization is expensive on a hot path; the SDK doesn't expose a
+// pre-call tokenizer either. Char-quarter is a well-known approximation
+// (Anthropic + OpenAI public guidance — 1 token ≈ 4 chars of English prose)
+// and safely overestimates for code/JSON-heavy prompts, which is the
+// conservative direction here (favor the safer Haiku fallback on borderline
+// inputs).
+function estimateInputTokens(input: ScoutTurnInput): number {
+  let chars = 0
+  for (const b of input.systemBlocks) chars += b.text.length
+  for (const m of input.messages) {
+    if (typeof m.content === "string") {
+      chars += m.content.length
+    } else {
+      for (const block of m.content) {
+        if (block.type === "text" && typeof block.text === "string") {
+          chars += block.text.length
+        }
+        // base64 image/document blocks aren't text — billed differently
+        // and not counted toward the long-context threshold.
+      }
+    }
+  }
+  return Math.ceil(chars / 4)
+}
+
 function decideRoute(input: ScoutTurnInput): ScoutRouteDecision {
   return routeScoutTurn({
     lane: input.lane,
-    estimatedInputTokens: undefined,
+    estimatedInputTokens: estimateInputTokens(input),
     messageCount: input.messages.length,
     deepseekProdEnabled: readDeepseekProdGate(),
     forceProvider: input.forceProvider ?? input.preferProvider,
@@ -497,11 +568,14 @@ export async function runScoutTurn(
     tools: input.tools,
     maxTokens: input.maxTokens,
     temperature: input.temperature,
+    signal: input.signal,
   }
   const t0 = Date.now()
   const { result, provider, modelId, fallbackUsed } = await callWithFailover(
     transport,
     primary,
+    input.lane,
+    input.modelOverride,
   )
   return {
     text: result.text,
@@ -535,6 +609,7 @@ export async function* streamScoutTurn(
     tools: input.tools,
     maxTokens: input.maxTokens,
     temperature: input.temperature,
+    signal: input.signal,
   }
   // TIM-3468: announce routing decision so callers can stamp telemetry with
   // provider + modelId without re-running the router.

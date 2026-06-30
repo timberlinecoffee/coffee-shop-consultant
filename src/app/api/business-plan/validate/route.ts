@@ -260,22 +260,22 @@ export async function POST(request: NextRequest) {
 
   // ── Pass 2 — critical-reader LLM (advisory; failures degrade silently). ────
   if (includePass2 && sectionTexts.size > 0) {
+    const pass2Abort = new AbortController();
+    const pass2Timer = setTimeout(() => pass2Abort.abort(), PASS2_TIMEOUT_MS);
     try {
-      // TIM-3468: routed through runScoutTurn under the audit lane. Adapter's
-      // internal timeout is via the underlying SDK; we keep an outer timer
-      // for the soft-degrade pattern.
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Pass 2 timeout")), PASS2_TIMEOUT_MS);
-      });
-      const scoutPromise = runScoutTurn({
+      // TIM-3468: routed through runScoutTurn under the audit lane. The
+      // PASS2_TIMEOUT_MS AbortController is threaded into the SDK via the
+      // adapter's `signal` arg, so the upstream HTTP call is genuinely
+      // cancelled on timeout (no orphan fetch leaking past the soft-degrade).
+      const result = await runScoutTurn({
         lane: "business_plan_audit",
         systemBlocks: [{ text: PASS2_SYSTEM_PROMPT }],
         messages: [{ role: "user", content: buildPass2UserMessage(shopName, sectionTexts) }],
         maxTokens: PASS2_MAX_TOKENS,
         userId: user.id,
         routeTag: "/api/business-plan/validate",
+        signal: pass2Abort.signal,
       });
-      const result = await Promise.race([scoutPromise, timeoutPromise]);
       const qualitative = parsePass2Response(result.text);
       // TIM-2340: append rather than replace so the programmatic
       // local-claims / geography findings stay in the report.
@@ -297,6 +297,8 @@ export async function POST(request: NextRequest) {
           quoted_text: null,
         },
       ];
+    } finally {
+      clearTimeout(pass2Timer);
     }
   }
 

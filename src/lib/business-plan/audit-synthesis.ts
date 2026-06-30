@@ -136,8 +136,9 @@ export async function synthesizeFinding(
   const user = buildSynthesisUserMessage(args.finding);
   try {
     // TIM-3468: routed through runScoutTurn under the audit lane. AbortSignal
-    // would require an adapter extension; the route-level batch timeout still
-    // bounds the total synthesis pass.
+    // is now threaded into the adapter so the route-level SYNTHESIS_TIMEOUT_MS
+    // AbortController actually cancels the in-flight SDK call instead of just
+    // unblocking the awaiter.
     const result = await runScoutTurn({
       lane: "business_plan_audit",
       systemBlocks: [{ text: system }],
@@ -145,6 +146,7 @@ export async function synthesizeFinding(
       maxTokens: MAX_TOKENS,
       userId: args.userId,
       routeTag: args.routeTag,
+      signal: args.abortSignal,
     });
     return parseSynthesisResponse(result.text);
   } catch {
