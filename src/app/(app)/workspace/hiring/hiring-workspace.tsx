@@ -30,7 +30,8 @@ import {
   Download,
   Sparkles,
 } from "lucide-react";
-import { useCurrency } from "@/components/CurrencyProvider";
+import { MoneyInput } from "@/components/ui/money-input";
+import { MoneyDisplay } from "@/components/ui/money-display";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -568,8 +569,6 @@ function RoleDetailPanel({
     }
   }
 
-  const { formatMinor } = useCurrency();
-
   const compPreviewCents =
     typeof compPayAmount === "number" && compPayAmount > 0
       ? personnelLoadedMonthlyCents({
@@ -674,7 +673,7 @@ function RoleDetailPanel({
           )}
           {compPreviewCents !== null && (
             <span className="text-xs font-semibold text-[var(--teal)]">
-              Loaded: {formatMinor(compPreviewCents)}/mo
+              Loaded: <MoneyDisplay cents={compPreviewCents} />/mo
             </span>
           )}
         </div>
@@ -699,21 +698,17 @@ function RoleDetailPanel({
           </div>
           <div className="w-32">
             <label className={labelCls}>{compPayBasis === "hourly" ? "Rate / hour" : "Pay amount"}</label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">$</span>
-              <input
-                className={inputCls + " pl-5"}
-                type="number"
-                min={0}
-                step={compPayBasis === "hourly" ? 0.25 : 100}
-                value={compPayAmount}
-                disabled={!canEdit || compLoading}
-                onChange={(e) => {
-                  setCompPayAmount(e.target.value === "" ? "" : parseFloat(e.target.value));
-                  setCompDirty(true);
-                }}
-              />
-            </div>
+            <MoneyInput
+              className={inputCls}
+              min={0}
+              step={compPayBasis === "hourly" ? 0.25 : 100}
+              value={compPayAmount}
+              disabled={!canEdit || compLoading}
+              onChange={(e) => {
+                setCompPayAmount(e.target.value === "" ? "" : parseFloat(e.target.value));
+                setCompDirty(true);
+              }}
+            />
           </div>
           {compPayBasis === "hourly" && (
             <div className="w-28">
