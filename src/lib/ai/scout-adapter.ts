@@ -68,10 +68,24 @@ export interface ScoutToolDefinition {
 // registers `web_search_20250305` on research-classified turns; without this
 // type the only way to pass it was to bypass the adapter (today's reality).
 // Additive: routes that only use client tools keep working unchanged.
+// TIM-3496: extended with user_location, allowed_domains, blocked_domains so
+// menu-pricing/benchmark-price (computeLocalCafeRange) can request country/city-
+// biased searches and per-country TLD allow/blocks without bypassing the adapter.
+export interface ScoutServerToolUserLocation {
+  type: "approximate"
+  city?: string
+  country?: string
+  region?: string
+  timezone?: string
+}
+
 export interface ScoutServerToolDefinition {
   type: "web_search_20250305"
   name: string
   max_uses?: number
+  user_location?: ScoutServerToolUserLocation
+  allowed_domains?: string[]
+  blocked_domains?: string[]
 }
 
 // Adapter tools: client tools (name/description/input_schema) OR server tools
@@ -277,10 +291,16 @@ function toAnthropicTools(
     }
     // SDK's WebSearchTool20250305.name is the literal "web_search"; cast at
     // the construction boundary to satisfy the SDK's branded literal.
+    // TIM-3496: forward user_location/allowed_domains/blocked_domains so
+    // computeLocalCafeRange can pass country/city bias and per-country TLD
+    // filters identical to the pre-Scout direct-SDK call.
     const serverTool: Anthropic.WebSearchTool20250305 = {
       type: t.type,
       name: t.name as "web_search",
       ...(t.max_uses !== undefined ? { max_uses: t.max_uses } : {}),
+      ...(t.user_location !== undefined ? { user_location: t.user_location } : {}),
+      ...(t.allowed_domains !== undefined ? { allowed_domains: t.allowed_domains } : {}),
+      ...(t.blocked_domains !== undefined ? { blocked_domains: t.blocked_domains } : {}),
     }
     return serverTool
   })
@@ -408,10 +428,15 @@ const liveTransport: ScoutTransport = {
         message.stop_reason === "max_tokens"
           ? message.stop_reason
           : "end_turn"
+      // TIM-3496: surface server_tool_use.web_search_requests so non-streaming
+      // callers (computeLocalCafeRange) keep parity with the pre-Scout
+      // direct-SDK call that read this counter for cost telemetry.
+      const webSearchRequests =
+        message.usage?.server_tool_use?.web_search_requests ?? 0
       return {
         text,
         toolUses,
-        usage: normalizeUsageFromAnthropic(message.usage, toolUses.length, 0),
+        usage: normalizeUsageFromAnthropic(message.usage, toolUses.length, webSearchRequests),
         stopReason,
       }
     } catch (err) {
