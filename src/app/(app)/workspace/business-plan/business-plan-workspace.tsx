@@ -1293,7 +1293,6 @@ export function BusinessPlanWorkspace({
               customSections={customSections}
               canEdit={canEdit}
               streamingKey={streamingKey}
-              customStreamingId={customStreamingId}
               onToggleVisibility={(key, current) => toggleVisibility(key, current)}
               onToggleExpand={(key, current) => updateSection(key, { isExpanded: !current })}
               onEditStart={(key, content) =>
@@ -1439,7 +1438,6 @@ interface BpFlatSectionListProps {
   customSections: CustomSectionState[];
   canEdit: boolean;
   streamingKey: BusinessPlanSectionKey | null;
-  customStreamingId: string | null;
   onToggleVisibility: (key: BusinessPlanSectionKey, current: boolean) => void;
   onToggleExpand: (key: BusinessPlanSectionKey, current: boolean) => void;
   onEditStart: (key: BusinessPlanSectionKey, content: string) => void;
@@ -1603,7 +1601,6 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
               onEditCancel={() => props.onCustomEditCancel(cs.id, cs.userContent ?? "")}
               onDelete={() => props.onCustomDelete(cs.id)}
               onWriteWithAi={() => props.onCustomWriteWithAi(cs.id)}
-              isStreaming={props.customStreamingId === cs.id}
             />
           </SortableCardRow>
         );
