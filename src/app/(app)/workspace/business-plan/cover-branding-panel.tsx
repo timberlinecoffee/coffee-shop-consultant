@@ -35,6 +35,13 @@ interface Props {
 const PRESET_SWATCHES = ["#155E63", "#1F7A80", "#EF4444"];
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 
+// TIM-3507: Template-picker chips render with a fixed brand-teal demo accent so
+// the thumbnails communicate "template = layout" rather than "= your saved color."
+// Previously the chips reused `accentColor`, which made all three thumbnails look
+// identical in color when a user had picked a non-brand hue (board screenshot
+// showed all-purple thumbnails). Live preview + saved PDF still use accentColor.
+const TEMPLATE_PREVIEW_ACCENT = "#155E63";
+
 // Each pack: [primary, secondary, supporting, neutral]
 const COLOR_PACKS = [
   { id: "coastal",    label: "Coastal",    colors: ["#1F7A80", "#155E63", "#5EADB3", "#E8F4F5"] as const, description: "Teal ocean tones, professional" },
@@ -366,7 +373,7 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                       {t.id === "editorial" ? (
                         /* Editorial: full-bleed colored header (~55%) + white body */
                         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
-                          <div style={{ flex: "0 0 55%", backgroundColor: accentColor, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4px 5px", gap: 2 }}>
+                          <div style={{ flex: "0 0 55%", backgroundColor: TEMPLATE_PREVIEW_ACCENT, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4px 5px", gap: 2 }}>
                             {/* Shop monogram badge */}
                             <div style={{ width: 16, height: 16, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 2, flexShrink: 0 }}>
                               <span style={{ color: "white", fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>{shopMonogram}</span>
@@ -386,30 +393,30 @@ export function CoverBrandingPanel({ initialSettings, logoPublicUrl: initialLogo
                         /* Classic: white page, centered serif — logo + name centered, bottom bar */
                         <div style={{ position: "absolute", inset: 0, backgroundColor: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px" }}>
                           {/* Circle shop monogram */}
-                          <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${accentColor}`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 5, flexShrink: 0 }}>
-                            <span style={{ color: accentColor, fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>{shopMonogram}</span>
+                          <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${TEMPLATE_PREVIEW_ACCENT}`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 5, flexShrink: 0 }}>
+                            <span style={{ color: TEMPLATE_PREVIEW_ACCENT, fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>{shopMonogram}</span>
                           </div>
-                          <p style={{ color: accentColor, fontSize: 12, fontWeight: 700, textAlign: "center", lineHeight: 1.15, margin: 0 }}>{shopLine1}</p>
-                          {shopLine2 && <p style={{ color: accentColor, fontSize: 10, fontWeight: 600, textAlign: "center", lineHeight: 1.15, margin: 0, marginBottom: 4 }}>{shopLine2}</p>}
+                          <p style={{ color: TEMPLATE_PREVIEW_ACCENT, fontSize: 12, fontWeight: 700, textAlign: "center", lineHeight: 1.15, margin: 0 }}>{shopLine1}</p>
+                          {shopLine2 && <p style={{ color: TEMPLATE_PREVIEW_ACCENT, fontSize: 10, fontWeight: 600, textAlign: "center", lineHeight: 1.15, margin: 0, marginBottom: 4 }}>{shopLine2}</p>}
                           {/* Accent rule */}
-                          <div style={{ width: 28, height: 1.5, backgroundColor: accentColor, marginBottom: 4 }} />
+                          <div style={{ width: 28, height: 1.5, backgroundColor: TEMPLATE_PREVIEW_ACCENT, marginBottom: 4 }} />
                           <p style={{ color: "#6b7280", fontSize: 8, textAlign: "center", margin: 0 }}>Business Plan</p>
                           {/* Bottom accent bar */}
-                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, backgroundColor: accentColor }} />
+                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, backgroundColor: TEMPLATE_PREVIEW_ACCENT }} />
                         </div>
                       ) : (
                         /* Modern: white with left accent stripe, flush-left title block */
                         <div style={{ position: "absolute", inset: 0, backgroundColor: "#fff", display: "flex", flexDirection: "row" }}>
                           {/* Left stripe */}
-                          <div style={{ width: 4, backgroundColor: accentColor, flexShrink: 0 }} />
+                          <div style={{ width: 4, backgroundColor: TEMPLATE_PREVIEW_ACCENT, flexShrink: 0 }} />
                           <div style={{ flex: 1, padding: "9px 6px", display: "flex", flexDirection: "column" }}>
-                            <p style={{ color: accentColor, fontSize: 12, fontWeight: 700, lineHeight: 1.15, margin: 0 }}>{shopLine1}</p>
-                            {shopLine2 && <p style={{ color: accentColor, fontSize: 10, fontWeight: 600, lineHeight: 1.15, margin: 0, marginBottom: 3 }}>{shopLine2}</p>}
+                            <p style={{ color: TEMPLATE_PREVIEW_ACCENT, fontSize: 12, fontWeight: 700, lineHeight: 1.15, margin: 0 }}>{shopLine1}</p>
+                            {shopLine2 && <p style={{ color: TEMPLATE_PREVIEW_ACCENT, fontSize: 10, fontWeight: 600, lineHeight: 1.15, margin: 0, marginBottom: 3 }}>{shopLine2}</p>}
                             <p style={{ color: "#9ca3af", fontSize: 8, margin: 0, marginBottom: 4 }}>Business Plan</p>
-                            <div style={{ width: "100%", height: 1.5, backgroundColor: accentColor }} />
+                            <div style={{ width: "100%", height: 1.5, backgroundColor: TEMPLATE_PREVIEW_ACCENT }} />
                             <div style={{ flex: 1 }} />
                             {/* Shop monogram badge bottom-left */}
-                            <div style={{ width: 16, height: 16, borderRadius: 3, backgroundColor: accentColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <div style={{ width: 16, height: 16, borderRadius: 3, backgroundColor: TEMPLATE_PREVIEW_ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                               <span style={{ color: "white", fontSize: 7, fontWeight: 700, letterSpacing: "-0.2px" }}>{shopMonogram}</span>
                             </div>
                           </div>
