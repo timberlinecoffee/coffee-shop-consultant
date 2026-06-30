@@ -158,11 +158,11 @@ export async function GET() {
     return Response.json({ error: resolved.error }, { status: resolved.status });
   }
 
-  // Rule 4: rate-limit a DB-heavy route (TIM-3453).
+  // Separate read bucket so GET polls don't starve POST applies (TIM-3453).
   const rateLimited = await enforceRateLimit({
-    bucket: "copilot:consistency",
+    bucket: "copilot:consistency:get",
     id: resolved.userId,
-    limit: 10,
+    limit: 20,
     windowSec: 60,
   });
   if (rateLimited) return rateLimited;
@@ -248,9 +248,9 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: resolved.error }, { status: resolved.status });
   }
 
-  // Rule 4: rate-limit a DB-heavy route (TIM-3453).
+  // Separate write bucket keeps apply quota independent from GET polls (TIM-3453).
   const rateLimited = await enforceRateLimit({
-    bucket: "copilot:consistency",
+    bucket: "copilot:consistency:post",
     id: resolved.userId,
     limit: 10,
     windowSec: 60,

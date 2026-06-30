@@ -39,11 +39,11 @@ export async function GET(
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  // Rule 4: rate-limit (TIM-3453).
+  // Separate read bucket so browsing threads doesn't starve write operations (TIM-3453).
   const rateLimitedGet = await enforceRateLimit({
-    bucket: "copilot:thread",
+    bucket: "copilot:thread:read",
     id: user.id,
-    limit: 10,
+    limit: 30,
     windowSec: 60,
   })
   if (rateLimitedGet) return rateLimitedGet
@@ -92,9 +92,9 @@ export async function PATCH(
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  // Rule 4: rate-limit (TIM-3453).
+  // Write bucket independent from read quota (TIM-3453).
   const rateLimitedPatch = await enforceRateLimit({
-    bucket: "copilot:thread",
+    bucket: "copilot:thread:write",
     id: user.id,
     limit: 10,
     windowSec: 60,
@@ -144,9 +144,9 @@ export async function DELETE(
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  // Rule 4: rate-limit (TIM-3453).
+  // Write bucket independent from read quota (TIM-3453).
   const rateLimitedDelete = await enforceRateLimit({
-    bucket: "copilot:thread",
+    bucket: "copilot:thread:write",
     id: user.id,
     limit: 10,
     windowSec: 60,

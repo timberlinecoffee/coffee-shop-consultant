@@ -33,11 +33,11 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  // Rule 4: rate-limit a DB-heavy route (TIM-3453).
+  // Throttle list endpoint; 30/min matches normal drawer open/close frequency (TIM-3453).
   const rateLimited = await enforceRateLimit({
     bucket: "copilot:threads",
     id: user.id,
-    limit: 10,
+    limit: 30,
     windowSec: 60,
   })
   if (rateLimited) return rateLimited
