@@ -29,7 +29,10 @@ interface Props {
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const PRESET_SWATCHES = ["#155E63", "#1F7A80", "#2563EB", "#EF4444", "#7C3AED"];
+// TIM-3458: dropped off-palette `#2563EB` (blue) and `#7C3AED` (purple) per
+// TIM-1537 Style Guide ("off-palette, do not use in product UI"). Brand teal
+// `#155E63` is the canonical Groundwork accent — confirmed by board on TIM-3458.
+const PRESET_SWATCHES = ["#155E63", "#1F7A80", "#EF4444"];
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 
 // Each pack: [primary, secondary, supporting, neutral]
