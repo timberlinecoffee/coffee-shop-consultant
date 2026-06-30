@@ -7,7 +7,7 @@ export const metadata = {
   description: "Privacy Policy for Timberline Coffee School.",
 };
 
-const EFFECTIVE_DATE = "June 2, 2026";
+const EFFECTIVE_DATE = "June 30, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -250,7 +250,82 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">6. Data Retention</h2>
+            <h2 className="text-xl font-semibold mb-3">6. Scout AI and Cross-Border Data Transfer to China</h2>
+            <p className="text-sm text-[var(--dark-grey)] mb-3">Last updated: {EFFECTIVE_DATE}</p>
+            <p>
+              Groundwork&rsquo;s Scout AI assistant is powered in part by AI models provided by{" "}
+              <strong>DeepSeek</strong> (Hangzhou DeepSeek Artificial Intelligence Basic Technology
+              Research Co., Ltd., Hangzhou, People&rsquo;s Republic of China).
+            </p>
+            <p className="mt-3">
+              <strong>What data is sent to DeepSeek.</strong> When you use Scout, the text you type into
+              Scout (your prompts) and Scout&rsquo;s AI-generated responses are processed by
+              DeepSeek&rsquo;s servers to produce each response. This may include business information
+              you share &mdash; descriptions of your coffee shop, questions about operations, financial
+              details, or staffing information you include in your prompts.
+            </p>
+            <p className="mt-3">
+              <strong>Where your data goes.</strong> DeepSeek processes and stores this data on servers
+              located in mainland China (Hangzhou). DeepSeek does not offer a hosting option outside
+              China for its hosted API.
+            </p>
+            <p className="mt-3">
+              <strong>Chinese law and government access.</strong> Data on servers in mainland China is
+              subject to Chinese national law, including China&rsquo;s National Intelligence Law (2017),
+              Cybersecurity Law (2017), and Data Security Law (2021). These laws can require DeepSeek to
+              hand data to Chinese government authorities on request. This obligation applies regardless
+              of any agreement between Groundwork and DeepSeek &mdash; no contract can override it. We
+              are telling you this plainly because you have the right to know before you use this
+              feature.
+            </p>
+            <p className="mt-3">
+              <strong>Model training.</strong> By default, DeepSeek may use Scout prompts and responses
+              to train or improve its AI models. DeepSeek applies de-identification before doing so, but
+              this process is not independently audited. We do not currently have an enforceable
+              mechanism to exclude your data from this use.
+            </p>
+            <p className="mt-3">
+              If you would like to request that your data not be used for model training, contact us at{" "}
+              <a href="mailto:privacy@groundwork.cafe" className="text-[var(--teal)] underline">
+                privacy@groundwork.cafe
+              </a>
+              . We will submit your request to DeepSeek on your behalf. Because no verified opt-out
+              mechanism exists for API customers, we cannot guarantee this request will be honoured, and
+              we will tell you that clearly if we receive a response.
+            </p>
+            <p className="mt-3">
+              <strong>How long your data is kept.</strong> DeepSeek has not publicly disclosed a
+              specific retention period for AI API request data. Until we receive written confirmation
+              otherwise, you should treat your Scout data as potentially retained indefinitely on
+              DeepSeek&rsquo;s servers.
+            </p>
+            <p className="mt-3">
+              <strong>Your options.</strong> Scout does not currently offer a model-selection setting
+              that lets you route requests to an alternative AI provider. If we add that capability, we
+              will update this section. In the meantime, if you prefer that your Scout inputs not be
+              processed in China, the current option is to avoid using the Scout AI feature.
+            </p>
+            <p className="mt-3">
+              <strong>Our accountability.</strong> Even though DeepSeek processes your data on our
+              behalf, Groundwork (Ivy &amp; Rill Consulting Inc.) remains responsible for your personal
+              information and for how our sub-processors handle it. If you have questions or concerns,
+              contact us at{" "}
+              <a href="mailto:privacy@groundwork.cafe" className="text-[var(--teal)] underline">
+                privacy@groundwork.cafe
+              </a>
+              .
+            </p>
+            <p className="mt-3">
+              For a full list of our sub-processors, see{" "}
+              <Link href="/sub-processors" className="text-[var(--teal)] underline">
+                groundwork.cafe/sub-processors
+              </Link>
+              .
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">7. Data Retention</h2>
             <p>
               We retain your account information for as long as your account is active, plus up to 3
               years after closure for legal and audit purposes. Payment records are retained as required
@@ -266,7 +341,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">7. Your Rights</h2>
+            <h2 className="text-xl font-semibold mb-3">8. Your Rights</h2>
             <p>Depending on where you live, you may have rights to:</p>
             <ul className="list-disc pl-6 space-y-1 mt-2">
               <li>Access the personal information we hold about you.</li>
@@ -313,7 +388,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">8. Cookies and Your Choices</h2>
+            <h2 className="text-xl font-semibold mb-3">9. Cookies and Your Choices</h2>
             <p>We group cookies and similar technologies into three categories:</p>
             <ul className="list-none space-y-3 mt-3">
               <li>
@@ -341,7 +416,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">9. Security</h2>
+            <h2 className="text-xl font-semibold mb-3">10. Security</h2>
             <p>
               We use industry-standard security measures including encryption in transit (TLS) and at
               rest, access controls, and regular security reviews. No method of transmission over the
@@ -350,7 +425,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">10. Children</h2>
+            <h2 className="text-xl font-semibold mb-3">11. Children</h2>
             <p>
               The Service is not directed to children under 13. We do not knowingly collect personal
               information from children under 13. If you believe we have collected such information,
@@ -359,7 +434,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">11. Changes to This Policy</h2>
+            <h2 className="text-xl font-semibold mb-3">12. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. If we make material changes, we will
               notify you by email at least 14 days before the changes take effect.
@@ -367,7 +442,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">12. Contact</h2>
+            <h2 className="text-xl font-semibold mb-3">13. Contact</h2>
             <p>
               Timberline Coffee School
               <br />
