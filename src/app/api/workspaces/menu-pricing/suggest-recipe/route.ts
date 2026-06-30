@@ -3,8 +3,7 @@
 // existing library ingredients by name (Title Case, TIM-1002) and creating the
 // rest with a sensible default the user can price. Reuses the AI integration
 // pattern from the TIM-1020 price suggestion.
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk"
+import { runScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
@@ -14,7 +13,7 @@ import { parseRecipeResponse } from "@/lib/recipe-suggest"
 export const runtime = "nodejs"
 export const maxDuration = 30
 
-const anthropic = new Anthropic()
+const ROUTE_PATH = "/api/workspaces/menu-pricing/suggest-recipe"
 
 interface ConceptContext {
   shop_identity?: string
@@ -123,13 +122,15 @@ Rules: no emojis, no AI language, no commentary outside the JSON. Quantities mus
 
   let lines
   try {
-    const message = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 1024,
+    const result = await runScoutTurn({
+      lane: "menu_suggest_recipe",
+      systemBlocks: [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 1024,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     })
-    const rawText = message.content[0]?.type === "text" ? message.content[0].text : ""
-    lines = parseRecipeResponse(rawText)
+    lines = parseRecipeResponse(result.text)
   } catch (err) {
     console.error("suggest-recipe AI error:", err)
     return Response.json({ error: "AI generation failed" }, { status: 500 })

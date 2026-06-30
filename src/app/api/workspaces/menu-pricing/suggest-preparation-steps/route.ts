@@ -2,8 +2,7 @@
 // Sibling of /suggest-recipe — that one generates ingredients, this one
 // generates the ordered prep instructions shown in the Recipe tab.
 // Title Case per TIM-1002 at the API boundary. No em dashes per Voice Mandate.
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk"
+import { runScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { normalizeAIOutput } from "@/lib/normalize"
@@ -14,7 +13,7 @@ import { enforceRateLimit } from "@/lib/rate-limit"
 export const runtime = "nodejs"
 export const maxDuration = 30
 
-const anthropic = new Anthropic()
+const ROUTE_PATH = "/api/workspaces/menu-pricing/suggest-preparation-steps"
 
 interface ConceptContext {
   shop_identity?: string
@@ -112,13 +111,16 @@ Return values in Title Case for any label-shaped fragments (every word capitaliz
 Return ONLY a JSON object: { "steps": ["...", "...", ...] }`
 
   try {
-    const message = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 1024,
+    const result = await runScoutTurn({
+      lane: "menu_suggest_recipe",
+      systemBlocks: [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 1024,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     })
 
-    const rawText = message.content[0]?.type === "text" ? message.content[0].text : ""
+    const rawText = result.text
     const jsonMatch = rawText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       return Response.json({ error: "No JSON in AI response" }, { status: 500 })

@@ -32,9 +32,7 @@ export const maxDuration = 60;
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models";
 import { createClient } from "@/lib/supabase/server";
 import { hasWriteAccess } from "@/lib/access";
 import { enforceRateLimit } from "@/lib/rate-limit";
@@ -301,7 +299,8 @@ export async function POST(request: NextRequest): Promise<Response> {
   findings.sort((a, b) => order[a.severity] - order[b.severity]);
 
   // ── Plain-language synthesis (top N findings, concurrent batches). ─────────
-  const client = new Anthropic();
+  // TIM-3468: synthesis routes through runScoutTurn under business_plan_audit
+  // lane. The route-level batch timeout still bounds total synthesis time.
   const synthTargets = findings.slice(0, MAX_SYNTHESIS_PER_AUDIT);
   for (let i = 0; i < synthTargets.length; i += MAX_SYNTHESIS_CONCURRENCY) {
     const batch = synthTargets.slice(i, i + MAX_SYNTHESIS_CONCURRENCY);
@@ -311,8 +310,8 @@ export async function POST(request: NextRequest): Promise<Response> {
         const timer = setTimeout(() => ac.abort(), SYNTHESIS_TIMEOUT_MS);
         try {
           return await synthesizeFinding({
-            client,
-            model: PLATFORM_AI_MODEL,
+            userId: user.id,
+            routeTag: "/api/business-plan/audit",
             finding: f,
             voiceGuide,
             abortSignal: ac.signal,

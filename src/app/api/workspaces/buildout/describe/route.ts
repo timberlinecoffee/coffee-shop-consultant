@@ -6,8 +6,7 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk";
+import { runScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { toTitleCase } from "@/lib/text";
@@ -152,22 +151,18 @@ Return ONLY valid JSON — no markdown, no explanation:
   ]
 }`;
 
-  const client = new Anthropic();
-
   let aiItems: AiEquipmentItem[];
   try {
-    const msg = await client.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 8192,
+    const result = await runScoutTurn({
+      lane: "buildout_describe",
+      systemBlocks: [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 8192,
+      userId: user.id,
+      routeTag: "/api/workspaces/buildout/describe",
     });
 
-    const text = msg.content
-      .filter((b) => b.type === "text")
-      .map((b) => (b as { type: "text"; text: string }).text)
-      .join("");
-
-    const clean = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+    const clean = result.text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
     const parsed = JSON.parse(clean) as { items?: AiEquipmentItem[] };
     aiItems = parsed.items ?? [];
   } catch (err) {

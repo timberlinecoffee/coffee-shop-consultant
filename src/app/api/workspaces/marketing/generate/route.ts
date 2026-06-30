@@ -6,8 +6,7 @@
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk";
+import { runScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { buildAiLanguageDirective, SUPPORTED_LANGUAGES } from "@/lib/account-settings";
@@ -25,7 +24,7 @@ import {
 } from "@/lib/marketing";
 import { normalizeConceptV2 } from "@/lib/concept";
 
-const anthropic = new Anthropic();
+const ROUTE_PATH = "/api/workspaces/marketing/generate";
 
 function paywallReason(status: string): "no_subscription" | "paused" | "expired" {
   if (status === "cancelled") return "paused";
@@ -293,20 +292,23 @@ ${buildConceptBlock(seed)}
 
   let aiText: string;
   try {
-    const response = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 2048,
-      system: (() => {
-        const rawLang = typeof (profile as { preferred_language?: unknown }).preferred_language === "string" ? (profile as { preferred_language?: string }).preferred_language!.trim().toLowerCase() : "en";
-        const lang = SUPPORTED_LANGUAGES.some((l) => l.code === rawLang) ? rawLang : "en";
-        const langDir = buildAiLanguageDirective(lang);
-        return langDir ? `${SYSTEM_PROMPT}\n\n${langDir}` : SYSTEM_PROMPT;
-      })(),
+    const systemText = (() => {
+      const rawLang = typeof (profile as { preferred_language?: unknown }).preferred_language === "string" ? (profile as { preferred_language?: string }).preferred_language!.trim().toLowerCase() : "en";
+      const lang = SUPPORTED_LANGUAGES.some((l) => l.code === rawLang) ? rawLang : "en";
+      const langDir = buildAiLanguageDirective(lang);
+      return langDir ? `${SYSTEM_PROMPT}\n\n${langDir}` : SYSTEM_PROMPT;
+    })();
+    const result = await runScoutTurn({
+      lane: "marketing_generate",
+      systemBlocks: [{ text: systemText }],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 2048,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     });
-    aiText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    aiText = result.text;
   } catch (err) {
-    console.error("[marketing/generate] anthropic error:", err);
+    console.error("[marketing/generate] AI error:", err);
     return Response.json({ error: "AI generation failed" }, { status: 502 });
   }
 

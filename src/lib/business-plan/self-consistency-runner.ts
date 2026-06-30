@@ -4,8 +4,11 @@
 // module stays node:test-loadable (no @/ imports, no Anthropic SDK). This file
 // holds the Anthropic glue both /generate and /regenerate-all use.
 
-import Anthropic from "@anthropic-ai/sdk";
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models";
+// Relative imports parallel audit-synthesis.ts — keep this loader-friendly
+// even though no node:test imports it directly today (the parent pure-test
+// module is self-consistency.ts).
+import { runScoutTurn } from "../ai/scout-adapter.ts";
+import type { ScoutLane } from "../ai/scout-lane.ts";
 import {
   SELF_CONSISTENCY_SYSTEM_PROMPT,
   buildSelfConsistencyUserMessage,
@@ -21,32 +24,34 @@ export type { SelfConsistencyContradiction };
 
 // Run the proofreader once. Returns [] on any error so the calling route
 // never fails a section because the consistency check itself misbehaved.
+// TIM-3468: routed through runScoutTurn with the caller's lane so telemetry
+// attributes the proofreader call to the same business-plan flow.
 export async function runSelfConsistencyCheck(args: {
-  client: Anthropic;
+  lane: ScoutLane;
+  userId: string;
+  routeTag: string;
   sectionKey: string;
   sectionTitle: string;
   sectionText: string;
 }): Promise<SelfConsistencyContradiction[]> {
-  const { client, sectionKey, sectionTitle, sectionText } = args;
+  const { lane, userId, routeTag, sectionKey, sectionTitle, sectionText } = args;
   // Skip on trivially-short outputs — no contradictions can hide in <80 chars.
   if (!sectionText || sectionText.trim().length < 80) return [];
   try {
-    const response = await client.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: PROOFREADER_MAX_TOKENS,
-      system: SELF_CONSISTENCY_SYSTEM_PROMPT,
+    const result = await runScoutTurn({
+      lane,
+      systemBlocks: [{ text: SELF_CONSISTENCY_SYSTEM_PROMPT }],
       messages: [
         {
           role: "user",
           content: buildSelfConsistencyUserMessage(sectionTitle, sectionText),
         },
       ],
+      maxTokens: PROOFREADER_MAX_TOKENS,
+      userId,
+      routeTag,
     });
-    let raw = "";
-    for (const block of response.content) {
-      if (block.type === "text") raw += block.text;
-    }
-    return parseSelfConsistencyResponse(raw, sectionKey);
+    return parseSelfConsistencyResponse(result.text, sectionKey);
   } catch {
     // Proofreader is best-effort. Logging would happen here in a richer stack
     // — for now we swallow so the founder still gets their draft.
@@ -61,7 +66,9 @@ export async function runSelfConsistencyCheck(args: {
 // passes itself so the result lands through exactly the same boundary the
 // first pass did.
 export async function regenerateWithFixDirective(args: {
-  client: Anthropic;
+  lane: ScoutLane;
+  userId: string;
+  routeTag: string;
   baseSystemPrompt: string;
   baseUserMessage: string;
   contradictions: SelfConsistencyContradiction[];
@@ -72,17 +79,15 @@ export async function regenerateWithFixDirective(args: {
   if (!directive) return null;
   const userMessage = `${args.baseUserMessage}\n\n${directive}`;
   try {
-    const response = await args.client.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: args.maxTokens ?? REGEN_MAX_TOKENS_DEFAULT,
-      system: args.baseSystemPrompt,
+    const result = await runScoutTurn({
+      lane: args.lane,
+      systemBlocks: [{ text: args.baseSystemPrompt }],
       messages: [{ role: "user", content: userMessage }],
+      maxTokens: args.maxTokens ?? REGEN_MAX_TOKENS_DEFAULT,
+      userId: args.userId,
+      routeTag: args.routeTag,
     });
-    let raw = "";
-    for (const block of response.content) {
-      if (block.type === "text") raw += block.text;
-    }
-    return raw.trim() || null;
+    return result.text.trim() || null;
   } catch {
     return null;
   }

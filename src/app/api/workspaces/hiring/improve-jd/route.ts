@@ -7,14 +7,13 @@
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk";
+import { runScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
-const anthropic = new Anthropic();
+const ROUTE_PATH = "/api/workspaces/hiring/improve-jd";
 
 const JD_FIELD_LABELS: Record<string, string> = {
   summary:         "Role Summary",
@@ -94,14 +93,16 @@ Rules:
 - Voice: knowledgeable friend, not consultant. Plain English. Direct. NEVER use: leverage, synergy, curated, unlock, elevate, embark, delve, journey, seamlessly, robust, holistic, comprehensive, innovative, passionate about, actually, genuinely, honestly. NEVER use em dashes (—); use ( -- ) if you need a pause.`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 1024,
+    const result = await runScoutTurn({
+      lane: "hiring_improve_jd",
+      systemBlocks: [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 1024,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     });
 
-    const text = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(result.text);
 
     const gaps = Array.isArray(parsed.gaps)
       ? parsed.gaps.map((g: unknown) => {

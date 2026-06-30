@@ -4,8 +4,7 @@
 // the concept document (free text) + location; market-research enrichment is
 // noted as v2 (see the PR). Reuses the AI integration + access pattern from the
 // TIM-1321 recipe suggestion and TIM-1020 price suggestion.
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk"
+import { runScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { normalizeAIOutput } from "@/lib/normalize"
@@ -17,7 +16,7 @@ import { parseSuggestedItems, resolveCategoryId } from "@/lib/menu-suggest"
 export const runtime = "nodejs"
 export const maxDuration = 30
 
-const anthropic = new Anthropic()
+const ROUTE_PATH = "/api/workspaces/menu-pricing/suggest-items"
 
 interface ConceptContext {
   shop_identity?: string
@@ -111,13 +110,15 @@ Rules: no commentary outside the JSON. Every category value must match a listed 
 
   let suggestions
   try {
-    const message = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 1500,
+    const result = await runScoutTurn({
+      lane: "menu_suggest_items",
+      systemBlocks: [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 1500,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     })
-    const rawText = message.content[0]?.type === "text" ? message.content[0].text : ""
-    suggestions = parseSuggestedItems(rawText)
+    suggestions = parseSuggestedItems(result.text)
   } catch (err) {
     console.error("suggest-items AI error:", err)
     return Response.json({ error: "AI generation failed" }, { status: 500 })

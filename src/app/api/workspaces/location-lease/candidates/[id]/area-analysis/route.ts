@@ -8,9 +8,8 @@
 // named places + concept summary) into block-specific positioning advice;
 // Haiku tended to drift to generic boilerplate when the OSM mix was thin.
 // Credit charge scales 2x per output token via modelTier: "complex".
-import { RESEARCH_AI_MODEL } from "@/lib/ai/models"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
-import Anthropic from "@anthropic-ai/sdk"
+import { runScoutTurn, toTurnMetricArgs } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { normalizeAIOutput } from "@/lib/normalize"
@@ -221,22 +220,25 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
   const locationLine = [candidate.name, candidate.address].filter(Boolean).join(" — ")
   const prompt = buildPrompt(locationLine, candidate.city ?? null, counts, items, conceptSummary)
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
   try {
-    const response = await anthropic.messages.create({
-      model: RESEARCH_AI_MODEL,
-      max_tokens: 600,
+    const scoutResult = await runScoutTurn({
+      lane: "location_area_analysis",
+      systemBlocks: [{
+        text: "You are a knowledgeable real estate advisor for small coffee shops. Be direct and specific. Plain English, no consultant jargon. Do not use emojis.",
+      }],
       messages: [{ role: "user", content: prompt }],
-      system:
-        "You are a knowledgeable real estate advisor for small coffee shops. Be direct and specific. Plain English, no consultant jargon. Do not use emojis.",
+      maxTokens: 600,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     })
 
     // TIM-2361: telemetry. Awaited — Vercel serverless freezes pending work
     // once the response is sent, so a `void` here loses the row. The helper
     // swallows its own insert errors so logging failures still cannot tank
     // the user response.
+    // TIM-3463: provider/lane/latencyMs/fallbackUsed populated from envelope.
     const telemetryClient = createServiceClient()
+    const metricArgs = toTurnMetricArgs(scoutResult, "location_area_analysis")
     await recordTurnMetric(
       {
         async insert(row) {
@@ -245,17 +247,13 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
       },
       {
         route: ROUTE_PATH,
-        model: RESEARCH_AI_MODEL,
-        usage: response.usage,
-        webSearchRequests: 0,
-        toolCalls: 0,
+        ...metricArgs,
         userId: user.id,
         planTier: resolvePlanTier(profile ?? {}),
       },
     )
 
-    const block = response.content.find((b) => b.type === "text")
-    const normalizedText = block && "text" in block ? normalizeAIOutput(block.text.trim()) : ""
+    const normalizedText = scoutResult.text ? normalizeAIOutput(scoutResult.text.trim()) : ""
 
     if (!normalizedText) {
       return Response.json({ error: "Area analysis returned empty." }, { status: 502 })

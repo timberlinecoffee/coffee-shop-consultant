@@ -19,7 +19,10 @@
 // signature, AbortSignal-friendly, returns null on failure so callers can
 // fall back to raw_message.
 
-import Anthropic from "@anthropic-ai/sdk";
+// Relative import keeps node:test loadable — the audit-synthesis.test.mjs
+// loads this file to exercise the parser, and @/ aliases don't resolve under
+// the strip-types loader. The runner only fires under route execution.
+import { runScoutTurn } from "../ai/scout-adapter.ts";
 import type { AuditFinding, AuditSeverity } from "./audit.ts";
 import { stripFindingTags } from "./sanitize-finding-text.ts";
 
@@ -32,8 +35,8 @@ export interface AuditSynthesisFields {
 }
 
 export interface SynthesizeFindingArgs {
-  client: Anthropic;
-  model: string;
+  userId: string;
+  routeTag: string;
   finding: AuditFinding;
   abortSignal?: AbortSignal;
   // Voice guide loaded from disk by the route. Passed verbatim as the system
@@ -132,20 +135,20 @@ export async function synthesizeFinding(
   const system = `${args.voiceGuide.trim()}${SYNTHESIS_INSTRUCTIONS}`;
   const user = buildSynthesisUserMessage(args.finding);
   try {
-    const resp = await args.client.messages.create(
-      {
-        model: args.model,
-        max_tokens: MAX_TOKENS,
-        system,
-        messages: [{ role: "user", content: user }],
-      },
-      args.abortSignal ? { signal: args.abortSignal } : undefined,
-    );
-    const text = resp.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("");
-    return parseSynthesisResponse(text);
+    // TIM-3468: routed through runScoutTurn under the audit lane. AbortSignal
+    // is now threaded into the adapter so the route-level SYNTHESIS_TIMEOUT_MS
+    // AbortController actually cancels the in-flight SDK call instead of just
+    // unblocking the awaiter.
+    const result = await runScoutTurn({
+      lane: "business_plan_audit",
+      systemBlocks: [{ text: system }],
+      messages: [{ role: "user", content: user }],
+      maxTokens: MAX_TOKENS,
+      userId: args.userId,
+      routeTag: args.routeTag,
+      signal: args.abortSignal,
+    });
+    return parseSynthesisResponse(result.text);
   } catch {
     return null;
   }

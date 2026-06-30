@@ -5,8 +5,7 @@
 // surfaces disagreement_reason. Same Pro gating + ownership check + rate
 // limit as /benchmark-price — both routes trigger the same paid Sonnet +
 // web_search round-trip and must be guarded identically.
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk"
+import { runScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { normalizeAIOutput } from "@/lib/normalize"
@@ -21,7 +20,7 @@ export const runtime = "nodejs"
 // suggestion call sequentially. 120s leaves margin (Vercel Pro allows 300s).
 export const maxDuration = 120
 
-const anthropic = new Anthropic()
+const ROUTE_PATH = "/api/workspaces/menu-pricing/suggest-price"
 
 interface ConceptContext {
   shop_identity?: string
@@ -210,13 +209,16 @@ Rules: no emojis, no AI language, the suggestion must be at or above $${marginFl
 Return ONLY the JSON object, no other text.`
 
   try {
-    const message = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 1024,
+    const result = await runScoutTurn({
+      lane: "menu_suggest_price",
+      systemBlocks: [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 1024,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     })
 
-    const rawText = message.content[0]?.type === "text" ? message.content[0].text : ""
+    const rawText = result.text
 
     const jsonMatch = rawText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
