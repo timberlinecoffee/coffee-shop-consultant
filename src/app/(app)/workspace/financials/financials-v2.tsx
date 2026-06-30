@@ -96,6 +96,9 @@ const TOUR_STEPS_V2: TourStep[] = [
     body: "Your cost of goods (coffee, milk, cups, syrups) as a percentage of the sale price.",
     hint: "a well-run coffee shop keeps this around 28–35%.",
   },
+  // Steps inside the Costs & Overhead accordion follow DOM order
+  // (Cost lines → Personnel → Startup → Funding) so the spotlight scrolls
+  // monotonically down the section instead of bouncing up and down.
   {
     id: "costs",
     tab: "inputs",
@@ -106,15 +109,6 @@ const TOUR_STEPS_V2: TourStep[] = [
     hint: "rent for a small cafe is often 8–12% of sales.",
   },
   {
-    id: "startup",
-    tab: "inputs",
-    targetId: "tour-startup-capital-assets",
-    sectionId: "v2-section-costs",
-    title: "Add up your opening costs",
-    body: "Your one-time costs to open live here. Capital assets (espresso machine, grinders, build-out) flow in automatically from the Equipment & Supplies workspace; add supplies, deposits and other one-time costs directly.",
-    hint: "opening a small espresso bar often runs $80k–$250k all in.",
-  },
-  {
     id: "staffing",
     tab: "inputs",
     targetId: "tour-personnel",
@@ -123,6 +117,15 @@ const TOUR_STEPS_V2: TourStep[] = [
     body: "Add your baristas and any manager here, with their pay. We add a payroll cushion for taxes and benefits automatically.",
     hint: "baristas often earn $15–$20/hr; a manager $40k–$55k a year.",
     why: "Staff is usually the largest cost in a coffee shop.",
+  },
+  {
+    id: "startup",
+    tab: "inputs",
+    targetId: "tour-startup-capital-assets",
+    sectionId: "v2-section-costs",
+    title: "Add up your opening costs",
+    body: "Your one-time costs to open live here. Capital assets (espresso machine, grinders, build-out) flow in automatically from the Equipment & Supplies workspace; add supplies, deposits and other one-time costs directly.",
+    hint: "opening a small espresso bar often runs $80k–$250k all in.",
   },
   {
     id: "funding",
@@ -903,8 +906,10 @@ function CostsOverheadContent({
         </div>
       </div>
 
-      {/* Personnel / Salaries */}
-      <div id="tour-personnel" className="space-y-3">
+      {/* Personnel / Salaries — `id="tour-personnel"` lives on the inner
+          PersonnelEditor root, so the wrapper here intentionally has no id to
+          avoid a duplicate-id DOM. */}
+      <div className="space-y-3">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
           Personnel &amp; Salaries
         </p>
@@ -925,8 +930,9 @@ function CostsOverheadContent({
         />
       </div>
 
-      {/* Startup Costs */}
-      <div id="tour-startup-capital-assets" className="space-y-3">
+      {/* Startup Costs — `id="tour-startup-capital-assets"` lives on the inner
+          StartupTab root. */}
+      <div className="space-y-3">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
           Startup &amp; Opening Costs
         </p>
@@ -948,8 +954,8 @@ function CostsOverheadContent({
         />
       </div>
 
-      {/* Funding */}
-      <div id="tour-funding" className="space-y-3">
+      {/* Funding — `id="tour-funding"` lives on the inner FundingTab root. */}
+      <div className="space-y-3">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
           Funding &amp; Loans
         </p>
