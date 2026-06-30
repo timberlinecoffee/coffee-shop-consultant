@@ -26,7 +26,10 @@ export function EmailFooter({
     <Section style={{ padding: '16px 40px 32px' }}>
       <Hr style={{ borderColor: colors.border, margin: '0 0 16px 0' }} />
       <Text style={captionStyle}>
-        &copy; {year} Timberline Coffee LLC. All rights reserved.
+        &copy; {year} Ivy &amp; Rill Consulting Inc. All rights reserved.
+      </Text>
+      <Text style={captionStyle}>
+        Ivy &amp; Rill Consulting Inc., 99 New Brighton Landing SE, Calgary, AB T2Z 0S7
       </Text>
       {variant === 'marketing' ? (
         <Text style={{ ...captionStyle, margin: 0 }}>
