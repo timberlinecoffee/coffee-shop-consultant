@@ -13,6 +13,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { normalizeMonthlyProjections } from "@/lib/financial-projection";
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan";
 import {
@@ -34,7 +35,7 @@ interface PlanCtx {
 }
 
 async function resolvePlan(): Promise<
-  | { ok: true; supabase: Awaited<ReturnType<typeof createClient>>; ctx: PlanCtx }
+  | { ok: true; supabase: Awaited<ReturnType<typeof createClient>>; ctx: PlanCtx; userId: string }
   | { ok: false; status: number; error: string }
 > {
   const supabase = await createClient();
@@ -65,7 +66,7 @@ async function resolvePlan(): Promise<
     .maybeSingle();
   if (!plan) return { ok: false, status: 404, error: "No plan found" };
 
-  return { ok: true, supabase, ctx: { planId: plan.id } };
+  return { ok: true, supabase, ctx: { planId: plan.id }, userId: user.id };
 }
 
 // The lease candidate that represents the plan's chosen location: the signed one
@@ -156,6 +157,8 @@ export async function GET() {
   if (!resolved.ok) {
     return Response.json({ error: resolved.error }, { status: resolved.status });
   }
+  const rl = await enforceRateLimit({ bucket: "copilot:consistency", id: resolved.userId, limit: 10, windowSec: 60 });
+  if (rl) return rl;
   const { supabase, ctx } = resolved;
   const { readings } = await readAll(supabase, ctx.planId);
   const conflicts = detectConflicts(readings);
@@ -236,6 +239,8 @@ export async function POST(request: NextRequest) {
   if (!resolved.ok) {
     return Response.json({ error: resolved.error }, { status: resolved.status });
   }
+  const rl = await enforceRateLimit({ bucket: "copilot:consistency", id: resolved.userId, limit: 10, windowSec: 60 });
+  if (rl) return rl;
   const { supabase, ctx } = resolved;
 
   let body: { factId?: string; value?: string };
