@@ -2361,6 +2361,11 @@ export function FinancialsWorkspace({
         paywallOpen={paywallOpen}
         onPaywallClose={() => setPaywallOpen(false)}
         onOpenWizard={openWizard}
+        tourOpen={tourOpen}
+        tourSeq={tourSeq}
+        onTourFinish={handleTourFinish}
+        onTourSkip={handleTourSkip}
+        onTourClose={handleTourClose}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
       </div>
