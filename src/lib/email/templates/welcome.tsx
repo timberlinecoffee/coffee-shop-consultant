@@ -45,11 +45,11 @@ export function WelcomeEmailTemplate({
           real value out of the next week:
         </EmailP>
         <EmailP>
-          1. Build a Business Plan in the workspace — drop your shop concept in
+          1. Build a Business Plan in the workspace: drop your shop concept in
           and let the AI fill out the lender-ready sections.
         </EmailP>
         <EmailP>
-          2. Run a Deep Research dive on your local market — pricing,
+          2. Run a Deep Research dive on your local market: pricing,
           competitor menus, foot-traffic.
         </EmailP>
         <EmailP>

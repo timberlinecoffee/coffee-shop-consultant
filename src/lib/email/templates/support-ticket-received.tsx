@@ -40,7 +40,7 @@ export function SupportTicketReceivedTemplate({
           Your support request{' '}
           <strong>{subjectLine}</strong> (ticket{' '}
           <code style={{ fontFamily: 'monospace' }}>{ticketId}</code>) is in the
-          queue. A human will reply within one business day — usually faster.
+          queue. A human will reply within one business day. Usually faster.
         </EmailP>
         <EmailSpacer height={8} />
         <EmailP small muted>
@@ -60,7 +60,7 @@ export function renderSupportTicketReceivedText(
     greetingLine(props.firstName),
     '',
     `Your support request "${props.subjectLine}" (ticket ${props.ticketId}) is in the queue.`,
-    'A human will reply within one business day — usually faster.',
+    'A human will reply within one business day. Usually faster.',
     '',
     'You can reply directly to this email to add more context to the same ticket.',
     '',

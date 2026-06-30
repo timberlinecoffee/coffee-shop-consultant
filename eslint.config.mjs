@@ -80,6 +80,27 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // TIM-3288: Voice Mandate guard — em-dash (U+2014) is forbidden in email
+  // template string literals and JSX text. Use '. ' or ': ' instead.
+  // Mirrors TIM-3236 no-restricted-syntax pattern.
+  {
+    files: ["src/lib/email/templates/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/—/]",
+          message:
+            "Em-dash not allowed in email templates (TIM-1537 Voice Mandate). Use '. ' or ': ' instead of ' — '.",
+        },
+        {
+          selector: "JSXText[value=/—/]",
+          message:
+            "Em-dash not allowed in email templates (TIM-1537 Voice Mandate). Use '. ' or ': ' instead of ' — '.",
+        },
+      ],
+    },
+  },
   // TIM-2573 (parent TIM-2555): client-reachable trees cannot import Node
   // built-ins. Turbopack refuses `node:*` in client chunks — broke prod under
   // TIM-2474 → benchmarks.ts → node:module → TIM-2546 (6h prod outage). Gate

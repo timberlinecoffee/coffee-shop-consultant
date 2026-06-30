@@ -27,7 +27,7 @@ export interface BusinessPlanExportReadyProps {
 }
 
 const SUBJECT = 'Your Business Plan PDF is ready';
-const PREVIEW = 'Download — the link expires in 24 hours.';
+const PREVIEW = 'Download ready. The link expires in 24 hours.';
 
 function formatExpiry(iso: string): string {
   const d = new Date(iso);

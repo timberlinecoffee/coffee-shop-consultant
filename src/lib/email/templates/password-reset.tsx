@@ -46,7 +46,7 @@ export function PasswordResetTemplate({
         <EmailButton href={resetUrl}>Set new password</EmailButton>
         <EmailSpacer height={12} />
         <EmailP small muted>
-          Didn&apos;t request this? You can safely ignore this email — your
+          Didn&apos;t request this? You can safely ignore this email. Your
           password is unchanged.
         </EmailP>
       </EmailBody>
