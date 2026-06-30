@@ -454,6 +454,10 @@ async function callWithFailover(
   // capability gates and preserves the caller's tier policy on retry.
   lane: ScoutLane,
   modelOverride: string | undefined,
+  // When set (e.g. EU geo-gate routed the turn to Anthropic), cross-provider
+  // failover is suppressed — we must not switch to DeepSeek on Anthropic 5xx
+  // or we defeat the PIPEDA compliance gate. Same-provider retry still fires.
+  lockedToProvider?: ScoutProvider,
 ): Promise<{
   result: ScoutTransportCallOutput
   provider: ScoutProvider
@@ -496,10 +500,14 @@ async function callWithFailover(
       if (BLOCK_CROSS_PROVIDER_FAILOVER_LANES.has(lane)) {
         throw retryErr
       }
-      // Cross-provider failover. The override doesn't apply across providers
-      // (an Anthropic model id is meaningless to DeepSeek and vice-versa) —
-      // drop it explicitly. Routes that depend on the override should be in
-      // BLOCK_CROSS_PROVIDER_FAILOVER_LANES so we never get here.
+      // Cross-provider failover — also skipped when the router locked the
+      // provider for compliance (EU geo-gate, TIM-3471). Rethrow to preserve
+      // the upstream error rather than routing EU traffic to DeepSeek.
+      if (lockedToProvider !== undefined) {
+        throw retryErr
+      }
+      // The override doesn't apply across providers (an Anthropic model id is
+      // meaningless to DeepSeek and vice-versa) — drop it explicitly.
       void modelOverride
       const failoverProvider = otherProvider(primary.provider)
       const failoverInput: ScoutTransportCallInput = {
@@ -589,6 +597,10 @@ export async function runScoutTurn(
     primary,
     input.lane,
     input.modelOverride,
+    // Lock to Anthropic when the EU geo-gate diverted the turn — prevents
+    // a provider 5xx from silently failing over to DeepSeek and bypassing
+    // the PIPEDA compliance gate.
+    decision.errorClass !== undefined ? decision.provider : undefined,
   )
   // EU geo-gate diverts count as fallback_used even when the resulting
   // Anthropic call succeeds on the first try — preserve the higher-precedence
