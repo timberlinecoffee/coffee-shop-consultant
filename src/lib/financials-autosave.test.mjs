@@ -107,6 +107,7 @@ test("the saved value is the last one scheduled, not the first", (t) => {
 
   t.mock.timers.tick(AUTOSAVE_DEBOUNCE_MS + 1);
 
+  assert.equal(calls.length, 1, "exactly one fetch — not one per edit");
   assert.equal(calls[0].cogs_pct, 35, "cogs_pct 35 (last edit) was persisted, not 30 or 32");
 });
 
