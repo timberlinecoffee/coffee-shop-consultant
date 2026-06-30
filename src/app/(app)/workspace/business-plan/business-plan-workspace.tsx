@@ -1538,36 +1538,58 @@ function SectionCard({
         section.isVisible ? "border-[var(--border)] opacity-100" : "border-[var(--neutral-cool-200)] opacity-60"
       }`}
     >
-      {/* Header — TIM-3492: identical title styling in collapsed & expanded;
-          only chevron direction + content-area visibility + help/Write-with-AI
+      {/* Header — TIM-3492: identical title styling in collapsed & expanded
+          (text-xl font-semibold per TIM-3491 directive — intentionally diverges
+          from the canonical SectionHeader's text-sm because BP cards are
+          top-level expandable sections, not sub-section headers).
+          Only chevron direction + content-area visibility + help/Write-with-AI
           appearance change on toggle. Visibility (Eye) and reset-to-auto
-          (RotateCcw) moved out per TIM-3300 canon; follow-up child relocates them. */}
+          (RotateCcw) moved out per TIM-3300 canon; follow-up TIM-3499 relocates
+          them. Collapsed-row tap target preserved per TIM-3428 (full row is
+          the expand button); expanded uses a chevron-only collapse button so
+          clicks in the title area during edit don't accidentally collapse. */}
       <div className="px-4 sm:px-5 py-4">
         <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            onClick={onToggleExpand}
-            aria-expanded={section.isExpanded}
-            aria-label={`${section.isExpanded ? "Collapse" : "Expand"} ${section.title}`}
-            className="flex-shrink-0 p-0.5 rounded hover:bg-[var(--neutral-cool-100)] transition-colors"
-          >
-            {section.isExpanded ? (
-              <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)]" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)]" />
-            )}
-          </button>
-          <div className="flex-1 min-w-0 flex items-center gap-2">
-            <h2
-              className="text-xl font-semibold text-[var(--foreground)] truncate"
-              title={section.title}
+          {section.isExpanded ? (
+            <>
+              <button
+                type="button"
+                onClick={onToggleExpand}
+                aria-expanded={true}
+                aria-label={`Collapse ${section.title}`}
+                className="flex-shrink-0 p-0.5 rounded hover:bg-[var(--neutral-cool-100)] transition-colors"
+              >
+                <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)]" />
+              </button>
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                <h2
+                  className="text-xl font-semibold text-[var(--foreground)] truncate min-w-0"
+                  title={section.title}
+                >
+                  {section.title}
+                </h2>
+                {blurb && (
+                  <SectionHelp title={section.title}>{blurb}</SectionHelp>
+                )}
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              aria-expanded={false}
+              aria-label={`Expand ${section.title}`}
+              className="flex-1 flex items-center gap-2 sm:gap-3 text-left min-w-0"
             >
-              {section.title}
-            </h2>
-            {section.isExpanded && blurb && (
-              <SectionHelp title={section.title}>{blurb}</SectionHelp>
-            )}
-          </div>
+              <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
+              <h2
+                className="text-xl font-semibold text-[var(--foreground)] truncate min-w-0 flex-1"
+                title={section.title}
+              >
+                {section.title}
+              </h2>
+            </button>
+          )}
           <div className="flex items-center gap-2 shrink-0">
             <StatusChip section={section} />
             {section.isExpanded && canEdit && !section.isEditing && !isStreaming && onWriteWithAi && (
