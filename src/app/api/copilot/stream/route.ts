@@ -19,7 +19,7 @@ export const runtime = "nodejs" // service-role writes (ai_errors) need node; Ed
 // synthesis can outrun the old 60s cap and time out mid-answer. Give research room.
 export const maxDuration = 120
 
-import Anthropic from "@anthropic-ai/sdk"
+import type Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
@@ -33,6 +33,14 @@ import { COPILOT_NAME } from "@/lib/copilot/branding"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { computeCreditCost, describeCreditCharge } from "@/lib/credits/cost"
 import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
+// TIM-3495: wire through streamScoutTurn (lane chat_general) instead of raw
+// anthropic.messages.stream. The adapter normalizes provider routing,
+// failover, EU geo-gate, and TIM-3463 telemetry columns.
+import {
+  streamScoutTurn,
+  type ScoutAnyToolDefinition,
+  type ScoutToolChoice,
+} from "@/lib/ai/scout-adapter"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
 import { loadPlanContext } from "@/lib/plan-context"
 import { buildEquipmentCostProposal, isEquipmentCostChangeIntent, type EquipmentCostItem } from "@/lib/cross-workspace-apply"
@@ -1122,8 +1130,6 @@ export async function POST(request: NextRequest) {
           resetGapTimer()
         }
 
-        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-
         // System prompt cached as a single prefix. The cache breakpoint must sit on the
         // LAST system block so the cached prefix covers identity + style + the plan
         // snapshot (~2–7K tokens). The stable block alone is ~424 tokens — below the
@@ -1216,20 +1222,6 @@ export async function POST(request: NextRequest) {
           max_uses: 8,
         }
 
-        const tools: Anthropic.ToolUnion[] = [
-          ...(isResearchAllowed ? [webSearchTool] : []),
-          ...(equipmentTool ? [equipmentTool] : []),
-          // TIM-1648: propose_item — offered on creation-intent messages. (TIM-1897: runs
-          // on Haiku like everything else; tool-use reliability flagged to Trent.)
-          ...(offerProposeItemTool ? [PROPOSE_ITEM_TOOL] : []),
-          // TIM-1798: propose_equipment_change — coordinated cross-workspace cost change.
-          ...(offerEquipmentChangeTool ? [PROPOSE_EQUIPMENT_CHANGE_TOOL] : []),
-          // TIM-2901: add_persona — Scout-callable apply action for Concept personas.
-          ...(offerAddPersonaTool ? [ADD_PERSONA_TOOL] : []),
-          // TIM-2381: generic workspace-change proposal tool (Scout-as-hub Phase 1).
-          ...(offerSuggestTool ? [SUGGEST_WORKSPACE_CHANGES_TOOL] : []),
-        ]
-
         // TIM-1798: on Haiku 4.5 (TIM-1897, platform model) tool_choice:auto does NOT
         // reliably call the tool — verified 0/5 fires on prod, so the cross-workspace
         // proposal never appeared. The owner's message already passed the deterministic
@@ -1238,62 +1230,108 @@ export async function POST(request: NextRequest) {
         // Nothing auto-applies (the modal still gates every write), so a forced call is
         // safe. Force only when the equipment tool is the unambiguous action this turn
         // (not a research turn, where web_search must stay available under auto).
-        const toolChoice: Anthropic.ToolChoice =
+        const toolChoice: ScoutToolChoice =
           offerEquipmentChangeTool && !isResearch
             ? { type: "tool", name: "propose_equipment_change" }
             : { type: "auto" }
 
-        const stream = anthropic.messages.stream({
-          model: modelId,
-          max_tokens: 16_000,
-          // TIM-1897: no `thinking` — the platform runs on Haiku 4.5, which does not
-          // support extended thinking (passing the param is a 400).
-          system: systemBlocks as Anthropic.TextBlockParam[],
-          messages: anthropicMessages,
-          // Only send tools/tool_choice when at least one tool applies — an empty tools
-          // array with tool_choice is rejected by the API.
-          ...(tools.length > 0 ? { tools, tool_choice: toolChoice } : {}),
+        // TIM-3495: route through streamScoutTurn (lane chat_general). The
+        // adapter currently routes Anthropic per chat_general's gate-closed
+        // default — modelId is still PLATFORM_AI_MODEL in prod and per-event
+        // SSE payloads are unchanged. ScoutAnyToolDefinition[] accepts both
+        // client tools (propose_item etc.) and the web_search server tool.
+        // Assemble from the source-typed constants so server vs client tool
+        // discrimination is exhaustive and TS-checked at the registration site.
+        const adapterTools: ScoutAnyToolDefinition[] = []
+        if (isResearchAllowed) {
+          adapterTools.push({
+            type: "web_search_20250305",
+            name: webSearchTool.name,
+            ...(typeof webSearchTool.max_uses === "number" ? { max_uses: webSearchTool.max_uses } : {}),
+          })
+        }
+        const clientToolSources: Array<Anthropic.Tool | null> = [
+          equipmentTool,
+          offerProposeItemTool ? PROPOSE_ITEM_TOOL : null,
+          offerEquipmentChangeTool ? PROPOSE_EQUIPMENT_CHANGE_TOOL : null,
+          offerAddPersonaTool ? ADD_PERSONA_TOOL : null,
+          offerSuggestTool ? SUGGEST_WORKSPACE_CHANGES_TOOL : null,
+        ]
+        for (const t of clientToolSources) {
+          if (!t) continue
+          adapterTools.push({
+            name: t.name,
+            description: t.description ?? "",
+            input_schema: t.input_schema as Record<string, unknown>,
+          })
+        }
+        const adapterMessages = anthropicMessages.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }))
+        const scoutStream = streamScoutTurn({
+          lane: "chat_general",
+          systemBlocks: systemBlocks.map((b) => ({
+            text: b.text,
+            ...(b.cache_control ? { cacheControl: b.cache_control } : {}),
+          })),
+          messages: adapterMessages,
+          maxTokens: 16_000,
+          userId: user.id,
+          routeTag: "/api/copilot/stream",
+          ...(adapterTools.length > 0 ? { tools: adapterTools, toolChoice } : {}),
         })
 
-        for await (const event of stream) {
+        // TIM-3495: provider/modelId stamped from the adapter's first event so
+        // metrics + persisted model_used carry the real provider that handled
+        // the turn (chat_general defaults to Anthropic via gate_closed today).
+        let scoutProvider: "anthropic" | "deepseek" = "anthropic"
+        let scoutModelId: string = modelId
+        let fallbackUsed = false
+        const scoutT0 = Date.now()
+
+        for await (const event of scoutStream) {
           if (closed) break
 
-          // TIM-1637: track tool_use block start/stop for equipment reorganization.
-          if (event.type === "content_block_start") {
-            const block = event.content_block
-            if (block.type === "tool_use") {
-              activeToolName = block.name
-              toolInputBuffer = ""
-              toolCallCount += 1 // TIM-1671: each tool action adds to the credit charge
-              // TIM-1746: a tool call (e.g. reorganize_equipment_list) streams its input as
-              // input_json_delta chunks with no text/thinking deltas. Treat the tool-block
-              // start as live activity so neither the 8s TTFT nor the 20s gap watchdog kills a
-              // legit long generation (a full equipment-to-stations arrangement is a large
-              // JSON array that can take >20s to emit). The input_json_delta handler below
-              // keeps the gap timer fed for the duration of the tool input.
-              if (!firstToken) {
-                firstToken = true
-                if (ttftTimer) clearTimeout(ttftTimer)
-              }
-              resetGapTimer()
-              // Let the client show an "organizing" affordance while the tool input streams.
-              send(sse("status", { state: "organizing" }))
-            } else if (block.type === "server_tool_use" || block.type === "web_search_tool_result") {
-              // TIM-1670: web_search runs server-side BEFORE any text/thinking token.
-              // Treat it as first activity so the 8s TTFT watchdog doesn't kill a legit
-              // search, and reset the gap watchdog so multi-second searches don't trip it.
-              if (!firstToken) {
-                firstToken = true
-                if (ttftTimer) clearTimeout(ttftTimer)
-              }
-              resetGapTimer()
-              if (block.type === "server_tool_use") {
-                // Let the client show a "searching the web" affordance.
-                send(sse("status", { state: "searching" }))
-              }
+          if (event.kind === "decision") {
+            scoutProvider = event.provider
+            scoutModelId = event.modelId
+            fallbackUsed = event.fallbackUsed
+          } else if (event.kind === "tool_use_start") {
+            // TIM-1637 / TIM-3495: track tool_use block start for client tools.
+            activeToolName = event.name
+            toolInputBuffer = ""
+            toolCallCount += 1 // TIM-1671: each tool action adds to the credit charge
+            // TIM-1746: a tool call (e.g. reorganize_equipment_list) streams its input as
+            // input_json_delta chunks with no text/thinking deltas. Treat the tool-block
+            // start as live activity so neither the 8s TTFT nor the 20s gap watchdog kills a
+            // legit long generation (a full equipment-to-stations arrangement is a large
+            // JSON array that can take >20s to emit). The tool_use_delta handler below
+            // keeps the gap timer fed for the duration of the tool input.
+            if (!firstToken) {
+              firstToken = true
+              if (ttftTimer) clearTimeout(ttftTimer)
             }
-          } else if (event.type === "content_block_stop") {
-            if (activeToolName === "reorganize_equipment_list" && toolInputBuffer) {
+            resetGapTimer()
+            // Let the client show an "organizing" affordance while the tool input streams.
+            send(sse("status", { state: "organizing" }))
+          } else if (event.kind === "server_tool_use_start" || event.kind === "server_tool_use_result") {
+            // TIM-1670 / TIM-3495: web_search runs server-side BEFORE any
+            // text/thinking token. Treat it as first activity so the 8s TTFT
+            // watchdog doesn't kill a legit search, and reset the gap watchdog
+            // so multi-second searches don't trip it.
+            if (!firstToken) {
+              firstToken = true
+              if (ttftTimer) clearTimeout(ttftTimer)
+            }
+            resetGapTimer()
+            if (event.kind === "server_tool_use_start") {
+              // Let the client show a "searching the web" affordance.
+              send(sse("status", { state: "searching" }))
+            }
+          } else if (event.kind === "tool_use_stop") {
+            const stoppedName = event.name
+            if (stoppedName === "reorganize_equipment_list" && toolInputBuffer) {
               try {
                 const toolInput = JSON.parse(toolInputBuffer) as {
                   rationale: string
@@ -1320,7 +1358,7 @@ export async function POST(request: NextRequest) {
               }
               activeToolName = null
               toolInputBuffer = ""
-            } else if (activeToolName === "propose_item" && toolInputBuffer) {
+            } else if (stoppedName === "propose_item" && toolInputBuffer) {
               // TIM-1648: emit structured menu-item proposal for the Review modal.
               try {
                 const toolInput = JSON.parse(toolInputBuffer) as {
@@ -1371,7 +1409,7 @@ export async function POST(request: NextRequest) {
               }
               activeToolName = null
               toolInputBuffer = ""
-            } else if (activeToolName === "propose_equipment_change" && toolInputBuffer) {
+            } else if (stoppedName === "propose_equipment_change" && toolInputBuffer) {
               // TIM-1798: build the coordinated cross-workspace proposal (equipment
               // item + derived Financials line + startup-cost total) and emit it.
               try {
@@ -1423,7 +1461,7 @@ export async function POST(request: NextRequest) {
               }
               activeToolName = null
               toolInputBuffer = ""
-            } else if (activeToolName === "add_persona" && toolInputBuffer) {
+            } else if (stoppedName === "add_persona" && toolInputBuffer) {
               // TIM-2901: emit a structured persona proposal for the Concept
               // workspace. The proposedValue is the canonical JSON the apply
               // path on the client parses; the fieldLabel carries the persona
@@ -1468,7 +1506,7 @@ export async function POST(request: NextRequest) {
               }
               activeToolName = null
               toolInputBuffer = ""
-            } else if (activeToolName === "suggest_workspace_changes" && toolInputBuffer) {
+            } else if (stoppedName === "suggest_workspace_changes" && toolInputBuffer) {
               // TIM-2381: normalize the Scout-produced changes array to SuggestionPayload[]
               // and emit a suggestions event for the unified review modal. sourceToolName
               // lets the client show "Review changes →" instead of "Review N suggestions".
@@ -1508,42 +1546,47 @@ export async function POST(request: NextRequest) {
               activeToolName = null
               toolInputBuffer = ""
             }
-          } else if (event.type === "content_block_delta") {
-            if (event.delta.type === "input_json_delta") {
-              // TIM-1746: tool-input streaming is real activity. Reset the gap watchdog on
-              // every chunk so a long tool call (full equipment-to-stations arrangement) is
-              // not killed mid-generation with "Took too long". Mark firstToken in case the
-              // model goes straight to a tool with no preceding text/thinking deltas.
-              if (!firstToken) {
-                firstToken = true
-                if (ttftTimer) clearTimeout(ttftTimer)
-              }
-              resetGapTimer()
-              toolInputBuffer += event.delta.partial_json
-            } else if (event.delta.type === "thinking_delta") {
-              if (!firstToken) {
-                firstToken = true
-                if (ttftTimer) clearTimeout(ttftTimer)
-              }
-              resetGapTimer()
-              send(sse("thinking", { delta: event.delta.thinking }))
-            } else if (event.delta.type === "text_delta") {
-              if (!firstToken) {
-                firstToken = true
-                if (ttftTimer) clearTimeout(ttftTimer)
-              }
-              resetGapTimer()
-              fullText += event.delta.text
-              send(sse("text", { delta: event.delta.text }))
+          } else if (event.kind === "tool_use_delta") {
+            // TIM-1746 / TIM-3495: tool-input streaming is real activity.
+            // Reset the gap watchdog on every chunk so a long tool call
+            // (full equipment-to-stations arrangement) is not killed
+            // mid-generation with "Took too long". Mark firstToken in case
+            // the model goes straight to a tool with no preceding text /
+            // thinking deltas.
+            if (!firstToken) {
+              firstToken = true
+              if (ttftTimer) clearTimeout(ttftTimer)
             }
-          } else if (event.type === "message_delta" && event.usage) {
-            outputTokens = event.usage.output_tokens ?? 0
-            // TIM-1670: server-tool usage (web searches) is reported on the final usage.
-            webSearchRequests = event.usage.server_tool_use?.web_search_requests ?? webSearchRequests
-          } else if (event.type === "message_start" && event.message?.usage) {
-            inputTokens = event.message.usage.input_tokens ?? 0
-            cacheReadTokens = event.message.usage.cache_read_input_tokens ?? 0
-            cacheCreateTokens = event.message.usage.cache_creation_input_tokens ?? 0
+            resetGapTimer()
+            toolInputBuffer += event.jsonDelta
+          } else if (event.kind === "thinking_delta") {
+            if (!firstToken) {
+              firstToken = true
+              if (ttftTimer) clearTimeout(ttftTimer)
+            }
+            resetGapTimer()
+            send(sse("thinking", { delta: event.text }))
+          } else if (event.kind === "text_delta") {
+            if (!firstToken) {
+              firstToken = true
+              if (ttftTimer) clearTimeout(ttftTimer)
+            }
+            resetGapTimer()
+            fullText += event.text
+            send(sse("text", { delta: event.text }))
+          } else if (event.kind === "usage") {
+            // TIM-3495: adapter emits a single final `usage` event after the
+            // SDK's message_stop carrying the full NormalizedUsage envelope.
+            // Capture all token / search counts here for the cost block below.
+            inputTokens = event.usage.inputTokensUncached
+            cacheReadTokens = event.usage.inputTokensCachedRead
+            cacheCreateTokens = event.usage.inputTokensCacheCreate
+            outputTokens = event.usage.outputTokens
+            webSearchRequests = event.usage.webSearchRequests
+          } else if (event.kind === "stop" && event.reason === "error") {
+            // Adapter signalled a transport-level error mid-stream — the
+            // outer try/catch will catch the rethrown ScoutAdapterError.
+            // No-op here so the loop continues to drain.
           }
         }
 
@@ -1579,8 +1622,11 @@ export async function POST(request: NextRequest) {
           })
           const creditCost = creditBreakdown.credits
 
-          // TIM-2509: per-turn telemetry into ai_turn_metrics. Awaited before
-          // controller close so the Vercel runtime doesn't freeze the insert.
+          // TIM-2509 / TIM-3495: per-turn telemetry into ai_turn_metrics.
+          // Awaited before controller close so the Vercel runtime doesn't
+          // freeze the insert. provider/lane/latencyMs/fallbackUsed flow from
+          // the Scout adapter envelope (stamped on first stream event +
+          // measured wall time from scoutT0 → end-of-stream).
           await recordTurnMetric(
             {
               async insert(row) {
@@ -1589,7 +1635,7 @@ export async function POST(request: NextRequest) {
             },
             {
               route: "/api/copilot/stream",
-              model: modelId,
+              model: scoutModelId,
               usage: {
                 input_tokens: inputTokens,
                 output_tokens: outputTokens,
@@ -1600,6 +1646,10 @@ export async function POST(request: NextRequest) {
               toolCalls: toolCallCount,
               userId: user.id,
               planTier: resolvePlanTier(profile),
+              provider: scoutProvider,
+              lane: "chat_general",
+              latencyMs: Date.now() - scoutT0,
+              fallbackUsed,
             },
           )
 
@@ -1626,7 +1676,7 @@ export async function POST(request: NextRequest) {
                 credits_used: existing.credits_used + creditCost,
                 cost_usd: (Number(existing.cost_usd) || 0) + costUsd,
                 last_message_at: new Date().toISOString(),
-                model_used: modelId,
+                model_used: scoutModelId,
               })
               .eq("id", existing.id)
           } else {
@@ -1638,7 +1688,7 @@ export async function POST(request: NextRequest) {
               credits_used: creditCost,
               cost_usd: costUsd,
               last_message_at: new Date().toISOString(),
-              model_used: modelId,
+              model_used: scoutModelId,
             })
           }
 
@@ -1701,7 +1751,7 @@ export async function POST(request: NextRequest) {
           // done event for clients that still read it, until they migrate.
           send(sse("done", {
             threadId: effectiveThreadId,
-            modelUsed: modelId,
+            modelUsed: scoutModelId,
             trialRemaining: null,
             // TIM-1671: live credit meter — what this turn cost and what's left.
             creditsSpent: creditsRemaining === null ? null : creditCost,

@@ -63,11 +63,37 @@ export interface ScoutToolDefinition {
   input_schema: Record<string, unknown>
 }
 
+// TIM-3495: Anthropic-hosted server tools (web_search) take a different shape
+// than client tools — no input_schema, just type+name(+max_uses). copilot/stream
+// registers `web_search_20250305` on research-classified turns; without this
+// type the only way to pass it was to bypass the adapter (today's reality).
+// Additive: routes that only use client tools keep working unchanged.
+export interface ScoutServerToolDefinition {
+  type: "web_search_20250305"
+  name: string
+  max_uses?: number
+}
+
+// Adapter tools: client tools (name/description/input_schema) OR server tools
+// (web_search_20250305). Discriminator is presence of `type` — server tools
+// have it, client tools don't. Existing callers passing the client shape stay
+// type-compatible without code changes.
+export type ScoutAnyToolDefinition = ScoutToolDefinition | ScoutServerToolDefinition
+
+// TIM-3495: caller-supplied tool_choice. copilot/stream forces
+// `propose_equipment_change` on the cross-workspace equipment cost lane
+// because Haiku 4.5 tool_choice:auto fires the tool ~0% of the time on that
+// intent (TIM-1798 measurement). Optional — defaults to `{type:"auto"}`.
+export type ScoutToolChoice =
+  | { type: "auto" }
+  | { type: "tool"; name: string }
+
 export interface ScoutTurnInput {
   lane: ScoutLane
   systemBlocks: SystemBlock[]
   messages: ScoutMessage[]
-  tools?: ScoutToolDefinition[]
+  tools?: ScoutAnyToolDefinition[]
+  toolChoice?: ScoutToolChoice
   maxTokens: number
   temperature?: number
   userId: string | null
@@ -131,11 +157,36 @@ export interface ScoutTurnOutput {
 
 export type ScoutStreamEvent =
   // First event the stream emits. Lets routes record provider + modelId in
-  // their telemetry without re-running the router (TIM-3468).
-  | { kind: "decision"; provider: ScoutProvider; modelId: string }
+  // their telemetry without re-running the router (TIM-3468). TIM-3495 added
+  // fallbackUsed so streaming callsites can stamp ai_turn_metrics with the
+  // routing-driven fallback flag (today: EU geo-gate diverts).
+  | {
+      kind: "decision"
+      provider: ScoutProvider
+      modelId: string
+      fallbackUsed: boolean
+      routeReason: string
+    }
   | { kind: "text_delta"; text: string }
+  // TIM-3495: extended-thinking text (Anthropic only — DeepSeek's compat
+  // endpoint forces thinking off). copilot/stream surfaces this as its
+  // `event: thinking` SSE so the client can show a thinking affordance.
+  | { kind: "thinking_delta"; text: string }
   | { kind: "tool_use_start"; id: string; name: string; input: unknown }
   | { kind: "tool_use_delta"; id: string; jsonDelta: string }
+  // TIM-3495: emitted on content_block_stop for a client tool_use block so
+  // routes can finalize the accumulated input (reorganize_equipment_list,
+  // propose_item, propose_equipment_change, add_persona,
+  // suggest_workspace_changes) and emit their suggestions payloads.
+  | { kind: "tool_use_stop"; id: string; name: string }
+  // TIM-3495: emitted when an Anthropic-hosted server tool block starts
+  // (today: web_search_20250305). copilot/stream uses this for the
+  // `status:searching` SSE event and to reset the GAP_MS watchdog while the
+  // server-side search runs without producing text/tool deltas.
+  | { kind: "server_tool_use_start"; name: string }
+  // TIM-3495: emitted on `web_search_tool_result` content block start —
+  // signals "search done, results landing" so the watchdog keeps eating.
+  | { kind: "server_tool_use_result" }
   | {
       kind: "stop"
       reason: "end_turn" | "tool_use" | "max_tokens" | "error"
@@ -149,7 +200,9 @@ export interface ScoutTransportCallInput {
   modelId: string
   systemBlocks: SystemBlock[]
   messages: ScoutMessage[]
-  tools: ScoutToolDefinition[] | undefined
+  tools: ScoutAnyToolDefinition[] | undefined
+  // TIM-3495: optional caller-supplied tool_choice (auto vs forced-tool name).
+  toolChoice?: ScoutToolChoice
   maxTokens: number
   temperature: number | undefined
   // TIM-3468: optional caller-supplied AbortSignal. liveTransport forwards
@@ -207,14 +260,42 @@ function toAnthropicMessages(
 }
 
 function toAnthropicTools(
-  tools: ScoutToolDefinition[] | undefined,
-): Anthropic.Tool[] | undefined {
+  tools: ScoutAnyToolDefinition[] | undefined,
+): Anthropic.ToolUnion[] | undefined {
   if (!tools || tools.length === 0) return undefined
-  return tools.map((t) => ({
-    name: t.name,
-    description: t.description,
-    input_schema: t.input_schema as Anthropic.Tool.InputSchema,
-  }))
+  return tools.map((t) => {
+    // TIM-3495: discriminate on `input_schema` rather than `type` — client
+    // tools always carry input_schema and the SDK's Anthropic.Tool keeps an
+    // optional `type: "custom"` field on its literal type, so a presence
+    // check on `type` could misfire when callers pass an SDK-typed literal.
+    if ("input_schema" in t) {
+      return {
+        name: t.name,
+        description: t.description,
+        input_schema: t.input_schema as Anthropic.Tool.InputSchema,
+      } satisfies Anthropic.Tool
+    }
+    // SDK's WebSearchTool20250305.name is the literal "web_search"; cast at
+    // the construction boundary to satisfy the SDK's branded literal.
+    const serverTool: Anthropic.WebSearchTool20250305 = {
+      type: t.type,
+      name: t.name as "web_search",
+      ...(t.max_uses !== undefined ? { max_uses: t.max_uses } : {}),
+    }
+    return serverTool
+  })
+}
+
+// TIM-3495: resolve tool_choice the SDK accepts. Default `{type:"auto"}`
+// preserves TIM-3468 behavior for all existing callers; explicit `{type:"tool",
+// name}` lets copilot/stream force propose_equipment_change on Haiku 4.5.
+function toAnthropicToolChoice(
+  choice: ScoutToolChoice | undefined,
+): Anthropic.ToolChoice {
+  if (choice?.type === "tool") {
+    return { type: "tool", name: choice.name }
+  }
+  return { type: "auto" }
 }
 
 // DeepSeek thinking-disable parameter is passed as extra-body to the SDK.
@@ -304,7 +385,10 @@ const liveTransport: ScoutTransport = {
             ? { temperature: input.temperature }
             : {}),
           ...(input.tools && input.tools.length > 0
-            ? { tools: toAnthropicTools(input.tools), tool_choice: { type: "auto" } }
+            ? {
+                tools: toAnthropicTools(input.tools),
+                tool_choice: toAnthropicToolChoice(input.toolChoice),
+              }
             : {}),
         },
         extra,
@@ -349,7 +433,10 @@ const liveTransport: ScoutTransport = {
             ? { temperature: input.temperature }
             : {}),
           ...(input.tools && input.tools.length > 0
-            ? { tools: toAnthropicTools(input.tools), tool_choice: { type: "auto" } }
+            ? {
+                tools: toAnthropicTools(input.tools),
+                tool_choice: toAnthropicToolChoice(input.toolChoice),
+              }
             : {}),
         },
         extra,
@@ -374,11 +461,31 @@ const liveTransport: ScoutTransport = {
             }
           } else if (block.type === "server_tool_use") {
             webSearchRequests += 1
+            // TIM-3495: surface the server-tool start so copilot/stream can
+            // emit `status:searching` and keep its GAP_MS watchdog fed while
+            // the server-side search runs without producing text deltas.
+            yield { kind: "server_tool_use_start", name: block.name }
+          } else if (block.type === "web_search_tool_result") {
+            // TIM-3495: search-results landing — copilot/stream uses this to
+            // reset the watchdog and (today) leaves it as a silent keep-alive.
+            yield { kind: "server_tool_use_result" }
+          }
+        } else if (event.type === "content_block_stop") {
+          // TIM-3495: finalize the active tool block so the route can parse
+          // the accumulated tool input and emit its suggestions payload.
+          const t = activeTool.get(event.index)
+          if (t) {
+            yield { kind: "tool_use_stop", id: t.id, name: t.name }
+            activeTool.delete(event.index)
           }
         } else if (event.type === "content_block_delta") {
           const delta = event.delta
           if (delta.type === "text_delta") {
             yield { kind: "text_delta", text: delta.text }
+          } else if (delta.type === "thinking_delta") {
+            // TIM-3495: extended-thinking deltas — surface so copilot/stream
+            // can emit its `event: thinking` SSE event.
+            yield { kind: "thinking_delta", text: delta.thinking }
           } else if (delta.type === "input_json_delta") {
             const t = activeTool.get(event.index)
             if (t) {
@@ -587,6 +694,7 @@ export async function runScoutTurn(
     systemBlocks: input.systemBlocks,
     messages: input.messages,
     tools: input.tools,
+    toolChoice: input.toolChoice,
     maxTokens: input.maxTokens,
     temperature: input.temperature,
     signal: input.signal,
@@ -638,16 +746,22 @@ export async function* streamScoutTurn(
     systemBlocks: input.systemBlocks,
     messages: input.messages,
     tools: input.tools,
+    toolChoice: input.toolChoice,
     maxTokens: input.maxTokens,
     temperature: input.temperature,
     signal: input.signal,
   }
-  // TIM-3468: announce routing decision so callers can stamp telemetry with
-  // provider + modelId without re-running the router.
+  // TIM-3468 / TIM-3495: announce routing decision so callers can stamp
+  // telemetry with provider + modelId + fallbackUsed without re-running the
+  // router. fallbackUsed reflects the routing-driven divert (today: EU
+  // geo-gate) — mid-stream cross-provider failover is intentionally NOT
+  // supported because already-flushed tokens can't be retroactively retried.
   yield {
     kind: "decision",
     provider: decision.provider,
     modelId: effectiveModelId,
+    fallbackUsed: decision.fallbackUsed ?? false,
+    routeReason: decision.reason,
   }
   for await (const event of transport.stream(primary)) {
     yield event
