@@ -301,6 +301,7 @@ export async function GET(request: Request) {
             marketingOptedIn: oauthMarketingConsent,
             klaviyoSubscribed,
             klaviyoProfileId,
+            consentedAt,
           });
         }
 
