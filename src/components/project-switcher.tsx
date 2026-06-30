@@ -11,6 +11,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Plus, Lock, X, Trash2 } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProUpgradePrompt } from "@/components/pro-upgrade-prompt";
@@ -639,14 +640,13 @@ function AddProjectModal({
         aria-hidden="true"
       />
       <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-8">
-        <button
+        <CollapseButton
           onClick={onClose}
           disabled={submitting}
-          className="absolute top-4 right-4 p-1 rounded-xl text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          size={18}
+          className="absolute top-4 right-4 p-1 rounded-xl text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Close"
-        >
-          <X size={18} aria-hidden="true" />
-        </button>
+        />
 
         {createdProject ? (
           <>

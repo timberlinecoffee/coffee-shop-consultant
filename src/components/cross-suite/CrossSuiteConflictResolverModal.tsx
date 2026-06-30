@@ -15,7 +15,8 @@
 // useCrossSuiteConflictResolver hook in this same folder.
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ExternalLink, AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, ExternalLink, Info } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import type {
   CrossSuiteConflict,
   CrossSuiteSnapshot,
@@ -97,14 +98,12 @@ function Header({ conflict, onClose }: { conflict: CrossSuiteConflict; onClose: 
         <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" aria-hidden="true" />
         <h2 className="text-lg font-semibold text-[var(--foreground)] truncate">{title}</h2>
       </div>
-      <button
-        type="button"
+      <CollapseButton
         onClick={onClose}
-        className="rounded-md p-1 text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+        size={20}
+        className="rounded-md p-1 text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
         aria-label="Close"
-      >
-        <X className="w-5 h-5" aria-hidden="true" />
-      </button>
+      />
     </div>
   );
 }

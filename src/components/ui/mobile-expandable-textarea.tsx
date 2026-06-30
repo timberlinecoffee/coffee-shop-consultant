@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUiRevamp } from "@/hooks/useUiRevamp";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 
 export interface MobileExpandableTextareaProps {
   value: string;
@@ -174,14 +174,11 @@ export function MobileExpandableTextarea({
                   <span className="text-sm font-semibold text-[var(--foreground)]">
                     {label}
                   </span>
-                  <button
-                    type="button"
+                  <CollapseButton
                     onClick={handleCancel}
-                    className="h-7 w-7 flex items-center justify-center rounded-xl text-[var(--muted-foreground)] hover:bg-[var(--surface-warm-100)] transition-colors"
+                    className="h-7 w-7 flex items-center justify-center rounded-xl text-[var(--muted-foreground)] hover:bg-[var(--surface-warm-100)]"
                     aria-label="Close"
-                  >
-                    <X size={16} />
-                  </button>
+                  />
                 </div>
 
                 {/* Editing area */}

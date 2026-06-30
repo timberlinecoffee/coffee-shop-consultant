@@ -7,6 +7,7 @@
 // ingredients (amortized disposables), 'piece' unit, badge-styled category UX on item card.
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { useSearchParams } from "next/navigation";
 import {
   Utensils,
@@ -1096,14 +1097,12 @@ function ItemEditorPanel({
             </select>
           </div>
         </div>
-        <button
-          type="button"
+        <CollapseButton
           onClick={onClose}
-          className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors mt-0.5 shrink-0"
+          size={16}
+          className="text-[var(--dark-grey)] hover:text-[var(--foreground)] mt-0.5 shrink-0"
           aria-label="Collapse"
-        >
-          <X size={16} />
-        </button>
+        />
       </div>
 
       {/* TIM-1471: structured tabs inside the expanded card. */}
@@ -3486,14 +3485,12 @@ function SuggestItemsModal({
               <p className="text-xs text-[var(--muted-foreground)]">Tap to add any that fit. You can edit prices and recipes after.</p>
             </div>
           </div>
-          <button
-            type="button"
+          <CollapseButton
             onClick={onClose}
-            className="text-[var(--neutral-cool-650)] hover:text-[var(--foreground)] transition-colors"
+            size={18}
+            className="text-[var(--neutral-cool-650)] hover:text-[var(--foreground)]"
             aria-label="Close"
-          >
-            <X size={18} />
-          </button>
+          />
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">

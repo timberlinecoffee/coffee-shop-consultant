@@ -20,7 +20,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, Trash2, X } from "lucide-react";
+import { GripVertical, Plus, Trash2 } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
 import type { ListSection } from "@/types/buildout";
 
@@ -314,14 +315,12 @@ export function CategorySettingsPanel({
               Drag to reorder. Click a name to rename.
             </p>
           </div>
-          <button
-            type="button"
+          <CollapseButton
             onClick={onClose}
-            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors shrink-0"
+            size={16}
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] shrink-0"
             aria-label="Close"
-          >
-            <X size={16} />
-          </button>
+          />
         </div>
 
         {/* Station list */}

@@ -7,7 +7,8 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
-import { HelpCircle, X } from 'lucide-react'
+import { HelpCircle } from 'lucide-react'
+import { CollapseButton } from '@/components/ui/CollapseButton'
 import { cn } from '@/lib/utils'
 import { useEdgeClamp } from '@/lib/use-edge-clamp'
 
@@ -70,14 +71,12 @@ export function InfoTip({
             <span className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
               {label}
             </span>
-            <button
-              type="button"
+            <CollapseButton
               onClick={() => setOpen(false)}
-              aria-label="Close explanation"
+              size={12}
               className="text-[var(--dark-grey)] transition-colors hover:text-[var(--foreground)]"
-            >
-              <X size={12} aria-hidden="true" />
-            </button>
+              aria-label="Close explanation"
+            />
           </div>
           <div className="text-xs leading-relaxed text-[var(--gray-1300)]">{children}</div>
         </div>
