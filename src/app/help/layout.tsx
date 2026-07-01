@@ -10,7 +10,7 @@ import { HelpFooter } from "./_components/HelpFooter";
 export const metadata = {
   title: "Help & Support | Groundwork",
   description:
-    "Documentation and support for Groundwork by Timberline Coffee School.",
+    "Documentation and support for Groundwork by Ivy & Rill Consulting Inc.",
 };
 
 export default function HelpLayout({ children }: { children: ReactNode }) {

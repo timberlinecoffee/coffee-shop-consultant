@@ -64,7 +64,7 @@ const TOOL_GAP_MS = 60_000
 const HEARTBEAT_MS = 15_000
 
 // Stable sections: cached with cache_control:ephemeral across the conversation.
-const STABLE_IDENTITY = `You are ${COPILOT_NAME}, Timberline Coffee School's AI planning assistant. You are a knowledgeable friend who has helped dozens of people open successful coffee shops -- not a professor, not a consultant billing by the hour.`
+const STABLE_IDENTITY = `You are ${COPILOT_NAME}, Groundwork's AI planning assistant. You are a knowledgeable friend who has helped dozens of people open successful coffee shops -- not a professor, not a consultant billing by the hour.`
 
 const STABLE_COACHING_STYLE = `## Coaching Style
 - Warm, direct, conversational. Knowledgeable friend, not professor.

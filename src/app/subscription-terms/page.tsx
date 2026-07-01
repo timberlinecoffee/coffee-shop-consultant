@@ -34,7 +34,7 @@ export default function SubscriptionTermsPage() {
               Terms of Service
             </Link>{" "}
             and govern the billing, renewal, and cancellation of your paid subscription. By starting a
-            subscription, you agree to these terms. Groundwork is a product of Timberline Coffee School.
+            subscription, you agree to these terms. Groundwork is a product of Ivy &amp; Rill Consulting Inc.
           </p>
 
           <section>
@@ -180,7 +180,7 @@ export default function SubscriptionTermsPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">11. Contact</h2>
             <p>
-              Groundwork, a product of Timberline Coffee School
+              Groundwork, a product of Ivy &amp; Rill Consulting Inc.
               <br />
               Email:{" "}
               <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
@@ -193,7 +193,7 @@ export default function SubscriptionTermsPage() {
 
       <footer className="bg-[var(--foreground)] text-[var(--dark-grey)] px-6 py-6 text-sm">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-          <span>&copy; {new Date().getFullYear()} Timberline Coffee School. Groundwork is a product of Timberline Coffee School.</span>
+          <span>&copy; {new Date().getFullYear()} Ivy &amp; Rill Consulting Inc. Groundwork is a product of Ivy &amp; Rill Consulting Inc.</span>
           <div className="flex gap-6 flex-wrap justify-center">
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>

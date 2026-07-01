@@ -111,9 +111,6 @@ export function SettingsShell({
             {activeTab === "notifications" && (
               <StubTab label="Notifications" />
             )}
-            {activeTab === "business-profile" && (
-              <StubTab label="Business profile" />
-            )}
             {activeTab === "preferences" && (
               <GuidedNoticesCard variant="tab" />
             )}

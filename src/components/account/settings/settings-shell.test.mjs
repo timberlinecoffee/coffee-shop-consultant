@@ -11,9 +11,9 @@ const { MOCK_INVOICES } = await import("./mock-invoices.ts");
 
 // --- Settings shell ---
 
-test("SETTINGS_TABS has exactly 8 entries", () => {
-  // TIM-2423: added "preferences" tab to host Guided Notices resurface UI.
-  assert.strictEqual(SETTINGS_TABS.length, 8);
+test("SETTINGS_TABS has exactly 7 entries", () => {
+  // TIM-3517: removed "business-profile" tab per board directive on TIM-3511.
+  assert.strictEqual(SETTINGS_TABS.length, 7);
 });
 
 test("SETTINGS_TABS contains all required IDs in order", () => {
@@ -23,7 +23,6 @@ test("SETTINGS_TABS contains all required IDs in order", () => {
     "localization",
     "billing",
     "notifications",
-    "business-profile",
     "preferences",
     "data",
     "appearance",

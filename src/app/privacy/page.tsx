@@ -3,8 +3,8 @@ import { Logo } from "../_components/Logo";
 import { CookiePreferencesLink } from "@/components/consent/CookiePreferencesLink";
 
 export const metadata = {
-  title: "Privacy Policy | Timberline Coffee School",
-  description: "Privacy Policy for Timberline Coffee School.",
+  title: "Privacy Policy | Ivy & Rill Consulting Inc.",
+  description: "Privacy Policy for Ivy & Rill Consulting Inc.",
 };
 
 const EFFECTIVE_DATE = "June 30, 2026";
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
 
         <div className="prose prose-sm max-w-none text-[var(--foreground)] space-y-8">
           <p>
-            Timberline Coffee School (&quot;Timberline&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) operates the
+            Ivy &amp; Rill Consulting Inc. (&quot;Ivy &amp; Rill&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) operates the
             Groundwork platform at groundwork.coffee. We are committed to protecting your privacy. This
             Privacy Policy explains what information we collect, how we use it, and your rights regarding
             that information.
@@ -149,7 +149,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">4. International Data Transfers (EU/EEA/UK visitors)</h2>
             <p>
-              Timberline Coffee School is operated in the United States. When you use the Service, your
+              Ivy &amp; Rill Consulting Inc. is operated in the United States. When you use the Service, your
               personal data may be transferred to and processed in the United States.
             </p>
             <p className="mt-3">
@@ -238,11 +238,11 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Legal and safety.</strong> We may disclose information if required by law,
-                court order, or to protect the rights and safety of Timberline, our users, or the
+                court order, or to protect the rights and safety of Ivy &amp; Rill, our users, or the
                 public.
               </li>
               <li>
-                <strong>Business transfers.</strong> If Timberline is acquired or merges with another
+                <strong>Business transfers.</strong> If Ivy &amp; Rill is acquired or merges with another
                 company, your information may be transferred as part of that transaction. We will notify
                 you in advance.
               </li>
@@ -444,7 +444,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">13. Contact</h2>
             <p>
-              Timberline Coffee School
+              Ivy &amp; Rill Consulting Inc.
               <br />
               Email:{" "}
               <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
@@ -457,7 +457,7 @@ export default function PrivacyPage() {
 
       <footer className="bg-[var(--foreground)] text-[var(--dark-grey)] px-6 py-6 text-sm">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-          <span>&copy; {new Date().getFullYear()} Timberline Coffee School</span>
+          <span>&copy; {new Date().getFullYear()} Ivy &amp; Rill Consulting Inc.</span>
           <div className="flex gap-6 flex-wrap justify-center">
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>

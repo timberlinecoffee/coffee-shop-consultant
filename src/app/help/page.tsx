@@ -9,7 +9,7 @@ import { HelpEmailButton } from "./_components/HelpEmailButton";
 export const metadata = {
   title: "Help & Support | Groundwork",
   description:
-    "Browse help articles for Groundwork or send a message to the Timberline Coffee School team.",
+    "Browse help articles for Groundwork or send a message to the Ivy & Rill Consulting Inc. team.",
 };
 
 export default function HelpIndexPage() {
