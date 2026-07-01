@@ -31,6 +31,8 @@ export interface TrialUserRow {
   trialJustConvertedTo: string | null;
   // jsonb: { day5?: ISO, day7?: ISO, day8?: ISO }
   remindersSent: Record<string, string>;
+  // ISO 4217 code for the workspace currency; optional, defaults to USD.
+  currencyCode?: string;
 }
 
 export interface DueTrialReminder {
@@ -43,6 +45,8 @@ export interface DueTrialReminder {
   // For day8 the trial has ended and the user is on the converted-to plan.
   // For day5/day7 the user is still trialing.
   planKey: string;
+  // ISO 4217 code for the workspace currency; optional, defaults to USD.
+  currencyCode?: string;
 }
 
 const PLAN_DISPLAY: Record<string, string> = {
@@ -88,6 +92,7 @@ export function selectDueReminders(
           day: "day5",
           planKey: tier,
           planName: PLAN_DISPLAY[tier] ?? "Pro",
+          currencyCode: u.currencyCode,
         });
         continue; // never two reminders in one run
       }
@@ -111,6 +116,7 @@ export function selectDueReminders(
           day: "day7",
           planKey: tier,
           planName: PLAN_DISPLAY[tier] ?? "Pro",
+          currencyCode: u.currencyCode,
         });
         continue;
       }
@@ -133,6 +139,7 @@ export function selectDueReminders(
         day: "day8",
         planKey: tier,
         planName: PLAN_DISPLAY[tier] ?? "Pro",
+        currencyCode: u.currencyCode,
       });
     }
   }

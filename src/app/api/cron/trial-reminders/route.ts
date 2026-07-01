@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
   const { data: trialingRows, error: trialingErr } = await svc
     .from("users")
-    .select("id, email, full_name, subscription_status, subscription_tier, trial_ends_at, trial_just_converted_to, trial_reminders_sent")
+    .select("id, email, full_name, subscription_status, subscription_tier, trial_ends_at, trial_just_converted_to, trial_reminders_sent, currency_code")
     .eq("subscription_status", "free_trial")
     .not("trial_ends_at", "is", null)
     .lte("trial_ends_at", cutoffFuture);
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
   const { data: convertedRows, error: convertedErr } = await svc
     .from("users")
-    .select("id, email, full_name, subscription_status, subscription_tier, trial_ends_at, trial_just_converted_to, trial_reminders_sent, updated_at")
+    .select("id, email, full_name, subscription_status, subscription_tier, trial_ends_at, trial_just_converted_to, trial_reminders_sent, updated_at, currency_code")
     .eq("subscription_status", "active")
     .not("trial_just_converted_to", "is", null)
     .gte("updated_at", cutoffRecentPast);
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const rows: TrialUserRow[] = [...(trialingRows ?? []), ...(convertedRows ?? [])].map(
+  const rows: (TrialUserRow & { currencyCode?: string })[] = [...(trialingRows ?? []), ...(convertedRows ?? [])].map(
     (r) => ({
       userId: r.id as string,
       email: (r.email as string | null) ?? "",
@@ -84,6 +84,7 @@ export async function GET(request: NextRequest) {
       trialEndsAt: (r.trial_ends_at as string | null) ?? null,
       trialJustConvertedTo: (r.trial_just_converted_to as string | null) ?? null,
       remindersSent: (r.trial_reminders_sent as Record<string, string> | null) ?? {},
+      currencyCode: (r.currency_code as string | null) ?? undefined,
     }),
   );
 
@@ -101,6 +102,7 @@ export async function GET(request: NextRequest) {
     const result = await sendTrialReminderEmail({
       ...cand,
       baseUrl: base,
+      currencyCode: cand.currencyCode,
     });
 
     if (!result.ok) {

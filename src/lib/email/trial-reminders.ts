@@ -15,6 +15,7 @@ import {
   type TrialReminderDay,
 } from "@/lib/trial-reminders";
 import { TRANSACTIONAL_FROM } from "../../components/email/tokens.ts";
+import { currencySymbol } from "@/lib/currency";
 
 export interface TrialReminderSendInput extends DueTrialReminder {
   // Site origin used to construct the cancel link (https://...).
@@ -154,6 +155,7 @@ ${signoff()}
 function renderDay7(input: TrialReminderSendInput): RenderedEmail {
   const url = cancelUrl(input.baseUrl, input.userId, 1);
   const price = PLAN_MONTHLY_PRICE[input.planKey] ?? "99";
+  const sym = currencySymbol(input.currencyCode ?? "USD");
 
   return {
     subject: "Your Groundwork trial ends today",
@@ -162,7 +164,7 @@ function renderDay7(input: TrialReminderSendInput): RenderedEmail {
       `
 ${greetingP(input.firstName)}
 <p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#1a1a1a;">Today is the last day of your free trial.</p>
-<p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#1a1a1a;">Your ${escapeHtml(input.planName)} subscription begins at midnight. Your card on file will be charged $${escapeHtml(price)}/month automatically.</p>
+<p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#1a1a1a;">Your ${escapeHtml(input.planName)} subscription begins at midnight. Your card on file will be charged ${escapeHtml(sym)}${escapeHtml(price)}/month automatically.</p>
 <p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#1a1a1a;">Want to cancel first? Use the link below now and you won't be charged anything.</p>
 ${cancelButton(url, "Cancel my trial")}
 ${signoff()}
@@ -173,7 +175,7 @@ ${signoff()}
       ``,
       `Today is the last day of your free trial.`,
       ``,
-      `Your ${input.planName} subscription begins at midnight. Your card on file will be charged $${price}/month automatically.`,
+      `Your ${input.planName} subscription begins at midnight. Your card on file will be charged ${sym}${price}/month automatically.`,
       ``,
       `Want to cancel first? Use the link below now and you won't be charged anything.`,
       ``,
@@ -196,6 +198,7 @@ function renderDay8(input: TrialReminderSendInput): RenderedEmail {
         year: "numeric",
       })
     : "today";
+  const sym = currencySymbol(input.currencyCode ?? "USD");
 
   return {
     subject: `You're on ${input.planName} — here's your receipt`,
@@ -204,7 +207,7 @@ function renderDay8(input: TrialReminderSendInput): RenderedEmail {
       `
 ${greetingP(input.firstName)}
 <p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#1a1a1a;">Your ${escapeHtml(input.planName)} subscription is active.</p>
-<p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#1a1a1a;">We charged the card ending in ${escapeHtml(last4)} $${escapeHtml(price)} on ${escapeHtml(chargeDate)}.</p>
+<p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#1a1a1a;">We charged the card ending in ${escapeHtml(last4)} ${escapeHtml(sym)}${escapeHtml(price)} on ${escapeHtml(chargeDate)}.</p>
 <p style="margin:0 0 8px;font-size:14px;line-height:1.55;color:#1a1a1a;">What you have access to:</p>
 ${list.html}
 <p style="margin:16px 0 0;font-size:14px;line-height:1.55;color:#1a1a1a;">Manage or cancel your subscription in Settings &gt; Billing. If something looks wrong, reply to this email.</p>
@@ -216,7 +219,7 @@ ${signoff()}
       ``,
       `Your ${input.planName} subscription is active.`,
       ``,
-      `We charged the card ending in ${last4} $${price} on ${chargeDate}.`,
+      `We charged the card ending in ${last4} ${sym}${price} on ${chargeDate}.`,
       ``,
       `What you have access to:`,
       list.text,
