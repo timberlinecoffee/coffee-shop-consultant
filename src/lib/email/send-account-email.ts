@@ -139,7 +139,7 @@ export async function sendCreditPackReceiptEmail(args: {
       </tr>
       <tr>
         <td style="padding:6px 0;color:#6b6b6b;">Charged</td>
-        <td style="padding:6px 0;text-align:right;">${currencyLabel} ${currencySymbol(args.currency)}${amountDollars}</td>
+        <td style="padding:6px 0;text-align:right;">${currencyLabel} ${escapeHtml(currencySymbol(args.currency))}${amountDollars}</td>
       </tr>
       <tr style="border-top:1px solid #e5e5e5;">
         <td style="padding:8px 0;font-weight:600;">New credit balance</td>

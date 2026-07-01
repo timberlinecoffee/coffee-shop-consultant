@@ -23,8 +23,6 @@ export interface TrialReminderSendInput extends DueTrialReminder {
   // For day8: how the receipt should report the charge.
   cardLast4?: string | null;
   chargeDateIso?: string | null;
-  // ISO 4217 code for the workspace currency; defaults to USD.
-  currencyCode?: string;
 }
 
 export type TrialReminderSendResult =
