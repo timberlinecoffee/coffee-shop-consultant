@@ -10,7 +10,6 @@ export const SETTINGS_TABS: SettingsTab[] = [
   { id: "localization", label: "Localization" },
   { id: "billing", label: "Billing" },
   { id: "notifications", label: "Notifications" },
-  { id: "business-profile", label: "Business profile" },
   { id: "preferences", label: "Preferences" },
   { id: "data", label: "Data" },
   { id: "appearance", label: "Appearance" },
