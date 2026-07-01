@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Logo } from "../_components/Logo";
 import { CookiePreferencesLink } from "@/components/consent/CookiePreferencesLink";
@@ -388,7 +389,138 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">9. Cookies and Your Choices</h2>
+            <h2 className="text-xl font-semibold mb-3">
+              9. Complaints, Questions, and the Right to File with a Regulator (Canada &mdash; PIPEDA)
+            </h2>
+            <p>
+              If you are located in Canada, the <em>Personal Information Protection and Electronic
+              Documents Act</em> (PIPEDA) gives you the right to raise concerns about how we collect, use,
+              or disclose your personal information.
+            </p>
+
+            <h3 className="text-base font-semibold mt-4 mb-2">Step 1 &mdash; Contact Groundwork directly.</h3>
+            <p>We ask that you first bring your concern to us so we have the opportunity to address it:</p>
+            <ul className="list-none space-y-2 mt-2">
+              <li>
+                <strong>Email:</strong>{" "}
+                <a href="mailto:privacy@groundwork.cafe" className="text-[var(--teal)] underline">
+                  privacy@groundwork.cafe
+                </a>
+              </li>
+              <li>
+                <strong>Subject line:</strong> &ldquo;Privacy Complaint &mdash; [your name / account email]&rdquo;
+              </li>
+              <li>
+                <strong>What to include:</strong> A description of the information at issue, the concern
+                you have, and the outcome you are seeking.
+              </li>
+            </ul>
+            <p className="mt-3">
+              We will acknowledge your complaint within <strong>5 business days</strong> and provide a
+              written response within <strong>30 calendar days</strong>. If we need more time, we will
+              notify you of the extension and the reason for it.
+            </p>
+
+            <h3 className="text-base font-semibold mt-4 mb-2">Step 2 &mdash; Escalation within Groundwork.</h3>
+            <p>
+              If you are not satisfied with the initial response, you may request escalation to our
+              designated Privacy Officer:
+            </p>
+            <p className="mt-2">
+              <strong>Privacy Officer, Ivy &amp; Rill Consulting Inc. (operating as Groundwork)</strong>
+              <br />
+              Email:{" "}
+              <a href="mailto:privacy@groundwork.cafe" className="text-[var(--teal)] underline">
+                privacy@groundwork.cafe
+              </a>
+              <br />
+              Response time: 30 calendar days from escalation request.
+            </p>
+
+            <h3 className="text-base font-semibold mt-4 mb-2">
+              Step 3 &mdash; File a complaint with the Office of the Privacy Commissioner of Canada (OPC).
+            </h3>
+            <p>
+              Under PIPEDA s.11, you have the right to file a complaint directly with the OPC at any time.
+              You do not need to contact us first before going to the OPC, although we encourage you to do
+              so.
+            </p>
+            <p className="mt-3">
+              If our internal process does not resolve your concern, or if you prefer to proceed directly:
+            </p>
+            {(() => {
+              const rows: Array<[string, ReactNode]> = [
+                [
+                  "Online complaint form",
+                  <a
+                    key="opc-form"
+                    href="https://www.priv.gc.ca/en/report-a-concern/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[var(--teal)] underline"
+                  >
+                    priv.gc.ca/en/report-a-concern/
+                  </a>,
+                ],
+                [
+                  "Mail",
+                  "Office of the Privacy Commissioner of Canada, 30 Victoria Street, Gatineau, Quebec K1A 1H3",
+                ],
+                ["Toll-free (Canada)", "1-800-282-1376"],
+                ["Fax", "819-994-5424"],
+                ["TTY", "819-994-6591"],
+              ];
+              return (
+                <>
+                  <div className="hidden sm:block overflow-x-auto mt-3">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] text-left">
+                          <th className="py-2 pr-4 font-semibold align-top">Contact method</th>
+                          <th className="py-2 font-semibold align-top">Details</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(([method, details]) => (
+                          <tr key={method} className="border-b border-[var(--border)]">
+                            <td className="py-2 pr-4 align-top"><strong>{method}</strong></td>
+                            <td className="py-2 align-top">{details}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <dl className="sm:hidden mt-3 border-t border-[var(--border)]">
+                    {rows.map(([method, details]) => (
+                      <div key={method} className="border-b border-[var(--border)] py-3">
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                          Contact method
+                        </dt>
+                        <dd className="text-sm mt-1"><strong>{method}</strong></dd>
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mt-2">
+                          Details
+                        </dt>
+                        <dd className="text-sm mt-1">{details}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
+              );
+            })()}
+            <p className="mt-3">
+              The OPC will investigate complaints about PIPEDA compliance. Following an OPC investigation,
+              you may also have the right under PIPEDA s.14 to apply to the Federal Court of Canada for a
+              remedy if the matter remains unresolved.
+            </p>
+            <p className="mt-3 text-sm text-[var(--dark-grey)]">
+              This section applies to personal information processed in connection with commercial
+              activity in Canada. For rights available to residents of the European Union, UK, California,
+              or other jurisdictions, see the relevant sections of this Privacy Policy.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">10. Cookies and Your Choices</h2>
             <p>We group cookies and similar technologies into three categories:</p>
             <ul className="list-none space-y-3 mt-3">
               <li>
@@ -416,7 +548,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">10. Security</h2>
+            <h2 className="text-xl font-semibold mb-3">11. Security</h2>
             <p>
               We use industry-standard security measures including encryption in transit (TLS) and at
               rest, access controls, and regular security reviews. No method of transmission over the
@@ -425,7 +557,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">11. Children</h2>
+            <h2 className="text-xl font-semibold mb-3">12. Children</h2>
             <p>
               The Service is not directed to children under 13. We do not knowingly collect personal
               information from children under 13. If you believe we have collected such information,
@@ -434,7 +566,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">12. Changes to This Policy</h2>
+            <h2 className="text-xl font-semibold mb-3">13. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. If we make material changes, we will
               notify you by email at least 14 days before the changes take effect.
@@ -442,7 +574,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">13. Contact</h2>
+            <h2 className="text-xl font-semibold mb-3">14. Contact</h2>
             <p>
               Ivy &amp; Rill Consulting Inc.
               <br />
