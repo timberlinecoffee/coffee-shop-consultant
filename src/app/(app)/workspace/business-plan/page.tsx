@@ -40,7 +40,7 @@ export default async function BusinessPlanWorkspacePage() {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, plan_name")
+    .select("id, plan_name, business_plan_section_order")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -279,12 +279,20 @@ export default async function BusinessPlanWorkspacePage() {
     logoPublicUrl = signed?.signedUrl ?? null;
   }
 
+  // TIM-3490: persisted top-level section order. Empty array == use default.
+  const rawSectionOrder = (plan as { business_plan_section_order?: unknown })
+    .business_plan_section_order;
+  const initialSectionOrder: string[] = Array.isArray(rawSectionOrder)
+    ? rawSectionOrder.filter((v): v is string => typeof v === "string")
+    : [];
+
   return (
     <BusinessPlanWorkspace
       planId={planId}
       shopName={plan.plan_name ?? ""}
       initialSections={sections}
       initialCustomSections={initialCustomSections}
+      initialSectionOrder={initialSectionOrder}
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
       initialCoverSettings={initialCoverSettings}

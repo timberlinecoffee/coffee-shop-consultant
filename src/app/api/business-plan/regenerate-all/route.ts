@@ -149,13 +149,15 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   // TIM-2360: resume mode — if `only` is provided, limit to those keys.
   const allRegenerableKeys = BP_REGENERABLE_SECTION_KEYS as BusinessPlanSectionKey[];
-  const sectionsToRegenerate = onlyKeys
+  // Unordered for now — credits are charged per key regardless of order; the
+  // persisted-order reorder happens after the plan row is fetched below.
+  const unorderedSelection: BusinessPlanSectionKey[] = onlyKeys
     ? allRegenerableKeys.filter((k) => onlyKeys.includes(k))
     : allRegenerableKeys;
 
   const estimatedCredits = isBetaWaived
     ? 0
-    : sectionsToRegenerate.length * CREDIT_COST_PER_SECTION;
+    : unorderedSelection.length * CREDIT_COST_PER_SECTION;
 
   if (hasAccess && !isBetaWaived && (profile.ai_credits_remaining ?? 0) < CREDIT_COST_PER_SECTION) {
     return Response.json({ reason: "out_of_credits", tier_required: "pro" }, { status: 402 });
@@ -167,11 +169,44 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("plan_name, onboarding_data")
+    // TIM-3490: include business_plan_section_order so the regen iterates
+    // in the user's persisted order and the prompt context block reflects
+    // the reorder (DoD: AI prompt assembler must respect custom order).
+    .select("plan_name, onboarding_data, business_plan_section_order")
     .eq("id", planId)
     .maybeSingle();
 
   if (!plan) return Response.json({ error: "No plan" }, { status: 404 });
+
+  // TIM-3490: reorder sectionsToRegenerate by the persisted per-plan order.
+  // Falls back to the default order when nothing is persisted. Standard
+  // keys present in both `persistedSectionOrder` and the user's selection
+  // come first, in persisted order; any remaining selected keys fall back
+  // to the original default order so a newly-added standard section still
+  // regenerates.
+  const persistedSectionOrder: string[] = Array.isArray(
+    (plan as { business_plan_section_order?: unknown }).business_plan_section_order,
+  )
+    ? ((plan as { business_plan_section_order: unknown[] }).business_plan_section_order.filter(
+        (v): v is string => typeof v === "string",
+      ))
+    : [];
+
+  const selectionSet = new Set<BusinessPlanSectionKey>(unorderedSelection);
+  const seenOrdered = new Set<BusinessPlanSectionKey>();
+  const sectionsToRegenerate: BusinessPlanSectionKey[] = [];
+  for (const id of persistedSectionOrder) {
+    if (selectionSet.has(id as BusinessPlanSectionKey) && !seenOrdered.has(id as BusinessPlanSectionKey)) {
+      sectionsToRegenerate.push(id as BusinessPlanSectionKey);
+      seenOrdered.add(id as BusinessPlanSectionKey);
+    }
+  }
+  for (const k of unorderedSelection) {
+    if (!seenOrdered.has(k)) {
+      sectionsToRegenerate.push(k);
+      seenOrdered.add(k);
+    }
+  }
 
   // Load ALL platform data in parallel, once, before streaming.
   const [
