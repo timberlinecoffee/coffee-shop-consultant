@@ -42,7 +42,7 @@ export function VerifyEmailTemplate({
           start your trial. The link works for the next 24 hours.
         </EmailP>
         <EmailSpacer height={4} />
-        <EmailButton href={verifyUrl}>Confirm email</EmailButton>
+        <EmailButton href={verifyUrl}>Confirm Email</EmailButton>
         <EmailSpacer height={12} />
         <EmailP small muted>
           Didn&apos;t sign up? You can ignore this email and nothing will happen.

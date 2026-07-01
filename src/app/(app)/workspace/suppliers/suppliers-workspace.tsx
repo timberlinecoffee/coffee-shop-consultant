@@ -1060,7 +1060,7 @@ function ChooseReasonModal({
             onClick={onSubmit}
             className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
           >
-            Log decision
+            Log Decision
           </button>
         </div>
       </div>

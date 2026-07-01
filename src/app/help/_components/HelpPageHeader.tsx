@@ -38,7 +38,7 @@ type HelpPageHeaderProps = {
 
 const TABS: ReadonlyArray<{ key: HelpSubNavKey; label: string; href: string }> = [
   { key: "docs", label: "Docs", href: "/help" },
-  { key: "contact", label: "Contact support", href: "/help/contact" },
+  { key: "contact", label: "Contact Support", href: "/help/contact" },
 ];
 
 export function HelpPageHeader({

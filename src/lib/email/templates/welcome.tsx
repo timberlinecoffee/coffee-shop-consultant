@@ -57,7 +57,7 @@ export function WelcomeEmailTemplate({
           what they are for.
         </EmailP>
         <EmailSpacer height={4} />
-        <EmailButton href={dashboardUrl}>Open my workspace</EmailButton>
+        <EmailButton href={dashboardUrl}>Open My Workspace</EmailButton>
         <EmailSpacer height={12} />
         <EmailP small muted>
           Reply to this email if anything is in the way. Trent reads every reply.

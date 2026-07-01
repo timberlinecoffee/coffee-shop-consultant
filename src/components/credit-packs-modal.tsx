@@ -136,7 +136,7 @@ export function CreditPacksModal({ open, onClose, returnPath }: CreditPacksModal
           onClick={onClose}
           className="mt-5 text-sm text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors py-1"
         >
-          Not now
+          Not Now
         </button>
       </div>
     </div>

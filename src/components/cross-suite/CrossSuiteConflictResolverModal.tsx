@@ -403,7 +403,7 @@ function Zone5Footer({ onDismiss }: { onDismiss: () => void }) {
         onClick={onDismiss}
         className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] underline-offset-2 hover:underline"
       >
-        Dismiss for now
+        Dismiss for Now
       </button>
     </div>
   );

@@ -46,7 +46,7 @@ export function MagicLinkTemplate({
           {expiryMinutes} minutes.
         </EmailP>
         <EmailSpacer height={4} />
-        <EmailButton href={magicLinkUrl}>Sign in</EmailButton>
+        <EmailButton href={magicLinkUrl}>Sign In</EmailButton>
         <EmailSpacer height={12} />
         <EmailP small muted>
           Didn&apos;t request this? You can safely ignore this email.

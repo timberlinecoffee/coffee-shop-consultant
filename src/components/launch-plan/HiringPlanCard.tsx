@@ -70,7 +70,7 @@ export function HiringPlanCard() {
           disabled={loading}
           className="px-3 py-1.5 text-sm rounded-md bg-[var(--teal)] text-white hover:bg-[var(--teal-darker)] disabled:opacity-50"
         >
-          + Add role
+          + Add Role
         </button>
       </header>
 

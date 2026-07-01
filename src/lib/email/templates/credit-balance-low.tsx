@@ -52,7 +52,7 @@ export function CreditBalanceLowTemplate({
           Top up so the next workspace run doesn&apos;t stall:
         </EmailP>
         <EmailSpacer height={4} />
-        <EmailButton href={buyMoreUrl}>Buy more credits</EmailButton>
+        <EmailButton href={buyMoreUrl}>Buy More Credits</EmailButton>
         <EmailSpacer height={12} />
         <EmailP small muted>
           You will receive this notice at most once per month. Cancel anytime

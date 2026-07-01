@@ -637,7 +637,7 @@ export function WriteWithAIModal({ sections, hasExistingItems, onClose, onCommit
               }
               className="text-sm font-semibold bg-[var(--teal)] text-white px-6 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
             >
-              Generate list
+              Generate List
             </button>
           </div>
         )}

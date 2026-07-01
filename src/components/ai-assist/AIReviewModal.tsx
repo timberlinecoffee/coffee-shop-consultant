@@ -382,7 +382,7 @@ function ChangeCard({
       {/* Per-card error */}
       {cardState.applyError && (
         <p className="text-xs text-red-600 border border-red-200 rounded-lg px-3 py-2 bg-red-50">
-          {cardState.applyError} <button type="button" className="underline ml-1" onClick={onAccept}>Try again</button>
+          {cardState.applyError} <button type="button" className="underline ml-1" onClick={onAccept}>Try Again</button>
         </p>
       )}
 

@@ -1668,7 +1668,7 @@ export function ModuleClient({
                       href={moduleNumber === 1 ? "/plan/2" : "/dashboard"}
                       className="px-5 py-2.5 bg-teal text-white rounded-xl text-sm font-medium hover:bg-teal-dark transition-colors"
                     >
-                      {moduleNumber === 1 ? "Continue to Module 2 →" : "Back to dashboard"}
+                      {moduleNumber === 1 ? "Continue to Module 2 →" : "Back to Dashboard"}
                     </Link>
                   );
                 })()}

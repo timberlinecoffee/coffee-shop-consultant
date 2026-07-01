@@ -425,7 +425,7 @@ export function AIAssistCallout({
                   onClick={handleTryAgain}
                   className="flex-1 border border-[var(--teal)] text-[var(--teal)] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal)]/5 transition-colors"
                 >
-                  Try again
+                  Try Again
                 </button>
                 <button
                   type="button"

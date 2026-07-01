@@ -119,7 +119,7 @@ export function PersonaCard({
                           onClick={handleSetPrimary}
                           className="w-full text-left px-4 py-3 text-sm text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
                         >
-                          Set as primary
+                          Set as Primary
                         </button>
                       )}
                       {confirmDelete ? (
@@ -128,7 +128,7 @@ export function PersonaCard({
                           onClick={handleDelete}
                           className="w-full text-left px-4 py-3 text-sm text-[var(--error)] font-semibold hover:bg-[var(--error-bg)] transition-colors"
                         >
-                          Confirm delete
+                          Confirm Delete
                         </button>
                       ) : (
                         <button
@@ -136,7 +136,7 @@ export function PersonaCard({
                           onClick={handleDelete}
                           className="w-full text-left px-4 py-3 text-sm text-[var(--error)] hover:bg-[var(--error-bg)] transition-colors"
                         >
-                          Delete persona
+                          Delete Persona
                         </button>
                       )}
                     </div>

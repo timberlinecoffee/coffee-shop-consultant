@@ -133,7 +133,7 @@ function SeedBanner({
           disabled={status === "loading"}
           className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-60"
         >
-          {status === "loading" ? "Generating..." : "Generate list"}
+          {status === "loading" ? "Generating..." : "Generate List"}
         </button>
         {status === "error" && (
           <span className="text-xs text-[var(--error)]">Could not generate. Try again.</span>

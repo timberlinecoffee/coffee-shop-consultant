@@ -363,7 +363,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
               disabled={!description.trim()}
               className="text-sm font-semibold bg-[var(--teal)] text-white px-6 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-50"
             >
-              Generate list
+              Generate List
             </button>
           </div>
         )}
@@ -376,7 +376,7 @@ export function DescribeSetupModal({ sections, hasExistingItems, onClose, onComm
                 onClick={handleRefine}
                 className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
               >
-                Refine description
+                Refine Description
               </button>
               {hasExistingItems && !mergeMode && (
                 <span className="text-xs text-[var(--dark-grey)]">

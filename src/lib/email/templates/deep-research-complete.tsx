@@ -46,7 +46,7 @@ export function DeepResearchCompleteTemplate({
             : ' The findings are synthesized into a single report.'}
         </EmailP>
         <EmailSpacer height={4} />
-        <EmailButton href={reportUrl}>Open report</EmailButton>
+        <EmailButton href={reportUrl}>Open Report</EmailButton>
         <EmailSpacer height={12} />
         <EmailP small muted>
           Reports live in your workspace and stay searchable. You can hand them

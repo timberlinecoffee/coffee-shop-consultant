@@ -70,7 +70,7 @@ export default function GlobalError({
                 cursor: "pointer",
               }}
             >
-              Try again
+              Try Again
             </button>
           </div>
         </div>

@@ -1140,7 +1140,7 @@ export function BusinessPlanWorkspace({
                 onClick={() => setSections((prev) => prev.map((s) => ({ ...s, isExpanded: !allExpanded })))}
                 className="text-sm text-[var(--muted-foreground)] hover:text-foreground underline underline-offset-2 cursor-pointer"
               >
-                {allExpanded ? "Collapse all" : "Expand all"}
+                {allExpanded ? "Collapse All" : "Expand All"}
               </button>
               {/* TIM-2382: Scout-as-hub — top-level AskScoutButton on the
                   Business Plan workspace replaces the legacy auto-apply

@@ -45,7 +45,7 @@ export function EmailChangeTemplate({
           to confirm the change.
         </EmailP>
         <EmailSpacer height={4} />
-        <EmailButton href={confirmUrl}>Confirm new email</EmailButton>
+        <EmailButton href={confirmUrl}>Confirm New Email</EmailButton>
         <EmailSpacer height={12} />
         <EmailP small muted>
           Didn&apos;t make this change? Reply to this email and we will lock the
