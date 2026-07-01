@@ -584,6 +584,9 @@ function RoleDetailPanel({
       : null;
 
   const parentOptions = roles.filter((r) => r.id !== role.id);
+  const parentTitle = role.parent_role_id
+    ? (roles.find((r) => r.id === role.parent_role_id)?.role_title ?? null)
+    : null;
 
   return (
     <div className="border-t border-[var(--neutral-cool-150)] bg-[var(--background)] divide-y divide-[var(--neutral-cool-100)]">
