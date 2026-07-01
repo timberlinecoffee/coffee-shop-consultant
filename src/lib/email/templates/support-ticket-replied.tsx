@@ -53,7 +53,7 @@ export function SupportTicketRepliedTemplate({
           </EmailP>
         ) : null}
         <EmailSpacer height={4} />
-        <EmailButton href={threadUrl}>Open thread</EmailButton>
+        <EmailButton href={threadUrl}>Open Thread</EmailButton>
         <EmailSpacer height={12} />
         <EmailP small muted>
           Reply directly to this email to continue the conversation.

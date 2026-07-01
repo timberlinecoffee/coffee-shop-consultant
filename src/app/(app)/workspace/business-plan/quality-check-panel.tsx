@@ -122,7 +122,7 @@ function FindingCard({ finding, onApply, onGoToSource, onDismiss, onSnooze, snoo
             className="text-xs font-semibold text-[var(--teal)] hover:underline"
             onClick={() => onApply(finding)}
           >
-            Apply suggestion
+            Apply Suggestion
           </button>
         )}
         <button
@@ -131,7 +131,7 @@ function FindingCard({ finding, onApply, onGoToSource, onDismiss, onSnooze, snoo
           onClick={() => onGoToSource(finding)}
         >
           <ExternalLink size={10} aria-hidden="true" />
-          Go to source
+          Go to Source
         </button>
         <button
           type="button"

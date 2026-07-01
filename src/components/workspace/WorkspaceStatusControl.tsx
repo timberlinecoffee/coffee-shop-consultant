@@ -71,7 +71,7 @@ function StatusAction({
         onClick={onMarkInProgress}
         className="text-[11px] font-medium text-[var(--teal)] hover:underline leading-none"
       >
-        Mark In Progress
+        Mark in Progress
       </button>
     );
   }

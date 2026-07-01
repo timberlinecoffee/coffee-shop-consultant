@@ -24,9 +24,9 @@ function getContent(
     return {
       title: "You've used your 5 free coaching sessions",
       body: "Your AI coach reads your full plan and gives advice based on your actual numbers — not generic tips. Start a plan to keep that conversation going.",
-      cta: "Choose a plan",
+      cta: "Choose a Plan",
       href: "/pricing",
-      dismiss: "Not now",
+      dismiss: "Not Now",
     };
   }
 
@@ -35,9 +35,9 @@ function getContent(
     return {
       title: "Your plan is paused. Resume to keep working.",
       body: "Your workspace is in read-only mode. Resume your plan to create, edit, and collaborate where you left off.",
-      cta: "Resume my plan",
+      cta: "Resume My Plan",
       href: "/account/billing",
-      dismiss: "Not now",
+      dismiss: "Not Now",
     };
   }
 
@@ -47,7 +47,7 @@ function getContent(
       body: "Reactivate your subscription to pick up where you left off.",
       cta: "Reactivate",
       href: "/account/billing",
-      dismiss: "Not now",
+      dismiss: "Not Now",
     };
   }
 
@@ -55,9 +55,9 @@ function getContent(
   return {
     title: "Start a plan to save your work",
     body: "You can explore for free. To save your answers and build your full plan, start a 7-day free trial on Starter or Pro.",
-    cta: "Choose a plan",
+    cta: "Choose a Plan",
     href: "/pricing",
-    dismiss: "Not now",
+    dismiss: "Not Now",
   };
 }
 

@@ -120,7 +120,7 @@ export function ObservationTracker({
           onClick={handlePrint}
           className="text-xs text-[var(--muted-foreground)] hover:text-[var(--teal)] transition-colors underline"
         >
-          Download printable version
+          Download Printable Version
         </button>
       </div>
 

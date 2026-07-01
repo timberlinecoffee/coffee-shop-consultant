@@ -189,7 +189,7 @@ export function AccountDataControls({ userEmail, variant = "stacked-card" }: Pro
                 className="text-sm text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 data-testid="delete-confirm-button"
               >
-                {deletePending ? "Deleting..." : "Delete account"}
+                {deletePending ? "Deleting..." : "Delete Account"}
               </button>
             </div>
           </div>

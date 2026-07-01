@@ -346,7 +346,7 @@ export function GuidedTour({
               onClick={onSkip}
               className="text-sm font-medium text-[var(--dark-grey)] hover:text-[var(--muted-foreground)] px-2 py-1.5 rounded-lg transition-colors"
             >
-              Skip for now
+              Skip for Now
             </button>
           )}
           <button

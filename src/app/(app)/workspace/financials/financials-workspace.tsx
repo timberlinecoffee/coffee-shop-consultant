@@ -402,7 +402,7 @@ function OwnerContributionsEditor({
           onClick={add}
           className="text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-2 py-1 rounded-md"
         >
-          + Add contribution
+          + Add Contribution
         </button>
       )}
       <p className="text-[10px] text-[var(--dark-grey)] mt-1">
@@ -844,7 +844,7 @@ function ForecastTab({
                     onClick={onGoToProjections}
                     className="text-[11px] font-semibold text-[var(--teal)] hover:underline"
                   >
-                    View on grid
+                    View on Grid
                   </button>
                 )}
                 {canEdit && (

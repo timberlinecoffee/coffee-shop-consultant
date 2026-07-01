@@ -777,7 +777,7 @@ function PreLaunchEditor({
             onClick={loadDefaults}
             className="text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-2.5 py-1.5 rounded-lg transition-colors"
           >
-            Load suggested milestones
+            Load Suggested Milestones
           </button>
         )}
       </div>

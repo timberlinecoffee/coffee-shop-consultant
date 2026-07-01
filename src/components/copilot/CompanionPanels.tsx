@@ -160,7 +160,7 @@ function CompanionFindingCard({
             onClick={openResolver}
             data-testid="cross-suite-review-fix-options"
           >
-            Review fix options
+            Review Fix Options
             <ArrowRight size={10} aria-hidden="true" />
           </button>
         ) : (
@@ -170,7 +170,7 @@ function CompanionFindingCard({
               className="text-xs font-semibold text-[var(--teal)] hover:underline"
               onClick={() => onApply(finding)}
             >
-              Apply suggestion
+              Apply Suggestion
             </button>
           )
         )}
@@ -180,7 +180,7 @@ function CompanionFindingCard({
           onClick={() => onGoToSource(finding)}
         >
           <ExternalLink size={10} aria-hidden="true" />
-          Go to source
+          Go to Source
         </button>
         <button
           type="button"
@@ -452,7 +452,7 @@ export function CheckPanel({
           onClick={onRun}
           className="text-xs font-semibold text-[var(--teal)] hover:underline"
         >
-          Run again
+          Run Again
         </button>
       </div>
     );
@@ -469,7 +469,7 @@ export function CheckPanel({
           onClick={onRun}
           className="text-[11px] font-semibold text-[var(--teal)] hover:underline"
         >
-          Re-check
+          Re-Check
         </button>
       </div>
       <FindingList

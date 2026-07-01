@@ -43,7 +43,7 @@ export function PasswordResetTemplate({
           {expiryMinutes} minutes.
         </EmailP>
         <EmailSpacer height={4} />
-        <EmailButton href={resetUrl}>Set new password</EmailButton>
+        <EmailButton href={resetUrl}>Set New Password</EmailButton>
         <EmailSpacer height={12} />
         <EmailP small muted>
           Didn&apos;t request this? You can safely ignore this email. Your

@@ -405,7 +405,7 @@ export function ExportGateModal({
               onClick={onCancel}
               className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[var(--gray-1150)] text-xs font-semibold hover:bg-[var(--neutral-cool-100)] transition-colors"
             >
-              Back to plan
+              Back to Plan
             </button>
             <button
               type="button"
@@ -413,7 +413,7 @@ export function ExportGateModal({
               disabled={!canContinue}
               className="px-3 py-1.5 rounded-lg bg-[var(--teal)] text-white text-xs font-semibold hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Continue export
+              Continue Export
             </button>
           </div>
         </div>

@@ -285,7 +285,7 @@ export function ContactForm() {
           aria-busy={submitting}
         >
           <Send size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-          {submitting ? "Sending…" : "Send message"}
+          {submitting ? "Sending…" : "Send Message"}
         </WorkspaceActionButton>
       </div>
     </form>

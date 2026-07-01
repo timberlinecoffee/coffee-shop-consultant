@@ -66,7 +66,7 @@ export function CommentShareTemplate({
         ) : null}
         <EmailSpacer height={4} />
         <EmailButton href={contextUrl}>
-          {kind === 'shared' ? 'Open shared plan' : 'View comment'}
+          {kind === 'shared' ? 'Open Shared Plan' : 'View Comment'}
         </EmailButton>
       </EmailBody>
       <EmailFooter variant="transactional" />

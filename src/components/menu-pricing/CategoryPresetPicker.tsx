@@ -145,7 +145,7 @@ export function CategoryPresetPicker({ categoryName, onApplyPreset, onSkip }: Pr
               onClick={() => setMode("custom")}
               className="text-xs text-[var(--teal)] underline decoration-dotted cursor-pointer"
             >
-              Set custom range
+              Set Custom Range
             </button>
             <button
               type="button"
@@ -153,7 +153,7 @@ export function CategoryPresetPicker({ categoryName, onApplyPreset, onSkip }: Pr
               aria-label="Skip setting a COGS range for now"
               className="text-xs text-[var(--muted-foreground)] underline decoration-dotted cursor-pointer"
             >
-              Skip for now
+              Skip for Now
             </button>
           </div>
         </>
@@ -210,14 +210,14 @@ export function CategoryPresetPicker({ categoryName, onApplyPreset, onSkip }: Pr
               onClick={() => { setMode("presets"); setCustomError(null); }}
               className="text-xs text-[var(--teal)] underline decoration-dotted cursor-pointer"
             >
-              Pick a preset instead
+              Pick a Preset Instead
             </button>
             <button
               type="button"
               onClick={onSkip}
               className="text-xs text-[var(--muted-foreground)] underline decoration-dotted cursor-pointer"
             >
-              Skip for now
+              Skip for Now
             </button>
           </div>
         </div>

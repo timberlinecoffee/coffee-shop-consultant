@@ -404,7 +404,7 @@ export function CandidateListCard({
                   No shortlisted locations yet. Tap the star on a location to add it to your shortlist.
                 </p>
                 <Button variant="outline" size="sm" onClick={() => setView('all')}>
-                  See all locations
+                  See All Locations
                 </Button>
               </div>
             ) : (

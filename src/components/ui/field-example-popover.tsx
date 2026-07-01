@@ -88,7 +88,7 @@ export function FieldExamplePopover({ examples }: FieldExamplePopoverProps) {
                 onClick={nextExample}
                 className="text-xs text-[var(--teal)] hover:underline focus-visible:outline-none focus:text-[var(--teal-dark)]"
               >
-                See another shop
+                See Another Shop
               </button>
             ) : (
               <span />

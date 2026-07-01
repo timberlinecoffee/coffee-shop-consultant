@@ -613,7 +613,7 @@ function RevenueStreamsContent({
             </p>
             <div className="flex items-center gap-2 shrink-0">
               <button type="button" onClick={onGoToProjections} className="text-[11px] font-semibold text-[var(--teal)] hover:underline">
-                View on grid
+                View on Grid
               </button>
               {canEdit && (
                 <button type="button" onClick={() => onClearLineOverrides(BASE_REVENUE_LINE_ID)} className="text-[11px] font-semibold text-[var(--error)] hover:underline">

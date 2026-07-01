@@ -3370,7 +3370,7 @@ function InsightsTab({
                       onClick={onGoToMenu}
                       className="text-[11px] font-semibold text-[var(--teal)] hover:underline shrink-0"
                     >
-                      Open menu
+                      Open Menu
                     </button>
                   )}
                 </div>
@@ -3509,7 +3509,7 @@ function SuggestItemsModal({
                 onClick={onRetry}
                 className="text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-lg px-4 py-2 hover:bg-[var(--teal)]/5 transition-colors"
               >
-                Try again
+                Try Again
               </button>
             </div>
           )}

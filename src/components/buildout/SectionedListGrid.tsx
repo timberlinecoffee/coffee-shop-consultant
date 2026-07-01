@@ -2151,14 +2151,14 @@ export function SectionedListGrid({
               onClick={expandAll}
               className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--neutral-cool-200)] rounded px-2 py-1 hover:bg-[var(--surface-warm-100)] transition-colors"
             >
-              Expand all
+              Expand All
             </button>
             <button
               type="button"
               onClick={collapseAll}
               className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--neutral-cool-200)] rounded px-2 py-1 hover:bg-[var(--surface-warm-100)] transition-colors"
             >
-              Collapse all
+              Collapse All
             </button>
           </div>
         )}

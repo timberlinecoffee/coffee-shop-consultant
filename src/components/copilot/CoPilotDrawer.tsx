@@ -442,7 +442,7 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
     case "unauthorized":
       return {
         title: "Please sign in again to keep coaching.",
-        cta: "Sign in",
+        cta: "Sign In",
         href: "/login",
       };
     case "paywall":

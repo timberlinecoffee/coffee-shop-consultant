@@ -65,7 +65,7 @@ export function LanguageSettingsCard({ initial }: { initial: AccountSettings }) 
           disabled={saving}
           className="text-sm font-medium bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
         >
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? "Saving…" : "Save Changes"}
         </button>
         {status === "saved" ? (
           <span className="text-sm text-[var(--teal)]">Saved</span>

@@ -106,7 +106,7 @@ export function SectionToggle({
               onClick={selectAll}
               className="text-xs text-[var(--teal)] font-medium hover:underline"
             >
-              Select all
+              Select All
             </button>
           </div>
           <ul className="max-h-72 overflow-y-auto space-y-1">

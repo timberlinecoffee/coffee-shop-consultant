@@ -30,7 +30,7 @@ export default function WorkspaceError({
             onClick={reset}
             className="px-4 py-2 rounded-lg bg-[var(--teal)] text-white text-sm font-medium hover:bg-[var(--teal-darker)] transition-colors"
           >
-            Try again
+            Try Again
           </button>
           <Link
             href="/dashboard"
