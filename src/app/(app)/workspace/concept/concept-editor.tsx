@@ -718,7 +718,14 @@ function ConceptBriefInline({
     return comp.content.trim().length > 0;
   });
 
-  if (briefSections.length === 0) return null;
+  // TIM-3562: competitors are a filled concept section — surface them in the
+  // inline brief the same way the /workspace/concept/print page does.
+  const competitors = doc.competitors ?? [];
+  const noDirectCompetitors = doc.no_direct_competitors_identified === true;
+  const hasCompetitorsSection = competitors.length > 0 || noDirectCompetitors;
+  const includedCount = briefSections.length + (hasCompetitorsSection ? 1 : 0);
+
+  if (briefSections.length === 0 && !hasCompetitorsSection) return null;
 
   return (
     <div className="mt-10">
@@ -754,7 +761,7 @@ function ConceptBriefInline({
               {shopName || <span className="italic text-[var(--dark-grey)]">Your shop name</span>}
             </h3>
             <p className="text-xs text-[var(--dark-grey)]">
-              {briefSections.length} section{briefSections.length !== 1 ? "s" : ""} included
+              {includedCount} section{includedCount !== 1 ? "s" : ""} included
             </p>
           </div>
 
@@ -828,6 +835,46 @@ function ConceptBriefInline({
                 </div>
               );
             })}
+
+            {/* TIM-3562: Nearby competitors — mirror the print page so the
+                inline preview reflects every filled concept section. */}
+            {hasCompetitorsSection && (
+              <div className="flex">
+                <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
+                <div className="px-6 py-5 flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[var(--teal)] mb-2">
+                    Nearby competitors
+                  </p>
+                  {competitors.length === 0 && noDirectCompetitors ? (
+                    <p
+                      className="text-[var(--foreground)] leading-[1.7]"
+                      style={{ fontSize: "14px" }}
+                    >
+                      No direct competitors identified in our catchment.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {noDirectCompetitors && (
+                        <p className="text-xs text-[var(--muted-foreground)] italic">
+                          No direct competitors identified in our catchment.
+                        </p>
+                      )}
+                      {competitors.map((c) => (
+                        <p key={c.id} className="text-sm text-[var(--foreground)]">
+                          <span className="font-medium">{c.name}</span>
+                          {c.address && (
+                            <span className="text-[var(--muted-foreground)]">
+                              {" · "}
+                              {c.address}
+                            </span>
+                          )}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Document footer */}

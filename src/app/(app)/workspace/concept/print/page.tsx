@@ -11,6 +11,7 @@ import {
   normalizeConceptV2,
   type ConceptDocumentV2,
   type ConceptComponentId,
+  type ConceptCompetitor,
   type CustomerPersona,
   PERSONA_VALUE_LABELS,
   PERSONA_VISIT_FREQUENCY_LABELS,
@@ -84,6 +85,12 @@ export default async function ConceptPrintPage() {
   const conceptDoc: ConceptDocumentV2 = normalizeConceptV2(doc?.content);
 
   const personas = conceptDoc.personas ?? [];
+  // TIM-3562: competitors are a filled concept section — render them in the
+  // brief when the user either named specific shops or explicitly declared
+  // "no direct competitors identified".
+  const competitors = conceptDoc.competitors ?? [];
+  const noDirectCompetitors = conceptDoc.no_direct_competitors_identified === true;
+  const hasCompetitorsSection = competitors.length > 0 || noDirectCompetitors;
 
   // TIM-2859: content presence is the single signal for inclusion in the print
   // brief. The `included` flag is preserved on the wire (no schema change) but
@@ -101,7 +108,8 @@ export default async function ConceptPrintPage() {
 
   const shopName =
     conceptDoc.components.shop_identity.content.trim() || "Your shop";
-  const sectionCount = bodySections.length;
+  // TIM-3562: header section count now reflects competitors when present.
+  const sectionCount = bodySections.length + (hasCompetitorsSection ? 1 : 0);
   const printDate = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -185,7 +193,7 @@ export default async function ConceptPrintPage() {
         </header>
 
         {/* ── Body sections ────────────────────────────── */}
-        {bodySections.length === 0 ? (
+        {bodySections.length === 0 && !hasCompetitorsSection ? (
           <div className="rounded-2xl border border-dashed border-[var(--gray-700)] px-6 py-10 text-center">
             <p className="text-sm text-[var(--dark-grey)] mb-3">
               No sections are filled in yet.
@@ -258,6 +266,17 @@ export default async function ConceptPrintPage() {
                 </div>
               );
             })}
+
+            {/* TIM-3562: Nearby competitors — mirrors the CompetitorSection
+                on the concept editor page. Renders when the user has either
+                named specific shops OR explicitly declared no direct
+                competitors in their catchment. */}
+            {hasCompetitorsSection && (
+              <CompetitorsPrintBlock
+                competitors={competitors}
+                noDirectCompetitors={noDirectCompetitors}
+              />
+            )}
           </div>
         )}
 
@@ -405,6 +424,97 @@ function PersonasPrintBlock({
                 </div>
               );
             })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// TIM-3562: Nearby competitors block — mirrors the CompetitorSection editor
+// on the concept workspace. Layout follows PersonasPrintBlock's multi-item
+// pattern (teal accent bar + uppercase label + divider-separated rows).
+function CompetitorsPrintBlock({
+  competitors,
+  noDirectCompetitors,
+}: {
+  competitors: ConceptCompetitor[];
+  noDirectCompetitors: boolean;
+}) {
+  const label = "Nearby Competitors";
+
+  // No shops named but the user checked "no direct competitors identified" —
+  // render a single sentence so the brief reflects the explicit declaration.
+  if (competitors.length === 0 && noDirectCompetitors) {
+    return (
+      <div className="section-card bg-white border border-[var(--border)] rounded-2xl overflow-hidden flex">
+        <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
+        <div className="px-6 py-5 flex-1 min-w-0">
+          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-2.5">
+            {label}
+          </p>
+          <p
+            className="text-[var(--foreground)] leading-[1.75]"
+            style={{ fontSize: "14.5px" }}
+          >
+            No direct competitors identified in our catchment.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="section-card bg-white border border-[var(--border)] rounded-2xl overflow-hidden">
+      <div className="flex">
+        <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
+        <div className="px-6 pt-5 pb-1 flex-1 min-w-0">
+          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-4">
+            {label}
+          </p>
+          {noDirectCompetitors && (
+            <p className="text-xs text-[var(--muted-foreground)] italic mb-4 leading-relaxed">
+              No direct competitors identified in our catchment.
+            </p>
+          )}
+          <div className="space-y-4 pb-5">
+            {competitors.map((c) => (
+              <div
+                key={c.id}
+                className="border-t border-[var(--border)] pt-4 first:border-t-0 first:pt-0"
+              >
+                <p className="text-sm font-semibold text-[var(--foreground)]">
+                  {c.name}
+                </p>
+                {c.address && (
+                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                    {c.address}
+                  </p>
+                )}
+                {c.what_they_do_well && (
+                  <p
+                    className="text-[var(--foreground)] leading-relaxed mt-1.5"
+                    style={{ fontSize: "14.5px" }}
+                  >
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--dark-grey)] mr-1.5">
+                      What They Do Well:
+                    </span>
+                    {c.what_they_do_well}
+                  </p>
+                )}
+                {c.gaps && (
+                  <p
+                    className="text-[var(--foreground)] leading-relaxed mt-1.5"
+                    style={{ fontSize: "14.5px" }}
+                  >
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--dark-grey)] mr-1.5">
+                      Gaps This Shop Fills:
+                    </span>
+                    {c.gaps}
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
