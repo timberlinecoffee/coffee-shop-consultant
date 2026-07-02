@@ -1642,7 +1642,7 @@ function SortableCardRow({
       ref={setNodeRef}
       style={liftStyle}
       id={`bp-section-${id}`}
-      className="flex items-stretch gap-1.5 sm:gap-2"
+      className="group flex items-stretch gap-1.5 sm:gap-2"
     >
       {canEdit && (
         <SortableHandle
