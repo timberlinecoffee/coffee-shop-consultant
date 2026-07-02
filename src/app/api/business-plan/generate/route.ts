@@ -247,6 +247,7 @@ export async function POST(request: NextRequest) {
     } as Record<string, string>)[meta.key] ?? "",
     userContent: null,
     isVisible: meta.defaultVisible,
+    isArchived: false,
   }));
 
   const planSnapshot = buildPlanSnapshotForExecutiveSummary(sections);

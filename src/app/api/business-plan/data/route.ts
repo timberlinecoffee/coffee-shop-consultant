@@ -206,6 +206,7 @@ export async function GET() {
       autoContent: autoContent[meta.key] ?? "",
       userContent: saved?.user_content ?? null,
       isVisible: saved?.is_visible ?? meta.defaultVisible,
+      isArchived: (saved as { is_archived?: boolean } | undefined)?.is_archived ?? false,
     };
   });
 

@@ -29,6 +29,13 @@ const KEBAB_KEY_RE = /^[a-z][a-z0-9-]{0,79}$/;
  *     * any default key missing from persisted is appended at the tail in
  *       default order (so a new standard section added after a user
  *       reorders still appears in their list).
+ * - TIM-3575: `archivedIds` — standard keys or custom UUIDs that are
+ *   archived are removed from the returned order so the workspace renders
+ *   only the active section list.
+ * - TIM-3575: `allowedStandardKeys` — allowlist for standard keys in
+ *   `persisted`. Defaults to `defaultStandardKeys` for back-compat, but
+ *   callers that support optional sections (which are excluded from the
+ *   seed) pass the superset here so Add-to-Plan additions aren't dropped.
  *
  * Pure. Safe in server routes, page loaders, AI assemblers, and the
  * workspace client component.
@@ -37,32 +44,36 @@ export function resolveSectionOrder(
   persisted: readonly string[] | null | undefined,
   defaultStandardKeys: readonly string[],
   customSectionIds: readonly string[] = [],
+  archivedIds: readonly string[] = [],
+  allowedStandardKeys: readonly string[] = defaultStandardKeys,
 ): string[] {
-  const standardSet = new Set<string>(defaultStandardKeys);
+  const allowedSet = new Set<string>(allowedStandardKeys);
   const customSet = new Set<string>(customSectionIds);
+  const archivedSet = new Set<string>(archivedIds);
+
+  const base: string[] = [];
 
   if (!persisted || persisted.length === 0) {
-    return [...defaultStandardKeys, ...customSectionIds];
-  }
-
-  const seen = new Set<string>();
-  const ordered: string[] = [];
-  for (const id of persisted) {
-    if (typeof id !== "string" || seen.has(id)) continue;
-    if (standardSet.has(id) || customSet.has(id)) {
-      seen.add(id);
-      ordered.push(id);
+    base.push(...defaultStandardKeys, ...customSectionIds);
+  } else {
+    const seen = new Set<string>();
+    for (const id of persisted) {
+      if (typeof id !== "string" || seen.has(id)) continue;
+      if (allowedSet.has(id) || customSet.has(id)) {
+        seen.add(id);
+        base.push(id);
+      }
+    }
+    for (const key of defaultStandardKeys) {
+      if (!seen.has(key)) base.push(key);
+    }
+    for (const id of customSectionIds) {
+      if (!seen.has(id)) base.push(id);
     }
   }
 
-  for (const key of defaultStandardKeys) {
-    if (!seen.has(key)) ordered.push(key);
-  }
-  for (const id of customSectionIds) {
-    if (!seen.has(id)) ordered.push(id);
-  }
-
-  return ordered;
+  // Filter out archived entries so the active section list stays clean.
+  return archivedSet.size === 0 ? base : base.filter((id) => !archivedSet.has(id));
 }
 
 /**

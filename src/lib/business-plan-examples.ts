@@ -8,7 +8,9 @@
 
 import type { BusinessPlanSectionKey } from "./business-plan";
 
-export const SUMMIT_STREET_EXAMPLES: Record<BusinessPlanSectionKey, string> = {
+// TIM-3575: Optional sections (isOptional) have no pre-written example, so
+// the record is now Partial — consumers must handle missing keys gracefully.
+export const SUMMIT_STREET_EXAMPLES: Partial<Record<BusinessPlanSectionKey, string>> = {
   "executive-summary": `Summit Street Coffee will open in downtown Flagstaff, Arizona in March 2027 as a 2,200-square-foot specialty coffee shop serving single-origin espresso drinks, pour-overs, and small-batch baked goods made in-house each morning. The shop will seat 80 guests and operate seven days a week from 6:30 a.m. to 6:00 p.m.
 
 The owner, Dana Kessler, has spent eight years in specialty coffee, the last four as a shift supervisor at Bird Rock Coffee Roasters in Phoenix. She has sourced beans directly from farms in Guatemala and Ethiopia, trained baristas across two locations, and run daily operations for a shop doing $600,000 per year. She is ready to own what she already runs.

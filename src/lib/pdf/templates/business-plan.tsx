@@ -32,6 +32,7 @@ import {
   assembleDepreciationScheduleSection,
   assembleWorkingCapitalSection,
   assembleRisksPlaceholderSection,
+  ALL_BUSINESS_PLAN_SECTION_KEYS,
   BUSINESS_PLAN_SECTIONS,
   BUSINESS_PLAN_GROUPS,
   DEFAULT_BUSINESS_PLAN_SECTION_ORDER,
@@ -462,14 +463,15 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       supabase.from("hiring_plan_roles").select("id, role_title, headcount, start_date, monthly_cost_cents").eq("plan_id", planId).order("created_at"),
       supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "marketing").maybeSingle(),
       supabase.from("financial_models").select("forecast_inputs, monthly_projections, startup_costs").eq("plan_id", planId).maybeSingle(),
-      supabase.from("business_plan_sections").select("section_key, user_content, is_visible").eq("plan_id", planId),
+      // TIM-3575: include is_archived so archived sections aren't published.
+      supabase.from("business_plan_sections").select("section_key, user_content, is_visible, is_archived").eq("plan_id", planId),
       supabase.from("business_plan_cover").select("template_id, accent_color, logo_path, tagline, prepared_for, author_name").eq("plan_id", planId).maybeSingle(),
       supabase.from("business_plan_financial_documents").select("document_key, is_visible").eq("plan_id", planId),
-      supabase.from("business_plan_custom_sections").select("id, title, user_content, is_visible, sort_order").eq("plan_id", planId).order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
+      supabase.from("business_plan_custom_sections").select("id, title, user_content, is_visible, sort_order, is_archived").eq("plan_id", planId).order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
     ]);
 
     const savedMap = new Map(
-      (savedSections ?? []).map((s: { section_key: string; user_content: string | null; is_visible: boolean }) => [s.section_key, s])
+      (savedSections ?? []).map((s: { section_key: string; user_content: string | null; is_visible: boolean; is_archived: boolean }) => [s.section_key, s])
     );
 
     // TIM-2341: build plan_state ONCE so the lender-ready section auto-content
@@ -540,7 +542,11 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
           (v): v is string => typeof v === "string",
         ))
       : [];
-    const standardKeySet = new Set<string>(DEFAULT_BUSINESS_PLAN_SECTION_ORDER);
+    // TIM-3575: `standardKeySet` is the ALLOWLIST for persisted keys (includes
+    // optional sections that Add-to-Plan appended). The tail-append loop
+    // below still uses DEFAULT_BUSINESS_PLAN_SECTION_ORDER so optional
+    // sections that were never added don't auto-appear in the PDF.
+    const standardKeySet = new Set<string>(ALL_BUSINESS_PLAN_SECTION_KEYS);
     const persistedStandardOrder: string[] = [];
     const seenPersisted = new Set<string>();
     for (const id of persistedSectionOrder) {
@@ -553,11 +559,18 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       if (!seenPersisted.has(key)) persistedStandardOrder.push(key);
     }
     const sectionMetaByKey = new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m]));
+    // TIM-3575: drop archived sections from the PDF (matches the workspace
+    // active list). is_archived comes off the same savedMap the render
+    // block already reads for user_content / is_visible.
     const sections: BusinessPlanSectionData[] = persistedStandardOrder
       .map((key) => sectionMetaByKey.get(key as (typeof BUSINESS_PLAN_SECTIONS)[number]["key"]))
       .filter((meta): meta is (typeof BUSINESS_PLAN_SECTIONS)[number] => Boolean(meta))
+      .filter((meta) => {
+        const saved = savedMap.get(meta.key) as { is_archived?: boolean } | undefined;
+        return !(saved?.is_archived === true);
+      })
       .map((meta) => {
-        const saved = savedMap.get(meta.key) as { user_content: string | null; is_visible: boolean } | undefined;
+        const saved = savedMap.get(meta.key) as { user_content: string | null; is_visible: boolean; is_archived: boolean } | undefined;
         return {
           key: meta.key,
           title: meta.title,
@@ -565,6 +578,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
           autoContent: autoContent[meta.key] ?? "",
           userContent: saved?.user_content ?? null,
           isVisible: saved?.is_visible ?? meta.defaultVisible,
+          isArchived: saved?.is_archived ?? false,
         };
       });
 
@@ -612,15 +626,18 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
     );
 
     // TIM-3111: map custom section DB rows to CustomSectionData.
-    const customSections: CustomSectionData[] = (customSectionRows ?? []).map(
-      (row: { id: string; title: string; user_content: string | null; is_visible: boolean; sort_order: number }) => ({
-        id: row.id,
-        title: row.title ?? "Custom Section",
-        userContent: row.user_content ?? null,
-        isVisible: row.is_visible ?? true,
-        sortOrder: row.sort_order ?? 0,
-      })
-    );
+    // TIM-3575: drop archived custom sections from the PDF.
+    const customSections: CustomSectionData[] = (customSectionRows ?? [])
+      .filter((row: { is_archived?: boolean }) => row.is_archived !== true)
+      .map(
+        (row: { id: string; title: string; user_content: string | null; is_visible: boolean; sort_order: number }) => ({
+          id: row.id,
+          title: row.title ?? "Custom Section",
+          userContent: row.user_content ?? null,
+          isVisible: row.is_visible ?? true,
+          sortOrder: row.sort_order ?? 0,
+        })
+      );
 
     return {
       shopName: plan?.plan_name ?? null,
