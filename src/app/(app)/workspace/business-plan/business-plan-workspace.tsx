@@ -1156,7 +1156,10 @@ export function BusinessPlanWorkspace({
                   reachable from every workspace via the floating affordance.
                   The hamburger keeps Export PDF, Print Business Plan, and
                   Regenerate all as before. */}
-              <WorkspaceActionMenu>
+              {/* TIM-3556: hideAdvisor — the header-level AskScoutButton above
+                  already opens the same copilot drawer, so the shared menu's
+                  default "Open Advisor" row would duplicate that action. */}
+              <WorkspaceActionMenu hideAdvisor>
                 {({ closeMenu }) => (
                   <>
                     <WorkspaceActionMenuItem
