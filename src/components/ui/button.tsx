@@ -6,7 +6,7 @@ type Size = "default" | "xs" | "sm" | "lg" | "icon" | "icon-xs" | "icon-sm" | "i
 
 const variantClasses: Record<Variant, string> = {
   default: "bg-[var(--teal)] text-white hover:bg-[var(--teal-darker)] border-transparent",
-  outline: "border border-[var(--border)] bg-white text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]",
+  outline: "border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]",
   ghost: "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] border-transparent",
   destructive: "bg-red-50 text-red-700 border-red-200 hover:bg-red-100",
   link: "text-[var(--teal)] underline-offset-4 hover:underline border-transparent",

@@ -10,7 +10,7 @@ function Card({
   return (
     <div
       className={cn(
-        "bg-white rounded-xl border border-[var(--border)] text-[var(--foreground)]",
+        "bg-[var(--card)] rounded-xl border border-[var(--border)] text-[var(--foreground)]",
         className
       )}
       {...props}

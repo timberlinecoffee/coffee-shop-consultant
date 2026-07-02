@@ -51,7 +51,7 @@ export function TabsTrigger({ value, children, className = "" }: { value: string
       type="button"
       onClick={() => ctx.onValueChange(value)}
       className={`text-sm font-medium px-3 py-1.5 rounded-md transition-colors ${
-        active ? "bg-white text-[var(--foreground)] shadow-sm" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+        active ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
       } ${className}`}
     >
       {children}
