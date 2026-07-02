@@ -1859,10 +1859,27 @@ function ArchiveConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onCancel();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
-        <h2 className="text-base font-semibold text-[var(--foreground)]">Archive this section?</h2>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="bp-archive-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="bp-archive-title" className="text-base font-semibold text-[var(--foreground)]">Archive this section?</h2>
         <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
           This won&rsquo;t appear in your exported plan, but you can bring it back from the archived list anytime.
         </p>
