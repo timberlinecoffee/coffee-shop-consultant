@@ -441,7 +441,11 @@ function CompetitorsPrintBlock({
   competitors: ConceptCompetitor[];
   noDirectCompetitors: boolean;
 }) {
-  const label = "Nearby Competitors";
+  // Sentence-case label mirrors the concept editor's SectionHeader
+  // ("Nearby competitors", concept-editor.tsx line 597) and other mixed-case
+  // CONCEPT_COMPONENTS_V2 labels ("Shop identity", "Brand voice"). The
+  // codebase-consistent case wins over strict TIM-1002 here.
+  const label = "Nearby competitors";
 
   // No shops named but the user checked "no direct competitors identified" —
   // render a single sentence so the brief reflects the explicit declaration.
