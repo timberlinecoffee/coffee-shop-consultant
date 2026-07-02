@@ -4,8 +4,9 @@
 // ui_revamp_v2 flag. Navigation only — all data, calculations, and Scout
 // suggestions carry through unchanged from FinancialsWorkspace.
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { BarChart2, ChevronDown, CheckCircle, Circle, Minus } from "lucide-react";
+import { SectionHeader } from "@/components/section-header";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
@@ -25,10 +26,12 @@ import { OrgSyncPanel } from "./org-sync-panel";
 import { ForecastLinesEditor } from "./forecast-lines-editor";
 import { PaywallModal } from "@/components/paywall-modal";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { LabelWithHint } from "@/components/ui/label-with-hint";
 import { InfoTip } from "@/components/ui/info-tip";
 import { MenuTicketReconciliationBanner } from "@/components/cross-suite/MenuTicketReconciliationBanner";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
+import { GuidedTour, type TourStep } from "./guided-tour";
 import { Compass, FileDown, Sheet } from "lucide-react";
 import { CURRENCIES } from "@/lib/currency";
 import {
@@ -60,6 +63,98 @@ import type { EquipmentItem } from "./financials-workspace";
 
 type V2Tab = "inputs" | "reports";
 type SectionStatus = "complete" | "in_progress" | "empty";
+
+// TIM-3488: v2 has a single Inputs tab with four accordion sections, so every
+// step targets the inputs tab and names the AccordionSection id that holds the
+// spotlighted field. The targetIds match the in-content `id="tour-*"` markers.
+const TOUR_STEPS_V2: TourStep[] = [
+  {
+    id: "customers",
+    tab: "inputs",
+    targetId: "tour-customer-flow",
+    sectionId: "v2-section-daily-traffic",
+    title: "How busy is a typical day?",
+    body: "Enter the customers you expect on each open day. This is the biggest driver of your revenue.",
+    hint: "a new neighborhood cafe often sees 80–150 customers a day.",
+    why: "We only count sales on days you're open.",
+  },
+  {
+    id: "ticket",
+    tab: "inputs",
+    targetId: "tour-revenue",
+    sectionId: "v2-section-revenue",
+    title: "What does a customer spend?",
+    body: "Set your average sale per visit: one drink, or a drink plus a pastry. Customers x average sale is your daily revenue.",
+    hint: "most espresso bars land between $6 and $10 per visit.",
+  },
+  {
+    id: "cogs",
+    tab: "inputs",
+    targetId: "tour-cogs",
+    sectionId: "v2-section-revenue",
+    title: "How much of each sale is ingredients?",
+    body: "Your cost of goods (coffee, milk, cups, syrups) as a percentage of the sale price.",
+    hint: "a well-run coffee shop keeps this around 28–35%.",
+  },
+  // Steps inside the Costs & Overhead accordion follow DOM order
+  // (Cost lines → Personnel → Startup → Funding) so the spotlight scrolls
+  // monotonically down the section instead of bouncing up and down.
+  {
+    id: "costs",
+    tab: "inputs",
+    targetId: "tour-costs",
+    sectionId: "v2-section-costs",
+    title: "Set your monthly running costs",
+    body: "Rent, utilities, insurance, marketing and more live here. Edit any line; toggle a flat dollar amount or a percent of sales.",
+    hint: "rent for a small cafe is often 8–12% of sales.",
+  },
+  {
+    id: "staffing",
+    tab: "inputs",
+    targetId: "tour-personnel",
+    sectionId: "v2-section-costs",
+    title: "Add your team",
+    body: "Add your baristas and any manager here, with their pay. We add a payroll cushion for taxes and benefits automatically.",
+    hint: "baristas often earn $15–$20/hr; a manager $40k–$55k a year.",
+    why: "Staff is usually the largest cost in a coffee shop.",
+  },
+  {
+    id: "startup",
+    tab: "inputs",
+    targetId: "tour-startup-capital-assets",
+    sectionId: "v2-section-costs",
+    title: "Add up your opening costs",
+    body: "Your one-time costs to open live here. Capital assets (espresso machine, grinders, build-out) flow in automatically from the Equipment & Supplies workspace; add supplies, deposits and other one-time costs directly.",
+    hint: "opening a small espresso bar often runs $80k–$250k all in.",
+  },
+  {
+    id: "funding",
+    tab: "inputs",
+    targetId: "tour-funding",
+    sectionId: "v2-section-costs",
+    title: "How are you paying for it?",
+    body: "Add the money you're putting in, plus any loan. We'll check it covers your opening costs with a cushion for the early months.",
+    hint: "many first owners self-fund $30k–$150k, often with a small loan.",
+  },
+  {
+    id: "taxes",
+    tab: "inputs",
+    targetId: "tour-taxes",
+    sectionId: "v2-section-growth",
+    title: "Set your income tax rate",
+    body: "This is income tax: the share of profit you'll set aside. You only pay it when the shop is profitable, and only on the profit.",
+    hint: "~25% of profit is a safe starting point.",
+  },
+  {
+    id: "sales-tax",
+    tab: "inputs",
+    targetId: "tour-sales-tax",
+    sectionId: "v2-section-growth",
+    title: "Now your sales tax rate",
+    body: "Sales tax is separate: you collect it from customers and pass it through to the state. It does not change your revenue or profit.",
+    hint: "U.S. sales tax is typically 0% to 10%, depending on your state and city.",
+  },
+];
 
 // ── Shared day constants ───────────────────────────────────────────────────────
 
@@ -101,33 +196,49 @@ function StatusBadge({ status }: { status: SectionStatus }) {
 
 // ── AccordionSection ──────────────────────────────────────────────────────────
 
+// TIM-3488: `id` lets the guided tour open this section before spotlighting a
+// field inside it. The matching event name is dispatched by FinancialsV2's
+// onExpandSection handler.
 function AccordionSection({
+  id,
   title,
   status,
   defaultOpen = false,
   children,
 }: {
+  id?: string;
   title: string;
   status: SectionStatus;
   defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+
+  useEffect(() => {
+    if (!id) return;
+    function onExpand(e: Event) {
+      const detail = (e as CustomEvent<{ id?: string }>).detail;
+      if (detail?.id === id) setOpen(true);
+    }
+    window.addEventListener("financials-v2-tour-expand", onExpand as EventListener);
+    return () => window.removeEventListener("financials-v2-tour-expand", onExpand as EventListener);
+  }, [id]);
+
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+    <div id={id} className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--background)] transition-colors"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           <ChevronDown
             size={16}
             className={`text-[var(--muted-foreground)] transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
-          <span className="text-sm font-semibold text-[var(--foreground)]">{title}</span>
+          <SectionHeader title={title} className="mb-0 flex-1" />
         </div>
         <StatusBadge status={status} />
       </button>
@@ -256,6 +367,13 @@ export interface FinancialsV2Props {
   paywallOpen: boolean;
   onPaywallClose: () => void;
   onOpenWizard: () => void;
+  // TIM-3488: state for the inline guided tour. Owned by the parent so the
+  // first-visit auto-open and the pref-write callbacks stay in one place.
+  tourOpen: boolean;
+  tourSeq: number;
+  onTourFinish: () => void;
+  onTourSkip: () => void;
+  onTourClose: (index: number) => void;
   initialTrialMessagesUsed?: number;
 }
 
@@ -290,7 +408,7 @@ function DailyTrafficContent({
   return (
     <div className="space-y-4">
       {/* Customer flow */}
-      <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+      <div id="tour-customer-flow" className="rounded-xl border border-[var(--border)] bg-white p-4">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
           Customer Flow by Day
         </p>
@@ -343,10 +461,14 @@ function DailyTrafficContent({
       </div>
 
       {/* Operating schedule */}
-      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden relative">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] px-4 pt-4 pb-2">
           Operating Schedule
         </p>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-0 top-10 bottom-0 z-10 w-8 bg-gradient-to-l from-white to-transparent sm:hidden"
+        />
         <div className="overflow-x-auto">
           <table className="w-full min-w-[440px]">
             <thead>
@@ -475,7 +597,7 @@ function RevenueStreamsContent({
   return (
     <div className="space-y-4">
       {/* Primary Revenue */}
-      <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+      <div id="tour-revenue" className="rounded-xl border border-[var(--border)] bg-white p-4">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
           Primary Revenue Streams
         </p>
@@ -491,7 +613,7 @@ function RevenueStreamsContent({
             </p>
             <div className="flex items-center gap-2 shrink-0">
               <button type="button" onClick={onGoToProjections} className="text-[11px] font-semibold text-[var(--teal)] hover:underline">
-                View on grid
+                View on Grid
               </button>
               {canEdit && (
                 <button type="button" onClick={() => onClearLineOverrides(BASE_REVENUE_LINE_ID)} className="text-[11px] font-semibold text-[var(--error)] hover:underline">
@@ -506,10 +628,10 @@ function RevenueStreamsContent({
           {splitOn ? (
             <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>{`Beverage: avg per sale (${currencyCode})`}</label>
-                <NumericInput
+                <label className={labelCls}>Beverage: avg per sale</label>
+                <MoneyInput
+                  currencyCode={currencyCode}
                   className={inputCls}
-                  type="number"
                   min={0}
                   step={0.5}
                   value={bevTicketCents ? bevTicketCents / 100 : ""}
@@ -522,10 +644,10 @@ function RevenueStreamsContent({
                 />
               </div>
               <div>
-                <label className={labelCls}>{`Food: avg per sale (${currencyCode})`}</label>
-                <NumericInput
+                <label className={labelCls}>Food: avg per sale</label>
+                <MoneyInput
+                  currencyCode={currencyCode}
                   className={inputCls}
-                  type="number"
                   min={0}
                   step={0.5}
                   value={foodTicketCents ? foodTicketCents / 100 : ""}
@@ -541,11 +663,11 @@ function RevenueStreamsContent({
           ) : (
             <div>
               <LabelWithHint className={labelCls.replace(" mb-1", "")} hintLabel="Average ticket" hint="Typical espresso bar: $6–$10">
-                {`Average ticket (${currencyCode})`}
+                Average ticket
               </LabelWithHint>
-              <NumericInput
+              <MoneyInput
+                currencyCode={currencyCode}
                 className={inputCls}
-                type="number"
                 min={0}
                 step={0.5}
                 value={mp.avg_ticket_cents ? mp.avg_ticket_cents / 100 : ""}
@@ -557,7 +679,7 @@ function RevenueStreamsContent({
               />
             </div>
           )}
-          <div>
+          <div id="tour-cogs">
             <LabelWithHint className={labelCls.replace(" mb-1", "")} hintLabel="COGS % of revenue" hint="Typical coffee shop: 28–35%">
               COGS % of revenue
             </LabelWithHint>
@@ -704,7 +826,7 @@ function CostsOverheadContent({
   return (
     <div className="space-y-4">
       {/* Cost lines */}
-      <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+      <div id="tour-costs" className="rounded-xl border border-[var(--border)] bg-white p-4">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
           Costs &amp; Expenses
         </p>
@@ -784,7 +906,9 @@ function CostsOverheadContent({
         </div>
       </div>
 
-      {/* Personnel / Salaries */}
+      {/* Personnel / Salaries — `id="tour-personnel"` lives on the inner
+          PersonnelEditor root, so the wrapper here intentionally has no id to
+          avoid a duplicate-id DOM. */}
       <div className="space-y-3">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
           Personnel &amp; Salaries
@@ -806,7 +930,8 @@ function CostsOverheadContent({
         />
       </div>
 
-      {/* Startup Costs */}
+      {/* Startup Costs — `id="tour-startup-capital-assets"` lives on the inner
+          StartupTab root. */}
       <div className="space-y-3">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
           Startup &amp; Opening Costs
@@ -829,7 +954,7 @@ function CostsOverheadContent({
         />
       </div>
 
-      {/* Funding */}
+      {/* Funding — `id="tour-funding"` lives on the inner FundingTab root. */}
       <div className="space-y-3">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
           Funding &amp; Loans
@@ -1011,7 +1136,7 @@ function GrowthRampContent({
       </div>
 
       {/* Taxes */}
-      <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+      <div id="tour-taxes" className="rounded-xl border border-[var(--border)] bg-white p-4">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
           Tax Rates
         </p>
@@ -1032,7 +1157,7 @@ function GrowthRampContent({
               disabled={!canEdit}
             />
           </div>
-          <div>
+          <div id="tour-sales-tax">
             <LabelWithHint className={labelCls.replace(" mb-1", "")} hintLabel="Sales Tax Rate %" hint="Collected from customers, passed to state. 0% if none.">
               Sales Tax Rate %
             </LabelWithHint>
@@ -1098,11 +1223,11 @@ function GrowthRampContent({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <LabelWithHint className={labelCls.replace(" mb-1", "")} hintLabel="Owner draws" hint="What you pay yourself monthly. Shows on cash flow as financing outflow.">
-              {`Owner draws (${mp.currency_code ?? "USD"} / month)`}
+              Owner draws / month
             </LabelWithHint>
-            <NumericInput
+            <MoneyInput
+              currencyCode={mp.currency_code ?? "USD"}
               className={inputCls}
-              type="number"
               min={0}
               step={100}
               value={(mp.owner_draws_monthly_cents ?? 0) > 0 ? (mp.owner_draws_monthly_cents ?? 0) / 100 : ""}
@@ -1287,9 +1412,22 @@ export function FinancialsV2({
   paywallOpen,
   onPaywallClose,
   onOpenWizard,
+  tourOpen,
+  tourSeq,
+  onTourFinish,
+  onTourSkip,
+  onTourClose,
   initialTrialMessagesUsed,
 }: FinancialsV2Props) {
   const [activeTab, setActiveTab] = useState<V2Tab>("inputs");
+
+  // TIM-3488: open the v2 AccordionSection that owns the spotlighted field
+  // before the GuidedTour measures it.
+  const expandTourSection = useCallback((sectionId: string) => {
+    window.dispatchEvent(
+      new CustomEvent("financials-v2-tour-expand", { detail: { id: sectionId } }),
+    );
+  }, []);
   const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
   const currencyCode = mp.currency_code ?? "USD";
   const manualLines = mp.manual_lines ?? [];
@@ -1383,11 +1521,11 @@ export function FinancialsV2({
           <div>
             <InputsProgressBar statuses={statuses} />
             <div className="space-y-3">
-              <AccordionSection title="Daily Traffic & Schedule" status={s1} defaultOpen>
+              <AccordionSection id="v2-section-daily-traffic" title="Daily Traffic & Schedule" status={s1} defaultOpen>
                 <DailyTrafficContent mp={mp} canEdit={canEdit} onUpdate={onMpUpdate} />
               </AccordionSection>
 
-              <AccordionSection title="Revenue Streams" status={s2} defaultOpen>
+              <AccordionSection id="v2-section-revenue" title="Revenue Streams" status={s2} defaultOpen>
                 <RevenueStreamsContent
                   mp={mp}
                   canEdit={canEdit}
@@ -1403,7 +1541,7 @@ export function FinancialsV2({
                 />
               </AccordionSection>
 
-              <AccordionSection title="Costs & Overhead" status={s3}>
+              <AccordionSection id="v2-section-costs" title="Costs & Overhead" status={s3}>
                 <CostsOverheadContent
                   mp={mp}
                   canEdit={canEdit}
@@ -1431,7 +1569,7 @@ export function FinancialsV2({
                 />
               </AccordionSection>
 
-              <AccordionSection title="Growth & Ramp" status={s4}>
+              <AccordionSection id="v2-section-growth" title="Growth & Ramp" status={s4}>
                 <GrowthRampContent mp={mp} canEdit={canEdit} onUpdate={onMpUpdate} />
               </AccordionSection>
             </div>
@@ -1466,6 +1604,22 @@ export function FinancialsV2({
       </div>
 
       <PaywallModal open={paywallOpen} onClose={onPaywallClose} variant="copilot_trial" />
+
+      {tourOpen && canEdit && (
+        <GuidedTour
+          key={tourSeq}
+          steps={TOUR_STEPS_V2}
+          onTabChange={(tab) => {
+            // v2 only has "inputs" and "reports" tabs; every tour step lives
+            // under "inputs", so any v1-shaped tab string routes there.
+            setActiveTab(tab === "reports" ? "reports" : "inputs");
+          }}
+          onExpandSection={expandTourSection}
+          onFinish={onTourFinish}
+          onSkip={onTourSkip}
+          onClose={onTourClose}
+        />
+      )}
     </div>
   );
 }

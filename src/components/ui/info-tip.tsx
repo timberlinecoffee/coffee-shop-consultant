@@ -7,8 +7,10 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
-import { HelpCircle, X } from 'lucide-react'
+import { HelpCircle } from 'lucide-react'
+import { CollapseButton } from '@/components/ui/CollapseButton'
 import { cn } from '@/lib/utils'
+import { useEdgeClamp } from '@/lib/use-edge-clamp'
 
 export function InfoTip({
   label,
@@ -21,6 +23,7 @@ export function InfoTip({
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const panelRef = useEdgeClamp(open)
 
   useEffect(() => {
     if (!open) return
@@ -59,22 +62,21 @@ export function InfoTip({
 
       {open && (
         <div
+          ref={panelRef}
           role="dialog"
           aria-label={`${label} explanation`}
-          className="absolute left-0 top-full z-30 mt-1 w-64 rounded-xl border border-[var(--warm-800)] bg-[var(--warm-250)] p-3 shadow-lg"
+          className="absolute left-0 top-full z-30 mt-1 w-64 max-w-[calc(100vw-1rem)] rounded-xl border border-[var(--warm-800)] bg-[var(--warm-250)] p-3 shadow-lg"
         >
           <div className="mb-1.5 flex items-start justify-between gap-2">
             <span className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
               {label}
             </span>
-            <button
-              type="button"
+            <CollapseButton
               onClick={() => setOpen(false)}
-              aria-label="Close explanation"
+              size={12}
               className="text-[var(--dark-grey)] transition-colors hover:text-[var(--foreground)]"
-            >
-              <X size={12} aria-hidden="true" />
-            </button>
+              aria-label="Close explanation"
+            />
           </div>
           <div className="text-xs leading-relaxed text-[var(--gray-1300)]">{children}</div>
         </div>

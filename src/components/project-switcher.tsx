@@ -11,9 +11,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Plus, Lock, X, Trash2 } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProUpgradePrompt } from "@/components/pro-upgrade-prompt";
+import { OnboardingFlow } from "@/app/onboarding/onboarding-flow";
 
 interface Project {
   id: string;
@@ -38,6 +40,7 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
   const [switching, setSwitching] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [toast, setToast] = useState<Toast>(null);
+  const [interviewProjectId, setInterviewProjectId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // TIM-2915: dismiss toast after 4s. Re-set on every new toast.
@@ -132,7 +135,7 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
 
       <button
         onClick={() => setMenuOpen((o) => !o)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--border)] bg-white text-left hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50"
+        className="w-full flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-xl border border-[var(--border)] bg-white text-left hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50"
         aria-expanded={menuOpen}
         aria-haspopup="listbox"
       >
@@ -196,9 +199,27 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
         </div>
       )}
 
+      {interviewProjectId && (
+        <div
+          className="fixed inset-0 z-[60] overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Project interview"
+        >
+          <OnboardingFlow
+            projectId={interviewProjectId}
+            onDismiss={() => {
+              setInterviewProjectId(null);
+              router.push("/dashboard");
+              router.refresh();
+            }}
+          />
+        </div>
+      )}
       <AddProjectModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
+        onOpenInterview={(projectId) => setInterviewProjectId(projectId)}
         onCreated={(project, activatedNow) => {
           // TIM-2962: upsert by id. AddProjectModal calls onCreated twice for
           // the same project — once on create (activatedNow=false) and again
@@ -451,10 +472,12 @@ function AddProjectModal({
   open,
   onClose,
   onCreated,
+  onOpenInterview,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: (project: Project, activatedNow: boolean) => void;
+  onOpenInterview?: (projectId: string) => void;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -570,17 +593,27 @@ function AddProjectModal({
     if (!createdProject || switching) return;
     setSwitching(true);
     try {
-      await fetch(`/api/projects/${createdProject.id}`, {
+      const res = await fetch(`/api/projects/${createdProject.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: true }),
       });
+      if (!res.ok) {
+        setError("Could not switch to the new project. Try again.");
+        setSwitching(false);
+        return;
+      }
       onCreated(createdProject, true);
       onClose();
-      // TIM-2915: hard-navigate so any workspace page that loaded with the
-      // previous active plan's data unmounts.
-      router.push("/dashboard");
-      router.refresh();
+      if (onOpenInterview) {
+        // TIM-3155: Pro new project → launch trimmed interview before navigating.
+        onOpenInterview(createdProject.id);
+      } else {
+        // TIM-2915: hard-navigate so any workspace page that loaded with the
+        // previous active plan's data unmounts.
+        router.push("/dashboard");
+        router.refresh();
+      }
     } catch {
       setError("Could not switch to the new project. Try again.");
       setSwitching(false);
@@ -607,14 +640,13 @@ function AddProjectModal({
         aria-hidden="true"
       />
       <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-8">
-        <button
+        <CollapseButton
           onClick={onClose}
           disabled={submitting}
-          className="absolute top-4 right-4 p-1 rounded-xl text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          size={18}
+          className="absolute top-4 right-4 p-1 rounded-xl text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Close"
-        >
-          <X size={18} aria-hidden="true" />
-        </button>
+        />
 
         {createdProject ? (
           <>

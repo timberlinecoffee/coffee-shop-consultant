@@ -2,6 +2,11 @@ import { stripe, tierFromPriceId, MONTHLY_CREDITS, TRIAL_CREDITS, PAUSE_PRICE_ID
 import { creditsForPackKey, isCreditPackKey, CREDIT_PACKS_BY_KEY } from "@/lib/credits/packs";
 import { sendCreditPackReceiptEmail } from "@/lib/email/send-account-email";
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
+import {
+  pushTrialStarted,
+  pushTrialConverted,
+  pushTrialCanceled,
+} from "@/lib/email/klaviyo-profile-bridge";
 import { createServiceClient } from "@/lib/supabase/service";
 import { assertUserSubscriptionStatus } from "@/lib/billing/subscription-status";
 import { NextRequest } from "next/server";
@@ -88,6 +93,16 @@ export async function POST(request: NextRequest) {
         // low-balance threshold so this short-circuits in practice — the
         // call is the spec-required boundary check at grant.
         void notifyIfCreditBalanceLow({ userId, postMutationBalance: TRIAL_CREDITS, supabase });
+
+        // TIM-2366: push trial_started_at to Klaviyo so Marketing's Day 0/1/3/5/7/8 flow fires.
+        const { data: trialUser } = await supabase.from("users").select("email").eq("id", userId).single();
+        if (trialUser?.email) {
+          try {
+            await pushTrialStarted({ email: trialUser.email });
+          } catch (err) {
+            console.error("klaviyo bridge: pushTrialStarted failed", { userId, err: String(err) });
+          }
+        }
       } else {
         const postGrantBalance = MONTHLY_CREDITS[tier] ?? 0;
         await supabase.from("users").update({
@@ -410,6 +425,18 @@ export async function POST(request: NextRequest) {
           supabase,
         });
       }
+
+      // TIM-2366: push trial_converted_at to Klaviyo on trialing → active so post-conversion segments fire.
+      if (trialConverted && tier !== "free") {
+        const { data: convUser } = await supabase.from("users").select("email").eq("id", sub.user_id).single();
+        if (convUser?.email) {
+          try {
+            await pushTrialConverted({ email: convUser.email, plan: tier });
+          } catch (err) {
+            console.error("klaviyo bridge: pushTrialConverted failed", { userId: sub.user_id, err: String(err) });
+          }
+        }
+      }
       break;
     }
 
@@ -419,11 +446,16 @@ export async function POST(request: NextRequest) {
 
       const { data: sub } = await supabase
         .from("subscriptions")
-        .select("user_id")
+        .select("user_id, status")
         .eq("stripe_subscription_id", subscription.id)
         .single();
 
       if (!sub) break;
+
+      // TIM-2366: capture pre-delete status so we can fire Marketing's win-back
+      // flow only for *trial* cancellations, not paid-tier churn (which has a
+      // different lifecycle and CSM-owned recovery path).
+      const wasTrialing = sub.status === "trialing";
 
       // Clear pause columns on hard cancel (covers paused → cancelled via failed dunning)
       await supabase.from("subscriptions").update({
@@ -448,6 +480,19 @@ export async function POST(request: NextRequest) {
         paused_from_tier: null,
         paused_at: null,
       }).eq("id", sub.user_id);
+
+      // TIM-2366: trial-cancellations push trial_canceled_at to Klaviyo for win-back flow.
+      // Paid-tier churn is intentionally NOT pushed — different funnel, different owner.
+      if (wasTrialing) {
+        const { data: cancelUser } = await supabase.from("users").select("email").eq("id", sub.user_id).single();
+        if (cancelUser?.email) {
+          try {
+            await pushTrialCanceled({ email: cancelUser.email });
+          } catch (err) {
+            console.error("klaviyo bridge: pushTrialCanceled failed", { userId: sub.user_id, err: String(err) });
+          }
+        }
+      }
       break;
     }
 
@@ -536,7 +581,7 @@ export async function POST(request: NextRequest) {
 
       const gstRegistered: boolean = platformSettings?.gst_registered ?? false;
       const gstNumber: string | null = platformSettings?.gst_number ?? null;
-      const businessName: string = platformSettings?.business_name ?? "Timberline Coffee School Inc.";
+      const businessName: string = platformSettings?.business_name ?? "Ivy & Rill Consulting Inc.";
       const businessAddressObj = platformSettings?.business_address ?? null;
       const businessAddressStr: string = businessAddressObj
         ? [businessAddressObj.line1, businessAddressObj.city, businessAddressObj.state, businessAddressObj.postal_code, businessAddressObj.country].filter(Boolean).join(", ")
@@ -709,7 +754,7 @@ export async function POST(request: NextRequest) {
 
         const gstRegistered: boolean = platformSettings?.gst_registered ?? false;
         const gstNumber: string | null = platformSettings?.gst_number ?? null;
-        const businessName: string = platformSettings?.business_name ?? "Timberline Coffee School Inc.";
+        const businessName: string = platformSettings?.business_name ?? "Ivy & Rill Consulting Inc.";
         const businessAddressObj = platformSettings?.business_address ?? null;
         const businessAddressStr: string = businessAddressObj
           ? [businessAddressObj.line1, businessAddressObj.city, businessAddressObj.state, businessAddressObj.postal_code, businessAddressObj.country].filter(Boolean).join(", ")

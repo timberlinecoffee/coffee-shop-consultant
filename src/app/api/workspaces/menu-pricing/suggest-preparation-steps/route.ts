@@ -2,18 +2,18 @@
 // Sibling of /suggest-recipe — that one generates ingredients, this one
 // generates the ordered prep instructions shown in the Recipe tab.
 // Title Case per TIM-1002 at the API boundary. No em dashes per Voice Mandate.
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk"
+import { runScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { normalizeAIOutput } from "@/lib/normalize"
 import { toTitleCase } from "@/lib/text"
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 export const runtime = "nodejs"
 export const maxDuration = 30
 
-const anthropic = new Anthropic()
+const ROUTE_PATH = "/api/workspaces/menu-pricing/suggest-preparation-steps"
 
 interface ConceptContext {
   shop_identity?: string
@@ -26,6 +26,15 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "menu:suggest-prep-steps",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  })
+  if (rateLimited) return rateLimited
 
   const { data: profile } = await supabase
     .from("users")
@@ -102,13 +111,16 @@ Return values in Title Case for any label-shaped fragments (every word capitaliz
 Return ONLY a JSON object: { "steps": ["...", "...", ...] }`
 
   try {
-    const message = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 1024,
+    const result = await runScoutTurn({
+      lane: "menu_suggest_recipe",
+      systemBlocks: [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 1024,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     })
 
-    const rawText = message.content[0]?.type === "text" ? message.content[0].text : ""
+    const rawText = result.text
     const jsonMatch = rawText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       return Response.json({ error: "No JSON in AI response" }, { status: 500 })

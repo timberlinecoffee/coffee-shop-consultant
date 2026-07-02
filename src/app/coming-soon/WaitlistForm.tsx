@@ -2,6 +2,9 @@
 
 // TIM-2285: waitlist signup form for the Groundwork.AI coming-soon page.
 // Single email field → POST /api/waitlist/subscribe → in-place success state.
+//
+// TIM-3448: Added CASL s.10(1) marketing consent checkbox (unchecked by
+// default, express opt-in). Checkbox state sent as `marketing_consent` bool.
 
 import { useState } from "react";
 import { TurnstileWidget } from "@/app/_components/TurnstileWidget";
@@ -12,6 +15,7 @@ type Status = "idle" | "submitting" | "success" | "error";
 
 export function WaitlistForm() {
   const [email, setEmail] = useState("");
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -36,6 +40,7 @@ export function WaitlistForm() {
           email: trimmed,
           cf_turnstile_token: captchaToken,
           source: "groundwork-ai-coming-soon",
+          marketing_consent: marketingConsent,
         }),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string };
@@ -163,13 +168,20 @@ export function WaitlistForm() {
         </p>
       )}
 
-      <p
-        className="mt-3 text-white/70"
-        style={{ fontSize: "12px", lineHeight: 1.55 }}
-      >
-        We&rsquo;ll only use your email for launch updates and your locked-in
-        price. Unsubscribe anytime.
-      </p>
+      {/* TIM-3448: CASL s.10(1) express consent checkbox — unchecked by default */}
+      <label className="flex items-start gap-2 mt-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={marketingConsent}
+          onChange={(e) => setMarketingConsent(e.target.checked)}
+          disabled={status === "submitting"}
+          className="mt-0.5 w-4 h-4 flex-shrink-0 rounded accent-[--sage]"
+          aria-label="Consent to receive launch update emails"
+        />
+        <span className="text-white/70" style={{ fontSize: "12px", lineHeight: 1.55 }}>
+          Email me when we launch, with my locked-in price. Unsubscribe anytime.
+        </span>
+      </label>
     </form>
   );
 }

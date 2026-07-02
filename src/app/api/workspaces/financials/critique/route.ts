@@ -12,16 +12,16 @@
 export const runtime = "nodejs";
 export const maxDuration = 45;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk";
+import { runScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import type { FinancialProjections } from "@/lib/financial-projection";
 import { formatCurrency } from "@/lib/financial-projection";
 import { getCurrencyMeta, normalizeCurrencyCode } from "@/lib/currency";
 
-const anthropic = new Anthropic();
+const ROUTE_PATH = "/api/workspaces/financials/critique";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -29,6 +29,15 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "financials:critique",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   const { data: profile } = await supabase
     .from("users")
@@ -180,14 +189,16 @@ If any ratios were flagged 🔴 or 🟡 in the "Ratios Outside Healthy Benchmark
 Return ONLY the JSON object, no other text.`;
 
   try {
-    const message = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 1200,
+    const result = await runScoutTurn({
+      lane: "financial_critique",
+      systemBlocks: [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 1200,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     });
 
-    const rawText =
-      message.content[0]?.type === "text" ? message.content[0].text : "";
+    const rawText = result.text;
 
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

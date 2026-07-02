@@ -645,10 +645,10 @@ export default async function LandingPage({
             </p>
             <div className="flex flex-col sm:flex-row justify-between gap-3">
               <p style={{ color: "var(--neutral-600)", fontSize: "13px" }}>
-                &copy; {new Date().getFullYear()} Timberline Coffee School. All rights reserved.
+                &copy; {new Date().getFullYear()} Ivy &amp; Rill Consulting Inc. All rights reserved.
               </p>
               <p style={{ color: "var(--neutral-600)", fontSize: "13px" }}>
-                Groundwork is a product of Timberline Coffee School.
+                Groundwork is a product of Ivy &amp; Rill Consulting Inc.
               </p>
             </div>
           </div>

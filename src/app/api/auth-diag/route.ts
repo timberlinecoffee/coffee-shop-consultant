@@ -96,6 +96,13 @@ export async function POST(request: Request): Promise<Response> {
       cookie_names: clipArray(body.cookie_names, 80, 80),
       verifier_present: Boolean(body.verifier_present),
       stale_verifiers: typeof body.stale_verifiers === "number" ? body.stale_verifiers : null,
+      // TIM-3327: client-reported /login origin (window.location.origin/host)
+      // plus the request host this beacon arrived on. Cross-reference against
+      // /auth/callback's `host` log to detect apex↔www routing that strips
+      // host-only cookies between OAuth initiate and exchange.
+      login_origin: clip(body.login_origin, 120),
+      login_host: clip(body.login_host, 120),
+      beacon_host: clip(request.headers.get("host"), 120),
       authorize_host: clip(body.authorize_host, 120),
       authorize_path: clip(body.authorize_path, 120),
       third_party_cookie_hint: clip(body.third_party_cookie_hint, 40),

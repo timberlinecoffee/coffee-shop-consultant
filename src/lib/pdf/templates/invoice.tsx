@@ -337,7 +337,7 @@ export function InvoicePdf({ content }: { content: InvoicePdfContent }) {
         {/* Small-supplier disclosure (when not GST-registered) */}
         {taxLineSuppressed && (
           <Text style={S.disclosure}>
-            GST/HST is not applicable. Timberline Coffee School is a small supplier and is not
+            GST/HST is not applicable. Ivy & Rill Consulting Inc. is a small supplier and is not
             registered for GST/HST purposes under the Excise Tax Act.
           </Text>
         )}

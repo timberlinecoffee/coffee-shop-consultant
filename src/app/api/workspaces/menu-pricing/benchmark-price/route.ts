@@ -11,9 +11,13 @@
 // curated industry dataset fallback, TIM-2361 model flip to Sonnet 4.6. The
 // industry dataset still ships as a SECONDARY reference panel; it never
 // replaces the local-cafe primary range.
-import type Anthropic from "@anthropic-ai/sdk"
-import { RESEARCH_AI_MODEL } from "@/lib/ai/models"
+//
+// TIM-3496: routed through `runScoutTurn` under lane `menu_benchmark_price`
+// (REQUIRES_RESEARCH_MODEL_LANES pins Sonnet 4.6, BLOCK_CROSS_PROVIDER_FAILOVER_LANES
+// blocks DeepSeek failover). `recordTurnMetric` populates
+// provider/lane/latencyMs/fallbackUsed via `toTurnMetricArgs(envelope, lane)`.
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
+import { toTurnMetricArgs } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { createServiceClient } from "@/lib/supabase/service"
@@ -194,9 +198,17 @@ export async function POST(request: Request) {
       country,
       city,
       ctx,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     })
 
     const telemetryClient = createServiceClient()
+    // TIM-3496: provider/lane/latencyMs/fallbackUsed populated from envelope —
+    // toTurnMetricArgs already maps NormalizedUsage back to the Anthropic-shape
+    // field names buildTurnMetricRecord expects. Usage and webSearchRequests
+    // are SUMMED across the initial + retry calls inside computeLocalCafeRange,
+    // so one row captures the full turn.
+    const metricArgs = toTurnMetricArgs(local.envelope, "menu_benchmark_price")
     await recordTurnMetric(
       {
         async insert(row) {
@@ -205,10 +217,7 @@ export async function POST(request: Request) {
       },
       {
         route: ROUTE_PATH,
-        model: RESEARCH_AI_MODEL,
-        usage: local.usage as Anthropic.Messages.Usage,
-        webSearchRequests: local.web_search_requests,
-        toolCalls: 0,
+        ...metricArgs,
         userId: user.id,
         planTier: resolvePlanTier(profile),
       },

@@ -12,12 +12,12 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk";
+import { runScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { toTitleCase } from "@/lib/text";
 import { normalizeAIOutput } from "@/lib/normalize";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   VENDOR_CATEGORY_KEYS,
   VENDOR_CATEGORY_LABELS,
@@ -30,7 +30,7 @@ import {
 } from "@/lib/suppliers";
 import { normalizeConceptV2 } from "@/lib/concept";
 
-const anthropic = new Anthropic();
+const ROUTE_PATH = "/api/workspaces/suppliers/seed";
 
 type AiCandidate = {
   name: string;
@@ -63,6 +63,7 @@ async function generateCategoryCandidates(
   label: string,
   subtitle: string,
   conceptDigest: string,
+  userId: string,
   existingNames: string[] = []
 ): Promise<AiCandidate[]> {
   void category;
@@ -99,14 +100,16 @@ Rules:
 - "name" must be Title Case (each word capitalized except articles/short prepositions).
 - Exactly 3 candidates.`;
 
-  const response = await anthropic.messages.create({
-    model: PLATFORM_AI_MODEL,
-    max_tokens: 1024,
+  const result = await runScoutTurn({
+    lane: "suppliers_seed",
+    systemBlocks: [],
     messages: [{ role: "user", content: prompt }],
+    maxTokens: 1024,
+    userId,
+    routeTag: ROUTE_PATH,
   });
 
-  const text = response.content[0]?.type === "text" ? response.content[0].text : "";
-  const parsed = JSON.parse(text) as { candidates?: AiCandidate[] };
+  const parsed = JSON.parse(result.text) as { candidates?: AiCandidate[] };
   const candidates = Array.isArray(parsed.candidates) ? parsed.candidates.slice(0, 3) : [];
   return candidates.map((c) => ({
     name: toTitleCase(c.name ?? ""),
@@ -132,6 +135,17 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rule 4: rate-limit a paid-API route. /seed?mode=all loops over every
+  // seeded vendor category; each iteration triggers an Anthropic call. Per-user
+  // throttling here caps fan-out across both single-category and all-modes.
+  const rateLimited = await enforceRateLimit({
+    bucket: "suppliers:seed",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   const { data: profile } = await supabase
     .from("users")
@@ -222,7 +236,7 @@ export async function POST(request: Request) {
 
     let candidates: AiCandidate[];
     try {
-      candidates = await generateCategoryCandidates(category, meta.label, meta.subtitle, conceptDigest, existingNames);
+      candidates = await generateCategoryCandidates(category, meta.label, meta.subtitle, conceptDigest, user.id, existingNames);
     } catch {
       results.push({ category, count: 0 });
       continue;

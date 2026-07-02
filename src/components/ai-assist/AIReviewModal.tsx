@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, X, Pencil, Sparkles, AlertCircle, Link2 } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { COPILOT_NAME } from "@/lib/copilot/branding";
 import {
   recomputeEquipmentLinked,
@@ -381,7 +382,7 @@ function ChangeCard({
       {/* Per-card error */}
       {cardState.applyError && (
         <p className="text-xs text-red-600 border border-red-200 rounded-lg px-3 py-2 bg-red-50">
-          {cardState.applyError} <button type="button" className="underline ml-1" onClick={onAccept}>Try again</button>
+          {cardState.applyError} <button type="button" className="underline ml-1" onClick={onAccept}>Try Again</button>
         </p>
       )}
 
@@ -411,7 +412,7 @@ function ChangeCard({
         <div className="grid grid-cols-1 sm:grid-cols-3 border-t border-[var(--border)] -mx-4 -mb-4 mt-1">
           {[
             { label: "Accept", icon: <Check size={13} />, action: onAccept, active: isAccepted, activeCls: "bg-[var(--teal)] text-white" },
-            { label: "Reject", icon: <X size={13} />, action: onReject, active: isRejected, activeCls: "bg-red-50 text-red-600" },
+            { label: "Reject", icon: <X size={13} /> /* destructive — keep X */, action: onReject, active: isRejected, activeCls: "bg-red-50 text-red-600" },
             { label: "Edit", icon: <Pencil size={13} />, action: onEditStart, active: false, activeCls: "" },
           ].map(({ label, icon, action, active, activeCls }) => (
             <button
@@ -451,7 +452,7 @@ function ChangeCard({
                 : "border border-[var(--border)] text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--background)]"
             }`}
           >
-            <X size={13} aria-hidden /> Reject
+            <X size={13} aria-hidden />{/* destructive — keep X */} Reject
           </button>
           <button
             type="button"
@@ -694,15 +695,13 @@ export function AIReviewModal({
           <p className="text-sm text-[var(--dark-grey)] mt-0.5 truncate">{subtitleParts}</p>
         )}
       </div>
-      <button
-        type="button"
-        onClick={isApplying ? undefined : onClose}
-        disabled={isApplying}
-        aria-label="Close"
+      <CollapseButton
+        onClick={onClose}
+        size={16}
         className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 shrink-0 mt-0.5"
-      >
-        <X size={16} aria-hidden />
-      </button>
+        aria-label="Close"
+        disabled={isApplying}
+      />
     </div>
   );
 

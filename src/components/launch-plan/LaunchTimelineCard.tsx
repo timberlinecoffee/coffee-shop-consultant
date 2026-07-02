@@ -379,7 +379,7 @@ function RowDrawer({
       <div ref={panelRef} className="relative w-full max-w-md bg-white rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
           <h2 id="rdf-dialog-title" className="font-semibold text-[var(--foreground)]">
-            {mode.kind === "add" ? "Add milestone" : "Edit milestone"}
+            {mode.kind === "add" ? "Add Milestone" : "Edit Milestone"}
           </h2>
           <button
             type="button"
@@ -494,7 +494,7 @@ function RowDrawer({
               disabled={isSubmitting}
               className="flex-1 rounded-lg bg-[var(--teal)] text-white text-sm font-medium py-2.5 hover:bg-[var(--teal-darker)] disabled:opacity-50 transition-colors"
             >
-              {isSubmitting ? "Saving…" : mode.kind === "add" ? "Add milestone" : "Save changes"}
+              {isSubmitting ? "Saving…" : mode.kind === "add" ? "Add Milestone" : "Save Changes"}
             </button>
             <button
               type="button"

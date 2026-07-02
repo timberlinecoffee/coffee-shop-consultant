@@ -19,6 +19,7 @@ import {
   assembleTeamHiring,
   assembleFinancialPlan,
   type BusinessPlanSectionData,
+  type CustomSectionData,
   type BpLocationCandidate,
   type BpEquipmentItem,
   type BpMenuItem,
@@ -39,7 +40,7 @@ export default async function BusinessPlanWorkspacePage() {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("id, plan_name")
+    .select("id, plan_name, business_plan_section_order")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -62,6 +63,7 @@ export default async function BusinessPlanWorkspacePage() {
     { data: profile },
     { data: coverRow },
     { data: financialDocRows },
+    { data: customSectionRows },
   ] = await Promise.all([
     supabase
       .from("workspace_documents")
@@ -125,6 +127,12 @@ export default async function BusinessPlanWorkspacePage() {
       .from("business_plan_financial_documents")
       .select("document_key, is_visible")
       .eq("plan_id", planId),
+    supabase
+      .from("business_plan_custom_sections")
+      .select("id, title, user_content, is_visible, sort_order")
+      .eq("plan_id", planId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
   ]);
 
   const savedMap = new Map(
@@ -209,6 +217,14 @@ export default async function BusinessPlanWorkspacePage() {
     (financialDocRows ?? []) as { document_key: string; is_visible: boolean }[]
   );
 
+  const initialCustomSections: CustomSectionData[] = (customSectionRows ?? []).map((row) => ({
+    id: row.id as string,
+    title: (row.title as string) ?? "Custom Section",
+    userContent: (row.user_content as string | null) ?? null,
+    isVisible: (row.is_visible as boolean) ?? true,
+    sortOrder: (row.sort_order as number) ?? 0,
+  }));
+
   // TIM-2466: Pre-generate checklist. The four source workspaces below feed
   // the assembler functions that build BP autoContent. When they are all
   // empty (the state of every test persona in TIM-2459), the assembled
@@ -263,11 +279,20 @@ export default async function BusinessPlanWorkspacePage() {
     logoPublicUrl = signed?.signedUrl ?? null;
   }
 
+  // TIM-3490: persisted top-level section order. Empty array == use default.
+  const rawSectionOrder = (plan as { business_plan_section_order?: unknown })
+    .business_plan_section_order;
+  const initialSectionOrder: string[] = Array.isArray(rawSectionOrder)
+    ? rawSectionOrder.filter((v): v is string => typeof v === "string")
+    : [];
+
   return (
     <BusinessPlanWorkspace
       planId={planId}
       shopName={plan.plan_name ?? ""}
       initialSections={sections}
+      initialCustomSections={initialCustomSections}
+      initialSectionOrder={initialSectionOrder}
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
       initialCoverSettings={initialCoverSettings}

@@ -4,8 +4,10 @@
 // Upload .xlsx / .csv → AI-parse → editable preview → commit to equipment table.
 
 import { useRef, useState } from "react";
-import { X, Upload, Trash2, ChevronDown } from "lucide-react";
+import { ChevronDown, Trash2, Upload } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { useCurrency } from "@/components/CurrencyProvider";
+import { MoneyInput } from "@/components/ui/money-input";
 import type { ParsedRow } from "@/app/api/workspaces/buildout/import/route";
 import type { ListSection } from "@/types/buildout";
 import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
@@ -39,17 +41,6 @@ interface Props {
   sections: ListSection[];
   onClose: () => void;
   onCommitted: (newItems: EquipmentItem[], newSections: ListSection[]) => void;
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function centsToDollarString(cents: number): string {
-  return (cents / 100).toFixed(2);
-}
-
-function dollarStringToCents(s: string): number {
-  const n = parseFloat(s.replace(/[$,]/g, ""));
-  return isNaN(n) ? 0 : Math.round(n * 100);
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -208,14 +199,12 @@ export function SpreadsheetImportModal({ sections, onClose, onCommitted }: Props
               Upload a .xlsx or .csv file — AI maps columns and assigns stations automatically.
             </p>
           </div>
-          <button
-            type="button"
+          <CollapseButton
             onClick={onClose}
-            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors"
+            size={18}
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)]"
             aria-label="Close"
-          >
-            <X size={18} />
-          </button>
+          />
         </div>
 
         <div className="flex-1 px-6 py-5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
@@ -471,12 +460,12 @@ function PreviewRow({
 
       {/* Cost */}
       <td className="px-2 py-1.5 text-right">
-        <input
-          type="text"
-          value={centsToDollarString(row.unit_cost_cents)}
-          onChange={(e) => onChange({ unit_cost_cents: dollarStringToCents(e.target.value) })}
+        <MoneyInput
+          compact
+          value={row.unit_cost_cents > 0 ? row.unit_cost_cents / 100 : ""}
+          onChange={(e) => onChange({ unit_cost_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
           disabled={skipped}
-          className="w-full text-right text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded px-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus-visible:outline-none transition-colors disabled:pointer-events-none"
+          className="w-full text-right text-xs text-[var(--foreground)] bg-transparent border border-transparent rounded pr-1 py-0.5 hover:border-[var(--neutral-cool-350)] focus:border-[var(--teal)] focus-visible:outline-none transition-colors disabled:pointer-events-none"
         />
       </td>
 

@@ -17,8 +17,12 @@ const eslintConfig = defineConfig([
   // consistent by routing through src/lib/formatters.ts. Bare `.toFixed(N)`
   // inside JSX is the entry point the helpers replace, so forbid it there.
   // Compute / formatter / hook code outside JSX is unaffected.
+  // TIM-3236 (TIM-3229.E): money-field guard for workspace surface — raw
+  // <input type="number"> with money props and bare-$ template literals must
+  // use <MoneyInput>/<MoneyDisplay>/useCurrency() helpers instead.
   {
     files: ["src/app/(app)/workspace/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx,mjs}", "**/*.spec.{ts,tsx,mjs}"],
     rules: {
       "no-restricted-syntax": [
         "error",
@@ -33,6 +37,66 @@ const eslintConfig = defineConfig([
             "JSXFragment CallExpression[callee.property.name='toFixed']",
           message:
             "Do not call .toFixed() inside workspace JSX — route through src/lib/formatters.ts (fmtPct / formatMinor / formatRatioToOne / progressPct).",
+        },
+        {
+          selector:
+            "JSXOpeningElement[name.name='input']:has(JSXAttribute[name.name='type'][value.value='number']):has(JSXAttribute[name.name=/^(?:aria-label|name|placeholder)$/][value.value=/(?:price|cost|fee|revenue|cogs|salary|wage|rent|opex|capex|deposit|expense|amount)/i])",
+          message:
+            "Use <MoneyInput> from @/components/ui/money-input instead of a raw <input type=\"number\"> for money fields (TIM-3229).",
+        },
+        {
+          selector:
+            "JSXExpressionContainer > TemplateLiteral[quasis.0.value.raw=/^\\$+/]",
+          message:
+            "Use <MoneyDisplay> or useCurrency().format* instead of a bare-$ template literal for money display (TIM-3229). See @/components/ui/money-display.",
+        },
+      ],
+    },
+  },
+  // TIM-3236 (TIM-3229.E): money-field guard — plan route and shared component
+  // surfaces. Mirrors the workspace rules above without the toFixed restriction.
+  // Excluded: test files, src/lib/credits/packs.ts, src/lib/ai/** (not in scope).
+  {
+    files: [
+      "src/app/plan/**/*.{ts,tsx}",
+      "src/components/{equipment,buildout,location-lease,launch-plan,business-plan,menu-pricing,workspace,hiring}/**/*.{ts,tsx}",
+    ],
+    ignores: ["**/*.test.{ts,tsx,mjs}", "**/*.spec.{ts,tsx,mjs}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "JSXOpeningElement[name.name='input']:has(JSXAttribute[name.name='type'][value.value='number']):has(JSXAttribute[name.name=/^(?:aria-label|name|placeholder)$/][value.value=/(?:price|cost|fee|revenue|cogs|salary|wage|rent|opex|capex|deposit|expense|amount)/i])",
+          message:
+            "Use <MoneyInput> from @/components/ui/money-input instead of a raw <input type=\"number\"> for money fields (TIM-3229).",
+        },
+        {
+          selector:
+            "JSXExpressionContainer > TemplateLiteral[quasis.0.value.raw=/^\\$+/]",
+          message:
+            "Use <MoneyDisplay> or useCurrency().format* instead of a bare-$ template literal for money display (TIM-3229). See @/components/ui/money-display.",
+        },
+      ],
+    },
+  },
+  // TIM-3288: Voice Mandate guard — em-dash (U+2014) is forbidden in email
+  // template string literals and JSX text. Use '. ' or ': ' instead.
+  // Mirrors TIM-3236 no-restricted-syntax pattern.
+  {
+    files: ["src/lib/email/templates/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/—/]",
+          message:
+            "Em-dash not allowed in email templates (TIM-1537 Voice Mandate). Use '. ' or ': ' instead of ' — '.",
+        },
+        {
+          selector: "JSXText[value=/—/]",
+          message:
+            "Em-dash not allowed in email templates (TIM-1537 Voice Mandate). Use '. ' or ': ' instead of ' — '.",
         },
       ],
     },

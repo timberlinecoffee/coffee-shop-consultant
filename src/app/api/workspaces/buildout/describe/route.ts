@@ -6,14 +6,14 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk";
+import { runScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { toTitleCase } from "@/lib/text";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { applyExplicitPrices } from "@/lib/buildout-explicit-price";
 import { normalizeConceptV2, formatConceptV2ForAI } from "@/lib/concept";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
 import type { ParsedRow } from "../import/route";
 
@@ -38,6 +38,15 @@ export async function POST(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "buildout:describe",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   const { data: profile } = await supabase
     .from("users")
@@ -142,22 +151,18 @@ Return ONLY valid JSON — no markdown, no explanation:
   ]
 }`;
 
-  const client = new Anthropic();
-
   let aiItems: AiEquipmentItem[];
   try {
-    const msg = await client.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 8192,
+    const result = await runScoutTurn({
+      lane: "buildout_describe",
+      systemBlocks: [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 8192,
+      userId: user.id,
+      routeTag: "/api/workspaces/buildout/describe",
     });
 
-    const text = msg.content
-      .filter((b) => b.type === "text")
-      .map((b) => (b as { type: "text"; text: string }).text)
-      .join("");
-
-    const clean = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+    const clean = result.text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
     const parsed = JSON.parse(clean) as { items?: AiEquipmentItem[] };
     aiItems = parsed.items ?? [];
   } catch (err) {

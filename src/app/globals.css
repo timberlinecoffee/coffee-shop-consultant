@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* TIM-3569: enable the `dark:` Tailwind v4 variant when the .dark class is
+   present anywhere on the ancestor chain. Applied to <html> by the pre-
+   hydration script in layout.tsx (see ThemeInitScript) and by the Appearance
+   tab in Settings. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   /* AI surface gradient tokens (TIM-1563 / TIM-1557 brand spec §3) */
   --ai-grad-from:     #155e63;
@@ -206,11 +212,12 @@
   --error-destructive: #DC2626;
   --error-secondary: #EF4444;
 
-  /* Benchmark chip tokens (TIM-2472) */
+  /* Benchmark chip tokens (TIM-2472, TIM-3248) */
   --bench-green-bg: #f0faf4;  --bench-green-border: #a8d5b8;  --bench-green-text: #1e6e3a;
   --bench-blue-bg: #eff6ff;   --bench-blue-border: #93c5fd;   --bench-blue-text: #1d4ed8;
   --bench-yellow-bg: #fffbeb; --bench-yellow-border: #fcd34d; --bench-yellow-text: #92400e;
   --bench-grey-bg: #f4f3f1;   --bench-grey-border: #d1d1cc;   --bench-grey-text: #6b6b6b;
+  --bench-red-bg: #fff5f5;    --bench-red-border: #f5c4c4;    --bench-red-text: #b91c1c;
 
   /* Coffee / warm brown */
   --coffee-100: #FDF5EC;
@@ -328,6 +335,55 @@
   --amber-bg-f0d: #f0dcb0;
   --teal-bg-f0f8: #f0f8f8;
   --warm-near-white: #f8f9f8;
+}
+
+/* TIM-3569: Dark-mode semantic-token overrides.
+   Only the neutrals + core surface tokens flip. Brand teal, sage, status
+   colors, and gradient stops are unchanged so the visual identity carries
+   through. Per-component polish (workspace-specific bg-* raw palette
+   classes) is a follow-up sweep — this baseline covers the shell (page
+   background, cards, inputs, buttons, tab strips, borders, muted copy) so
+   /settings, dashboard, and workspace surfaces are legible in dark mode. */
+.dark {
+  --background: #0d0d0b;              /* was neutral-950 */
+  --foreground: #faf9f7;              /* was off-white */
+  --card: #1c1c18;                    /* was #ffffff */
+  --card-foreground: #faf9f7;
+  --border: #2e2e28;
+  --border-subtle: #2e2e28;
+  --border-medium: #4a4a42;
+
+  /* Kept distinct from --card so hover:bg-[var(--muted)] shows movement
+     (SettingsShell nav rail, dashboard section wells). */
+  --muted: #24241f;
+  --muted-foreground: #b8b8b0;
+
+  --dark-grey: #b8b8b0;               /* keep 4.5:1 on dark bg */
+  --light-grey: #2e2e28;
+  --off-white: #1c1c18;
+
+  /* Selected-state on left-rail nav (Settings shell). Tint stays teal-family
+     but flips to a dark surface so the pill reads against the dark bg. */
+  --teal-bg-100: #16413f;
+  --teal-bg-200: #14383a;
+  --teal-bg-300: #163e40;
+  --teal-tint-100: #14383a;
+
+  /* Graduated surface tokens driving Button secondary/outline hover feedback:
+     surface-warm-100 (base) → surface-warm-200 (hover) must be visibly
+     distinct AND distinct from --border, or hover states are no-ops. */
+  --surface-warm-100: #24241f;
+  --surface-warm-200: #2e2e28;
+  --surface-warm-300: #14383a;
+
+  /* Neutral-cool scale — used by admin surfaces and inputs. */
+  --neutral-cool-100: #1c1c18;
+  --neutral-cool-150: #2e2e28;
+  --neutral-cool-200: #2e2e28;
+  --neutral-cool-300: #4a4a42;
+  --neutral-cool-350: #4a4a42;
+  --neutral-cool-400: #b8b8b0;
+  --neutral-cool-500: #d4d4cc;
 }
 
 @theme inline {
@@ -454,4 +510,12 @@ body {
   background-size: 200% 200%;
   animation: ai-gradient-shift 2s ease-in-out infinite;
   color: #ffffff;
+}
+
+/* TIM-3284: pre-hydration consent-banner suppression. The inline script in
+ * src/app/layout.tsx sets data-consent-decided on <html> before paint when
+ * the gw_consent cookie is present. This rule hides the banner element so
+ * returning visitors never see a flash, even before React hydrates. */
+html[data-consent-decided] [data-consent-banner] {
+  display: none !important;
 }

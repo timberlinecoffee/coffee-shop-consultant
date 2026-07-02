@@ -21,8 +21,9 @@
 // guide §Buttons + §Modal anti-patterns).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, X, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 
 // Mirrors the server-side `ValidationReport` shape from src/lib/business-plan/validate.ts.
 // Duplicated here to keep the modal a self-contained client component without
@@ -220,14 +221,12 @@ export function ExportGateModal({
               .
             </p>
           </div>
-          <button
-            type="button"
+          <CollapseButton
             onClick={onCancel}
+            size={16}
             className="p-1 rounded hover:bg-[var(--neutral-cool-100)] text-[var(--muted-foreground)]"
             aria-label="Close"
-          >
-            <X size={16} aria-hidden="true" />
-          </button>
+          />
         </div>
 
         <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
@@ -406,7 +405,7 @@ export function ExportGateModal({
               onClick={onCancel}
               className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[var(--gray-1150)] text-xs font-semibold hover:bg-[var(--neutral-cool-100)] transition-colors"
             >
-              Back to plan
+              Back to Plan
             </button>
             <button
               type="button"
@@ -414,7 +413,7 @@ export function ExportGateModal({
               disabled={!canContinue}
               className="px-3 py-1.5 rounded-lg bg-[var(--teal)] text-white text-xs font-semibold hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Continue export
+              Continue Export
             </button>
           </div>
         </div>

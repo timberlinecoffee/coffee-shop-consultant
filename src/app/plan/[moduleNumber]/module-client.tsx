@@ -4,12 +4,12 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { LogoMark } from "@/app/_components/Logo";
-import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { UpgradeGate } from "@/components/upgrade-gate";
 import { PaywallModal } from "@/components/paywall-modal";
 import { usePaywallGuard } from "@/lib/use-paywall-guard";
 import { canAccessSection } from "@/lib/access";
 import { useCurrency } from "@/components/CurrencyProvider";
+import { MoneyInput } from "@/components/ui/money-input";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -716,7 +716,7 @@ function SectionConceptBrief({
 // ── Module 2 Section Components ───────────────────────────────────────────
 
 function SectionStartupCosts({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
-  const { format, symbol } = useCurrency();
+  const { format } = useCurrency();
   const fields = [
     { key: "equipment_budget", label: "Equipment & Bar Build-Out", placeholder: "e.g. 85000", hint: "Espresso machine, grinders, brewers, refrigeration" },
     { key: "buildout_budget", label: "Construction & Leasehold Improvements", placeholder: "e.g. 120000", hint: "Plumbing, electrical, flooring, walls" },
@@ -744,17 +744,13 @@ function SectionStartupCosts({ data, onChange }: { data: Record<string, unknown>
           <div key={f.key}>
             <label className="text-sm font-medium text-neutral-950 block mb-1">{f.label}</label>
             <p className="text-xs text-neutral-500 mb-2">{f.hint}</p>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">{symbol}</span>
-              <input
-                type="number"
-                min="0"
-                value={(data[f.key] as string) ?? ""}
-                onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
-                placeholder={f.placeholder}
-                className="w-full border border-grey-light rounded-xl pl-7 pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
-              />
-            </div>
+            <MoneyInput
+              min={0}
+              value={(data[f.key] as string) ?? ""}
+              onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
+              placeholder={f.placeholder}
+              className="w-full border border-grey-light rounded-xl pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+            />
           </div>
         ))}
       </div>
@@ -769,7 +765,7 @@ function SectionStartupCosts({ data, onChange }: { data: Record<string, unknown>
 }
 
 function SectionRevenueProjections({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
-  const { format, symbol } = useCurrency();
+  const { format } = useCurrency();
   const avgTicket = parseFloat((data.avg_ticket as string) ?? "0") || 0;
   const dailyTx = parseFloat((data.daily_transactions as string) ?? "0") || 0;
   const daysPerWeek = parseFloat((data.days_per_week as string) ?? "0") || 0;
@@ -787,18 +783,14 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
         <div>
           <label className="text-sm font-medium text-neutral-950 block mb-1">Average Ticket Size</label>
           <p className="text-xs text-neutral-500 mb-2">Total sale per customer including food and add-ons</p>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">{symbol}</span>
-            <input
-              type="number"
-              min="0"
-              step="0.50"
-              value={(data.avg_ticket as string) ?? ""}
-              onChange={(e) => onChange({ ...data, avg_ticket: e.target.value })}
-              placeholder="e.g. 8.50"
-              className="w-full border border-grey-light rounded-xl pl-7 pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
-            />
-          </div>
+          <MoneyInput
+            min={0}
+            step="0.50"
+            value={(data.avg_ticket as string) ?? ""}
+            onChange={(e) => onChange({ ...data, avg_ticket: e.target.value })}
+            placeholder="e.g. 8.50"
+            className="w-full border border-grey-light rounded-xl pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+          />
         </div>
         <div>
           <label className="text-sm font-medium text-neutral-950 block mb-1">Daily Transactions</label>
@@ -847,7 +839,7 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
 }
 
 function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
-  const { format, symbol } = useCurrency();
+  const { format } = useCurrency();
   const fields = [
     { key: "rent", label: "Rent / Lease Payment", placeholder: "e.g. 6500", hint: "Monthly base rent (don't include CAM yet)" },
     { key: "labor_cost", label: "Total Labor (Gross)", placeholder: "e.g. 14000", hint: "All staff wages + your own owner pay" },
@@ -890,17 +882,13 @@ function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unkno
           <div key={f.key}>
             <label className="text-sm font-medium text-neutral-950 block mb-1">{f.label}</label>
             <p className="text-xs text-neutral-500 mb-2">{f.hint}</p>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">{symbol}</span>
-              <input
-                type="number"
-                min="0"
-                value={(data[f.key] as string) ?? ""}
-                onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
-                placeholder={f.placeholder}
-                className="w-full border border-grey-light rounded-xl pl-7 pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
-              />
-            </div>
+            <MoneyInput
+              min={0}
+              value={(data[f.key] as string) ?? ""}
+              onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
+              placeholder={f.placeholder}
+              className="w-full border border-grey-light rounded-xl pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+            />
           </div>
         ))}
       </div>
@@ -940,18 +928,14 @@ function SectionPricingStrategy({ data, onChange }: { data: Record<string, unkno
         {pricingFields.map((f) => (
           <div key={f.key}>
             <label className="text-sm font-medium text-neutral-950 block mb-1">{f.label}</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">{symbol}</span>
-              <input
-                type="number"
-                min="0"
-                step="0.25"
-                value={(data[f.key] as string) ?? ""}
-                onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
-                placeholder={f.placeholder}
-                className="w-full border border-grey-light rounded-xl pl-7 pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
-              />
-            </div>
+            <MoneyInput
+              min={0}
+              step="0.25"
+              value={(data[f.key] as string) ?? ""}
+              onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
+              placeholder={f.placeholder}
+              className="w-full border border-grey-light rounded-xl pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+            />
           </div>
         ))}
         <div>
@@ -1395,7 +1379,7 @@ export function ModuleClient({
     !freePreview && SECTIONS.every((s) => isSectionComplete(s.key));
 
   return (
-    <div className="min-h-screen bg-neutral-100 flex flex-col pb-36 lg:pb-0">
+    <div className="min-h-screen bg-neutral-100 flex flex-col">
       {/* Top nav */}
       <nav className="bg-white border-b border-grey-light px-6 py-4 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -1684,7 +1668,7 @@ export function ModuleClient({
                       href={moduleNumber === 1 ? "/plan/2" : "/dashboard"}
                       className="px-5 py-2.5 bg-teal text-white rounded-xl text-sm font-medium hover:bg-teal-dark transition-colors"
                     >
-                      {moduleNumber === 1 ? "Continue to Module 2 →" : "Back to dashboard"}
+                      {moduleNumber === 1 ? "Continue to Module 2 →" : "Back to Dashboard"}
                     </Link>
                   );
                 })()}
@@ -1694,8 +1678,8 @@ export function ModuleClient({
         </main>
       </div>
 
-      {/* Mobile Coach FAB — bottom-right, above BottomTabBar */}
-      <div className="lg:hidden fixed bottom-[72px] right-4 z-30">
+      {/* Mobile Coach FAB — bottom-right */}
+      <div className="lg:hidden fixed bottom-4 right-4 z-30">
         <button
           onClick={() => setCoachOpen((o) => !o)}
           aria-label="Open AI Coach"
@@ -1727,7 +1711,6 @@ export function ModuleClient({
         guardedFetch={guardedFetch}
       />
       <PaywallModal open={paywalled} onClose={dismissPaywall} />
-      <BottomTabBar />
     </div>
   );
 }

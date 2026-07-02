@@ -12,8 +12,10 @@ import { BarChart2, X, AlertTriangle, FileDown, Sheet, Compass, ChevronDown } fr
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { LabelWithHint } from "@/components/ui/label-with-hint";
+import { SectionHeader } from "@/components/section-header";
 import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -363,9 +365,8 @@ function OwnerContributionsEditor({
             className={rowCls + " w-16 text-right"}
             aria-label="Contribution month"
           />
-          <span className="text-[10px] text-[var(--muted-foreground)]">{currencyCode}</span>
-          <NumericInput
-            type="number"
+          <MoneyInput
+            currencyCode={currencyCode}
             min={0}
             step={100}
             value={c.amount_cents ? c.amount_cents / 100 : ""}
@@ -379,7 +380,8 @@ function OwnerContributionsEditor({
                 ),
               })
             }
-            className={rowCls + " flex-1 text-right"}
+            wrapperClassName="flex-1"
+            className={rowCls + " text-right"}
             aria-label="Contribution amount"
           />
           {canEdit && (
@@ -400,7 +402,7 @@ function OwnerContributionsEditor({
           onClick={add}
           className="text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-2 py-1 rounded-md"
         >
-          + Add contribution
+          + Add Contribution
         </button>
       )}
       <p className="text-[10px] text-[var(--dark-grey)] mt-1">
@@ -472,25 +474,22 @@ function Section({
   }, [id, setOpen]);
   return (
     <div id={id}>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-2 mb-4">
         <button
           type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
-          className="flex items-center gap-2 group"
+          aria-label={`${open ? "Collapse" : "Expand"} ${title}`}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left text-[var(--dark-grey)] hover:text-[var(--muted-foreground)] transition-colors"
         >
-          <span className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
-            {title}
-          </span>
           <ChevronDown
             size={15}
-            className={`text-[var(--dark-grey)] group-hover:text-[var(--muted-foreground)] transition-transform ${
-              open ? "rotate-180" : ""
-            }`}
+            className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
+          <SectionHeader title={title} className="mb-0 flex-1" />
         </button>
-        {help && <SectionHelp title={title}>{help}</SectionHelp>}
+        {help != null && <SectionHelp title={title}>{help}</SectionHelp>}
       </div>
       {open && children}
     </div>
@@ -731,7 +730,11 @@ function ForecastTab({
         open={sections.isOpen("operating-schedule")}
         onOpenChange={(n) => sections.setOpen("operating-schedule", n)}
       >
-        <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden relative">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-8 bg-gradient-to-l from-white to-transparent sm:hidden"
+          />
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px]">
               <thead>
@@ -841,7 +844,7 @@ function ForecastTab({
                     onClick={onGoToProjections}
                     className="text-[11px] font-semibold text-[var(--teal)] hover:underline"
                   >
-                    View on grid
+                    View on Grid
                   </button>
                 )}
                 {canEdit && (
@@ -865,11 +868,11 @@ function ForecastTab({
                     hintLabel="Beverage average per sale"
                     hint="Espresso, drip, tea, etc."
                   >
-                    {`Beverage: average per sale (${mp.currency_code ?? "USD"})`}
+                    Beverage: average per sale
                   </LabelWithHint>
-                  <NumericInput
+                  <MoneyInput
+                    currencyCode={mp.currency_code ?? "USD"}
                     className={inputCls}
-                    type="number"
                     min={0}
                     step={0.5}
                     value={bevTicketCents ? bevTicketCents / 100 : ""}
@@ -884,11 +887,11 @@ function ForecastTab({
                     hintLabel="Food average per sale"
                     hint="Pastries, sandwiches, snacks"
                   >
-                    {`Food: average per sale (${mp.currency_code ?? "USD"})`}
+                    Food: average per sale
                   </LabelWithHint>
-                  <NumericInput
+                  <MoneyInput
+                    currencyCode={mp.currency_code ?? "USD"}
                     className={inputCls}
-                    type="number"
                     min={0}
                     step={0.5}
                     value={foodTicketCents ? foodTicketCents / 100 : ""}
@@ -905,11 +908,11 @@ function ForecastTab({
                   hintLabel="Average ticket"
                   hint="Typical espresso bar: $6–$10"
                 >
-                  {`Average ticket (${mp.currency_code ?? "USD"})`}
+                  Average ticket
                 </LabelWithHint>
-                <NumericInput
+                <MoneyInput
+                  currencyCode={mp.currency_code ?? "USD"}
                   className={inputCls}
-                  type="number"
                   min={0}
                   step={0.5}
                   value={mp.avg_ticket_cents ? mp.avg_ticket_cents / 100 : ""}
@@ -1146,11 +1149,11 @@ function ForecastTab({
                 hintLabel="Owner draws"
                 hint="What you pay yourself from the business each month. Shows up on the cash flow as a financing outflow."
               >
-                {`Owner draws (${mp.currency_code ?? "USD"} / month)`}
+                Owner draws / month
               </LabelWithHint>
-              <NumericInput
+              <MoneyInput
+                currencyCode={mp.currency_code ?? "USD"}
                 className={inputCls}
-                type="number"
                 min={0}
                 step={100}
                 value={
@@ -2358,6 +2361,11 @@ export function FinancialsWorkspace({
         paywallOpen={paywallOpen}
         onPaywallClose={() => setPaywallOpen(false)}
         onOpenWizard={openWizard}
+        tourOpen={tourOpen}
+        tourSeq={tourSeq}
+        onTourFinish={handleTourFinish}
+        onTourSkip={handleTourSkip}
+        onTourClose={handleTourClose}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
       </div>

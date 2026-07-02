@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { X } from "lucide-react";
 import { LogoMark } from "@/app/_components/Logo";
 import { EMPTY_CONCEPT, type ConceptDocument } from "@/lib/concept";
 import { COPILOT_NAME } from "@/lib/copilot/branding";
@@ -315,11 +316,17 @@ function getStepStatus(
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function OnboardingFlow({
-  userId,
-  firstName,
+  userId = "",
+  firstName = "",
+  projectId,
+  onDismiss,
 }: {
-  userId: string;
-  firstName: string;
+  userId?: string;
+  firstName?: string;
+  // When set, activates "project mode": skips welcome/motivation, posts to intake API on finish.
+  projectId?: string;
+  // Called after a skip in project mode so the parent can close the modal.
+  onDismiss?: () => void;
 }) {
   const [step, setStep] = useState(0);
   const [wizardState, setWizardState] = useState<WizardState>(EMPTY_WIZARD);
@@ -327,6 +334,11 @@ export function OnboardingFlow({
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
+
+  // In project mode, skip the persona-level questions already collected at signup.
+  const activeSteps = projectId
+    ? STEPS.filter((s) => s.id !== "welcome" && s.id !== "motivation")
+    : STEPS;
 
   // WCAG 2.4.3 Focus Order: move focus to the step container on each advance so
   // AT users land at the new step instead of being stranded on the old Next button.
@@ -358,8 +370,8 @@ export function OnboardingFlow({
 
   const { answers, shopVisionMeta, shopVisionText, targetCustomerMeta, targetCustomerText, diffState } = wizardState;
 
-  const currentStep = STEPS[step];
-  const totalSteps = STEPS.length;
+  const currentStep = activeSteps[step];
+  const totalSteps = activeSteps.length;
 
   const currentAnswer: string | string[] | LocationSelection | null =
     currentStep.type === "multiselect"
@@ -425,10 +437,46 @@ export function OnboardingFlow({
     return value.length > 0;
   }
 
+  async function handleSkip() {
+    if (!projectId) return;
+    setSaving(true);
+    try {
+      await fetch(`/api/projects/${projectId}/intake`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dismissed: true }),
+      });
+    } catch {
+      // silent — dismissal is best-effort
+    }
+    setSaving(false);
+    if (onDismiss) onDismiss();
+    else router.push("/dashboard");
+  }
+
   async function handleFinish() {
     setSaving(true);
     setError(null);
     try {
+      // Project mode: post trimmed answers to per-project intake API then go to dashboard.
+      if (projectId) {
+        const res = await fetch(`/api/projects/${projectId}/intake`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answers: buildOnboardingData(wizardState) }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setError(data.error ?? "Something went wrong. Try again.");
+          setSaving(false);
+          return;
+        }
+        clearDraft();
+        if (onDismiss) onDismiss();
+        else router.push("/dashboard");
+        return;
+      }
+
       const concept = buildConcept(wizardState, firstName || "My");
       const planName = concept.name;
 
@@ -576,19 +624,36 @@ export function OnboardingFlow({
       <div className="flex flex-col w-full sm:max-w-[680px] bg-[var(--background)] min-h-screen sm:min-h-0 sm:rounded-2xl sm:shadow-lg sm:overflow-hidden">
       <header className="px-6 pt-6 pb-4 flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2" aria-label="Groundwork home">
-            <LogoMark variant="color" height={28} />
-          </Link>
-          <span className="text-xs text-[var(--dark-grey)]">
-            Step {step + 1} of {totalSteps}
-          </span>
+          {projectId ? (
+            <p className="text-sm font-semibold text-[var(--foreground)]">Project Interview</p>
+          ) : (
+            <Link href="/" className="flex items-center gap-2" aria-label="Groundwork home">
+              <LogoMark variant="color" height={28} />
+            </Link>
+          )}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-[var(--dark-grey)]">
+              Step {step + 1} of {totalSteps}
+            </span>
+            {projectId && (
+              <button
+                type="button"
+                onClick={handleSkip}
+                disabled={saving}
+                className="p-1 rounded-xl text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50 disabled:opacity-50"
+                aria-label="Skip interview"
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            )}
+          </div>
         </div>
         {/* Progress bar — amber for deferred, teal for done, gray for pending */}
         <div
           className="flex gap-1.5"
           aria-label={`Step ${step + 1} of ${totalSteps}`}
         >
-          {STEPS.map((_, i) => {
+          {activeSteps.map((_, i) => {
             const status = getStepStatus(i, step, diffState.deferred);
             return (
               <span
@@ -869,6 +934,16 @@ export function OnboardingFlow({
             Back
           </button>
         )}
+        {projectId && step === 0 && (
+          <button
+            type="button"
+            onClick={handleSkip}
+            disabled={saving}
+            className="px-4 py-3 text-sm text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+          >
+            Skip for Now
+          </button>
+        )}
         <button
           type="button"
           onClick={handleNext}
@@ -876,9 +951,9 @@ export function OnboardingFlow({
           className="flex-1 bg-[var(--teal)] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-40"
         >
           {saving
-            ? "Saving your Concept..."
+            ? projectId ? "Saving..." : "Saving your Concept..."
             : step === totalSteps - 1
-            ? "Open my Concept workspace"
+            ? projectId ? "Finish" : "Open my Concept workspace"
             : "Next"}
         </button>
       </div>

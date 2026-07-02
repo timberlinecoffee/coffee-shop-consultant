@@ -5,14 +5,14 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics";
-import Anthropic from "@anthropic-ai/sdk";
+import { streamScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
 
 const TTFT_MS = 8_000;
@@ -28,6 +28,15 @@ export async function POST(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "business-plan:improve",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   const { data: profile } = await supabase
     .from("users")
@@ -87,8 +96,6 @@ Shop: ${shopName ?? "this coffee shop"}
 Improve this section:
 ${currentContent}`;
 
-  const client = new Anthropic();
-
   const stream = new ReadableStream({
     async start(controller) {
       const enc = new TextEncoder();
@@ -117,37 +124,49 @@ ${currentContent}`;
       }, TTFT_MS);
 
       try {
-        const response = await client.messages.stream({
-          model: PLATFORM_AI_MODEL,
-          max_tokens: 1024,
-          system: systemPrompt,
+        const t0 = Date.now();
+        const response = streamScoutTurn({
+          lane: "generate_business_plan_section",
+          systemBlocks: [{ text: systemPrompt }],
           messages: [{ role: "user", content: userMessage }],
+          maxTokens: 1024,
+          userId: user.id,
+          routeTag: "/api/business-plan/improve",
         });
 
         if (ttftTimer) { clearTimeout(ttftTimer); ttftTimer = null; }
 
         let fullText = "";
         // TIM-2509: capture per-turn usage for ai_turn_metrics.
+        // TIM-3468: provider/modelId from the adapter decision event.
+        let provider: "anthropic" | "deepseek" = "anthropic";
+        let modelId = "";
         let inputTokens = 0;
         let outputTokens = 0;
         let cacheReadTokens = 0;
         let cacheCreateTokens = 0;
+        let webSearchRequests = 0;
+        let toolCalls = 0;
 
         for await (const event of response) {
           if (done) break;
 
           if (gapTimer) { clearTimeout(gapTimer); gapTimer = null; }
 
-          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            const chunk = event.delta.text;
+          if (event.kind === "decision") {
+            provider = event.provider;
+            modelId = event.modelId;
+          } else if (event.kind === "text_delta") {
+            const chunk = event.text;
             fullText += chunk;
             controller.enqueue(enc.encode(sse("text", { text: chunk })));
-          } else if (event.type === "message_start" && event.message?.usage) {
-            inputTokens = event.message.usage.input_tokens ?? 0;
-            cacheReadTokens = event.message.usage.cache_read_input_tokens ?? 0;
-            cacheCreateTokens = event.message.usage.cache_creation_input_tokens ?? 0;
-          } else if (event.type === "message_delta" && event.usage) {
-            outputTokens = event.usage.output_tokens ?? 0;
+          } else if (event.kind === "usage") {
+            inputTokens = event.usage.inputTokensUncached;
+            cacheReadTokens = event.usage.inputTokensCachedRead;
+            cacheCreateTokens = event.usage.inputTokensCacheCreate;
+            outputTokens = event.usage.outputTokens;
+            webSearchRequests = event.usage.webSearchRequests;
+            toolCalls = event.usage.toolCalls;
           }
 
           gapTimer = setTimeout(() => {
@@ -158,6 +177,7 @@ ${currentContent}`;
             }
           }, GAP_MS);
         }
+        const latencyMs = Date.now() - t0;
 
         cleanup();
 
@@ -182,15 +202,21 @@ ${currentContent}`;
           },
           {
             route: "/api/business-plan/improve",
-            model: PLATFORM_AI_MODEL,
+            model: modelId,
             usage: {
               input_tokens: inputTokens,
               output_tokens: outputTokens,
               cache_read_input_tokens: cacheReadTokens,
               cache_creation_input_tokens: cacheCreateTokens,
             },
+            webSearchRequests,
+            toolCalls,
             userId: user.id,
             planTier: resolvePlanTier(profile),
+            provider,
+            lane: "generate_business_plan_section",
+            latencyMs,
+            fallbackUsed: false,
           },
         );
         void isActive; // referenced for future per-status billing; keeps lint happy.

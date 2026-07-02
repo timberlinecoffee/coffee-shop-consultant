@@ -1,70 +1,40 @@
 "use client";
 
 // TIM-1005: Spreadsheet-style equipment data entry (replaces expand-card).
-// TIM-1029: Column visibility toggle with localStorage persistence.
-// Uses TanStack Table v8 for sort/filter/selection state; hand-rolled cell editors.
+// TIM-3329: Keyboard navigation, Tab flow, inline cell persistence.
+// TIM-3331: Categories-as-sections layout with subtotals + grand total.
 
-import {
+import React, {
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  flexRender,
-  createColumnHelper,
-  type SortingState,
-  type ColumnFiltersState,
-  type RowSelectionState,
-  type VisibilityState,
-} from "@tanstack/react-table";
-import { ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, Settings2 } from "lucide-react";
+import { Plus, Trash2, Settings2, X, ChevronUp, ChevronDown as ChevronDownIcon } from "lucide-react";
 import type {
   EquipmentItem,
   EquipmentCategory,
   FinancingMethod,
 } from "@/app/(app)/workspace/financials/financials-workspace";
-import { formatCurrency } from "@/lib/financial-projection";
 import { useCurrency } from "@/components/CurrencyProvider";
+import { MoneyInput } from "@/components/ui/money-input";
 import {
   TABLE_CELL_TEXT,
   TABLE_HEADER_TEXT,
   TABLE_ACTION_ICON_SIZE,
+  TABLE_ROW_PADDING,
+  TABLE_PRICE_CLS,
 } from "@/lib/workspace-table";
-
-const COL_VISIBILITY_KEY = "tcs-equipment-col-visibility";
-
-const TOGGLEABLE_COLS: { id: string; label: string }[] = [
-  { id: "vendor",             label: "Brand" },
-  { id: "model",              label: "Model" },
-  { id: "supplier",           label: "Supplier" },
-  { id: "unit_cost_cents",    label: "Cost" },
-  { id: "financing_method",   label: "Financing" },
-  { id: "category",           label: "Category" },
-  { id: "useful_life_years",  label: "Useful Life" },
-  { id: "notes",              label: "Notes" },
-];
-
-function loadColVisibility(): VisibilityState {
-  try {
-    const raw = localStorage.getItem(COL_VISIBILITY_KEY);
-    if (raw) return JSON.parse(raw) as VisibilityState;
-  } catch { /* ignore */ }
-  return {};
-}
-
-function saveColVisibility(v: VisibilityState) {
-  try {
-    localStorage.setItem(COL_VISIBILITY_KEY, JSON.stringify(v));
-  } catch { /* ignore */ }
-}
+import {
+  SectionHeaderRow,
+  SectionSubtotalRow,
+  GrandTotalRow,
+} from "@/lib/workspace-table-rows";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
+
+const SECTION_COLLAPSE_KEY = "tcs-equipment-section-collapse";
 
 const FUND_CATEGORIES: EquipmentCategory[] = [
   "ceramics",
@@ -99,7 +69,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-const NEW_CATEGORIES: EquipmentCategory[] = [
+const DEFAULT_CATEGORIES: EquipmentCategory[] = [
   "espresso_station",
   "brew_platform",
   "milk_beverage_prep",
@@ -116,16 +86,6 @@ const NEW_CATEGORIES: EquipmentCategory[] = [
   "miscellaneous",
 ];
 
-const FINANCING_LABELS: Record<string, string> = {
-  cash: "Cash",
-  in_house_financing: "In-House Financing",
-  loan: "Loan",
-  lease: "Lease",
-  credit_card: "Credit Card",
-  other: "Other",
-  credit: "Credit", // legacy
-};
-
 const NEW_FINANCING: FinancingMethod[] = [
   "cash",
   "in_house_financing",
@@ -135,29 +95,91 @@ const NEW_FINANCING: FinancingMethod[] = [
   "other",
 ];
 
+const FINANCING_LABELS: Record<string, string> = {
+  cash: "Cash",
+  in_house_financing: "In-House Financing",
+  loan: "Loan",
+  lease: "Lease",
+  credit_card: "Credit Card",
+  other: "Other",
+  credit: "Credit",
+};
+
 const AUTOSAVE_DEBOUNCE_MS = 400;
 
-// Returns sticky-positioning classes for the two frozen columns (select + name).
-function getStickyColCls(columnId: string, bgCls: string): string {
-  if (columnId === "select") return `sticky left-0 z-10 ${bgCls}`;
-  if (columnId === "name") return `sticky left-[36px] z-10 ${bgCls}`;
-  return "";
+// Editable columns in Tab order. Category is a section header, not a column.
+const EDITABLE_COLS = [
+  "name",
+  "quantity",
+  "unit_cost_cents",
+  "vendor",
+  "model",
+  "supplier",
+  "financing_method",
+  "useful_life_years",
+  "notes",
+] as const;
+
+type EditableCol = (typeof EDITABLE_COLS)[number];
+
+const TOGGLEABLE_COLS: { id: EditableCol; label: string }[] = [
+  { id: "vendor",            label: "Brand" },
+  { id: "model",             label: "Model" },
+  { id: "supplier",          label: "Supplier" },
+  { id: "unit_cost_cents",   label: "Cost" },
+  { id: "financing_method",  label: "Financing" },
+  { id: "useful_life_years", label: "Useful Life" },
+  { id: "notes",             label: "Notes" },
+];
+
+function loadColVisibility(): Record<EditableCol, boolean> {
+  try {
+    const raw = localStorage.getItem("tcs-equipment-col-visibility");
+    if (raw) return JSON.parse(raw) as Record<EditableCol, boolean>;
+  } catch { /* ignore */ }
+  return {} as Record<EditableCol, boolean>;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+function saveColVisibility(v: Record<EditableCol, boolean>) {
+  try {
+    localStorage.setItem("tcs-equipment-col-visibility", JSON.stringify(v));
+  } catch { /* ignore */ }
+}
+
+function loadCollapsed(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(SECTION_COLLAPSE_KEY);
+    if (raw) return JSON.parse(raw) as Record<string, boolean>;
+  } catch { /* ignore */ }
+  return {};
+}
+
+function saveCollapsed(v: Record<string, boolean>) {
+  try {
+    localStorage.setItem(SECTION_COLLAPSE_KEY, JSON.stringify(v));
+  } catch { /* ignore */ }
+}
+
+function getCategoryLabel(cat: string): string {
+  return CATEGORY_LABELS[cat] ?? cat;
+}
 
 function isFundRow(item: EquipmentItem): boolean {
   return FUND_CATEGORIES.includes(item.category as EquipmentCategory);
 }
 
-function newBlankItem(planId: string, position: number): EquipmentItem {
+function newBlankItem(planId: string, position: number, category: string): EquipmentItem {
   return {
-    id: `__new_${Date.now()}`,
+    id: `__new_${Date.now()}_${Math.random().toString(36).slice(2)}`,
     plan_id: planId,
     position,
     section_id: null,
     name: "",
-    category: "miscellaneous",
+    // TIM-3329: must NOT default to a FUND category (ceramics/glassware/
+    // to_go_ware/miscellaneous), or isFundRow() will hide vendor/model/
+    // supplier/cost/useful_life cells and Tab from the name cell falls
+    // through to <body> because the next column has no input to focus.
+    category: (category || "furniture_fixtures") as EquipmentCategory,
     vendor: null,
     model: null,
     supplier: null,
@@ -173,21 +195,6 @@ function newBlankItem(planId: string, position: number): EquipmentItem {
     purchase_month: null,
   };
 }
-
-// The editable columns (in Tab order). Select and source/priority are not inline-edited.
-const EDITABLE_COLS = [
-  "name",
-  "vendor",
-  "model",
-  "supplier",
-  "unit_cost_cents",
-  "financing_method",
-  "category",
-  "useful_life_years",
-  "notes",
-] as const;
-
-type EditableCol = (typeof EDITABLE_COLS)[number];
 
 // ── Cell editor components ────────────────────────────────────────────────────
 
@@ -214,6 +221,16 @@ function TextCell({
     setDraft(value);
   }, [value]);
 
+  // TIM-3329: Tab/Enter unmounts this input via parent's setEditingCell,
+  // and onBlur on an unmounting element is unreliable. Flush draft FIRST,
+  // then delegate to parent for navigation.
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+      onCommit(draft);
+    }
+    onKeyDown(e);
+  };
+
   const cls =
     "w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none resize-none border-0 p-0 placeholder-[var(--neutral-cool-400)]";
 
@@ -226,9 +243,10 @@ function TextCell({
         placeholder={placeholder}
         disabled={disabled}
         rows={2}
+        autoFocus
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => onCommit(draft)}
-        onKeyDown={onKeyDown}
+        onKeyDown={handleKeyDown}
       />
     );
   }
@@ -241,9 +259,10 @@ function TextCell({
       value={draft}
       placeholder={placeholder}
       disabled={disabled}
+      autoFocus
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => onCommit(draft)}
-      onKeyDown={onKeyDown}
+      onKeyDown={handleKeyDown}
     />
   );
 }
@@ -261,25 +280,88 @@ function CostCell({
   onKeyDown: (e: React.KeyboardEvent) => void;
   inputRef: React.Ref<HTMLInputElement>;
 }) {
+  const { symbol } = useCurrency();
   const [draft, setDraft] = useState(valueCents > 0 ? String(valueCents / 100) : "");
 
   useEffect(() => {
     setDraft(valueCents > 0 ? String(valueCents / 100) : "");
   }, [valueCents]);
 
+  // TIM-3329: flush draft on Tab/Enter before parent navigates (see TextCell).
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+      onCommit(Math.round((parseFloat(draft) || 0) * 100));
+    }
+    onKeyDown(e);
+  };
+
+  return (
+    <div className="flex items-center gap-0.5 w-full h-full">
+      <span className="shrink-0 text-xs text-[var(--muted-foreground)]">{symbol}</span>
+      <input
+        ref={inputRef}
+        type="number"
+        min={0}
+        step={50}
+        className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[var(--neutral-cool-400)]"
+        value={draft}
+        placeholder="0"
+        disabled={disabled}
+        autoFocus
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => onCommit(Math.round((parseFloat(draft) || 0) * 100))}
+        onKeyDown={handleKeyDown}
+      />
+    </div>
+  );
+}
+
+function NumberCell({
+  value,
+  placeholder,
+  min,
+  max,
+  step,
+  disabled,
+  onCommit,
+  onKeyDown,
+  inputRef,
+}: {
+  value: number;
+  placeholder: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  disabled: boolean;
+  onCommit: (v: number) => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+  inputRef: React.Ref<HTMLInputElement>;
+}) {
+  const [draft, setDraft] = useState(value > 0 ? String(value) : "");
+  useEffect(() => { setDraft(value > 0 ? String(value) : ""); }, [value]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+      onCommit(parseFloat(draft) || 0);
+    }
+    onKeyDown(e);
+  };
+
   return (
     <input
       ref={inputRef}
       type="number"
-      min={0}
-      step={50}
+      min={min}
+      max={max}
+      step={step}
       className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[var(--neutral-cool-400)]"
       value={draft}
-      placeholder="0"
+      placeholder={placeholder}
       disabled={disabled}
+      autoFocus
       onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => onCommit(Math.round((parseFloat(draft) || 0) * 100))}
-      onKeyDown={onKeyDown}
+      onBlur={() => onCommit(parseFloat(draft) || 0)}
+      onKeyDown={handleKeyDown}
     />
   );
 }
@@ -299,6 +381,14 @@ function UsefulLifeCell({
 }) {
   const [draft, setDraft] = useState(String(value));
   useEffect(() => { setDraft(String(value)); }, [value]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+      onCommit(Math.max(1, Math.min(50, Math.round(parseFloat(draft) || 7))));
+    }
+    onKeyDown(e);
+  };
+
   return (
     <input
       ref={inputRef}
@@ -309,9 +399,10 @@ function UsefulLifeCell({
       className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0"
       value={draft}
       disabled={disabled}
+      autoFocus
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => onCommit(Math.max(1, Math.min(50, Math.round(parseFloat(draft) || 7))))}
-      onKeyDown={onKeyDown}
+      onKeyDown={handleKeyDown}
     />
   );
 }
@@ -337,6 +428,7 @@ function SelectCell({
       className="w-full h-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 cursor-pointer"
       value={value}
       disabled={disabled}
+      autoFocus
       onChange={(e) => onCommit(e.target.value)}
       onKeyDown={onKeyDown}
     >
@@ -349,7 +441,7 @@ function SelectCell({
   );
 }
 
-// ── Mobile list fallback ──────────────────────────────────────────────────────
+// ── Mobile card list ──────────────────────────────────────────────────────────
 
 function MobileEquipmentList({
   items,
@@ -362,142 +454,276 @@ function MobileEquipmentList({
   canEdit: boolean;
   onUpdate: (id: string, patch: Partial<EquipmentItem>) => void;
   onRemove: (id: string) => void;
-  onAdd: () => void;
+  onAdd: (category: string) => void;
 }) {
   const { format, symbol } = useCurrency();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const active = items.filter((i) => !i.archived);
+  const categoryOrder = Array.from(new Map(active.map((i) => [i.category, true])).keys());
+  const grouped = categoryOrder.map((cat) => ({
+    cat,
+    items: active.filter((i) => i.category === cat),
+  }));
+  const grandTotal = active.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0);
+
   return (
-    <div className="space-y-2">
-      {items.length === 0 && (
-        <div className="rounded-xl border border-dashed border-[var(--border-medium)] py-10 text-center">
-          <p className="text-sm text-[var(--dark-grey)]">No equipment added yet.</p>
-        </div>
-      )}
-
-      {items.map((item) => {
-        const fund = isFundRow(item);
-        const total = item.unit_cost_cents * item.quantity;
-        const open = expandedId === item.id;
-
+    <div className="space-y-4">
+      {grouped.map(({ cat, items: catItems }) => {
+        const subtotal = catItems.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0);
         return (
-          <div
-            key={item.id}
-            className={`border rounded-xl bg-white overflow-hidden ${
-              fund ? "border-[var(--teal-tint)] bg-[var(--teal-tint-500)]/30" : "border-[var(--border)]"
-            }`}
-          >
-            <div
-              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer"
-              onClick={() => setExpandedId(open ? null : item.id)}
-            >
-              {fund && (
-                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--teal-tint)] text-[var(--teal)] shrink-0">
-                  Fund
-                </span>
-              )}
-              <span className="text-sm text-[var(--foreground)] flex-1 truncate font-medium">
-                {item.name || <span className="text-[var(--dark-grey)] font-normal">Unnamed</span>}
+          <div key={cat}>
+            <div className="flex items-center justify-between mb-1.5 px-1">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--foreground)]">
+                {getCategoryLabel(cat)}
               </span>
-              <span className="text-xs font-semibold text-[var(--foreground)] shrink-0">
-                {total > 0 ? format(total / 100) : `${symbol}0`}
+              <span className="text-[10px] font-semibold text-[var(--muted-foreground)]">
+                {format(subtotal / 100)}
               </span>
+            </div>
+            <div className="space-y-2">
+              {catItems.map((item) => {
+                const fund = isFundRow(item);
+                const total = item.unit_cost_cents * item.quantity;
+                const open = expandedId === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    className={`border rounded-xl bg-white overflow-hidden ${
+                      fund ? "border-[var(--teal-tint)]" : "border-[var(--border)]"
+                    }`}
+                  >
+                    <div
+                      className="flex items-center gap-3 px-3 py-2.5 cursor-pointer"
+                      onClick={() => setExpandedId(open ? null : item.id)}
+                    >
+                      <span className="text-sm text-[var(--foreground)] flex-1 truncate font-medium">
+                        {item.name || <span className="text-[var(--dark-grey)] font-normal">Unnamed</span>}
+                      </span>
+                      <span className="text-xs font-semibold text-[var(--foreground)] shrink-0">
+                        {total > 0 ? format(total / 100) : `${symbol}0`}
+                      </span>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onRemove(item.id); }}
+                          className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1 shrink-0"
+                          aria-label="Delete"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+
+                    {open && (
+                      <div className="border-t border-[var(--border)] px-3 py-3 space-y-2 bg-[var(--background)]">
+                        {[
+                          { label: "Name", key: "name" as const, placeholder: "Item name" },
+                          ...(!fund ? [
+                            { label: "Brand", key: "vendor" as const, placeholder: "Brand" },
+                            { label: "Model", key: "model" as const, placeholder: "Model" },
+                            { label: "Supplier", key: "supplier" as const, placeholder: "Supplier" },
+                          ] : []),
+                          { label: "Notes", key: "notes" as const, placeholder: "Notes" },
+                        ].map(({ label, key, placeholder }) => (
+                          <div key={key}>
+                            <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">{label}</label>
+                            <input
+                              type="text"
+                              className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2.5 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
+                              value={(item[key] as string | null) ?? ""}
+                              placeholder={placeholder}
+                              disabled={!canEdit}
+                              onChange={(e) =>
+                                onUpdate(item.id, { [key]: e.target.value || null } as Partial<EquipmentItem>)
+                              }
+                            />
+                          </div>
+                        ))}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">Qty</label>
+                            <input
+                              type="number"
+                              min={1}
+                              className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2.5 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
+                              value={item.quantity}
+                              disabled={!canEdit}
+                              onChange={(e) =>
+                                onUpdate(item.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">Unit Cost</label>
+                            <MoneyInput
+                              min={0}
+                              className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2.5 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
+                              value={item.unit_cost_cents > 0 ? item.unit_cost_cents / 100 : ""}
+                              placeholder="0"
+                              disabled={!canEdit}
+                              onChange={(e) =>
+                                onUpdate(item.id, { unit_cost_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">Financing</label>
+                          <select
+                            className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
+                            value={item.financing_method}
+                            disabled={!canEdit}
+                            onChange={(e) => onUpdate(item.id, { financing_method: e.target.value as FinancingMethod })}
+                          >
+                            {NEW_FINANCING.map((k) => (
+                              <option key={k} value={k}>{FINANCING_LABELS[k]}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
               {canEdit && (
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); onRemove(item.id); }}
-                  className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1 shrink-0"
-                  aria-label="Delete"
+                  onClick={() => onAdd(cat)}
+                  className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-dashed border-[var(--teal-tint)] rounded-xl px-4 py-2 hover:bg-[var(--teal)]/5 transition-colors w-full justify-center"
                 >
-                  <Trash2 size={13} />
+                  <Plus size={13} aria-hidden="true" />
+                  Add {getCategoryLabel(cat)} item
                 </button>
               )}
             </div>
-
-            {open && (
-              <div className="border-t border-[var(--border)] px-3 py-3 space-y-2 bg-[var(--background)]">
-                {[
-                  { label: "Name", key: "name" as const, type: "text", placeholder: "Item name" },
-                  ...(!fund ? [
-                    { label: "Brand", key: "vendor" as const, type: "text", placeholder: "Brand" },
-                    { label: "Model", key: "model" as const, type: "text", placeholder: "Model" },
-                    { label: "Supplier", key: "supplier" as const, type: "text", placeholder: "Supplier" },
-                  ] : []),
-                  { label: "Cost ($)", key: "unit_cost_cents" as const, type: "cost", placeholder: "0" },
-                  { label: "Notes", key: "notes" as const, type: "text", placeholder: "Notes" },
-                ].map(({ label, key, type, placeholder }) => (
-                  <div key={key}>
-                    <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">{label}</label>
-                    {type === "cost" ? (
-                      <input
-                        type="number"
-                        min={0}
-                        className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2.5 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
-                        value={item.unit_cost_cents > 0 ? item.unit_cost_cents / 100 : ""}
-                        placeholder={placeholder}
-                        disabled={!canEdit}
-                        onChange={(e) =>
-                          onUpdate(item.id, { unit_cost_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })
-                        }
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2.5 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
-                        value={(item[key] as string | null) ?? ""}
-                        placeholder={placeholder}
-                        disabled={!canEdit}
-                        onChange={(e) =>
-                          onUpdate(item.id, { [key]: e.target.value || null } as Partial<EquipmentItem>)
-                        }
-                      />
-                    )}
-                  </div>
-                ))}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">Category</label>
-                    <select
-                      className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
-                      value={item.category}
-                      disabled={!canEdit}
-                      onChange={(e) => onUpdate(item.id, { category: e.target.value as EquipmentCategory })}
-                    >
-                      {NEW_CATEGORIES.map((k) => (
-                        <option key={k} value={k}>{CATEGORY_LABELS[k]}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-medium text-[var(--muted-foreground)] mb-0.5">Financing</label>
-                    <select
-                      className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-2 py-1.5 focus-visible:outline-none focus:border-[var(--teal)]"
-                      value={item.financing_method}
-                      disabled={!canEdit}
-                      onChange={(e) => onUpdate(item.id, { financing_method: e.target.value as FinancingMethod })}
-                    >
-                      {NEW_FINANCING.map((k) => (
-                        <option key={k} value={k}>{FINANCING_LABELS[k]}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         );
       })}
 
-      {canEdit && (
-        <button
-          type="button"
-          onClick={onAdd}
-          className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors w-full justify-center"
-        >
-          <Plus size={14} aria-hidden="true" />
-          Add item
-        </button>
+      {active.length > 0 && (
+        <div className="flex items-center justify-between border-t border-[var(--neutral-cool-200)] pt-3 px-1">
+          <span className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wide">Grand Total</span>
+          <span className="text-sm font-bold text-[var(--foreground)]">{format(grandTotal / 100)}</span>
+        </div>
       )}
+    </div>
+  );
+}
+
+// ── Add Category Dialog ───────────────────────────────────────────────────────
+
+function AddCategoryDialog({
+  existingCategories,
+  onAdd,
+  onClose,
+}: {
+  existingCategories: string[];
+  onAdd: (category: string) => void;
+  onClose: () => void;
+}) {
+  const [mode, setMode] = useState<"select" | "custom">("select");
+  const [selected, setSelected] = useState("");
+  const [custom, setCustom] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (mode === "custom" && inputRef.current) inputRef.current.focus();
+  }, [mode]);
+
+  const available = DEFAULT_CATEGORIES.filter((c) => !existingCategories.includes(c));
+
+  function handleAdd() {
+    const cat = mode === "custom" ? custom.trim() : selected;
+    if (!cat) return;
+    onAdd(cat);
+    onClose();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-sm mx-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-[var(--foreground)]">Add Category</h3>
+          <button type="button" onClick={onClose} className="text-[var(--neutral-cool-400)] hover:text-[var(--foreground)] p-1">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          {(["select", "custom"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              className={`flex-1 text-xs rounded-lg py-1.5 font-medium border transition-colors ${
+                mode === m
+                  ? "bg-[var(--teal)] text-white border-[var(--teal)]"
+                  : "border-[var(--border)] text-[var(--foreground)] hover:border-[var(--teal)]"
+              }`}
+              onClick={() => setMode(m)}
+            >
+              {m === "select" ? "Standard" : "Custom"}
+            </button>
+          ))}
+        </div>
+
+        {mode === "select" ? (
+          available.length === 0 ? (
+            <p className="text-xs text-[var(--muted-foreground)] text-center py-3">
+              All standard categories are already in use.
+            </p>
+          ) : (
+            <div className="space-y-1 max-h-52 overflow-y-auto">
+              {available.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`w-full text-left px-3 py-2 text-xs rounded-lg transition-colors ${
+                    selected === cat
+                      ? "bg-[var(--teal)] text-white"
+                      : "hover:bg-[var(--background)] text-[var(--foreground)]"
+                  }`}
+                  onClick={() => setSelected(cat)}
+                >
+                  {getCategoryLabel(cat)}
+                </button>
+              ))}
+            </div>
+          )
+        ) : (
+          <input
+            ref={inputRef}
+            type="text"
+            className="w-full text-xs border border-[var(--border-medium)] rounded-lg px-3 py-2 focus-visible:outline-none focus:border-[var(--teal)]"
+            placeholder="e.g. Cold Brew Equipment"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+          />
+        )}
+
+        <div className="flex justify-end gap-2 mt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--background)]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={mode === "select" ? !selected : !custom.trim()}
+            className="text-xs px-3 py-1.5 rounded-lg bg-[var(--teal)] text-white font-medium hover:bg-[var(--teal-dark,var(--teal))] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Add Category
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -508,8 +734,14 @@ interface EquipmentGridProps {
   planId: string;
   canEdit: boolean;
   items: EquipmentItem[];
-  onItemsChange: (items: EquipmentItem[]) => void;
+  // TIM-3329: accept functional updater so synchronous multi-update sequences
+  // (commit-on-Tab + addRow) compose correctly.
+  onItemsChange: (
+    next: EquipmentItem[] | ((prev: EquipmentItem[]) => EquipmentItem[])
+  ) => void;
 }
+
+const TOTAL_COLS = 11; // name, qty, unitCost, total, brand, model, supplier, financing, usefulLife, notes, actions
 
 export function EquipmentGrid({
   planId,
@@ -518,22 +750,34 @@ export function EquipmentGrid({
   onItemsChange,
 }: EquipmentGridProps) {
   const { format, symbol } = useCurrency();
-  // Editing cell: { rowId, colKey }
   const [editingCell, setEditingCell] = useState<{ rowId: string; colKey: EditableCol } | null>(null);
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [colVisibility, setColVisibility] = useState<Record<EditableCol, boolean>>({} as Record<EditableCol, boolean>);
   const [colPickerOpen, setColPickerOpen] = useState(false);
-  const colPickerRef = useRef<HTMLDivElement>(null);
+  const [showAddCategory, setShowAddCategory] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const colPickerRef = useRef<HTMLDivElement>(null);
 
-  // Load saved column visibility on mount
+  const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const pendingPatches = useRef<Map<string, Partial<EquipmentItem>>>(new Map());
+  const creatingRows = useRef<Set<string>>(new Set());
+  const cellInputRefs = useRef<Map<string, HTMLElement | null>>(new Map());
+
+  // TIM-3329: latest items snapshot for use inside async timer callbacks.
+  const itemsRef = useRef<EquipmentItem[]>(items);
+  useEffect(() => { itemsRef.current = items; }, [items]);
+
+  useEffect(() => { setCollapsed(loadCollapsed()); }, []);
+  useEffect(() => { setColVisibility(loadColVisibility()); }, []);
+
   useEffect(() => {
-    setColumnVisibility(loadColVisibility());
+    const mq = window.matchMedia("(max-width: 639px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // Close column picker on outside click
   useEffect(() => {
     if (!colPickerOpen) return;
     const handler = (e: MouseEvent) => {
@@ -545,25 +789,45 @@ export function EquipmentGrid({
     return () => document.removeEventListener("mousedown", handler);
   }, [colPickerOpen]);
 
-  // Debounce timers per row
-  const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // ── Derived sections ─────────────────────────────────────────────────────────
 
-  // Per-row pending patches (accumulated between debounce fires)
-  const pendingPatches = useRef<Map<string, Partial<EquipmentItem>>>(new Map());
+  const active = useMemo(() => items.filter((i) => !i.archived), [items]);
 
-  // Row creation in-flight guard
-  const creatingRows = useRef<Set<string>>(new Set());
+  const categoryOrder = useMemo(
+    () => Array.from(new Map(active.map((i) => [i.category, true])).keys()),
+    [active]
+  );
 
-  // Input refs for focus management
-  const cellInputRefs = useRef<Map<string, HTMLElement | null>>(new Map());
+  const sections = useMemo(
+    () =>
+      categoryOrder.map((cat) => ({
+        cat,
+        label: getCategoryLabel(cat),
+        items: active.filter((i) => i.category === cat).sort((a, b) => a.position - b.position),
+      })),
+    [categoryOrder, active]
+  );
 
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)");
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+  const grandTotal = useMemo(
+    () => active.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0),
+    [active]
+  );
+
+  // Flat ordered list for Tab navigation (excludes collapsed sections)
+  const flatVisibleItems = useMemo(
+    () => sections.flatMap((s) => (collapsed[s.cat] ? [] : s.items)),
+    [sections, collapsed]
+  );
+
+  // ── Section collapse ─────────────────────────────────────────────────────────
+
+  function toggleSection(cat: string) {
+    setCollapsed((prev) => {
+      const next = { ...prev, [cat]: !prev[cat] };
+      saveCollapsed(next);
+      return next;
+    });
+  }
 
   // ── API helpers ──────────────────────────────────────────────────────────────
 
@@ -588,6 +852,7 @@ export function EquipmentGrid({
             source: "user_added",
             notes: item.notes,
             position: item.position,
+            useful_life_years: item.useful_life_years,
           }),
         });
         if (!res.ok) throw new Error(`create failed ${res.status}`);
@@ -601,51 +866,51 @@ export function EquipmentGrid({
     []
   );
 
-  const patchRow = useCallback(async (id: string, patch: Partial<EquipmentItem>) => {
-    if (!id || id.startsWith("__new_")) return;
-    try {
-      const res = await fetch(`/api/workspaces/financials/equipment/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      if (!res.ok) return;
-      const updated = (await res.json()) as EquipmentItem;
-      onItemsChange(items.map((i) => (i.id === id ? updated : i)));
-    } catch {
-      // silent — optimistic UI already applied
-    }
-  }, [items, onItemsChange]);
+  const patchRow = useCallback(
+    async (id: string, patch: Partial<EquipmentItem>) => {
+      if (!id || id.startsWith("__new_")) return;
+      try {
+        const res = await fetch(`/api/workspaces/financials/equipment/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        if (!res.ok) return;
+        const updated = (await res.json()) as EquipmentItem;
+        onItemsChange((prev) => prev.map((i) => (i.id === id ? updated : i)));
+      } catch { /* silent */ }
+    },
+    [onItemsChange]
+  );
 
   const deleteRow = useCallback(async (id: string) => {
     if (!id || id.startsWith("__new_")) return;
     try {
       await fetch(`/api/workspaces/financials/equipment/${id}`, { method: "DELETE" });
-    } catch {
-      // silent
-    }
+    } catch { /* silent */ }
   }, []);
 
   // ── Item mutation helpers ────────────────────────────────────────────────────
 
   const updateItemLocal = useCallback(
     (id: string, patch: Partial<EquipmentItem>) => {
-      onItemsChange(items.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+      onItemsChange((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
     },
-    [items, onItemsChange]
+    [onItemsChange]
   );
 
   const scheduleAutosave = useCallback(
     (id: string, patch: Partial<EquipmentItem>) => {
       if (!canEdit) return;
 
-      // Accumulate patch
       const existing = pendingPatches.current.get(id) ?? {};
       pendingPatches.current.set(id, { ...existing, ...patch });
 
-      // Reset debounce
-      const existing_timer = debounceTimers.current.get(id);
-      if (existing_timer) clearTimeout(existing_timer);
+      // TIM-3329: if this tempId is mid-create, do NOT set a new timer.
+      if (id.startsWith("__new_") && creatingRows.current.has(id)) return;
+
+      const existingTimer = debounceTimers.current.get(id);
+      if (existingTimer) clearTimeout(existingTimer);
 
       const timer = setTimeout(async () => {
         const accumulated = pendingPatches.current.get(id);
@@ -653,14 +918,35 @@ export function EquipmentGrid({
         pendingPatches.current.delete(id);
 
         if (id.startsWith("__new_")) {
-          // Materialize the row
-          const current = items.find((i) => i.id === id);
+          const current = itemsRef.current.find((i) => i.id === id);
           if (!current) return;
           const created = await createRow(id, { ...current, ...accumulated });
           if (created) {
-            onItemsChange(
-              items.map((i) => (i.id === id ? created : i))
+            onItemsChange((prev) =>
+              prev.map((i) => (i.id === id ? { ...created, ...accumulated } : i))
             );
+            // TIM-3329: re-point editingCell at the new server id so the next
+            // cell stays mounted across the tempId → realId swap.
+            setEditingCell((prev) =>
+              prev && prev.rowId === id ? { rowId: created.id, colKey: prev.colKey } : prev
+            );
+            // Migrate cellInputRefs under new id.
+            for (const col of EDITABLE_COLS) {
+              const oldKey = `${id}:${col}`;
+              const ref = cellInputRefs.current.get(oldKey);
+              if (ref) {
+                cellInputRefs.current.set(`${created.id}:${col}`, ref);
+                cellInputRefs.current.delete(oldKey);
+              }
+            }
+            const buffered = pendingPatches.current.get(id);
+            if (buffered) {
+              pendingPatches.current.delete(id);
+              const existingReal = pendingPatches.current.get(created.id) ?? {};
+              pendingPatches.current.set(created.id, { ...existingReal, ...buffered });
+              await patchRow(created.id, pendingPatches.current.get(created.id)!);
+              pendingPatches.current.delete(created.id);
+            }
           }
         } else {
           await patchRow(id, accumulated);
@@ -669,7 +955,7 @@ export function EquipmentGrid({
 
       debounceTimers.current.set(id, timer);
     },
-    [canEdit, items, createRow, patchRow, onItemsChange]
+    [canEdit, createRow, patchRow, onItemsChange]
   );
 
   const handleCellCommit = useCallback(
@@ -677,11 +963,8 @@ export function EquipmentGrid({
       if (!canEdit) return;
 
       let patch: Partial<EquipmentItem> = {};
-
       if (colKey === "unit_cost_cents") {
         patch = { unit_cost_cents: rawValue as number };
-      } else if (colKey === "category") {
-        patch = { category: rawValue as EquipmentCategory };
       } else if (colKey === "financing_method") {
         patch = { financing_method: rawValue as FinancingMethod };
       } else if (colKey === "vendor") {
@@ -694,45 +977,16 @@ export function EquipmentGrid({
         patch = { notes: (rawValue as string) || null };
       } else if (colKey === "name") {
         patch = { name: rawValue as string };
+      } else if (colKey === "quantity") {
+        patch = { quantity: Math.max(1, Math.round((rawValue as number) || 1)) };
       } else if (colKey === "useful_life_years") {
-        const v = Math.max(1, Math.min(50, Math.round((rawValue as number) || 7)));
-        patch = { useful_life_years: v };
+        patch = { useful_life_years: Math.max(1, Math.min(50, Math.round((rawValue as number) || 7))) };
       }
 
       updateItemLocal(id, patch);
       scheduleAutosave(id, patch);
     },
     [canEdit, updateItemLocal, scheduleAutosave]
-  );
-
-  // ── Add row ──────────────────────────────────────────────────────────────────
-
-  const addRow = useCallback(() => {
-    if (!canEdit) return;
-    const blank = newBlankItem(planId, items.length);
-    onItemsChange([...items, blank]);
-    // Focus name cell of new row after render
-    setTimeout(() => {
-      setEditingCell({ rowId: blank.id, colKey: "name" });
-    }, 30);
-  }, [canEdit, planId, items, onItemsChange]);
-
-  // ── Delete selected rows ─────────────────────────────────────────────────────
-
-  const deleteSelected = useCallback(() => {
-    const selectedIds = Object.keys(rowSelection).filter((k) => rowSelection[k]);
-    const toDelete = items.filter((i) => selectedIds.includes(i.id));
-    onItemsChange(items.filter((i) => !selectedIds.includes(i.id)));
-    toDelete.forEach((i) => deleteRow(i.id));
-    setRowSelection({});
-  }, [rowSelection, items, onItemsChange, deleteRow]);
-
-  const deleteSingleRow = useCallback(
-    (id: string) => {
-      onItemsChange(items.filter((i) => i.id !== id));
-      deleteRow(id);
-    },
-    [items, onItemsChange, deleteRow]
   );
 
   // ── Keyboard navigation ──────────────────────────────────────────────────────
@@ -749,403 +1003,128 @@ export function EquipmentGrid({
     []
   );
 
+  const addItem = useCallback(
+    (category: string) => {
+      if (!canEdit) return;
+      let blankId = "";
+      onItemsChange((prev) => {
+        const blank = newBlankItem(planId, prev.filter((i) => !i.archived).length, category);
+        blankId = blank.id;
+        return [...prev, blank];
+      });
+      setTimeout(() => {
+        if (blankId) focusCell(blankId, "name");
+      }, 30);
+      // Ensure section is expanded
+      setCollapsed((prev) => {
+        if (!prev[category]) return prev;
+        const updated = { ...prev, [category]: false };
+        saveCollapsed(updated);
+        return updated;
+      });
+    },
+    [canEdit, planId, onItemsChange, focusCell]
+  );
+
+  const addCategory = useCallback(
+    (category: string) => {
+      if (!canEdit) return;
+      let blankId = "";
+      onItemsChange((prev) => {
+        const blank = newBlankItem(planId, prev.filter((i) => !i.archived).length, category);
+        blankId = blank.id;
+        return [...prev, blank];
+      });
+      setTimeout(() => {
+        if (blankId) focusCell(blankId, "name");
+      }, 30);
+    },
+    [canEdit, planId, onItemsChange, focusCell]
+  );
+
   const handleCellKeyDown = useCallback(
     (e: React.KeyboardEvent, rowId: string, colKey: EditableCol) => {
-      const sortedRows = table.getSortedRowModel().rows;
-      const colIdx = EDITABLE_COLS.indexOf(colKey);
-      const rowIdx = sortedRows.findIndex((r) => r.original.id === rowId);
+      const rowIdx = flatVisibleItems.findIndex((i) => i.id === rowId);
+      const item = flatVisibleItems[rowIdx];
+
+      // TIM-3329: navigate only through VISIBLE editable columns.
+      const visibleEditableCols = EDITABLE_COLS.filter((c) => colVisibility[c] !== false);
+      if (visibleEditableCols.length === 0) return;
 
       if (e.key === "Tab") {
         e.preventDefault();
         const dir = e.shiftKey ? -1 : 1;
-        let nextColIdx = colIdx + dir;
+        const visIdx = visibleEditableCols.indexOf(colKey);
+        const fromIdx = visIdx === -1 ? 0 : visIdx;
+        let nextVisIdx = fromIdx + dir;
         let nextRowIdx = rowIdx;
 
-        if (nextColIdx >= EDITABLE_COLS.length) {
-          nextColIdx = 0;
+        if (nextVisIdx >= visibleEditableCols.length) {
+          nextVisIdx = 0;
           nextRowIdx++;
-        } else if (nextColIdx < 0) {
-          nextColIdx = EDITABLE_COLS.length - 1;
+        } else if (nextVisIdx < 0) {
+          nextVisIdx = visibleEditableCols.length - 1;
           nextRowIdx--;
         }
 
-        if (nextRowIdx >= 0 && nextRowIdx < sortedRows.length) {
-          const nextRow = sortedRows[nextRowIdx];
-          focusCell(nextRow.original.id, EDITABLE_COLS[nextColIdx]);
-        } else if (nextRowIdx >= sortedRows.length) {
-          addRow();
+        if (nextRowIdx >= 0 && nextRowIdx < flatVisibleItems.length) {
+          focusCell(flatVisibleItems[nextRowIdx].id, visibleEditableCols[nextVisIdx]);
+        } else if (nextRowIdx >= flatVisibleItems.length && item) {
+          addItem(item.category);
         }
       } else if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         const nextRowIdx = rowIdx + 1;
-        if (nextRowIdx < sortedRows.length) {
-          const nextRow = sortedRows[nextRowIdx];
-          focusCell(nextRow.original.id, colKey);
-        } else {
-          addRow();
+        if (nextRowIdx < flatVisibleItems.length) {
+          focusCell(flatVisibleItems[nextRowIdx].id, colKey);
+        } else if (item) {
+          addItem(item.category);
         }
       } else if (e.key === "Escape") {
         setEditingCell(null);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [focusCell, addRow]
+    [flatVisibleItems, colVisibility, focusCell, addItem]
   );
 
-  // ── Column definitions ────────────────────────────────────────────────────────
+  // ── Delete row ───────────────────────────────────────────────────────────────
 
-  const columnHelper = createColumnHelper<EquipmentItem>();
-
-  const columns = useMemo(
-    () => [
-      columnHelper.display({
-        id: "select",
-        size: 36,
-        enableSorting: false,
-        enableColumnFilter: false,
-        header: ({ table: t }) => (
-          <input
-            type="checkbox"
-            className="accent-[var(--teal)] cursor-pointer"
-            checked={t.getIsAllPageRowsSelected()}
-            onChange={t.getToggleAllPageRowsSelectedHandler()}
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <input
-            type="checkbox"
-            className="accent-[var(--teal)] cursor-pointer"
-            checked={row.getIsSelected()}
-            onChange={row.getToggleSelectedHandler()}
-            aria-label="Select row"
-          />
-        ),
-      }),
-      columnHelper.accessor("name", {
-        id: "name",
-        header: "Name",
-        size: 200,
-        cell: ({ row }) => {
-          const item = row.original;
-          const active = editingCell?.rowId === item.id && editingCell?.colKey === "name";
-          const refKey = `${item.id}:name`;
-          return (
-            <div className="flex items-center gap-1.5 w-full">
-              {item.source === "ai_suggested" && (
-                <span className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-amber-50 text-amber-600">
-                  AI
-                </span>
-              )}
-              <div className="flex-1 min-w-0">
-                {active ? (
-                  <TextCell
-                    value={item.name}
-                    placeholder="Item name"
-                    disabled={!canEdit}
-                    onCommit={(v) => handleCellCommit(item.id, "name", v)}
-                    onKeyDown={(e) => handleCellKeyDown(e, item.id, "name")}
-                    inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
-                  />
-                ) : (
-                  <span
-                    className="block truncate text-xs text-[var(--foreground)] cursor-text"
-                    onClick={() => canEdit && focusCell(item.id, "name")}
-                  >
-                    {item.name || <span className="text-[var(--neutral-cool-400)]">Name</span>}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        },
-      }),
-      columnHelper.accessor("vendor", {
-        id: "vendor",
-        header: "Brand",
-        size: 130,
-        cell: ({ row }) => {
-          const item = row.original;
-          const fund = isFundRow(item);
-          const active = editingCell?.rowId === item.id && editingCell?.colKey === "vendor";
-          const refKey = `${item.id}:vendor`;
-          if (fund) return null;
-          return active ? (
-            <TextCell
-              value={item.vendor ?? ""}
-              placeholder="Brand"
-              disabled={!canEdit}
-              onCommit={(v) => handleCellCommit(item.id, "vendor", v)}
-              onKeyDown={(e) => handleCellKeyDown(e, item.id, "vendor")}
-              inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
-            />
-          ) : (
-            <span
-              className="block truncate text-xs text-[var(--foreground)] cursor-text"
-              onClick={() => canEdit && focusCell(item.id, "vendor")}
-            >
-              {item.vendor || <span className="text-[var(--neutral-cool-400)]">Brand</span>}
-            </span>
-          );
-        },
-      }),
-      columnHelper.accessor("model", {
-        id: "model",
-        header: "Model",
-        size: 130,
-        cell: ({ row }) => {
-          const item = row.original;
-          const fund = isFundRow(item);
-          const active = editingCell?.rowId === item.id && editingCell?.colKey === "model";
-          const refKey = `${item.id}:model`;
-          if (fund) return null;
-          return active ? (
-            <TextCell
-              value={item.model ?? ""}
-              placeholder="Model"
-              disabled={!canEdit}
-              onCommit={(v) => handleCellCommit(item.id, "model", v)}
-              onKeyDown={(e) => handleCellKeyDown(e, item.id, "model")}
-              inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
-            />
-          ) : (
-            <span
-              className="block truncate text-xs text-[var(--foreground)] cursor-text"
-              onClick={() => canEdit && focusCell(item.id, "model")}
-            >
-              {item.model || <span className="text-[var(--neutral-cool-400)]">Model</span>}
-            </span>
-          );
-        },
-      }),
-      columnHelper.accessor("supplier", {
-        id: "supplier",
-        header: "Supplier",
-        size: 130,
-        cell: ({ row }) => {
-          const item = row.original;
-          const fund = isFundRow(item);
-          const active = editingCell?.rowId === item.id && editingCell?.colKey === "supplier";
-          const refKey = `${item.id}:supplier`;
-          if (fund) return null;
-          return active ? (
-            <TextCell
-              value={item.supplier ?? ""}
-              placeholder="Supplier"
-              disabled={!canEdit}
-              onCommit={(v) => handleCellCommit(item.id, "supplier", v)}
-              onKeyDown={(e) => handleCellKeyDown(e, item.id, "supplier")}
-              inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
-            />
-          ) : (
-            <span
-              className="block truncate text-xs text-[var(--foreground)] cursor-text"
-              onClick={() => canEdit && focusCell(item.id, "supplier")}
-            >
-              {item.supplier || <span className="text-[var(--neutral-cool-400)]">Supplier</span>}
-            </span>
-          );
-        },
-      }),
-      columnHelper.accessor("unit_cost_cents", {
-        id: "unit_cost_cents",
-        header: "Cost",
-        size: 110,
-        cell: ({ row }) => {
-          const item = row.original;
-          const active = editingCell?.rowId === item.id && editingCell?.colKey === "unit_cost_cents";
-          const refKey = `${item.id}:unit_cost_cents`;
-          return active ? (
-            <CostCell
-              valueCents={item.unit_cost_cents}
-              disabled={!canEdit}
-              onCommit={(cents) => handleCellCommit(item.id, "unit_cost_cents", cents)}
-              onKeyDown={(e) => handleCellKeyDown(e, item.id, "unit_cost_cents")}
-              inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
-            />
-          ) : (
-            <span
-              className="block truncate text-xs text-[var(--foreground)] cursor-text font-medium"
-              onClick={() => canEdit && focusCell(item.id, "unit_cost_cents")}
-            >
-              {item.unit_cost_cents > 0
-                ? format(item.unit_cost_cents / 100)
-                : <span className="text-[var(--neutral-cool-400)] font-normal">{symbol}0</span>
-              }
-            </span>
-          );
-        },
-      }),
-      columnHelper.accessor("financing_method", {
-        id: "financing_method",
-        header: "Financing",
-        size: 130,
-        cell: ({ row }) => {
-          const item = row.original;
-          const active = editingCell?.rowId === item.id && editingCell?.colKey === "financing_method";
-          const refKey = `${item.id}:financing_method`;
-          return active ? (
-            <SelectCell
-              value={item.financing_method}
-              options={NEW_FINANCING.map((k) => ({ value: k, label: FINANCING_LABELS[k] }))}
-              disabled={!canEdit}
-              onCommit={(v) => handleCellCommit(item.id, "financing_method", v)}
-              onKeyDown={(e) => handleCellKeyDown(e, item.id, "financing_method")}
-              inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
-            />
-          ) : (
-            <span
-              className="block truncate text-xs text-[var(--foreground)] cursor-text"
-              onClick={() => canEdit && focusCell(item.id, "financing_method")}
-            >
-              {FINANCING_LABELS[item.financing_method] ?? item.financing_method}
-            </span>
-          );
-        },
-      }),
-      columnHelper.accessor("category", {
-        id: "category",
-        header: "Category",
-        size: 160,
-        cell: ({ row }) => {
-          const item = row.original;
-          const fund = isFundRow(item);
-          const active = editingCell?.rowId === item.id && editingCell?.colKey === "category";
-          const refKey = `${item.id}:category`;
-          return (
-            <div className="flex items-center gap-1.5 w-full">
-              {fund && (
-                <span className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-[var(--teal-tint)] text-[var(--teal)]">
-                  Fund
-                </span>
-              )}
-              <div className="flex-1 min-w-0">
-                {active ? (
-                  <SelectCell
-                    value={item.category}
-                    options={NEW_CATEGORIES.map((k) => ({ value: k, label: CATEGORY_LABELS[k] }))}
-                    disabled={!canEdit}
-                    onCommit={(v) => handleCellCommit(item.id, "category", v)}
-                    onKeyDown={(e) => handleCellKeyDown(e, item.id, "category")}
-                    inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
-                  />
-                ) : (
-                  <span
-                    className="block truncate text-xs text-[var(--foreground)] cursor-text"
-                    onClick={() => canEdit && focusCell(item.id, "category")}
-                  >
-                    {CATEGORY_LABELS[item.category] ?? item.category}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        },
-      }),
-      columnHelper.accessor("useful_life_years", {
-        id: "useful_life_years",
-        header: "Useful Life",
-        size: 90,
-        cell: ({ row }) => {
-          const item = row.original;
-          const active = editingCell?.rowId === item.id && editingCell?.colKey === "useful_life_years";
-          const refKey = `${item.id}:useful_life_years`;
-          return active ? (
-            <UsefulLifeCell
-              value={item.useful_life_years ?? 7}
-              disabled={!canEdit}
-              onCommit={(v) => handleCellCommit(item.id, "useful_life_years", v)}
-              onKeyDown={(e) => handleCellKeyDown(e, item.id, "useful_life_years")}
-              inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
-            />
-          ) : (
-            <span
-              className="block truncate text-xs text-[var(--foreground)] cursor-text"
-              onClick={() => canEdit && focusCell(item.id, "useful_life_years")}
-            >
-              {item.useful_life_years ?? 7}yr
-            </span>
-          );
-        },
-      }),
-      columnHelper.accessor("notes", {
-        id: "notes",
-        header: "Notes",
-        size: 180,
-        enableSorting: false,
-        cell: ({ row }) => {
-          const item = row.original;
-          const active = editingCell?.rowId === item.id && editingCell?.colKey === "notes";
-          const refKey = `${item.id}:notes`;
-          return active ? (
-            <TextCell
-              value={item.notes ?? ""}
-              placeholder="Notes"
-              disabled={!canEdit}
-              onCommit={(v) => handleCellCommit(item.id, "notes", v)}
-              onKeyDown={(e) => handleCellKeyDown(e, item.id, "notes")}
-              inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
-              multiline
-            />
-          ) : (
-            <span
-              className="block truncate text-xs text-[var(--muted-foreground)] cursor-text"
-              onClick={() => canEdit && focusCell(item.id, "notes")}
-            >
-              {item.notes || <span className="text-[var(--neutral-cool-400)]">Notes</span>}
-            </span>
-          );
-        },
-      }),
-      columnHelper.display({
-        id: "actions",
-        size: 36,
-        enableSorting: false,
-        enableColumnFilter: false,
-        header: () => null,
-        cell: ({ row }) => (
-          canEdit ? (
-            <button
-              type="button"
-              onClick={() => deleteSingleRow(row.original.id)}
-              className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] transition-colors p-0.5"
-              aria-label="Delete row"
-            >
-              <Trash2 size={13} />
-            </button>
-          ) : null
-        ),
-      }),
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [editingCell, canEdit]
-  );
-
-  const table = useReactTable({
-    data: items,
-    columns,
-    state: { sorting, columnFilters, rowSelection, columnVisibility },
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onRowSelectionChange: setRowSelection,
-    onColumnVisibilityChange: (updater) => {
-      setColumnVisibility((prev) => {
-        const next = typeof updater === "function" ? updater(prev) : updater;
-        saveColVisibility(next);
-        return next;
-      });
+  const deleteSingleRow = useCallback(
+    (id: string) => {
+      onItemsChange((prev) => prev.filter((i) => i.id !== id));
+      deleteRow(id);
     },
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getRowId: (row) => row.id,
-    enableRowSelection: canEdit,
-  });
+    [onItemsChange, deleteRow]
+  );
 
-  const selectedCount = Object.values(rowSelection).filter(Boolean).length;
-  const totalCents = items.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0);
+  // ── Reorder within category ──────────────────────────────────────────────────
 
-  // ── Mobile fallback ──────────────────────────────────────────────────────────
+  const moveItem = useCallback(
+    (id: string, direction: "up" | "down") => {
+      if (!canEdit) return;
+      const item = itemsRef.current.find((i) => i.id === id);
+      if (!item) return;
+      const catItems = itemsRef.current
+        .filter((i) => !i.archived && i.category === item.category)
+        .sort((a, b) => a.position - b.position);
+      const idx = catItems.findIndex((i) => i.id === id);
+      const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= catItems.length) return;
+      const other = catItems[targetIdx];
+      onItemsChange((prev) =>
+        prev.map((i) => {
+          if (i.id === id) return { ...i, position: other.position };
+          if (i.id === other.id) return { ...i, position: item.position };
+          return i;
+        })
+      );
+      scheduleAutosave(id, { position: other.position });
+      scheduleAutosave(other.id, { position: item.position });
+    },
+    [canEdit, onItemsChange, scheduleAutosave]
+  );
+
+  // ── Mobile ────────────────────────────────────────────────────────────────────
 
   if (isMobile) {
     return (
@@ -1157,43 +1136,250 @@ export function EquipmentGrid({
           scheduleAutosave(id, patch);
         }}
         onRemove={deleteSingleRow}
-        onAdd={addRow}
+        onAdd={addItem}
       />
     );
   }
 
   // ── Spreadsheet ───────────────────────────────────────────────────────────────
 
+  // TIM-3251: row padding from TABLE_ROW_PADDING (Menu ingredients-tab canon).
   const cellCls =
-    `px-2.5 py-2 ${TABLE_CELL_TEXT} border-r border-[var(--neutral-cool-150)] last:border-r-0 align-top`;
+    `px-2.5 ${TABLE_ROW_PADDING} ${TABLE_CELL_TEXT} border-r border-[var(--neutral-cool-150)] last:border-r-0 align-middle`;
   const headerCellCls =
-    `px-2.5 py-2 text-left ${TABLE_HEADER_TEXT} text-[var(--muted-foreground)] border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none`;
+    `px-2.5 py-2.5 text-left ${TABLE_HEADER_TEXT} text-[var(--muted-foreground)] border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none`;
+
+  function isColVisible(col: EditableCol): boolean {
+    return colVisibility[col] !== false;
+  }
+
+  // Count visible columns for colSpan calculations
+  const visibleColCount = (() => {
+    // fixed: name(1) + qty(1) + cost(1) + total(1) + actions(1) = 5
+    const toggleableVisible = TOGGLEABLE_COLS.filter((c) => isColVisible(c.id)).length;
+    return 5 + toggleableVisible;
+  })();
+
+  function renderCell(item: EquipmentItem, colKey: EditableCol | "total") {
+    const isActive = editingCell?.rowId === item.id && editingCell?.colKey === (colKey as EditableCol);
+    const refKey = `${item.id}:${colKey}`;
+
+    if (colKey === "name") {
+      return isActive ? (
+        <TextCell
+          value={item.name}
+          placeholder="Item name"
+          disabled={!canEdit}
+          onCommit={(v) => handleCellCommit(item.id, "name", v)}
+          onKeyDown={(e) => handleCellKeyDown(e, item.id, "name")}
+          inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
+        />
+      ) : (
+        <div className="flex items-center gap-1.5 w-full">
+          {item.source === "ai_suggested" && (
+            <span className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-amber-50 text-amber-600">
+              AI
+            </span>
+          )}
+          <span
+            className="block truncate text-xs font-medium text-[var(--foreground)] cursor-text flex-1 min-w-0"
+            onClick={() => canEdit && focusCell(item.id, "name")}
+          >
+            {item.name || <span className="font-normal text-[var(--neutral-cool-400)]">Name</span>}
+          </span>
+        </div>
+      );
+    }
+
+    if (colKey === "quantity") {
+      return isActive ? (
+        <NumberCell
+          value={item.quantity}
+          placeholder="1"
+          min={1}
+          step={1}
+          disabled={!canEdit}
+          onCommit={(v) => handleCellCommit(item.id, "quantity", v)}
+          onKeyDown={(e) => handleCellKeyDown(e, item.id, "quantity")}
+          inputRef={(el) => { cellInputRefs.current.set(refKey, el as HTMLInputElement); }}
+        />
+      ) : (
+        <span
+          className="block text-xs text-[var(--foreground)] cursor-text"
+          onClick={() => canEdit && focusCell(item.id, "quantity")}
+        >
+          {item.quantity}
+        </span>
+      );
+    }
+
+    if (colKey === "unit_cost_cents") {
+      return isActive ? (
+        <CostCell
+          valueCents={item.unit_cost_cents}
+          disabled={!canEdit}
+          onCommit={(cents) => handleCellCommit(item.id, "unit_cost_cents", cents)}
+          onKeyDown={(e) => handleCellKeyDown(e, item.id, "unit_cost_cents")}
+          inputRef={(el) => { cellInputRefs.current.set(refKey, el as HTMLInputElement); }}
+        />
+      ) : (
+        <span
+          className={`block truncate ${TABLE_PRICE_CLS} cursor-text`}
+          onClick={() => canEdit && focusCell(item.id, "unit_cost_cents")}
+        >
+          {item.unit_cost_cents > 0
+            ? format(item.unit_cost_cents / 100)
+            : <span className="text-[var(--neutral-cool-400)] font-normal">{symbol}0</span>
+          }
+        </span>
+      );
+    }
+
+    if (colKey === "total") {
+      const rowTotal = item.unit_cost_cents * item.quantity;
+      return (
+        <span className="block text-xs font-medium text-[var(--foreground)]">
+          {rowTotal > 0
+            ? format(rowTotal / 100)
+            : <span className="text-[var(--neutral-cool-400)] font-normal">{symbol}0</span>
+          }
+        </span>
+      );
+    }
+
+    if (colKey === "vendor") {
+      return isActive ? (
+        <TextCell
+          value={item.vendor ?? ""}
+          placeholder="Brand"
+          disabled={!canEdit}
+          onCommit={(v) => handleCellCommit(item.id, "vendor", v)}
+          onKeyDown={(e) => handleCellKeyDown(e, item.id, "vendor")}
+          inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
+        />
+      ) : (
+        <span
+          className="block truncate text-xs text-[var(--foreground)] cursor-text"
+          onClick={() => canEdit && focusCell(item.id, "vendor")}
+        >
+          {item.vendor || <span className="text-[var(--neutral-cool-400)]">Brand</span>}
+        </span>
+      );
+    }
+
+    if (colKey === "model") {
+      return isActive ? (
+        <TextCell
+          value={item.model ?? ""}
+          placeholder="Model"
+          disabled={!canEdit}
+          onCommit={(v) => handleCellCommit(item.id, "model", v)}
+          onKeyDown={(e) => handleCellKeyDown(e, item.id, "model")}
+          inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
+        />
+      ) : (
+        <span
+          className="block truncate text-xs text-[var(--foreground)] cursor-text"
+          onClick={() => canEdit && focusCell(item.id, "model")}
+        >
+          {item.model || <span className="text-[var(--neutral-cool-400)]">Model</span>}
+        </span>
+      );
+    }
+
+    if (colKey === "supplier") {
+      return isActive ? (
+        <TextCell
+          value={item.supplier ?? ""}
+          placeholder="Supplier"
+          disabled={!canEdit}
+          onCommit={(v) => handleCellCommit(item.id, "supplier", v)}
+          onKeyDown={(e) => handleCellKeyDown(e, item.id, "supplier")}
+          inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
+        />
+      ) : (
+        <span
+          className="block truncate text-xs text-[var(--foreground)] cursor-text"
+          onClick={() => canEdit && focusCell(item.id, "supplier")}
+        >
+          {item.supplier || <span className="text-[var(--neutral-cool-400)]">Supplier</span>}
+        </span>
+      );
+    }
+
+    if (colKey === "financing_method") {
+      return isActive ? (
+        <SelectCell
+          value={item.financing_method}
+          options={NEW_FINANCING.map((k) => ({ value: k, label: FINANCING_LABELS[k] }))}
+          disabled={!canEdit}
+          onCommit={(v) => handleCellCommit(item.id, "financing_method", v)}
+          onKeyDown={(e) => handleCellKeyDown(e, item.id, "financing_method")}
+          inputRef={(el) => { cellInputRefs.current.set(refKey, el as HTMLSelectElement); }}
+        />
+      ) : (
+        <span
+          className="block truncate text-xs text-[var(--foreground)] cursor-text"
+          onClick={() => canEdit && focusCell(item.id, "financing_method")}
+        >
+          {FINANCING_LABELS[item.financing_method] ?? item.financing_method}
+        </span>
+      );
+    }
+
+    if (colKey === "useful_life_years") {
+      return isActive ? (
+        <UsefulLifeCell
+          value={item.useful_life_years ?? 7}
+          disabled={!canEdit}
+          onCommit={(v) => handleCellCommit(item.id, "useful_life_years", v)}
+          onKeyDown={(e) => handleCellKeyDown(e, item.id, "useful_life_years")}
+          inputRef={(el) => { cellInputRefs.current.set(refKey, el as HTMLInputElement); }}
+        />
+      ) : (
+        <span
+          className="block text-xs text-[var(--foreground)] cursor-text"
+          onClick={() => canEdit && focusCell(item.id, "useful_life_years")}
+        >
+          {item.useful_life_years ?? 7}yr
+        </span>
+      );
+    }
+
+    if (colKey === "notes") {
+      return isActive ? (
+        <TextCell
+          value={item.notes ?? ""}
+          placeholder="Notes"
+          disabled={!canEdit}
+          onCommit={(v) => handleCellCommit(item.id, "notes", v)}
+          onKeyDown={(e) => handleCellKeyDown(e, item.id, "notes")}
+          inputRef={(el) => { cellInputRefs.current.set(refKey, el); }}
+          multiline
+        />
+      ) : (
+        <span
+          className="block truncate text-xs text-[var(--muted-foreground)] cursor-text"
+          onClick={() => canEdit && focusCell(item.id, "notes")}
+        >
+          {item.notes || <span className="text-[var(--neutral-cool-400)]">Notes</span>}
+        </span>
+      );
+    }
+
+    return null;
+  }
 
   return (
     <div className="space-y-3">
-      {/* Stats bar */}
+      {/* Stats bar + column picker */}
       <div className="flex items-center justify-between gap-4 px-1">
-        <div className="flex items-center gap-4 text-xs text-[var(--muted-foreground)]">
-          {items.length > 0 && (
+        <div className="flex items-center gap-3 text-xs text-[var(--muted-foreground)]">
+          {active.length > 0 && (
             <>
-              <span>{items.length} item{items.length !== 1 ? "s" : ""}</span>
+              <span>{active.length} item{active.length !== 1 ? "s" : ""}</span>
               <span className="text-[var(--border)]">|</span>
-              <span className="font-semibold text-[var(--foreground)]">
-                Total: {format(totalCents / 100)}
-              </span>
-              {selectedCount > 0 && (
-                <>
-                  <span className="text-[var(--border)]">|</span>
-                  <button
-                    type="button"
-                    onClick={deleteSelected}
-                    className="flex items-center gap-1 text-xs font-medium text-[var(--error)] hover:text-[var(--error-dark)] transition-colors"
-                  >
-                    <Trash2 size={12} />
-                    Delete {selectedCount} selected
-                  </button>
-                </>
-              )}
+              <span>{sections.length} section{sections.length !== 1 ? "s" : ""}</span>
             </>
           )}
         </div>
@@ -1216,9 +1402,7 @@ export function EquipmentGrid({
                 Show / hide columns
               </p>
               {TOGGLEABLE_COLS.map((col) => {
-                const column = table.getColumn(col.id);
-                if (!column) return null;
-                const visible = column.getIsVisible();
+                const visible = colVisibility[col.id] !== false;
                 return (
                   <label
                     key={col.id}
@@ -1228,7 +1412,13 @@ export function EquipmentGrid({
                       type="checkbox"
                       className="accent-[var(--teal)] cursor-pointer"
                       checked={visible}
-                      onChange={() => column.toggleVisibility(!visible)}
+                      onChange={() => {
+                        setColVisibility((prev) => {
+                          const next = { ...prev, [col.id]: !visible } as Record<EditableCol, boolean>;
+                          saveColVisibility(next);
+                          return next;
+                        });
+                      }}
                     />
                     {col.label}
                   </label>
@@ -1239,123 +1429,162 @@ export function EquipmentGrid({
         </div>
       </div>
 
-      {/* Spreadsheet table */}
-      <div className="border border-[var(--border)] rounded-xl overflow-hidden">
+      {/* Sectioned table */}
+      <div className="border border-[var(--border)] rounded-xl overflow-hidden relative">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-8 bg-gradient-to-l from-white to-transparent sm:hidden"
+        />
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse min-w-[900px]" style={{ tableLayout: "fixed" }}>
+          <table
+            className={`w-full border-collapse min-w-[900px] ${TABLE_CELL_TEXT}`}
+            style={{ tableLayout: "fixed" }}
+          >
             <colgroup>
-              {table.getAllColumns().map((col) => (
-                <col key={col.id} style={{ width: col.getSize() }} />
-              ))}
+              <col style={{ width: 190 }} />
+              <col style={{ width: 55 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 100 }} />
+              {isColVisible("vendor")            && <col style={{ width: 110 }} />}
+              {isColVisible("model")             && <col style={{ width: 110 }} />}
+              {isColVisible("supplier")          && <col style={{ width: 110 }} />}
+              {isColVisible("financing_method")  && <col style={{ width: 110 }} />}
+              {isColVisible("useful_life_years") && <col style={{ width: 72 }} />}
+              {isColVisible("notes")             && <col style={{ width: 150 }} />}
+              <col style={{ width: 68 }} />
             </colgroup>
 
-            {/* Filter row */}
-            <thead>
+            <thead className="sticky top-0 z-10">
               <tr className="border-b border-[var(--neutral-cool-150)]">
-                {table.getHeaderGroups()[0].headers.map((header) => {
-                  const col = header.column;
-                  const canSort = col.getCanSort();
-                  const sortDir = col.getIsSorted();
-                  return (
-                    <th key={header.id} className={`${headerCellCls} ${getStickyColCls(header.id, "bg-[var(--background)]")}`}>
-                      <div
-                        className={`flex items-center gap-1 ${canSort ? "cursor-pointer hover:text-[var(--foreground)]" : ""}`}
-                        onClick={canSort ? col.getToggleSortingHandler() : undefined}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {canSort && (
-                          <span className="text-[var(--neutral-cool-400)]">
-                            {sortDir === "asc" ? (
-                              <ArrowUp size={10} />
-                            ) : sortDir === "desc" ? (
-                              <ArrowDown size={10} />
-                            ) : (
-                              <ArrowUpDown size={10} />
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                  );
-                })}
-              </tr>
-              {/* Filter inputs row */}
-              <tr className="border-b border-[var(--neutral-cool-200)]">
-                {table.getHeaderGroups()[0].headers.map((header) => {
-                  const col = header.column;
-                  if (!col.getCanFilter()) {
-                    return <td key={header.id} className={`px-2 py-1 bg-[var(--background)] ${getStickyColCls(header.id, "bg-[var(--background)]")}`} />;
-                  }
-                  return (
-                    <td key={header.id} className={`px-2 py-1 bg-[var(--background)] ${getStickyColCls(header.id, "bg-[var(--background)]")}`}>
-                      <input
-                        type="text"
-                        className="w-full text-[10px] bg-white border border-[var(--neutral-cool-200)] rounded px-2 py-1 text-[var(--foreground)] placeholder-[var(--neutral-cool-350)] focus-visible:outline-none focus:border-[var(--teal)]"
-                        placeholder="Filter…"
-                        value={(col.getFilterValue() as string) ?? ""}
-                        onChange={(e) => col.setFilterValue(e.target.value || undefined)}
-                      />
-                    </td>
-                  );
-                })}
+                <th className={headerCellCls}>Item</th>
+                <th className={headerCellCls}>Qty</th>
+                <th className={headerCellCls}>Unit Cost</th>
+                <th className={headerCellCls}>Total</th>
+                {isColVisible("vendor")            && <th className={headerCellCls}>Brand</th>}
+                {isColVisible("model")             && <th className={headerCellCls}>Model</th>}
+                {isColVisible("supplier")          && <th className={headerCellCls}>Supplier</th>}
+                {isColVisible("financing_method")  && <th className={headerCellCls}>Financing</th>}
+                {isColVisible("useful_life_years") && <th className={headerCellCls}>Life</th>}
+                {isColVisible("notes")             && <th className={headerCellCls}>Notes</th>}
+                <th className={headerCellCls} />
               </tr>
             </thead>
 
             <tbody>
-              {table.getRowModel().rows.length === 0 && (
+              {sections.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="text-center py-10 text-sm text-[var(--dark-grey)]"
-                  >
+                  <td colSpan={TOTAL_COLS} className="text-center py-10 text-sm text-[var(--dark-grey)]">
                     No equipment added yet.
                   </td>
                 </tr>
               )}
-              {table.getRowModel().rows.map((row) => {
-                const item = row.original;
-                const fund = isFundRow(item);
-                const selected = row.getIsSelected();
+
+              {sections.map(({ cat, label, items: catItems }) => {
+                const isCollapsed = !!collapsed[cat];
+                const subtotalCents = catItems.reduce((s, i) => s + i.unit_cost_cents * i.quantity, 0);
+
                 return (
-                  <tr
-                    key={row.id}
-                    className={`border-b border-[var(--neutral-cool-100)] last:border-b-0 transition-colors ${
-                      selected
-                        ? "bg-[var(--teal-bg-pale)]"
-                        : fund
-                        ? "bg-[var(--teal-tint-500)]/60"
-                        : "bg-white hover:bg-[var(--background)]"
-                    }`}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className={`${cellCls} ${getStickyColCls(
-                          cell.column.id,
-                          selected ? "bg-[var(--teal-bg-pale)]" : fund ? "bg-[var(--teal-tint-500)]" : "bg-white"
-                        )}`}
+                  <React.Fragment key={cat}>
+                    <SectionHeaderRow
+                      colSpan={visibleColCount}
+                      title={label}
+                      collapsed={isCollapsed}
+                      onToggle={() => toggleSection(cat)}
+                      onAddItem={() => addItem(cat)}
+                      canEdit={canEdit}
+                    />
+
+                    {!isCollapsed && catItems.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="border-b border-[var(--neutral-cool-100)] last:border-b-0 bg-white hover:bg-[var(--background)] transition-colors"
                       >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
+                        <td className={cellCls}>{renderCell(item, "name")}</td>
+                        <td className={cellCls}>{renderCell(item, "quantity")}</td>
+                        <td className={cellCls}>{renderCell(item, "unit_cost_cents")}</td>
+                        <td className={cellCls}>{renderCell(item, "total")}</td>
+                        {isColVisible("vendor")            && <td className={cellCls}>{renderCell(item, "vendor")}</td>}
+                        {isColVisible("model")             && <td className={cellCls}>{renderCell(item, "model")}</td>}
+                        {isColVisible("supplier")          && <td className={cellCls}>{renderCell(item, "supplier")}</td>}
+                        {isColVisible("financing_method")  && <td className={cellCls}>{renderCell(item, "financing_method")}</td>}
+                        {isColVisible("useful_life_years") && <td className={cellCls}>{renderCell(item, "useful_life_years")}</td>}
+                        {isColVisible("notes")             && <td className={cellCls}>{renderCell(item, "notes")}</td>}
+                        <td className={`${cellCls} !border-r-0`}>
+                          <div className="flex items-center gap-0.5 justify-end">
+                            {canEdit && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => moveItem(item.id, "up")}
+                                  className="text-[var(--neutral-cool-300)] hover:text-[var(--muted-foreground)] p-0.5 transition-colors"
+                                  aria-label="Move up"
+                                >
+                                  <ChevronUp size={TABLE_ACTION_ICON_SIZE} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => moveItem(item.id, "down")}
+                                  className="text-[var(--neutral-cool-300)] hover:text-[var(--muted-foreground)] p-0.5 transition-colors"
+                                  aria-label="Move down"
+                                >
+                                  <ChevronDownIcon size={TABLE_ACTION_ICON_SIZE} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteSingleRow(item.id)}
+                                  className="text-[var(--neutral-cool-400)] hover:text-[var(--error)] p-0.5 transition-colors"
+                                  aria-label="Delete row"
+                                >
+                                  <Trash2 size={TABLE_ACTION_ICON_SIZE} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                     ))}
-                  </tr>
+
+                    {!isCollapsed && (
+                      <SectionSubtotalRow
+                        colSpan={visibleColCount}
+                        label={`${label} Total`}
+                        subtotalDisplay={format(subtotalCents / 100)}
+                      />
+                    )}
+                  </React.Fragment>
                 );
               })}
+
+              {sections.length > 0 && (
+                <GrandTotalRow
+                  colSpan={visibleColCount}
+                  label="Grand Total"
+                  totalDisplay={format(grandTotal / 100)}
+                />
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Add row button */}
+      {/* Add category button */}
       {canEdit && (
         <button
           type="button"
-          onClick={addRow}
-          className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors w-full justify-center"
+          onClick={() => setShowAddCategory(true)}
+          className="flex items-center gap-2 text-sm font-medium text-[var(--teal)] border border-dashed border-[var(--teal-tint)] rounded-xl px-4 py-2.5 hover:bg-[var(--teal)]/5 transition-colors w-full justify-center"
         >
           <Plus size={14} aria-hidden="true" />
-          Add row
+          Add category
         </button>
+      )}
+
+      {showAddCategory && (
+        <AddCategoryDialog
+          existingCategories={categoryOrder}
+          onAdd={addCategory}
+          onClose={() => setShowAddCategory(false)}
+        />
       )}
     </div>
   );

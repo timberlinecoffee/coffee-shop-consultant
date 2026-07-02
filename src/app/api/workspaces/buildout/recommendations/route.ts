@@ -6,14 +6,14 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk";
+import { runScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { toTitleCase } from "@/lib/text";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { normalizeConceptV2, formatConceptV2ForAI } from "@/lib/concept";
 import { normalizeMonthlyProjections, totalCapexCents } from "@/lib/financial-projection";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
 import type { EquipmentRecommendation, EquipmentReferral } from "@/types/referral";
 
@@ -35,6 +35,15 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "buildout:recommendations",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   const { data: profile } = await supabase
     .from("users")
@@ -147,22 +156,19 @@ Return ONLY valid JSON, no markdown:
   ]
 }`;
 
-  const client = new Anthropic();
   let aiRecs: AiRecommendation[];
 
   try {
-    const msg = await client.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 4096,
+    const result = await runScoutTurn({
+      lane: "buildout_recommendations",
+      systemBlocks: [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 4096,
+      userId: user.id,
+      routeTag: "/api/workspaces/buildout/recommendations",
     });
 
-    const text = msg.content
-      .filter((b) => b.type === "text")
-      .map((b) => (b as { type: "text"; text: string }).text)
-      .join("");
-
-    const clean = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+    const clean = result.text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
     const parsed = JSON.parse(clean) as { recommendations?: AiRecommendation[] };
     aiRecs = parsed.recommendations ?? [];
   } catch (err) {

@@ -11,7 +11,8 @@ import {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { Clock, Maximize2, Minimize2, Sparkles, X } from "lucide-react";
+import { Clock, Maximize2, Minimize2, Sparkles } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { cn } from "@/lib/utils";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -441,7 +442,7 @@ function errorCopy(err: CopilotErrorState): { title: string; cta: string | null;
     case "unauthorized":
       return {
         title: "Please sign in again to keep coaching.",
-        cta: "Sign in",
+        cta: "Sign In",
         href: "/login",
       };
     case "paywall":
@@ -534,7 +535,11 @@ export function CoPilotDrawer({
   const hydratedRef = useRef(false);
 
   // Derived constants — placed before effects so they're stable references in deps arrays.
-  const isMobile = viewportWidth < 640;
+  // TIM-3413: mobile threshold inclusive at 640px to match audit DONE-criteria
+  // (≤640px = full-screen) and Tailwind `sm` breakpoint. Tablet (641-1024px)
+  // is fixed-width; drag-resize only applies on desktop (≥1025px).
+  const isMobile = viewportWidth <= 640;
+  const isTablet = viewportWidth > 640 && viewportWidth <= 1024;
   const sheetOpen = open && isMobile;
 
   const {
@@ -895,12 +900,6 @@ export function CoPilotDrawer({
       const trimmed = prompt.trim();
       if (!trimmed || isStreaming) return;
 
-      // TIM-819: Gate at attempt time if trial already exhausted (e.g. dismissed modal on msg 5).
-      if (trialMessagesUsed >= COPILOT_FREE_TRIAL_LIMIT) {
-        setTrialModalOpen(true);
-        return;
-      }
-
       setPendingRetry(trimmed);
       const optimistic: CopilotMessage = { role: "user", content: trimmed };
       const nextHistory = [...messages, optimistic];
@@ -960,7 +959,6 @@ export function CoPilotDrawer({
       messages,
       planId,
       send,
-      trialMessagesUsed,
     ],
   );
 
@@ -1167,6 +1165,19 @@ export function CoPilotDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [sheetOpen, closeDrawer]);
 
+  // TIM-3413: background scroll-lock while the mobile full-screen drawer is
+  // open — audit DONE-criteria. Restore the prior overflow value on close to
+  // avoid clobbering other modals/sheets that touched it.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (!sheetOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [sheetOpen]);
+
   // TIM-662: hydrate messages for the restored thread on first mount.
   useEffect(() => {
     if (hydratedRef.current) return;
@@ -1207,14 +1218,21 @@ export function CoPilotDrawer({
     return deriveTitle(messages);
   }, [activeThreadTitle, isStreaming, messages]);
 
-  // TIM-1149 / TIM-1151: compute the on-screen panel width. Expanded mode is a
-  // true full-width overlay over the workspace (founder feedback) — bypass the
-  // PANEL_MAX_WIDTH clamp so the chat takes the entire viewport. Default mode
-  // stays clamped to a comfortable reading width. On phones we always go
-  // full-bleed so the drawer stays usable.
+  // TIM-1149 / TIM-1151 / TIM-3413: compute the on-screen panel width.
+  // - ≤640px (mobile): full-screen overlay, no PANEL_MIN_WIDTH floor — audit
+  //   TIM-3411 Top-10 #1: the 360px floor pushed underlying content off-edge
+  //   on 375px viewports.
+  // - 641-1024px (tablet): fixed at PANEL_MIN_WIDTH so the backdrop stays
+  //   tappable (audit spec: cap = min(360, viewportWidth-24), which collapses
+  //   to 360 across the tier). Drag handle is hidden on this tier so a
+  //   would-be user-set width never silently snaps back.
+  // - ≥1025px (desktop): existing resizable behavior unchanged — drag handle
+  //   active, user width persisted, clamped to [PANEL_MIN_WIDTH, PANEL_MAX_WIDTH].
+  // - Expanded mode (founder feedback, TIM-1151) keeps full-viewport.
   const computedPanelWidth = useMemo(() => {
-    if (viewportWidth < 640) return viewportWidth;
+    if (viewportWidth <= 640) return viewportWidth;
     if (isExpanded) return viewportWidth;
+    if (viewportWidth <= 1024) return PANEL_MIN_WIDTH;
     return Math.max(
       PANEL_MIN_WIDTH,
       Math.min(PANEL_MAX_WIDTH, panelWidth, viewportWidth - 16),
@@ -1333,10 +1351,11 @@ export function CoPilotDrawer({
             exit={{ x: "100%" }}
             transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            {/* TIM-1149: drag-to-resize handle on the left edge. Hidden on
-                mobile and when the panel is expanded to full-width (no room
-                to resize). */}
-            {!isMobile && !isExpanded && (
+            {/* TIM-1149 / TIM-3413: drag-to-resize handle on the left edge.
+                Hidden on mobile (full-screen sheet), on tablet (fixed-width
+                tier — drag would no-op against the constant width), and when
+                the panel is expanded to full-viewport. */}
+            {!isMobile && !isTablet && !isExpanded && (
               <div
                 role="separator"
                 aria-orientation="vertical"
@@ -1411,14 +1430,14 @@ export function CoPilotDrawer({
                   )}
                 </button>
               )}
-              <button
-                type="button"
-                aria-label="Close"
+              <CollapseButton
                 onClick={closeDrawer}
-                className="mt-0.5 w-8 h-8 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
+                className={cn(
+                  "mt-0.5 rounded-full hover:bg-[var(--neutral-cool-100)] flex items-center justify-center text-[var(--neutral-cool-600)] shrink-0",
+                  isMobile ? "w-11 h-11" : "w-8 h-8",
+                )}
+                aria-label="Close"
+              />
             </header>
 
             {/* TIM-2416 — mode strip (UX spec §2). Sits below the header,

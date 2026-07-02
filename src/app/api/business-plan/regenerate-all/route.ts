@@ -14,9 +14,9 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 import pLimit from "p-limit";
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models";
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics";
-import Anthropic from "@anthropic-ai/sdk";
+import { streamScoutTurn } from "@/lib/ai/scout-adapter";
+import type { ScoutLane } from "@/lib/ai/scout-lane";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { hasWriteAccess } from "@/lib/access";
@@ -149,13 +149,15 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   // TIM-2360: resume mode — if `only` is provided, limit to those keys.
   const allRegenerableKeys = BP_REGENERABLE_SECTION_KEYS as BusinessPlanSectionKey[];
-  const sectionsToRegenerate = onlyKeys
+  // Unordered for now — credits are charged per key regardless of order; the
+  // persisted-order reorder happens after the plan row is fetched below.
+  const unorderedSelection: BusinessPlanSectionKey[] = onlyKeys
     ? allRegenerableKeys.filter((k) => onlyKeys.includes(k))
     : allRegenerableKeys;
 
   const estimatedCredits = isBetaWaived
     ? 0
-    : sectionsToRegenerate.length * CREDIT_COST_PER_SECTION;
+    : unorderedSelection.length * CREDIT_COST_PER_SECTION;
 
   if (hasAccess && !isBetaWaived && (profile.ai_credits_remaining ?? 0) < CREDIT_COST_PER_SECTION) {
     return Response.json({ reason: "out_of_credits", tier_required: "pro" }, { status: 402 });
@@ -167,11 +169,44 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const { data: plan } = await supabase
     .from("coffee_shop_plans")
-    .select("plan_name, onboarding_data")
+    // TIM-3490: include business_plan_section_order so the regen iterates
+    // in the user's persisted order and the prompt context block reflects
+    // the reorder (DoD: AI prompt assembler must respect custom order).
+    .select("plan_name, onboarding_data, business_plan_section_order")
     .eq("id", planId)
     .maybeSingle();
 
   if (!plan) return Response.json({ error: "No plan" }, { status: 404 });
+
+  // TIM-3490: reorder sectionsToRegenerate by the persisted per-plan order.
+  // Falls back to the default order when nothing is persisted. Standard
+  // keys present in both `persistedSectionOrder` and the user's selection
+  // come first, in persisted order; any remaining selected keys fall back
+  // to the original default order so a newly-added standard section still
+  // regenerates.
+  const persistedSectionOrder: string[] = Array.isArray(
+    (plan as { business_plan_section_order?: unknown }).business_plan_section_order,
+  )
+    ? ((plan as { business_plan_section_order: unknown[] }).business_plan_section_order.filter(
+        (v): v is string => typeof v === "string",
+      ))
+    : [];
+
+  const selectionSet = new Set<BusinessPlanSectionKey>(unorderedSelection);
+  const seenOrdered = new Set<BusinessPlanSectionKey>();
+  const sectionsToRegenerate: BusinessPlanSectionKey[] = [];
+  for (const id of persistedSectionOrder) {
+    if (selectionSet.has(id as BusinessPlanSectionKey) && !seenOrdered.has(id as BusinessPlanSectionKey)) {
+      sectionsToRegenerate.push(id as BusinessPlanSectionKey);
+      seenOrdered.add(id as BusinessPlanSectionKey);
+    }
+  }
+  for (const k of unorderedSelection) {
+    if (!seenOrdered.has(k)) {
+      sectionsToRegenerate.push(k);
+      seenOrdered.add(k);
+    }
+  }
 
   // Load ALL platform data in parallel, once, before streaming.
   const [
@@ -298,7 +333,11 @@ export async function POST(request: NextRequest): Promise<Response> {
       title: sectionsByKey.get(key)?.title ?? key,
     }));
 
-  const client = new Anthropic();
+  // TIM-3468: lane per section. Both pinned to Anthropic in the router today.
+  const laneForSection = (sectionKey: string): ScoutLane =>
+    sectionKey === "executive-summary"
+      ? "write_executive_summary"
+      : "generate_business_plan_section";
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -400,32 +439,49 @@ export async function POST(request: NextRequest): Promise<Response> {
         }, PER_SECTION_TIMEOUT_MS);
 
         // TIM-2509: per-section usage capture for ai_turn_metrics.
+        // TIM-3468: provider/modelId/latencyMs captured from adapter events.
+        const sectionLane = laneForSection(sectionKey);
         let sectionInputTokens = 0;
         let sectionOutputTokens = 0;
         let sectionCacheReadTokens = 0;
         let sectionCacheCreateTokens = 0;
+        let sectionWebSearchRequests = 0;
+        let sectionToolCalls = 0;
+        let sectionProvider: "anthropic" | "deepseek" = "anthropic";
+        let sectionModelId = "";
+        const sectionT0 = Date.now();
 
         try {
-          const response = await client.messages.stream(
-            {
-              model: PLATFORM_AI_MODEL,
-              max_tokens: maxTokens,
-              system: systemPrompt,
-              messages: [{ role: "user", content: userMessage }],
-            },
-            { signal: sectionAbort.signal },
-          );
+          const response = streamScoutTurn({
+            lane: sectionLane,
+            systemBlocks: [{ text: systemPrompt }],
+            messages: [{ role: "user", content: userMessage }],
+            maxTokens,
+            userId: user.id,
+            routeTag: "/api/business-plan/regenerate-all",
+            // TIM-3468: signal propagates to the SDK fetch so the
+            // PER_SECTION_TIMEOUT_MS bound actually cancels in-flight HTTP,
+            // not just stops awaiting after the next yielded event.
+            signal: sectionAbort.signal,
+          });
 
           for await (const event of response) {
             if (closed) break;
-            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-              fullText += event.delta.text;
-            } else if (event.type === "message_start" && event.message?.usage) {
-              sectionInputTokens = event.message.usage.input_tokens ?? 0;
-              sectionCacheReadTokens = event.message.usage.cache_read_input_tokens ?? 0;
-              sectionCacheCreateTokens = event.message.usage.cache_creation_input_tokens ?? 0;
-            } else if (event.type === "message_delta" && event.usage) {
-              sectionOutputTokens = event.usage.output_tokens ?? 0;
+            if (sectionAbort.signal.aborted) {
+              throw Object.assign(new Error("aborted"), { name: "AbortError" });
+            }
+            if (event.kind === "decision") {
+              sectionProvider = event.provider;
+              sectionModelId = event.modelId;
+            } else if (event.kind === "text_delta") {
+              fullText += event.text;
+            } else if (event.kind === "usage") {
+              sectionInputTokens = event.usage.inputTokensUncached;
+              sectionCacheReadTokens = event.usage.inputTokensCachedRead;
+              sectionCacheCreateTokens = event.usage.inputTokensCacheCreate;
+              sectionOutputTokens = event.usage.outputTokens;
+              sectionWebSearchRequests = event.usage.webSearchRequests;
+              sectionToolCalls = event.usage.toolCalls;
             }
           }
         } catch (err) {
@@ -462,15 +518,21 @@ export async function POST(request: NextRequest): Promise<Response> {
           },
           {
             route: "/api/business-plan/regenerate-all",
-            model: PLATFORM_AI_MODEL,
+            model: sectionModelId,
             usage: {
               input_tokens: sectionInputTokens,
               output_tokens: sectionOutputTokens,
               cache_read_input_tokens: sectionCacheReadTokens,
               cache_creation_input_tokens: sectionCacheCreateTokens,
             },
+            webSearchRequests: sectionWebSearchRequests,
+            toolCalls: sectionToolCalls,
             userId: user.id,
             planTier: resolvePlanTier(profile),
+            provider: sectionProvider,
+            lane: sectionLane,
+            latencyMs: Date.now() - sectionT0,
+            fallbackUsed: false,
           },
         );
 
@@ -507,7 +569,9 @@ export async function POST(request: NextRequest): Promise<Response> {
         // TIM-2343: self-consistency proofread. Run on the canonicalized text.
         // On hits, regen ONCE with the explicit fix directive, then re-check.
         let contradictions = await runSelfConsistencyCheck({
-          client,
+          lane: sectionLane,
+          userId: user.id,
+          routeTag: "/api/business-plan/regenerate-all",
           sectionKey,
           sectionTitle: sectionMeta.title,
           sectionText: draftCanon.text,
@@ -516,7 +580,9 @@ export async function POST(request: NextRequest): Promise<Response> {
         if (contradictions.length > 0) {
           regenAttempted = true;
           const regen = await regenerateWithFixDirective({
-            client,
+            lane: sectionLane,
+            userId: user.id,
+            routeTag: "/api/business-plan/regenerate-all",
             baseSystemPrompt: systemPrompt,
             baseUserMessage: userMessage,
             contradictions,
@@ -526,7 +592,9 @@ export async function POST(request: NextRequest): Promise<Response> {
             workingText = normalizeAIOutput(regen);
             draftCanon = canonicalizeNarrative(workingText, planState.entities);
             contradictions = await runSelfConsistencyCheck({
-              client,
+              lane: sectionLane,
+              userId: user.id,
+              routeTag: "/api/business-plan/regenerate-all",
               sectionKey,
               sectionTitle: sectionMeta.title,
               sectionText: draftCanon.text,

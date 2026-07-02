@@ -1,5 +1,6 @@
 // TIM-1140: Categories are per-plan rows in menu_categories (not a hard-coded enum).
 // 'piece' joins the existing unit set for items measured by count.
+// TIM-3247: CategoryPreset — system-seeded COGS target templates from menu_category_presets.
 
 import type { ExpectedPopularity } from './menu-engineering'
 
@@ -13,12 +14,27 @@ export const UNIT_OPTIONS: { value: IngredientUnit; label: string }[] = [
   { value: 'piece', label: 'piece' },
 ]
 
+// TIM-3247: Read from menu_category_presets (system reference table, service-role-only writes).
+export type CategoryPreset = {
+  id: string
+  slug: string
+  name: string
+  target_cogs_low_pct: number
+  target_cogs_high_pct: number
+  financial_role: string
+  position: number
+}
+
 export type MenuCategory = {
   id: string
   plan_id: string
   name: string
   position: number
   is_default: boolean
+  // TIM-3243: per-category COGS target range. null = no range set yet (triggers onboarding picker).
+  target_cogs_low_pct: number | null
+  target_cogs_high_pct: number | null
+  financial_role: string | null
   created_at: string
   updated_at: string
 }

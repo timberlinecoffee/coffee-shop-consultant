@@ -515,7 +515,7 @@ function SidebarContent({
             {onClose && (
               <button
                 onClick={onClose}
-                className="lg:hidden text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1 transition-colors"
+                className="lg:hidden text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors h-11 w-11 flex items-center justify-center"
                 aria-label="Close navigation"
               >
                 <CloseIcon />
@@ -659,47 +659,76 @@ function SidebarContent({
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-1">
-            <Link
-              href="/account"
-              title="Account"
-              aria-label="Account"
-              aria-current={pathname.startsWith("/account") ? "page" : undefined}
-              onClick={onClose}
-              className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
-                pathname.startsWith("/account")
-                  ? "bg-[var(--teal)]/10 text-[var(--teal)]"
-                  : "text-[var(--muted-foreground)] hover:bg-[var(--surface-warm-100)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              <AccountIcon />
-            </Link>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={showStatus}
-              onClick={toggleShowStatus}
-              title={showStatus ? "Hide Progress" : "Show Progress"}
-              aria-label={showStatus ? "Hide Progress" : "Show Progress"}
-              className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
-                showStatus
-                  ? "text-[var(--teal)] bg-[var(--teal)]/5"
-                  : "text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
-              }`}
-            >
-              {showStatus ? <EyeIcon /> : <EyeOffIcon />}
-            </button>
-            {onToggleCollapse && (
-              <button
-                onClick={onToggleCollapse}
-                title="Collapse sidebar"
-                aria-label="Collapse sidebar"
-                className="ml-auto flex items-center justify-center w-9 h-9 rounded-lg text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors"
+          <>
+            <div className="flex items-center gap-1">
+              <Link
+                href="/account"
+                title="Account"
+                aria-label="Account"
+                aria-current={pathname.startsWith("/account") ? "page" : undefined}
+                onClick={onClose}
+                className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
+                  pathname.startsWith("/account")
+                    ? "bg-[var(--teal)]/10 text-[var(--teal)]"
+                    : "text-[var(--muted-foreground)] hover:bg-[var(--surface-warm-100)] hover:text-[var(--foreground)]"
+                }`}
               >
-                <CollapseIcon />
+                <AccountIcon />
+              </Link>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showStatus}
+                onClick={toggleShowStatus}
+                title={showStatus ? "Hide Progress" : "Show Progress"}
+                aria-label={showStatus ? "Hide Progress" : "Show Progress"}
+                className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
+                  showStatus
+                    ? "text-[var(--teal)] bg-[var(--teal)]/5"
+                    : "text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
+                }`}
+              >
+                {showStatus ? <EyeIcon /> : <EyeOffIcon />}
               </button>
-            )}
-          </div>
+              {onToggleCollapse && (
+                <button
+                  onClick={onToggleCollapse}
+                  title="Collapse sidebar"
+                  aria-label="Collapse sidebar"
+                  className="ml-auto flex items-center justify-center w-9 h-9 rounded-lg text-[var(--dark-grey)] hover:text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors"
+                >
+                  <CollapseIcon />
+                </button>
+              )}
+            </div>
+            {/* TIM-3299: Help / Terms / Privacy text-link row. Mirrors SaaS
+                footer pattern (Notion, Linear). Existing routes reused. */}
+            <div className="mt-1.5 px-1 flex items-center gap-2 text-[11px] text-[var(--muted-foreground)]">
+              <Link
+                href="/help"
+                onClick={onClose}
+                className="hover:text-[var(--teal)] hover:underline transition-colors"
+              >
+                Help
+              </Link>
+              <span aria-hidden>·</span>
+              <Link
+                href="/terms"
+                onClick={onClose}
+                className="hover:text-[var(--teal)] hover:underline transition-colors"
+              >
+                Terms
+              </Link>
+              <span aria-hidden>·</span>
+              <Link
+                href="/privacy"
+                onClick={onClose}
+                className="hover:text-[var(--teal)] hover:underline transition-colors"
+              >
+                Privacy
+              </Link>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -775,7 +804,7 @@ export function AppSidebar({ items, collapsed = false, onToggleCollapse, isPro }
     <>
       {/* Desktop fixed sidebar */}
       <aside
-        className={`hidden lg:flex flex-col fixed top-0 left-0 h-screen ${sidebarWidth} bg-white border-r border-[var(--border)] z-30 transition-all duration-200`}
+        className={`hidden lg:flex flex-col fixed top-0 left-0 h-screen ${sidebarWidth} bg-[var(--card)] border-r border-[var(--border)] z-30 transition-all duration-200`}
         aria-label="Workspace navigation"
       >
         <SidebarContent
@@ -801,7 +830,7 @@ export function AppSidebar({ items, collapsed = false, onToggleCollapse, isPro }
         role="dialog"
         aria-modal="true"
         aria-label="Workspace navigation"
-        className={`fixed top-0 left-0 h-screen w-[280px] bg-white z-50 lg:hidden transition-transform duration-200 ease-out ${
+        className={`fixed top-0 left-0 h-screen w-[280px] bg-[var(--card)] z-50 lg:hidden transition-transform duration-200 ease-out ${
           drawerOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

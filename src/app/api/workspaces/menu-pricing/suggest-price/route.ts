@@ -5,8 +5,7 @@
 // surfaces disagreement_reason. Same Pro gating + ownership check + rate
 // limit as /benchmark-price — both routes trigger the same paid Sonnet +
 // web_search round-trip and must be guarded identically.
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk"
+import { runScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { normalizeAIOutput } from "@/lib/normalize"
@@ -14,13 +13,14 @@ import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/li
 import { resolvePlanGeo } from "@/lib/wages/resolve-plan-geo"
 import { enforceRateLimit } from "@/lib/rate-limit"
 import { computeLocalCafeRange, type BenchmarkCitation } from "@/lib/menu-pricing/local-cafe-range"
+import { resolveCogsFraction, computeMarginFloorCents } from "@/lib/menu-pricing/cogs-target"
 
 export const runtime = "nodejs"
 // TIM-2922: bumped from 30s. We now run web_search Sonnet + a Haiku
 // suggestion call sequentially. 120s leaves margin (Vercel Pro allows 300s).
 export const maxDuration = 120
 
-const anthropic = new Anthropic()
+const ROUTE_PATH = "/api/workspaces/menu-pricing/suggest-price"
 
 interface ConceptContext {
   shop_identity?: string
@@ -96,9 +96,10 @@ export async function POST(request: Request) {
   // suggest-price's contract pre-dated item_id, so we look up by name; for
   // accounts with two items of the same name we accept the first since the
   // suggestion is shape-agnostic to which row served it.
+  // TIM-3245: also fetch the category COGS range for the midpoint floor calculation.
   const { data: ownedItem } = await supabase
     .from("menu_items")
-    .select("id")
+    .select("id, menu_categories!category_id(target_cogs_low_pct, target_cogs_high_pct)")
     .eq("plan_id", planId)
     .ilike("name", itemName)
     .limit(1)
@@ -107,15 +108,27 @@ export async function POST(request: Request) {
     return Response.json({ error: "Menu item not found in active plan" }, { status: 404 })
   }
 
+  // TIM-3245: resolve COGS target from the item's category range midpoint.
+  // Falls back to 25% (75% gross margin) when the category has no range set.
+  const catCogs = ownedItem.menu_categories as unknown as
+    | { target_cogs_low_pct: number | null; target_cogs_high_pct: number | null }
+    | null
+  const cogsTargetFraction = resolveCogsFraction(
+    catCogs?.target_cogs_low_pct,
+    catCogs?.target_cogs_high_pct,
+  )
+
   // TIM-2922: structured country/city for the local range.
   const geo = await resolvePlanGeo(supabase, planId)
 
   const cogsDollars = (body.cogs_cents / 100).toFixed(2)
   const ctx = body.concept_context ?? {}
 
-  // Margin floor: coffee shops target 75–85% gross margin.
-  const marginFloorCents = Math.ceil(body.cogs_cents / 0.25)
+  // Margin floor: price = COGS / cogsTargetFraction. Uses per-category midpoint
+  // (TIM-3245) with 25% fallback (= 75% gross margin, pre-TIM-3245 behaviour).
+  const marginFloorCents = computeMarginFloorCents(body.cogs_cents, cogsTargetFraction)
   const marginFloorDollars = (marginFloorCents / 100).toFixed(2)
+  const grossMarginFloorPct = Math.round((1 - cogsTargetFraction) * 1000) / 10
 
   // TIM-2922: Pull the live local cafe range. Same engine as /benchmark-price.
   // TIM-2922 (hardening): computeLocalCafeRange now returns empty-citations
@@ -178,7 +191,7 @@ ITEM BEING PRICED:
 ${localBlock}
 
 MARGIN FLOOR:
-A 75% gross margin floor puts the minimum retail price at $${marginFloorDollars} for this COGS. Do not suggest below this floor. Most quality independent shops target 78–82%.
+A ${grossMarginFloorPct}% gross margin floor (based on this item's category target) puts the minimum retail price at $${marginFloorDollars} for this COGS. Do not suggest below this floor.
 
 YOUR TASK:
 Suggest a retail price range for ${itemName}. The midpoint of your range is your recommendation. It MUST sit inside the local cafe band above (unless the margin floor forces it higher, or you set disagreement_reason).
@@ -191,18 +204,21 @@ Return a JSON object with these exact fields:
 - commentary: string, 2–3 sentences. Reference the specific city and the cited cafes that anchor your range. Name a real number. No jargon. No em dashes.
 - disagreement_reason: string OR null. NULL when your suggestion is inside the local cafe band. Otherwise one short sentence explaining why you went outside the band.
 
-Rules: no emojis, no AI language, the suggestion must be above $${marginFloorDollars}, be specific about the market and city.
+Rules: no emojis, no AI language, the suggestion must be at or above $${marginFloorDollars} (${grossMarginFloorPct}% gross margin floor for this category), be specific about the market and city.
 
 Return ONLY the JSON object, no other text.`
 
   try {
-    const message = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 1024,
+    const result = await runScoutTurn({
+      lane: "menu_suggest_price",
+      systemBlocks: [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 1024,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     })
 
-    const rawText = message.content[0]?.type === "text" ? message.content[0].text : ""
+    const rawText = result.text
 
     const jsonMatch = rawText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {

@@ -7,7 +7,8 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { formatLocationScore } from '@/lib/format'
-import { X, Sparkles, Trophy, AlertCircle } from 'lucide-react'
+import { AlertCircle, Sparkles, Trophy } from 'lucide-react'
+import { CollapseButton } from '@/components/ui/CollapseButton'
 import { Button } from '@/components/ui/button'
 import type { Candidate } from './CandidateListCard'
 
@@ -291,14 +292,12 @@ export function TradeoffPanel({
               {candidates.length} Shortlisted · Visual Comparison + AI Recommendation
             </p>
           </div>
-          <button
-            type="button"
+          <CollapseButton
             onClick={onClose}
+            size={16}
+            className="flex size-8 items-center justify-center rounded-lg bg-[var(--surface-warm-50)] text-[var(--neutral-cool-600)] hover:bg-[var(--surface-warm-50)]/80 hover:text-[var(--foreground)]"
             aria-label="Close trade-off"
-            className="flex size-8 items-center justify-center rounded-lg bg-[var(--surface-warm-50)] text-[var(--neutral-cool-600)] hover:bg-[var(--surface-warm-50)]/80 hover:text-[var(--foreground)] transition-colors"
-          >
-            <X className="size-4" />
-          </button>
+          />
         </div>
 
         {/* Body */}

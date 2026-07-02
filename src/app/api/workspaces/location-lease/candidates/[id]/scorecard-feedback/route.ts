@@ -9,10 +9,10 @@
 export const runtime = "nodejs"
 export const maxDuration = 60
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk"
+import { streamScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeAIOutput } from "@/lib/normalize"
+import { enforceRateLimit } from "@/lib/rate-limit"
 import type { NextRequest } from "next/server"
 // TIM-2868: getActivePlanId() — see candidates/route.ts header.
 import { getActivePlanId } from "@/lib/plan-context"
@@ -92,6 +92,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "location-lease:scorecard-feedback",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  })
+  if (rateLimited) return rateLimited
+
   const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
 
@@ -120,33 +129,31 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   const prompt = buildPrompt(candidate.name, candidate.address, candidate.neighborhood, scores)
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const response = await anthropic.messages.stream({
-          model: PLATFORM_AI_MODEL,
-          max_tokens: 1800,
+        // TIM-3468: route through streamScoutTurn with location_scorecard_feedback lane.
+        const response = streamScoutTurn({
+          lane: "location_scorecard_feedback",
+          systemBlocks: [{
+            text: "You are a knowledgeable coffee shop business advisor. Give direct, specific, actionable feedback. Never name a problem, risk, or weakness without pairing it with a concrete recommendation, a single named next step, and a one-sentence why. No filler phrases, no hedging. Plain English — no consultant jargon (never use: leverage, synergy, curated, unlock, elevate, embark, delve). No emojis. Title case for any headings; sentence case for body copy.",
+          }],
           messages: [{ role: "user", content: prompt }],
-          system:
-            "You are a knowledgeable coffee shop business advisor. Give direct, specific, actionable feedback. Never name a problem, risk, or weakness without pairing it with a concrete recommendation, a single named next step, and a one-sentence why. No filler phrases, no hedging. Plain English — no consultant jargon (never use: leverage, synergy, curated, unlock, elevate, embark, delve). No emojis. Title case for any headings; sentence case for body copy.",
+          maxTokens: 1800,
+          userId: user.id,
+          routeTag: "/api/workspaces/location-lease/candidates/[id]/scorecard-feedback",
         })
 
         let fullText = ""
         for await (const chunk of response) {
-          if (
-            chunk.type === "content_block_delta" &&
-            chunk.delta.type === "text_delta"
-          ) {
-            fullText += chunk.delta.text
-            controller.enqueue(encoder.encode(sse("text", { delta: chunk.delta.text })))
+          if (chunk.kind === "text_delta") {
+            fullText += chunk.text
+            controller.enqueue(encoder.encode(sse("text", { delta: chunk.text })))
           }
         }
 
-        const finalMsg = await response.finalMessage()
-        controller.enqueue(encoder.encode(sse("done", { threadId: finalMsg.id, text: normalizeAIOutput(fullText) })))
+        controller.enqueue(encoder.encode(sse("done", { threadId: crypto.randomUUID(), text: normalizeAIOutput(fullText) })))
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "AI feedback failed."
         controller.enqueue(encoder.encode(sse("error", { code: "error", message: msg })))

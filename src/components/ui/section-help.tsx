@@ -5,7 +5,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { HelpCircle, X } from 'lucide-react'
+import { HelpCircle } from 'lucide-react'
+import { useEdgeClamp } from '@/lib/use-edge-clamp'
+import { CollapseButton } from '@/components/ui/CollapseButton'
 
 interface SectionHelpProps {
   title?: string
@@ -15,6 +17,7 @@ interface SectionHelpProps {
 export function SectionHelp({ title, children }: SectionHelpProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
+  const panelRef = useEdgeClamp(open)
 
   useEffect(() => {
     if (!open) return
@@ -52,35 +55,32 @@ export function SectionHelp({ title, children }: SectionHelpProps) {
 
       {open && (
         <div
+          ref={panelRef}
           role="dialog"
           aria-label={title ? `${title} help` : 'Section help'}
-          className="absolute left-0 top-full z-30 mt-1 w-72 rounded-xl border border-[var(--warm-800)] bg-[var(--warm-250)] p-3 shadow-lg"
+          className="absolute left-0 top-full z-30 mt-1 w-72 max-w-[calc(100vw-1rem)] rounded-xl border border-[var(--warm-800)] bg-[var(--warm-250)] p-3 shadow-lg"
         >
           {title && (
             <div className="mb-1.5 flex items-start justify-between gap-2">
               <span className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
                 {title}
               </span>
-              <button
-                type="button"
+              <CollapseButton
                 onClick={() => setOpen(false)}
-                aria-label="Close"
+                size={12}
                 className="text-[var(--dark-grey)] transition-colors hover:text-[var(--foreground)]"
-              >
-                <X size={12} aria-hidden="true" />
-              </button>
+                aria-label="Close"
+              />
             </div>
           )}
           {!title && (
             <div className="mb-1.5 flex items-start justify-end">
-              <button
-                type="button"
+              <CollapseButton
                 onClick={() => setOpen(false)}
-                aria-label="Close"
+                size={12}
                 className="text-[var(--dark-grey)] transition-colors hover:text-[var(--foreground)]"
-              >
-                <X size={12} aria-hidden="true" />
-              </button>
+                aria-label="Close"
+              />
             </div>
           )}
           <div className="text-xs leading-relaxed text-[var(--gray-1300)]">{children}</div>

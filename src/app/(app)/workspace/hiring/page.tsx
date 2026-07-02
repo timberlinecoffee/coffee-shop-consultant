@@ -1,9 +1,18 @@
 // TIM-965: Hiring & Onboarding Suite workspace page.
+// TIM-3369: branch on users.hiring_revamp_v2 to render v2 IA when enabled.
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
 import { resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
+import {
+  HIRING_REVAMP_COOKIE,
+  HIRING_REVAMP_OVERRIDE_COOKIE,
+  getHiringRevampSetting,
+  resolveHiringRevamp,
+} from "@/lib/hiring-revamp";
 import { HiringWorkspace } from "./hiring-workspace";
+import { HiringWorkspaceV2 } from "./hiring-workspace-v2";
 import type {
   OrgRole,
   InterviewCandidate,
@@ -166,8 +175,18 @@ export default async function HiringWorkspacePage() {
       ? (profile.copilot_trial_messages_used ?? 0)
       : undefined;
 
+  // TIM-3369: resolve the per-user Hiring revamp flag (cookies + DB column).
+  const dbHiringRevamp = await getHiringRevampSetting(supabase, user.id);
+  const cookieStore = await cookies();
+  const hiringRevamp = resolveHiringRevamp({
+    dbValue: dbHiringRevamp,
+    overrideCookie: cookieStore.get(HIRING_REVAMP_OVERRIDE_COOKIE)?.value,
+    mirrorCookie: cookieStore.get(HIRING_REVAMP_COOKIE)?.value,
+  });
+  const Workspace = hiringRevamp ? HiringWorkspaceV2 : HiringWorkspace;
+
   return (
-    <HiringWorkspace
+    <Workspace
       planId={planId}
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}

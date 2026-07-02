@@ -37,7 +37,10 @@ export default async function ForgotPasswordPage({
         <ForgotPasswordForm errorMessage={banner} />
         <p className="text-center text-sm text-[var(--dark-grey)] mt-6">
           Remember it?{" "}
-          <Link href="/login" className="text-[var(--teal)] font-medium hover:underline">
+          <Link
+            href="/login"
+            className="text-[var(--teal)] font-medium hover:underline inline-flex items-center min-h-[44px] -my-3 px-1 -mx-1"
+          >
             Back to Sign In
           </Link>
         </p>

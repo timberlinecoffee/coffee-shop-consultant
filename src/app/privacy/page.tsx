@@ -1,13 +1,14 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Logo } from "../_components/Logo";
 import { CookiePreferencesLink } from "@/components/consent/CookiePreferencesLink";
 
 export const metadata = {
-  title: "Privacy Policy | Timberline Coffee School",
-  description: "Privacy Policy for Timberline Coffee School.",
+  title: "Privacy Policy | Ivy & Rill Consulting Inc.",
+  description: "Privacy Policy for Ivy & Rill Consulting Inc.",
 };
 
-const EFFECTIVE_DATE = "June 2, 2026";
+const EFFECTIVE_DATE = "June 30, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -29,7 +30,7 @@ export default function PrivacyPage() {
 
         <div className="prose prose-sm max-w-none text-[var(--foreground)] space-y-8">
           <p>
-            Timberline Coffee School (&quot;Timberline&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) operates the
+            Ivy &amp; Rill Consulting Inc. (&quot;Ivy &amp; Rill&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) operates the
             Groundwork platform at groundwork.coffee. We are committed to protecting your privacy. This
             Privacy Policy explains what information we collect, how we use it, and your rights regarding
             that information.
@@ -94,58 +95,52 @@ export default function PrivacyPage() {
               data-protection law requires us to state a legal basis for each processing activity. The
               relevant bases are:
             </p>
-            <div className="overflow-x-auto mt-3">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="py-2 pr-4 font-semibold align-top">Processing activity</th>
-                    <th className="py-2 font-semibold align-top">Legal basis</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Creating and managing your account</td>
-                    <td className="py-2 align-top">Performance of contract -- Art. 6(1)(b) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Processing subscription payments</td>
-                    <td className="py-2 align-top">Performance of contract -- Art. 6(1)(b) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Sending transactional emails (receipts, resets, notices)</td>
-                    <td className="py-2 align-top">Performance of contract -- Art. 6(1)(b) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Delivering and improving the Service and course content</td>
-                    <td className="py-2 align-top">Legitimate interests -- Art. 6(1)(f) GDPR (our interest in providing a working, improving product)</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Analytics cookies (e.g. Google Analytics 4)</td>
-                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Marketing / advertising cookies and CAPI (Meta, Google Ads)</td>
-                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Hashed-PII sharing with Meta / Google for ad measurement</td>
-                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Sending marketing emails</td>
-                    <td className="py-2 align-top">Your consent -- Art. 6(1)(a) GDPR</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Fraud prevention and security</td>
-                    <td className="py-2 align-top">Legitimate interests -- Art. 6(1)(f) GDPR (our interest in protecting the Service and users)</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top">Complying with legal obligations</td>
-                    <td className="py-2 align-top">Legal obligation -- Art. 6(1)(c) GDPR</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            {(() => {
+              const rows = [
+                ["Creating and managing your account", "Performance of contract -- Art. 6(1)(b) GDPR"],
+                ["Processing subscription payments", "Performance of contract -- Art. 6(1)(b) GDPR"],
+                ["Sending transactional emails (receipts, resets, notices)", "Performance of contract -- Art. 6(1)(b) GDPR"],
+                ["Delivering and improving the Service and course content", "Legitimate interests -- Art. 6(1)(f) GDPR (our interest in providing a working, improving product)"],
+                ["Analytics cookies (e.g. Google Analytics 4)", "Your consent -- Art. 6(1)(a) GDPR"],
+                ["Marketing / advertising cookies and CAPI (Meta, Google Ads)", "Your consent -- Art. 6(1)(a) GDPR"],
+                ["Hashed-PII sharing with Meta / Google for ad measurement", "Your consent -- Art. 6(1)(a) GDPR"],
+                ["Sending marketing emails", "Your consent -- Art. 6(1)(a) GDPR"],
+                ["Fraud prevention and security", "Legitimate interests -- Art. 6(1)(f) GDPR (our interest in protecting the Service and users)"],
+                ["Complying with legal obligations", "Legal obligation -- Art. 6(1)(c) GDPR"],
+              ];
+              return (
+                <>
+                  <div className="hidden sm:block overflow-x-auto mt-3">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] text-left">
+                          <th className="py-2 pr-4 font-semibold align-top">Processing activity</th>
+                          <th className="py-2 font-semibold align-top">Legal basis</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(([activity, basis]) => (
+                          <tr key={activity} className="border-b border-[var(--border)]">
+                            <td className="py-2 pr-4 align-top">{activity}</td>
+                            <td className="py-2 align-top">{basis}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <dl className="sm:hidden mt-3 border-t border-[var(--border)]">
+                    {rows.map(([activity, basis]) => (
+                      <div key={activity} className="border-b border-[var(--border)] py-3">
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Processing activity</dt>
+                        <dd className="text-sm mt-1">{activity}</dd>
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mt-2">Legal basis</dt>
+                        <dd className="text-sm mt-1">{basis}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
+              );
+            })()}
             <p className="mt-3">
               Where we rely on legitimate interests, you have the right to object to that processing (see
               Your Rights).
@@ -155,41 +150,57 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">4. International Data Transfers (EU/EEA/UK visitors)</h2>
             <p>
-              Timberline Coffee School is operated in the United States. When you use the Service, your
+              Ivy &amp; Rill Consulting Inc. is operated in the United States. When you use the Service, your
               personal data may be transferred to and processed in the United States.
             </p>
             <p className="mt-3">
               We share certain data with the following US-based third parties and rely on the following
               transfer mechanisms for transfers from the EEA or UK:
             </p>
-            <div className="overflow-x-auto mt-3">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="py-2 pr-4 font-semibold align-top">Recipient</th>
-                    <th className="py-2 font-semibold align-top">Transfer mechanism</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top"><strong>Meta Platforms, Inc.</strong></td>
-                    <td className="py-2 align-top">EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top"><strong>Google LLC</strong></td>
-                    <td className="py-2 align-top">EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top"><strong>Stripe, Inc.</strong></td>
-                    <td className="py-2 align-top">Standard Contractual Clauses (SCCs) / EU-US DPF -- see stripe.com/legal/dpa</td>
-                  </tr>
-                  <tr className="border-b border-[var(--border)]">
-                    <td className="py-2 pr-4 align-top"><strong>Supabase</strong></td>
-                    <td className="py-2 align-top">Standard Contractual Clauses (SCCs) -- see supabase.com/privacy</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            {(() => {
+              const rows = [
+                ["Meta Platforms, Inc.", "EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF"],
+                ["Google LLC", "EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF"],
+                ["Stripe, Inc.", "Standard Contractual Clauses (SCCs) / EU-US DPF -- see stripe.com/legal/dpa"],
+                ["Supabase", "Standard Contractual Clauses (SCCs) -- see supabase.com/privacy"],
+                ["Anthropic PBC", "Standard Contractual Clauses (SCCs) -- see anthropic.com/legal/dpa"],
+                ["Resend, Inc.", "Standard Contractual Clauses (SCCs) -- see resend.com/dpa"],
+                ["Klaviyo, Inc.", "EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF; Standard Contractual Clauses (SCCs) -- see klaviyo.com/legal/dpa"],
+                ["Rewardful (if affiliate programme active)", "Standard Contractual Clauses (SCCs) -- see rewardful.com/privacy"],
+              ];
+              return (
+                <>
+                  <div className="hidden sm:block overflow-x-auto mt-3">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] text-left">
+                          <th className="py-2 pr-4 font-semibold align-top">Recipient</th>
+                          <th className="py-2 font-semibold align-top">Transfer mechanism</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(([recipient, mechanism]) => (
+                          <tr key={recipient} className="border-b border-[var(--border)]">
+                            <td className="py-2 pr-4 align-top"><strong>{recipient}</strong></td>
+                            <td className="py-2 align-top">{mechanism}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <dl className="sm:hidden mt-3 border-t border-[var(--border)]">
+                    {rows.map(([recipient, mechanism]) => (
+                      <div key={recipient} className="border-b border-[var(--border)] py-3">
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Recipient</dt>
+                        <dd className="text-sm mt-1"><strong>{recipient}</strong></dd>
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mt-2">Transfer mechanism</dt>
+                        <dd className="text-sm mt-1">{mechanism}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
+              );
+            })()}
             <p className="mt-3">
               You may request a copy of the relevant transfer safeguards by contacting us at{" "}
               <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
@@ -212,10 +223,47 @@ export default function PrivacyPage() {
                 account and usage data on our behalf.
               </li>
               <li>
-                <strong>AI provider(s)</strong> -- certain features (such as personalized
-                recommendations or interactive tools) may send anonymized or pseudonymized usage data to
-                AI processing services. We do not send your name, email, or payment information to AI
-                providers.
+                <strong>Anthropic PBC</strong> &mdash; our AI inference provider. When you use
+                AI-powered features on the Service (such as personalized recommendations or
+                interactive tools), the text of your query is sent to Anthropic&rsquo;s API for
+                processing. We do not send your name, email address, or payment information to
+                Anthropic. Anthropic&rsquo;s privacy policy is at{" "}
+                <a href="https://www.anthropic.com/privacy" className="text-[var(--teal)] underline">
+                  anthropic.com/privacy
+                </a>
+                .
+              </li>
+              <li>
+                <strong>Resend, Inc.</strong> &mdash; our transactional email delivery provider.
+                Resend receives your email address and the content of transactional messages (account
+                confirmations, receipts, password resets) in order to deliver them on our behalf.
+                Resend&rsquo;s privacy policy is at{" "}
+                <a href="https://resend.com/legal/privacy-policy" className="text-[var(--teal)] underline">
+                  resend.com/legal/privacy-policy
+                </a>
+                .
+              </li>
+              <li>
+                <strong>Klaviyo, Inc.</strong> &mdash; our marketing email platform. If you have
+                opted in to marketing communications, Klaviyo receives your email address and consent
+                status in order to send, track, and manage marketing and onboarding emails on our
+                behalf. You can opt out at any time via the unsubscribe link in any marketing email.
+                Klaviyo&rsquo;s privacy policy is at{" "}
+                <a href="https://www.klaviyo.com/legal/privacy" className="text-[var(--teal)] underline">
+                  klaviyo.com/legal/privacy
+                </a>
+                .
+              </li>
+              <li>
+                <strong>Rewardful</strong> &mdash; our affiliate-tracking platform (not yet
+                active). If we launch an affiliate referral programme, Rewardful will receive
+                referral attribution data (cookies and anonymised conversion identifiers) in order
+                to track and pay commissions. If you sign up as an affiliate, your email address
+                will also be shared with Rewardful. Rewardful&rsquo;s privacy policy is at{" "}
+                <a href="https://www.rewardful.com/privacy" className="text-[var(--teal)] underline">
+                  rewardful.com/privacy
+                </a>
+                .
               </li>
               <li>
                 <strong>Meta (Facebook).</strong> If you consent to marketing cookies, we use the Meta
@@ -232,11 +280,11 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Legal and safety.</strong> We may disclose information if required by law,
-                court order, or to protect the rights and safety of Timberline, our users, or the
+                court order, or to protect the rights and safety of Ivy &amp; Rill, our users, or the
                 public.
               </li>
               <li>
-                <strong>Business transfers.</strong> If Timberline is acquired or merges with another
+                <strong>Business transfers.</strong> If Ivy &amp; Rill is acquired or merges with another
                 company, your information may be transferred as part of that transaction. We will notify
                 you in advance.
               </li>
@@ -244,7 +292,82 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">6. Data Retention</h2>
+            <h2 className="text-xl font-semibold mb-3">6. Scout AI and Cross-Border Data Transfer to China</h2>
+            <p className="text-sm text-[var(--dark-grey)] mb-3">Last updated: {EFFECTIVE_DATE}</p>
+            <p>
+              Groundwork&rsquo;s Scout AI assistant is powered in part by AI models provided by{" "}
+              <strong>DeepSeek</strong> (Hangzhou DeepSeek Artificial Intelligence Basic Technology
+              Research Co., Ltd., Hangzhou, People&rsquo;s Republic of China).
+            </p>
+            <p className="mt-3">
+              <strong>What data is sent to DeepSeek.</strong> When you use Scout, the text you type into
+              Scout (your prompts) and Scout&rsquo;s AI-generated responses are processed by
+              DeepSeek&rsquo;s servers to produce each response. This may include business information
+              you share &mdash; descriptions of your coffee shop, questions about operations, financial
+              details, or staffing information you include in your prompts.
+            </p>
+            <p className="mt-3">
+              <strong>Where your data goes.</strong> DeepSeek processes and stores this data on servers
+              located in mainland China (Hangzhou). DeepSeek does not offer a hosting option outside
+              China for its hosted API.
+            </p>
+            <p className="mt-3">
+              <strong>Chinese law and government access.</strong> Data on servers in mainland China is
+              subject to Chinese national law, including China&rsquo;s National Intelligence Law (2017),
+              Cybersecurity Law (2017), and Data Security Law (2021). These laws can require DeepSeek to
+              hand data to Chinese government authorities on request. This obligation applies regardless
+              of any agreement between Groundwork and DeepSeek &mdash; no contract can override it. We
+              are telling you this plainly because you have the right to know before you use this
+              feature.
+            </p>
+            <p className="mt-3">
+              <strong>Model training.</strong> By default, DeepSeek may use Scout prompts and responses
+              to train or improve its AI models. DeepSeek applies de-identification before doing so, but
+              this process is not independently audited. We do not currently have an enforceable
+              mechanism to exclude your data from this use.
+            </p>
+            <p className="mt-3">
+              If you would like to request that your data not be used for model training, contact us at{" "}
+              <a href="mailto:privacy@groundwork.cafe" className="text-[var(--teal)] underline">
+                privacy@groundwork.cafe
+              </a>
+              . We will submit your request to DeepSeek on your behalf. Because no verified opt-out
+              mechanism exists for API customers, we cannot guarantee this request will be honoured, and
+              we will tell you that clearly if we receive a response.
+            </p>
+            <p className="mt-3">
+              <strong>How long your data is kept.</strong> DeepSeek has not publicly disclosed a
+              specific retention period for AI API request data. Until we receive written confirmation
+              otherwise, you should treat your Scout data as potentially retained indefinitely on
+              DeepSeek&rsquo;s servers.
+            </p>
+            <p className="mt-3">
+              <strong>Your options.</strong> Scout does not currently offer a model-selection setting
+              that lets you route requests to an alternative AI provider. If we add that capability, we
+              will update this section. In the meantime, if you prefer that your Scout inputs not be
+              processed in China, the current option is to avoid using the Scout AI feature.
+            </p>
+            <p className="mt-3">
+              <strong>Our accountability.</strong> Even though DeepSeek processes your data on our
+              behalf, Groundwork (Ivy &amp; Rill Consulting Inc.) remains responsible for your personal
+              information and for how our sub-processors handle it. If you have questions or concerns,
+              contact us at{" "}
+              <a href="mailto:privacy@groundwork.cafe" className="text-[var(--teal)] underline">
+                privacy@groundwork.cafe
+              </a>
+              .
+            </p>
+            <p className="mt-3">
+              For a full list of our sub-processors, see{" "}
+              <Link href="/sub-processors" className="text-[var(--teal)] underline">
+                groundwork.cafe/sub-processors
+              </Link>
+              .
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">7. Data Retention</h2>
             <p>
               We retain your account information for as long as your account is active, plus up to 3
               years after closure for legal and audit purposes. Payment records are retained as required
@@ -260,7 +383,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">7. Your Rights</h2>
+            <h2 className="text-xl font-semibold mb-3">8. Your Rights</h2>
             <p>Depending on where you live, you may have rights to:</p>
             <ul className="list-disc pl-6 space-y-1 mt-2">
               <li>Access the personal information we hold about you.</li>
@@ -307,7 +430,138 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">8. Cookies and Your Choices</h2>
+            <h2 className="text-xl font-semibold mb-3">
+              9. Complaints, Questions, and the Right to File with a Regulator (Canada &mdash; PIPEDA)
+            </h2>
+            <p>
+              If you are located in Canada, the <em>Personal Information Protection and Electronic
+              Documents Act</em> (PIPEDA) gives you the right to raise concerns about how we collect, use,
+              or disclose your personal information.
+            </p>
+
+            <h3 className="text-base font-semibold mt-4 mb-2">Step 1 &mdash; Contact Groundwork directly.</h3>
+            <p>We ask that you first bring your concern to us so we have the opportunity to address it:</p>
+            <ul className="list-none space-y-2 mt-2">
+              <li>
+                <strong>Email:</strong>{" "}
+                <a href="mailto:privacy@groundwork.cafe" className="text-[var(--teal)] underline">
+                  privacy@groundwork.cafe
+                </a>
+              </li>
+              <li>
+                <strong>Subject line:</strong> &ldquo;Privacy Complaint &mdash; [your name / account email]&rdquo;
+              </li>
+              <li>
+                <strong>What to include:</strong> A description of the information at issue, the concern
+                you have, and the outcome you are seeking.
+              </li>
+            </ul>
+            <p className="mt-3">
+              We will acknowledge your complaint within <strong>5 business days</strong> and provide a
+              written response within <strong>30 calendar days</strong>. If we need more time, we will
+              notify you of the extension and the reason for it.
+            </p>
+
+            <h3 className="text-base font-semibold mt-4 mb-2">Step 2 &mdash; Escalation within Groundwork.</h3>
+            <p>
+              If you are not satisfied with the initial response, you may request escalation to our
+              designated Privacy Officer:
+            </p>
+            <p className="mt-2">
+              <strong>Privacy Officer, Ivy &amp; Rill Consulting Inc. (operating as Groundwork)</strong>
+              <br />
+              Email:{" "}
+              <a href="mailto:privacy@groundwork.cafe" className="text-[var(--teal)] underline">
+                privacy@groundwork.cafe
+              </a>
+              <br />
+              Response time: 30 calendar days from escalation request.
+            </p>
+
+            <h3 className="text-base font-semibold mt-4 mb-2">
+              Step 3 &mdash; File a complaint with the Office of the Privacy Commissioner of Canada (OPC).
+            </h3>
+            <p>
+              Under PIPEDA s.11, you have the right to file a complaint directly with the OPC at any time.
+              You do not need to contact us first before going to the OPC, although we encourage you to do
+              so.
+            </p>
+            <p className="mt-3">
+              If our internal process does not resolve your concern, or if you prefer to proceed directly:
+            </p>
+            {(() => {
+              const rows: Array<[string, ReactNode]> = [
+                [
+                  "Online complaint form",
+                  <a
+                    key="opc-form"
+                    href="https://www.priv.gc.ca/en/report-a-concern/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[var(--teal)] underline"
+                  >
+                    priv.gc.ca/en/report-a-concern/
+                  </a>,
+                ],
+                [
+                  "Mail",
+                  "Office of the Privacy Commissioner of Canada, 30 Victoria Street, Gatineau, Quebec K1A 1H3",
+                ],
+                ["Toll-free (Canada)", "1-800-282-1376"],
+                ["Fax", "819-994-5424"],
+                ["TTY", "819-994-6591"],
+              ];
+              return (
+                <>
+                  <div className="hidden sm:block overflow-x-auto mt-3">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] text-left">
+                          <th className="py-2 pr-4 font-semibold align-top">Contact method</th>
+                          <th className="py-2 font-semibold align-top">Details</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(([method, details]) => (
+                          <tr key={method} className="border-b border-[var(--border)]">
+                            <td className="py-2 pr-4 align-top"><strong>{method}</strong></td>
+                            <td className="py-2 align-top">{details}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <dl className="sm:hidden mt-3 border-t border-[var(--border)]">
+                    {rows.map(([method, details]) => (
+                      <div key={method} className="border-b border-[var(--border)] py-3">
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                          Contact method
+                        </dt>
+                        <dd className="text-sm mt-1"><strong>{method}</strong></dd>
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mt-2">
+                          Details
+                        </dt>
+                        <dd className="text-sm mt-1">{details}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
+              );
+            })()}
+            <p className="mt-3">
+              The OPC will investigate complaints about PIPEDA compliance. Following an OPC investigation,
+              you may also have the right under PIPEDA s.14 to apply to the Federal Court of Canada for a
+              remedy if the matter remains unresolved.
+            </p>
+            <p className="mt-3 text-sm text-[var(--dark-grey)]">
+              This section applies to personal information processed in connection with commercial
+              activity in Canada. For rights available to residents of the European Union, UK, California,
+              or other jurisdictions, see the relevant sections of this Privacy Policy.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">10. Cookies and Your Choices</h2>
             <p>We group cookies and similar technologies into three categories:</p>
             <ul className="list-none space-y-3 mt-3">
               <li>
@@ -335,7 +589,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">9. Security</h2>
+            <h2 className="text-xl font-semibold mb-3">11. Security</h2>
             <p>
               We use industry-standard security measures including encryption in transit (TLS) and at
               rest, access controls, and regular security reviews. No method of transmission over the
@@ -344,7 +598,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">10. Children</h2>
+            <h2 className="text-xl font-semibold mb-3">12. Children</h2>
             <p>
               The Service is not directed to children under 13. We do not knowingly collect personal
               information from children under 13. If you believe we have collected such information,
@@ -353,7 +607,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">11. Changes to This Policy</h2>
+            <h2 className="text-xl font-semibold mb-3">13. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. If we make material changes, we will
               notify you by email at least 14 days before the changes take effect.
@@ -361,9 +615,9 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">12. Contact</h2>
+            <h2 className="text-xl font-semibold mb-3">14. Contact</h2>
             <p>
-              Timberline Coffee School
+              Ivy &amp; Rill Consulting Inc.
               <br />
               Email:{" "}
               <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
@@ -376,7 +630,7 @@ export default function PrivacyPage() {
 
       <footer className="bg-[var(--foreground)] text-[var(--dark-grey)] px-6 py-6 text-sm">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-          <span>&copy; {new Date().getFullYear()} Timberline Coffee School</span>
+          <span>&copy; {new Date().getFullYear()} Ivy &amp; Rill Consulting Inc.</span>
           <div className="flex gap-6 flex-wrap justify-center">
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>

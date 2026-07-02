@@ -13,12 +13,12 @@
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk";
+import { runScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { buildAiLanguageDirective, SUPPORTED_LANGUAGES } from "@/lib/account-settings";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   type OperationsPlaybookDocument,
   type SopCategory,
@@ -43,7 +43,7 @@ import {
 } from "@/lib/operations-playbook";
 import { normalizeConceptV2 } from "@/lib/concept";
 
-const anthropic = new Anthropic();
+const ROUTE_PATH = "/api/workspaces/operations_playbook/generate";
 
 type GeneratableSection = SopCategoryKey | "roles" | "vendor_contacts" | "training";
 
@@ -477,6 +477,15 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "operations-playbook:generate",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
+
   const { data: profile } = await supabase
     .from("users")
     .select("subscription_status, beta_waiver_until, preferred_language")
@@ -571,16 +580,17 @@ export async function POST(request: Request) {
     const rawLang = typeof (profile as { preferred_language?: unknown }).preferred_language === "string" ? (profile as { preferred_language?: string }).preferred_language!.trim().toLowerCase() : "en";
     const lang = SUPPORTED_LANGUAGES.some((l) => l.code === rawLang) ? rawLang : "en";
     const langDir = buildAiLanguageDirective(lang);
-    const response = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 2048,
-      ...(langDir ? { system: langDir } : {}),
+    const result = await runScoutTurn({
+      lane: "ops_playbook_generate",
+      systemBlocks: langDir ? [{ text: langDir }] : [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 2048,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     });
-    aiText =
-      response.content[0]?.type === "text" ? response.content[0].text : "";
+    aiText = result.text;
   } catch (err) {
-    console.error("[operations_playbook/generate] anthropic error:", err);
+    console.error("[operations_playbook/generate] AI error:", err);
     return Response.json({ error: "AI generation failed" }, { status: 502 });
   }
 

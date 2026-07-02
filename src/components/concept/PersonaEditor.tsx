@@ -496,7 +496,7 @@ export function PersonaEditor({
                   : "text-[var(--error)] hover:underline"
               }`}
             >
-              {confirmDelete ? "Confirm delete" : "Delete"}
+              {confirmDelete ? "Confirm Delete" : "Delete"}
             </button>
           ) : (
             <span />

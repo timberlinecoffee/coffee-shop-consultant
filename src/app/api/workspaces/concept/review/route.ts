@@ -12,14 +12,14 @@
 export const runtime = "nodejs";
 export const maxDuration = 45;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics";
-import Anthropic from "@anthropic-ai/sdk";
+import { runScoutTurn, toTurnMetricArgs } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   CONCEPT_COMPONENTS_V2,
   formatConceptV2ForAI,
@@ -28,7 +28,7 @@ import {
   type ConceptDocumentV2,
 } from "@/lib/concept";
 
-const anthropic = new Anthropic();
+const ROUTE_PATH = "/api/workspaces/concept/review";
 
 // Fields the suite-level review can rewrite: prose, multiline, and not the
 // persona-driven target_customer (which has its own structured editor) or the
@@ -45,6 +45,15 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "concept:review",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   let body: { planId?: string; content?: unknown };
   try {
@@ -169,15 +178,20 @@ Valid fieldId values: ${targets.map((id) => `"${id}"`).join(", ")}.`;
 
   let parsed: { suggestions?: Array<{ fieldId?: string; proposedValue?: string }> };
   try {
-    const message = await anthropic.messages.create({
-      model: PLATFORM_AI_MODEL,
-      max_tokens: 2_000,
+    const scoutResult = await runScoutTurn({
+      lane: "concept_review",
+      systemBlocks: [],
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 2_000,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     });
 
     // TIM-2509: record per-turn telemetry into ai_turn_metrics on every
-    // successful Anthropic call (whether or not parse succeeds below).
+    // successful AI call (whether or not parse succeeds below).
+    // TIM-3463: provider/lane/latencyMs/fallbackUsed populated from envelope.
     const telemetrySvc = createServiceClient();
+    const metricArgs = toTurnMetricArgs(scoutResult, "concept_review");
     await recordTurnMetric(
       {
         async insert(row) {
@@ -185,16 +199,14 @@ Valid fieldId values: ${targets.map((id) => `"${id}"`).join(", ")}.`;
         },
       },
       {
-        route: "/api/workspaces/concept/review",
-        model: PLATFORM_AI_MODEL,
-        usage: message.usage,
+        route: ROUTE_PATH,
+        ...metricArgs,
         userId: user.id,
         planTier: resolvePlanTier(profile),
       },
     );
 
-    const rawText =
-      message.content[0]?.type === "text" ? message.content[0].text : "";
+    const rawText = scoutResult.text;
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return Response.json({ error: "No JSON in AI response" }, { status: 500 });

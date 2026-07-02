@@ -10,8 +10,8 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2, Users, AlertTriangle } from "lucide-react";
 import type { PersonnelLine, PersonnelPayBasis, PersonnelSeasonal } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents, fmt } from "@/lib/financial-projection";
-import { currencySymbol } from "@/lib/currency";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { formatHourlyWage, isBelowMinimumWage, type MinWageInfo } from "@/lib/wages/minimum-wage";
 
@@ -58,7 +58,6 @@ interface RowProps {
 }
 
 function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete, minimumWage }: RowProps) {
-  const sym = currencySymbol(currencyCode);
   const [expanded, setExpanded] = useState(false);
   const isHourly = line.pay_basis === "hourly";
   const loaded = personnelLoadedMonthlyCents(line);
@@ -217,26 +216,21 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete, minimum
           </div>
           <div className="w-32">
             <label className={fieldLabelCls}>{isHourly ? "Rate / hour" : "Pay amount"}</label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">
-                {sym}
-              </span>
-              <NumericInput
-                type="number"
-                min={0}
-                step={isHourly ? 0.25 : 100}
-                value={payValue}
-                disabled={!canEdit}
-                onChange={(e) =>
-                  onChange({
-                    ...line,
-                    pay_amount_cents: Math.round((parseFloat(e.target.value) || 0) * 100),
-                  })
-                }
-                className={`${inputCls} w-full pl-5`}
-                aria-label={isHourly ? "Hourly rate" : "Salary amount"}
-              />
-            </div>
+            <MoneyInput
+              currencyCode={currencyCode}
+              min={0}
+              step={isHourly ? 0.25 : 100}
+              value={payValue}
+              disabled={!canEdit}
+              onChange={(e) =>
+                onChange({
+                  ...line,
+                  pay_amount_cents: Math.round((parseFloat(e.target.value) || 0) * 100),
+                })
+              }
+              className={`${inputCls} w-full`}
+              aria-label={isHourly ? "Hourly rate" : "Salary amount"}
+            />
           </div>
           {isHourly && (
             <div className="w-28">
@@ -325,17 +319,14 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete, minimum
           {/* Fixed per-head benefits */}
           <div>
             <div className="flex items-center gap-1.5 mb-1">
-              <label className={fieldLabelCls.replace(" mb-1", "")}>Fixed benefits ({sym} per person / month)</label>
+              <label className={fieldLabelCls.replace(" mb-1", "")}>Fixed benefits per person / month</label>
               <InfoTip label="Fixed benefits">
                 A flat per-head amount on top of the percentage (e.g. a fixed health stipend).
               </InfoTip>
             </div>
-            <div className="relative w-40">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">
-                {sym}
-              </span>
-              <NumericInput
-                type="number"
+            <div className="w-40">
+              <MoneyInput
+                currencyCode={currencyCode}
                 min={0}
                 step={10}
                 value={line.benefits_fixed_cents ? line.benefits_fixed_cents / 100 : ""}
@@ -344,7 +335,7 @@ function PersonnelRow({ line, canEdit, currencyCode, onChange, onDelete, minimum
                   const v = Math.round((parseFloat(e.target.value) || 0) * 100);
                   onChange({ ...line, benefits_fixed_cents: v > 0 ? v : undefined });
                 }}
-                className={`${inputCls} w-full pl-5`}
+                className={`${inputCls} w-full`}
                 aria-label="Fixed benefits per person per month"
                 placeholder="0"
               />

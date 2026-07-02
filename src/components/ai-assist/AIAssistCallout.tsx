@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { X } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import type { WorkspaceKey } from "@/types/supabase";
 import { consumeSseFrames } from "@/components/copilot/sse";
 import type { OpenAIReviewModalOptions } from "@/hooks/useAIReviewModal";
@@ -264,15 +264,13 @@ export function AIAssistCallout({
               Improve: {fieldLabel}
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={isStreaming ? undefined : onClose}
-            disabled={isStreaming}
-            aria-label="Close"
+          <CollapseButton
+            onClick={onClose}
+            size={16}
             className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed ml-4 mt-0.5 shrink-0"
-          >
-            <X size={16} aria-hidden="true" />
-          </button>
+            aria-label="Close"
+            disabled={isStreaming}
+          />
         </div>
 
         {/* Body */}
@@ -427,7 +425,7 @@ export function AIAssistCallout({
                   onClick={handleTryAgain}
                   className="flex-1 border border-[var(--teal)] text-[var(--teal)] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal)]/5 transition-colors"
                 >
-                  Try again
+                  Try Again
                 </button>
                 <button
                   type="button"

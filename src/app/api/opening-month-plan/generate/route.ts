@@ -9,8 +9,7 @@
 export const runtime = "nodejs"
 export const maxDuration = 60
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk"
+import { streamScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { normalizeAIOutput } from "@/lib/normalize"
@@ -140,7 +139,6 @@ export async function POST(request: NextRequest) {
   console.log(`[launch-plan/generate] start plan=${planId} user=${user.id} contextChars=${userPrompt.length}`)
 
   const encoder = new TextEncoder()
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
   const streamBody = new ReadableStream({
     async start(controller) {
@@ -178,16 +176,19 @@ export async function POST(request: NextRequest) {
       }, TTFT_MS)
 
       try {
-        const aiStream = anthropic.messages.stream({
-          model: PLATFORM_AI_MODEL,
-          max_tokens: 8_000,
-          system: (() => {
-            const rawLang = typeof (profile as { preferred_language?: unknown }).preferred_language === "string" ? (profile as { preferred_language?: string }).preferred_language!.trim().toLowerCase() : "en";
-            const lang = SUPPORTED_LANGUAGES.some((l) => l.code === rawLang) ? rawLang : "en";
-            const langDir = buildAiLanguageDirective(lang);
-            return langDir ? `${SYSTEM_PROMPT}\n\n${langDir}` : SYSTEM_PROMPT;
-          })(),
+        const systemText = (() => {
+          const rawLang = typeof (profile as { preferred_language?: unknown }).preferred_language === "string" ? (profile as { preferred_language?: string }).preferred_language!.trim().toLowerCase() : "en";
+          const lang = SUPPORTED_LANGUAGES.some((l) => l.code === rawLang) ? rawLang : "en";
+          const langDir = buildAiLanguageDirective(lang);
+          return langDir ? `${SYSTEM_PROMPT}\n\n${langDir}` : SYSTEM_PROMPT;
+        })();
+        const aiStream = streamScoutTurn({
+          lane: "opening_month_generate",
+          systemBlocks: [{ text: systemText }],
           messages: [{ role: "user", content: userPrompt }],
+          maxTokens: 8_000,
+          userId: user.id,
+          routeTag: "/api/opening-month-plan/generate",
         })
 
         let fullText = ""
@@ -195,10 +196,7 @@ export async function POST(request: NextRequest) {
         for await (const event of aiStream) {
           if (done) break
 
-          if (
-            event.type === "content_block_start" ||
-            (event.type === "content_block_delta" && event.delta.type === "text_delta")
-          ) {
+          if (event.kind === "text_delta") {
             if (firstTokenAt === null) firstTokenAt = Date.now()
             lastTokenAt = Date.now()
             if (ttftTimer) { clearTimeout(ttftTimer); ttftTimer = null }
@@ -214,10 +212,7 @@ export async function POST(request: NextRequest) {
                 controller.close()
               }
             }, GAP_MS)
-          }
-
-          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            fullText += event.delta.text
+            fullText += event.text
             tokenCount += 1
           }
         }

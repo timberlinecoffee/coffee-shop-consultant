@@ -107,6 +107,13 @@ export const BUSINESS_PLAN_SECTIONS: BusinessPlanSectionMeta[] = [
   { key: "appendix-monthly-statements",    title: "Monthly Financial Statements", groupKey: "appendix",       defaultVisible: true,  sourceLabel: "Financials workspace",                        blurb: "Month-by-month financial detail for years one through three — the backup behind the summary tables." },
 ];
 
+// TIM-3490: Default top-level section order. Single source of truth for what
+// order new plans render in. Persisted per-plan reorders overlay this via
+// resolveSectionOrder() in src/lib/business-plan/default-section-order.ts.
+// Update this here whenever you intentionally change the default order.
+export const DEFAULT_BUSINESS_PLAN_SECTION_ORDER: BusinessPlanSectionKey[] =
+  BUSINESS_PLAN_SECTIONS.map((s) => s.key);
+
 // Convenience: subsections grouped by their parent group, in display order.
 export function getSectionsByGroup(): Array<{ group: BusinessPlanGroupMeta; sections: BusinessPlanSectionMeta[] }> {
   return BUSINESS_PLAN_GROUPS.map((group) => ({
@@ -128,6 +135,16 @@ export interface BusinessPlanSectionData {
   autoContent: string;       // assembled from source data
   userContent: string | null; // user override, null = show auto
   isVisible: boolean;
+}
+
+// ── TIM-3111: Custom sections ─────────────────────────────────────────────────
+
+export interface CustomSectionData {
+  id: string;
+  title: string;
+  userContent: string | null;
+  isVisible: boolean;
+  sortOrder: number;
 }
 
 // ── Data-loading types (row shapes from Supabase) ─────────────────────────────

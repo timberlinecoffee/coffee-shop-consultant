@@ -30,16 +30,21 @@ import {
   LogOut,
   Moon,
   Sun,
+  LifeBuoy,
+  Shield,
 } from "lucide-react";
 import { Logo, LogoMark } from "@/app/_components/Logo";
 import { RevertToggle } from "@/components/account/RevertToggle";
+import { HiringRevertToggle } from "@/components/account/HiringRevertToggle";
 import { ProjectSwitcher } from "@/components/project-switcher";
+import { useThemePreference } from "@/lib/use-theme-preference";
 
 export interface SidebarV2UserInfo {
   email: string;
   displayName: string | null;
   planLabel: string;
   uiRevampEnabled: boolean;
+  hiringRevampEnabled: boolean;
   isPro: boolean;
 }
 
@@ -166,35 +171,34 @@ function useV2CategoryExpanded() {
 }
 
 // ── Dark mode hook ─────────────────────────────────────────────────────────
-
-const DARK_MODE_KEY = "tcs-dark-mode-v1";
+//
+// TIM-3569 rewire: defer to the unified theme store so this quick-toggle
+// stays in sync with Settings → Appearance. Legacy `tcs-dark-mode-v1`
+// localStorage key is no longer read or written; existing users see the
+// default (Auto) until they interact with either surface.
 
 function useDarkMode(): { isDark: boolean; toggle: () => void } {
-  const [isDark, setIsDark] = useState(false);
+  const { mode, setMode } = useThemePreference();
+  const [systemDark, setSystemDark] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem(DARK_MODE_KEY);
-    const initial = stored === "1";
-    setIsDark(initial);
-    if (initial) document.documentElement.classList.add("dark");
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    setSystemDark(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    if (typeof mql.addEventListener === "function") {
+      mql.addEventListener("change", handler);
+      return () => mql.removeEventListener("change", handler);
+    }
+    mql.addListener(handler);
+    return () => mql.removeListener(handler);
   }, []);
 
+  const isDark = mode === "dark" || (mode === "auto" && systemDark);
+
   const toggle = useCallback(() => {
-    setIsDark((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(DARK_MODE_KEY, next ? "1" : "0");
-      } catch {
-        // ignore
-      }
-      if (next) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-      return next;
-    });
-  }, []);
+    setMode(isDark ? "light" : "dark");
+  }, [isDark, setMode]);
 
   return { isDark, toggle };
 }
@@ -294,7 +298,7 @@ function ProfileMenu({
       {open && (
         <div
           role="menu"
-          className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1 z-50"
+          className="absolute bottom-full left-0 right-0 mb-1 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg py-1 z-50"
         >
           {!prefsOpen ? (
             <>
@@ -326,6 +330,36 @@ function ProfileMenu({
                 Preferences
                 <ChevronRightIcon />
               </button>
+              <div role="separator" className="my-1 mx-2 h-px bg-[var(--border)]" />
+              {/* TIM-3299: Help / Terms / Privacy in-app surfacing. Existing routes
+                  /help (TIM-1941), /terms (TIM-1358), /privacy (TIM-1395). */}
+              <Link
+                href="/help"
+                role="menuitem"
+                onClick={handleNavigate}
+                className="flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors"
+              >
+                <LifeBuoy size={14} strokeWidth={1.75} aria-hidden />
+                Help
+              </Link>
+              <Link
+                href="/terms"
+                role="menuitem"
+                onClick={handleNavigate}
+                className="flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors"
+              >
+                <FileText size={14} strokeWidth={1.75} aria-hidden />
+                Terms of Service
+              </Link>
+              <Link
+                href="/privacy"
+                role="menuitem"
+                onClick={handleNavigate}
+                className="flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors"
+              >
+                <Shield size={14} strokeWidth={1.75} aria-hidden />
+                Privacy Policy
+              </Link>
               <div role="separator" className="my-1 mx-2 h-px bg-[var(--border)]" />
               <Link
                 href="/auth/signout"
@@ -383,6 +417,13 @@ function ProfileMenu({
               {/* RevertToggle (Use new UI) */}
               <div className="px-3 py-1">
                 <RevertToggle initialEnabled={userInfo.uiRevampEnabled} />
+              </div>
+
+              {/* TIM-3369 HiringRevertToggle */}
+              <div className="px-3 py-1">
+                <HiringRevertToggle
+                  initialEnabled={userInfo.hiringRevampEnabled}
+                />
               </div>
             </>
           )}
@@ -488,7 +529,7 @@ function SidebarV2Content({
         {onClose && (
           <button
             onClick={onClose}
-            className="lg:hidden text-[var(--dark-grey)] hover:text-[var(--foreground)] p-1 transition-colors"
+            className="lg:hidden text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors h-11 w-11 flex items-center justify-center"
             aria-label="Close navigation"
           >
             <CloseIcon />
@@ -516,7 +557,7 @@ function SidebarV2Content({
                     href={cat.href}
                     aria-current={active ? "page" : undefined}
                     onClick={onClose}
-                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors ${
+                    className={`flex items-center gap-2.5 px-3 py-2.5 min-h-[44px] rounded-lg transition-colors ${
                       active
                         ? "border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
                         : "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
@@ -541,7 +582,7 @@ function SidebarV2Content({
                   type="button"
                   onClick={() => toggle(cat.key)}
                   aria-expanded={expanded}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 w-full rounded-lg transition-colors ${
+                  className={`flex items-center gap-2.5 px-3 py-2.5 min-h-[44px] w-full rounded-lg transition-colors ${
                     anyCatSubActive
                       ? "border-l-2 border-[var(--teal)] pl-[10px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
                       : "text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
@@ -570,7 +611,7 @@ function SidebarV2Content({
                               tabIndex={expanded ? undefined : -1}
                               aria-current={subActive ? "page" : undefined}
                               onClick={onClose}
-                              className={`flex items-center pr-3 py-2 rounded-lg transition-colors text-sm ${
+                              className={`flex items-center pr-3 py-2 min-h-[44px] rounded-lg transition-colors text-sm ${
                                 subActive
                                   ? "border-l-2 border-[var(--teal)] pl-[34px] bg-[var(--teal)]/5 font-semibold text-[var(--teal)]"
                                   : "pl-9 text-[var(--foreground)] hover:bg-[var(--surface-warm-100)]"
@@ -665,7 +706,7 @@ export function SidebarV2({ userInfo }: { userInfo: SidebarV2UserInfo }) {
     <>
       {/* Desktop fixed sidebar */}
       <aside
-        className="hidden lg:flex flex-col fixed top-0 left-0 h-screen w-[224px] bg-white border-r border-[var(--border)] z-30"
+        className="hidden lg:flex flex-col fixed top-0 left-0 h-screen w-[224px] bg-[var(--card)] border-r border-[var(--border)] z-30"
         aria-label="Main navigation"
       >
         <SidebarV2Content userInfo={userInfo} />
@@ -686,7 +727,7 @@ export function SidebarV2({ userInfo }: { userInfo: SidebarV2UserInfo }) {
         role="dialog"
         aria-modal="true"
         aria-label="Main navigation"
-        className={`fixed top-0 left-0 h-screen w-[280px] bg-white z-50 lg:hidden transition-transform duration-200 ease-out ${
+        className={`fixed top-0 left-0 h-screen w-[280px] bg-[var(--card)] z-50 lg:hidden transition-transform duration-200 ease-out ${
           drawerOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

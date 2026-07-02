@@ -333,7 +333,7 @@ export function ImportPanel({
             className="bg-[var(--teal)] text-white rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
             data-testid="document-import-start"
           >
-            Start extraction
+            Start Extraction
           </button>
           <button
             type="button"
@@ -356,7 +356,7 @@ export function ImportPanel({
             onClick={reset}
             className="text-xs text-[var(--muted-foreground)] underline"
           >
-            Import another document
+            Import Another Document
           </button>
         </div>
       )}
@@ -367,7 +367,7 @@ export function ImportPanel({
           onClick={reset}
           className="text-sm text-[var(--muted-foreground)] underline"
         >
-          Start over
+          Start Over
         </button>
       )}
     </div>

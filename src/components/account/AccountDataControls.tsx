@@ -87,8 +87,8 @@ export function AccountDataControls({ userEmail, variant = "stacked-card" }: Pro
   // variants (stacked page + tabbed shell) share the same visual chrome.
   const cardCls =
     variant === "stacked-card"
-      ? "bg-white rounded-2xl border border-[var(--border)] p-6"
-      : "bg-white rounded-2xl border border-[var(--border)] p-6";
+      ? "bg-[var(--card)] rounded-2xl border border-[var(--border)] p-6"
+      : "bg-[var(--card)] rounded-2xl border border-[var(--border)] p-6";
 
   return (
     <>
@@ -139,7 +139,7 @@ export function AccountDataControls({ userEmail, variant = "stacked-card" }: Pro
           aria-modal="true"
           aria-labelledby="delete-account-title"
         >
-          <div className="bg-white rounded-2xl border border-[var(--border)] p-6 w-full max-w-md">
+          <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-6 w-full max-w-[min(28rem,calc(100vw-1rem))] max-h-[100dvh] overflow-y-auto">
             <h3
               id="delete-account-title"
               className="font-semibold text-[var(--foreground)] mb-2"
@@ -189,7 +189,7 @@ export function AccountDataControls({ userEmail, variant = "stacked-card" }: Pro
                 className="text-sm text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 data-testid="delete-confirm-button"
               >
-                {deletePending ? "Deleting..." : "Delete account"}
+                {deletePending ? "Deleting..." : "Delete Account"}
               </button>
             </div>
           </div>

@@ -2,27 +2,29 @@
 
 // TIM-1173: Dedicated settings panel for managing equipment station categories.
 // Supports drag-to-reorder, inline rename, add, and delete (items reassigned to unsectioned).
+//
+// TIM-3490: Ported to the shared sortable canon
+// (src/lib/dnd/sortable-canon.tsx) — handle, lift style, sensors, and
+// mobile long-press are now identical to every other draggable list on
+// the platform. Inline @dnd-kit boilerplate replaced with canon imports.
 
 import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, Trash2, X } from "lucide-react";
+import { SortableContext, useSortable } from "@dnd-kit/sortable";
+import { Plus, Trash2 } from "lucide-react";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
 import type { ListSection } from "@/types/buildout";
+import {
+  SortableHandle,
+  useSortableLift,
+  useCanonicalSensors,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@/lib/dnd/sortable-canon";
 
 // ── Sortable station row ───────────────────────────────────────────────────────
 
@@ -43,17 +45,13 @@ function StationRow({
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
   } = useSortable({ id: section.id, disabled: !canEdit });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 10 : undefined,
-  };
+  const style = useSortableLift({ transform, transition, isDragging });
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(section.name);
@@ -113,15 +111,7 @@ function StationRow({
       className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-[var(--neutral-cool-150)] bg-white hover:border-[var(--border-medium)] transition-colors group"
     >
       {canEdit && (
-        <button
-          type="button"
-          className="cursor-grab active:cursor-grabbing text-[var(--neutral-cool-350)] hover:text-[var(--neutral-cool-600)] transition-colors shrink-0 touch-none"
-          aria-label="Drag to reorder"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical size={14} />
-        </button>
+        <SortableHandle ref={setActivatorNodeRef} {...attributes} {...listeners} />
       )}
 
       <div className="flex-1 min-w-0">
@@ -191,10 +181,9 @@ export function CategorySettingsPanel({
   onSectionsChange,
   onItemsSectionRemoved,
 }: CategorySettingsPanelProps) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
+  // TIM-3490: shared canon — adds the platform-wide 250ms touch long-press
+  // delay that the legacy `distance: 5` activation lacked.
+  const sensors = useCanonicalSensors({ longPressMs: 250 });
 
   const [adding, setAdding] = useState(false);
 
@@ -314,14 +303,12 @@ export function CategorySettingsPanel({
               Drag to reorder. Click a name to rename.
             </p>
           </div>
-          <button
-            type="button"
+          <CollapseButton
             onClick={onClose}
-            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors shrink-0"
+            size={16}
+            className="text-[var(--dark-grey)] hover:text-[var(--foreground)] shrink-0"
             aria-label="Close"
-          >
-            <X size={16} />
-          </button>
+          />
         </div>
 
         {/* Station list */}

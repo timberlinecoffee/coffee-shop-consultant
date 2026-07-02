@@ -11,7 +11,7 @@ import {
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { capitalizeFirst } from "@/lib/format";
-import { isTrialActive } from "@/lib/access";
+import { isTrialActive, effectivePlanForGating } from "@/lib/access";
 import { PLAN_DISPLAY_NAMES } from "@/lib/plan-names";
 import {
   loadPlanOverview,
@@ -34,6 +34,7 @@ import { PaymentFailureBanner } from "./_components/payment-failure-banner";
 import { WelcomeToast } from "./_components/welcome-toast";
 import { RefreshConflictsButton } from "./_components/refresh-conflicts-button";
 import { OpenImportFromQuery } from "./_components/open-import-from-query";
+import { IntakeBanner } from "./_components/intake-banner";
 import { CoPilotDrawer } from "@/components/copilot/CoPilotDrawer";
 import { Suspense } from "react";
 
@@ -53,7 +54,7 @@ export default async function DashboardPage() {
     supabase
       .from("users")
       .select(
-        "full_name, onboarding_completed, subscription_status, subscription_tier, trial_ends_at, trial_just_converted_to"
+        "full_name, onboarding_completed, subscription_status, subscription_tier, paused_from_tier, trial_ends_at, trial_just_converted_to"
       )
       .eq("id", user.id)
       .single()
@@ -114,6 +115,7 @@ export default async function DashboardPage() {
             }
           />
         )}
+        {overview.planId && <IntakeBanner planId={overview.planId} subscriptionTier={profile ? effectivePlanForGating(profile) : "free"} />}
         <HomeV2 firstName={firstName} overview={overview} snapshot={snapshot} />
         {overview.planId && (
           <CoPilotDrawer
@@ -155,6 +157,8 @@ export default async function DashboardPage() {
             }
           />
         )}
+
+        {overview.planId && <IntakeBanner planId={overview.planId} subscriptionTier={profile ? effectivePlanForGating(profile) : "free"} />}
 
         {/* TIM-2470 / TIM-1894 / TIM-1937: canonical WorkspaceHeader chrome
             (icon + h1 + description, action cluster right-aligned with

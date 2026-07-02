@@ -122,7 +122,7 @@ export function PersonaSection({ personas, canEdit, onUpdate, onWriteWithAi }: P
               onClick={openNew}
               className="inline-block bg-[var(--teal)] text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors mb-3"
             >
-              Add your first persona
+              Add Your First Persona
             </button>
           )}
           <p className="text-xs">
@@ -245,7 +245,7 @@ export function PersonaSection({ personas, canEdit, onUpdate, onWriteWithAi }: P
               disabled={expandedId === NEW_PERSONA_ID}
               className="text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-full px-3 py-1.5 hover:bg-[var(--teal)]/5 transition-colors disabled:opacity-50"
             >
-              + Add another persona
+              + Add Another Persona
             </button>
           ) : (
             <p className="text-xs text-[var(--dark-grey)]">
@@ -344,7 +344,7 @@ function ExamplePersonaPreview({
           onClick={onAdd}
           className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
         >
-          Add a persona like this
+          Add a Persona Like This
         </button>
       </div>
     </div>

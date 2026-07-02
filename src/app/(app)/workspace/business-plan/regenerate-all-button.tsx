@@ -576,7 +576,7 @@ export function RegenerateAllButton({
         ? "Estimating..."
         : phase === "streaming"
           ? "Regenerating..."
-          : "Regenerate all";
+          : "Regenerate All";
 
   const runFromTrigger = () => {
     closeMenu?.();
@@ -720,14 +720,14 @@ function RegenerateAllPreflightDialog({ report, onFixFirst, onGenerateAnyway, on
               onClick={onGenerateAnyway}
               className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[var(--gray-1150)] text-xs font-semibold hover:bg-[var(--neutral-cool-100)] transition-colors"
             >
-              Generate anyway
+              Generate Anyway
             </button>
             <button
               type="button"
               onClick={onFixFirst}
               className="px-3 py-1.5 rounded-lg bg-[var(--teal)] text-white text-xs font-semibold hover:bg-[var(--teal-deep)] transition-colors"
             >
-              Fix these first
+              Fix These First
             </button>
           </div>
         </div>
@@ -815,7 +815,7 @@ function RegenerateAllConfirmDialog({ estimate, onCancel, onConfirm }: ConfirmPr
             onClick={onConfirm}
             className="px-3 py-1.5 rounded-lg bg-[var(--teal)] text-white text-xs font-semibold hover:bg-[var(--teal-deep)] transition-colors"
           >
-            Regenerate all
+            Regenerate All
           </button>
         </div>
       </div>

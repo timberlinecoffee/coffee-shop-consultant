@@ -6,11 +6,17 @@
 // country. Industry-body figures (SCA/NCA/Square/BLS) are explicitly banned
 // from the prompt — those live in a separate curated-dataset lookup that
 // remains a labelled "for reference" panel in the route response.
-import Anthropic from "@anthropic-ai/sdk"
-import { RESEARCH_AI_MODEL } from "@/lib/ai/models"
+//
+// TIM-3496: routed through `runScoutTurn` on the `menu_benchmark_price` lane.
+// The lane lives in REQUIRES_RESEARCH_MODEL_LANES and in
+// BLOCK_CROSS_PROVIDER_FAILOVER_LANES so the router pins to Anthropic Sonnet 4.6
+// and the adapter never attempts a DeepSeek failover (web_search hosted tool is
+// Anthropic-only). Both calls (initial + retry) emit their own envelope; the
+// returned envelope is the LAST call's envelope with usage/webSearchRequests
+// summed across both so a single `recordTurnMetric` row captures the full turn.
 import { normalizeAIOutput } from "@/lib/normalize"
-
-const anthropic = new Anthropic()
+import { runScoutTurn, type ScoutTurnOutput } from "@/lib/ai/scout-adapter"
+import type { NormalizedUsage, ScoutServerToolDefinition } from "@/lib/ai/scout-adapter"
 
 export interface BenchmarkCitation {
   name: string
@@ -27,7 +33,11 @@ export interface LocalRangeResult {
   country_used: string | null
   city_used: string | null
   web_search_requests: number
-  usage: Anthropic.Messages.Usage
+  // TIM-3496: route caller passes this through `toTurnMetricArgs(envelope, lane)`
+  // to populate ai_turn_metrics provider/lane/latencyMs/fallbackUsed. Usage and
+  // webSearchRequests are SUMMED across the (up to two) underlying Scout calls
+  // — single recordTurnMetric row, full turn cost captured.
+  envelope: ScoutTurnOutput
   raw_text: string
   dropped_out_of_country: number
 }
@@ -209,40 +219,45 @@ interface ParsedRange {
   droppedOutOfCountry: number
   commentary: string
   rawText: string
-  webSearchRequests: number
-  usage: Anthropic.Messages.Usage | null
+  envelope: ScoutTurnOutput
 }
 
 // TIM-2922 (hardening): runs ONE Anthropic call and parses citations. Returns
 // an empty-citations shape on parse failure / refusal rather than throwing,
 // so the caller can decide whether to retry or surface a degraded result.
+// TIM-3496: now goes through runScoutTurn under lane `menu_benchmark_price`.
+// Lane is in REQUIRES_RESEARCH_MODEL_LANES + BLOCK_CROSS_PROVIDER_FAILOVER_LANES
+// so the router pins Sonnet 4.6 and no DeepSeek failover is attempted (server
+// tool is Anthropic-only). The web_search request count surfaces via the
+// adapter's normalized usage (read from message.usage.server_tool_use).
 async function runOneSearch(
   prompt: string,
-  webSearchTool: Anthropic.WebSearchTool20250305,
+  webSearchTool: ScoutServerToolDefinition,
   country: string | null,
+  userId: string | null,
+  routeTag: string,
 ): Promise<ParsedRange> {
-  const message = await anthropic.messages.create({
-    model: RESEARCH_AI_MODEL,
-    max_tokens: 4096,
-    tools: [webSearchTool],
+  const envelope = await runScoutTurn({
+    lane: "menu_benchmark_price",
+    systemBlocks: [],
     messages: [{ role: "user", content: prompt }],
+    tools: [webSearchTool],
+    maxTokens: 4096,
+    userId,
+    routeTag,
   })
 
-  const rawText = message.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("\n")
-  const webSearchRequests = message.usage.server_tool_use?.web_search_requests ?? 0
+  const rawText = envelope.text
 
   const jsonMatch = rawText.match(/\{[\s\S]*\}/)
   if (!jsonMatch) {
-    return { citations: [], droppedOutOfCountry: 0, commentary: "", rawText, webSearchRequests, usage: message.usage }
+    return { citations: [], droppedOutOfCountry: 0, commentary: "", rawText, envelope }
   }
   let parsed: { citations?: unknown; commentary?: unknown } = {}
   try {
     parsed = JSON.parse(jsonMatch[0])
   } catch {
-    return { citations: [], droppedOutOfCountry: 0, commentary: "", rawText, webSearchRequests, usage: message.usage }
+    return { citations: [], droppedOutOfCountry: 0, commentary: "", rawText, envelope }
   }
   const rawCitations: unknown[] = Array.isArray(parsed.citations) ? parsed.citations : []
   const allCitations: BenchmarkCitation[] = []
@@ -262,8 +277,37 @@ async function runOneSearch(
     droppedOutOfCountry: allCitations.length - filtered.length,
     commentary: typeof parsed.commentary === "string" ? parsed.commentary : "",
     rawText,
-    webSearchRequests,
-    usage: message.usage,
+    envelope,
+  }
+}
+
+// TIM-3496: fold a follow-up Scout envelope into the running total so the
+// route's recordTurnMetric row reflects the full turn cost (initial + retry).
+// LatencyMs sums; fallbackUsed is OR'd; provider/modelId/routeReason are taken
+// from the LAST envelope (they're constant within a single lane in practice but
+// the LAST snapshot is what callers should reason about).
+function mergeEnvelopes(
+  a: ScoutTurnOutput,
+  b: ScoutTurnOutput,
+): ScoutTurnOutput {
+  const usage: NormalizedUsage = {
+    inputTokensUncached: a.usage.inputTokensUncached + b.usage.inputTokensUncached,
+    inputTokensCachedRead: a.usage.inputTokensCachedRead + b.usage.inputTokensCachedRead,
+    inputTokensCacheCreate: a.usage.inputTokensCacheCreate + b.usage.inputTokensCacheCreate,
+    outputTokens: a.usage.outputTokens + b.usage.outputTokens,
+    webSearchRequests: a.usage.webSearchRequests + b.usage.webSearchRequests,
+    toolCalls: a.usage.toolCalls + b.usage.toolCalls,
+  }
+  return {
+    text: b.text,
+    toolUses: b.toolUses,
+    usage,
+    provider: b.provider,
+    modelId: b.modelId,
+    latencyMs: a.latencyMs + b.latencyMs,
+    fallbackUsed: a.fallbackUsed || b.fallbackUsed,
+    routeErrorClass: b.routeErrorClass ?? a.routeErrorClass,
+    routeReason: b.routeReason,
   }
 }
 
@@ -285,8 +329,15 @@ export async function computeLocalCafeRange(args: {
   country: string | null
   city: string | null
   ctx: ConceptContext
+  // TIM-3496: identity for the Scout envelope so ai_turn_metrics rows attribute
+  // the turn to the right user. Optional so the existing /suggest-price caller
+  // (and any future caller) can opt in without breaking the lib's contract.
+  userId?: string | null
+  routeTag?: string
 }): Promise<LocalRangeResult> {
   const { itemName, currentCents, country, ctx } = args
+  const userId = args.userId ?? null
+  const routeTag = args.routeTag ?? "menu-pricing/local-cafe-range"
   const countryInfo = country ? COUNTRY_LABELS[country.toUpperCase()] : null
   const countryName = countryInfo?.name ?? "the cafe's country"
   const currency = countryInfo?.currency ?? "local currency"
@@ -351,7 +402,10 @@ Never fall back to industry-body averages — that defeats the purpose of this b
   // TIM-2922 (hardening): bumped from 5 → 10 to give the model headroom for
   // the explicit 3-query requirement plus follow-ups. The location bias is
   // dropped when city is mismatched (see cityIsConsistent above).
-  const webSearchTool: Anthropic.WebSearchTool20250305 = {
+  // TIM-3496: passed through ScoutServerToolDefinition; the adapter forwards
+  // user_location/max_uses verbatim to the Anthropic SDK web_search_20250305
+  // shape (lane is pinned Anthropic-only, so no DeepSeek normalization needed).
+  const webSearchTool: ScoutServerToolDefinition = {
     type: "web_search_20250305",
     name: "web_search",
     max_uses: 10,
@@ -360,12 +414,11 @@ Never fall back to industry-body averages — that defeats the purpose of this b
       : {}),
   }
 
-  const first = await runOneSearch(initialPrompt, webSearchTool, country)
+  const first = await runOneSearch(initialPrompt, webSearchTool, country, userId, routeTag)
   let citations = dedupCitations(first.citations)
   let droppedOutOfCountry = first.droppedOutOfCountry
   let commentary = first.commentary
-  let webSearchRequests = first.webSearchRequests
-  let usage: Anthropic.Messages.Usage | null = first.usage
+  let envelope: ScoutTurnOutput = first.envelope
   let rawText = first.rawText
 
   // TIM-2922 (hardening): if first pass < 3 citations, retry once with the
@@ -391,12 +444,11 @@ Use web_search to find AT LEAST ${Math.max(3 - citations.length, 1)} MORE distin
   "commentary": "<one paragraph>"
 }`
 
-    const second = await runOneSearch(retryPrompt, webSearchTool, country)
+    const second = await runOneSearch(retryPrompt, webSearchTool, country, userId, routeTag)
     citations = dedupCitations([...citations, ...second.citations])
     droppedOutOfCountry += second.droppedOutOfCountry
     if (second.commentary) commentary = second.commentary
-    webSearchRequests += second.webSearchRequests
-    if (second.usage) usage = second.usage
+    envelope = mergeEnvelopes(envelope, second.envelope)
     rawText = `${rawText}\n--- retry ---\n${second.rawText}`
   }
 
@@ -412,8 +464,8 @@ Use web_search to find AT LEAST ${Math.max(3 - citations.length, 1)} MORE distin
       commentary: normalizeAIOutput(commentary),
       country_used: country?.toUpperCase() ?? null,
       city_used: city,
-      web_search_requests: webSearchRequests,
-      usage: usage as Anthropic.Messages.Usage,
+      web_search_requests: envelope.usage.webSearchRequests,
+      envelope,
       raw_text: rawText,
       dropped_out_of_country: droppedOutOfCountry,
     }
@@ -432,8 +484,8 @@ Use web_search to find AT LEAST ${Math.max(3 - citations.length, 1)} MORE distin
     commentary: normalizeAIOutput(commentary),
     country_used: country?.toUpperCase() ?? null,
     city_used: city,
-    web_search_requests: webSearchRequests,
-    usage: usage as Anthropic.Messages.Usage,
+    web_search_requests: envelope.usage.webSearchRequests,
+    envelope,
     raw_text: rawText,
     dropped_out_of_country: droppedOutOfCountry,
   }

@@ -5,7 +5,9 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Eye, EyeOff, RotateCcw, Download, ChevronDown, ChevronUp, X, Circle, CheckCircle, Loader2 } from "lucide-react";
+import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, Pencil, Sparkles, Eye, EyeOff, RotateCcw, MoreVertical } from "lucide-react";
+import { SectionHelp } from "@/components/ui/section-help";
+import { CollapseButton } from "@/components/ui/CollapseButton";
 import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -13,11 +15,33 @@ import rehypeSanitize from "rehype-sanitize";
 import type {
   BusinessPlanSectionData,
   BusinessPlanSectionKey,
-  BusinessPlanGroupKey,
+  CustomSectionData,
 } from "@/lib/business-plan";
-import { BUSINESS_PLAN_GROUPS, BUSINESS_PLAN_SECTIONS } from "@/lib/business-plan";
+import {
+  BUSINESS_PLAN_GROUPS,
+  BUSINESS_PLAN_SECTIONS,
+  DEFAULT_BUSINESS_PLAN_SECTION_ORDER,
+} from "@/lib/business-plan";
+import { resolveSectionOrder } from "@/lib/business-plan/default-section-order";
+// TIM-3490: shared DnD canon — single source for grip/lift/sensor patterns.
+import {
+  DndContext,
+  type DragStartEvent,
+  type DragEndEvent,
+  closestCenter,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+} from "@dnd-kit/sortable";
+import {
+  SortableHandle,
+  useSortableLift,
+  useCanonicalSensors,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@/lib/dnd/sortable-canon";
 import { BP_FIELD_EXAMPLES, type BPFieldExample, type BPFieldExampleKey } from "@/lib/business-plan-field-examples";
-import { SectionHeader } from "@/components/section-header/SectionHeader";
 import type { CoverSettings } from "./cover-branding-panel";
 import { CoverConfigModal } from "./cover-config-modal";
 import { FinancialDocumentsPanel, type FinancialDocumentState } from "./financial-documents-panel";
@@ -51,6 +75,10 @@ interface Props {
   planId: string;
   shopName: string;
   initialSections: BusinessPlanSectionData[];
+  // TIM-3111: custom sections are first-class entities separate from the fixed taxonomy.
+  initialCustomSections: CustomSectionData[];
+  // TIM-3490: persisted per-plan top-level section order. Empty array == default.
+  initialSectionOrder: string[];
   canEdit: boolean;
   initialTrialMessagesUsed?: number;
   initialCoverSettings: CoverSettings;
@@ -163,7 +191,7 @@ function determineInitialExpanded(
   section: BusinessPlanSectionData,
   allSections: BusinessPlanSectionData[]
 ): boolean {
-  // Align with StatusChip: any non-empty saved content = done
+  // Any non-empty saved content collapses on initial render.
   if (section.userContent && section.userContent.trim().length > 0) return false;
   const firstUnreviewed = allSections.find(
     (s) => s.autoContent && (!s.userContent || !s.userContent.trim().length)
@@ -174,10 +202,24 @@ function determineInitialExpanded(
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+// TIM-3111: Custom section runtime state.
+interface CustomSectionState extends CustomSectionData {
+  isExpanded: boolean;
+  isEditing: boolean;
+  editBuffer: string;
+  isTitleEditing: boolean;
+  titleBuffer: string;
+  isSaving: boolean;
+  isGenerating?: boolean;
+  isDeleting?: boolean;
+}
+
 export function BusinessPlanWorkspace({
   planId,
   shopName,
   initialSections,
+  initialCustomSections,
+  initialSectionOrder,
   canEdit,
   initialTrialMessagesUsed,
   initialCoverSettings,
@@ -186,6 +228,13 @@ export function BusinessPlanWorkspace({
   initialFinancialDocuments,
   preGenerateChecklist,
 }: Props) {
+  // TIM-3490: Persisted top-level section order (mixed standard keys + custom UUIDs).
+  // Empty array == use default order. Mutated on every successful drag-drop.
+  const [sectionOrder, setSectionOrder] = useState<string[]>(initialSectionOrder);
+  // TIM-3490: Reset-to-default confirmation modal.
+  const [showResetOrderModal, setShowResetOrderModal] = useState(false);
+  // TIM-3490: dnd-kit sensors with the canonical 250ms touch long-press delay.
+  const dndSensors = useCanonicalSensors({ longPressMs: 250 });
   const [sections, setSections] = useState<SectionState[]>(
     initialSections.map((s) => ({
       ...s,
@@ -195,6 +244,26 @@ export function BusinessPlanWorkspace({
       isSaving: false,
     }))
   );
+
+  // TIM-3111: custom section state.
+  const [customSections, setCustomSections] = useState<CustomSectionState[]>(
+    initialCustomSections.map((cs) => ({
+      ...cs,
+      isExpanded: true,
+      isEditing: false,
+      editBuffer: cs.userContent ?? "",
+      isTitleEditing: false,
+      titleBuffer: cs.title,
+      isSaving: false,
+    }))
+  );
+  const [isAddingCustomSection, setIsAddingCustomSection] = useState(false);
+  const [customSectionError, setCustomSectionError] = useState<string | null>(null);
+  // Dirty buffer for custom section content autosave, keyed by custom section id.
+  const customDirtyBuffersRef = useRef<Map<string, string | null>>(new Map());
+  const customPendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // TIM-3111: tracks which custom section (if any) is streaming a Write with AI response.
+  const [customStreamingId, setCustomStreamingId] = useState<string | null>(null);
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isPrintingPdf, setIsPrintingPdf] = useState(false);
@@ -208,8 +277,12 @@ export function BusinessPlanWorkspace({
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [pendingExportAction, setPendingExportAction] = useState<"export" | "print" | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  // TIM-1498: Default state -- all groups expanded; user can collapse per group.
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<BusinessPlanGroupKey>>(new Set());
+  // TIM-3490: Group-collapse removed in favor of flat free reorder (board
+  // decision on confirmation 916da664 — option i). Group titles render as
+  // inline non-interactive dividers above each group's first occurrence in
+  // the persisted order. The collapsible-group affordance from TIM-1498 was
+  // removed because once sections can move across group boundaries it no
+  // longer maps cleanly to a Set<groupKey>.
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
   // TIM-2385: Two-phase loading UX. Phase 1 — this overlay covers the workspace
   // while a Generate or Improve run streams. Phase 2 — the modal opens on done.
@@ -293,6 +366,107 @@ export function BusinessPlanWorkspace({
       body: JSON.stringify({ is_visible: next }),
     });
   }, [updateSection]);
+
+  // ── TIM-3490: Drag-to-reorder helpers ───────────────────────────────────
+
+  // Effective merged order: standard keys + custom UUIDs in the persisted
+  // order, with any missing entries appended at the tail in default order.
+  // This is what the AI assemblers and the workspace UI iterate.
+  const customIds = useMemo(
+    () => customSections.map((cs) => cs.id),
+    [customSections],
+  );
+  const effectiveOrder = useMemo(
+    () =>
+      resolveSectionOrder(
+        sectionOrder,
+        DEFAULT_BUSINESS_PLAN_SECTION_ORDER,
+        customIds,
+      ),
+    [sectionOrder, customIds],
+  );
+
+  // TIM-3490: ordered projection of standard sections for AI prompt
+  // assemblers (RegenerateAll + ExportGate). Custom sections are excluded
+  // because the regen / export flows operate on the fixed taxonomy only.
+  const orderedSectionsForAi = useMemo(() => {
+    const byKey = new Map(sections.map((s) => [s.key, s]));
+    const standardKeys = new Set<string>(DEFAULT_BUSINESS_PLAN_SECTION_ORDER);
+    const ordered: Array<{ key: BusinessPlanSectionKey; title: string; currentContent: string }> = [];
+    for (const id of effectiveOrder) {
+      if (!standardKeys.has(id)) continue;
+      const s = byKey.get(id as BusinessPlanSectionKey);
+      if (!s) continue;
+      ordered.push({
+        key: s.key,
+        title: s.title,
+        currentContent: s.userContent ?? s.autoContent,
+      });
+    }
+    return ordered;
+  }, [sections, effectiveOrder]);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const id = String(event.active.id);
+    // DoD: expanded section auto-collapses on drag start. Re-expand is
+    // user-initiated post-drop.
+    const standardSection = sectionsRef.current.find((s) => s.key === id);
+    if (standardSection?.isExpanded) {
+      updateSection(id as BusinessPlanSectionKey, { isExpanded: false });
+    }
+    setCustomSections((prev) =>
+      prev.map((cs) => (cs.id === id && cs.isExpanded ? { ...cs, isExpanded: false } : cs)),
+    );
+  }, [updateSection]);
+
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const activeId = String(event.active.id);
+      const overId = event.over ? String(event.over.id) : null;
+      if (!overId || activeId === overId) return;
+
+      const fromIdx = effectiveOrder.indexOf(activeId);
+      const toIdx = effectiveOrder.indexOf(overId);
+      if (fromIdx < 0 || toIdx < 0) return;
+
+      // Optimistic local update. Roll back on PATCH failure.
+      const next = arrayMove(effectiveOrder, fromIdx, toIdx);
+      const previous = sectionOrder;
+      setSectionOrder(next);
+      setSaveState({ kind: "saving" });
+      try {
+        const res = await fetch("/api/business-plan/section-order", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order: next }),
+        });
+        if (!res.ok) throw new Error(`section-order PATCH ${res.status}`);
+        setSaveState({ kind: "saved", at: new Date().toISOString() });
+      } catch {
+        // Revert optimistic update on failure.
+        setSectionOrder(previous);
+        setSaveState({ kind: "error", message: "Could not save section order. Try again." });
+      }
+    },
+    [effectiveOrder, sectionOrder],
+  );
+
+  const handleResetSectionOrder = useCallback(async () => {
+    const previous = sectionOrder;
+    setSectionOrder([]);
+    setShowResetOrderModal(false);
+    setSaveState({ kind: "saving" });
+    try {
+      const res = await fetch("/api/business-plan/section-order", {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(`section-order DELETE ${res.status}`);
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    } catch {
+      setSectionOrder(previous);
+      setSaveState({ kind: "error", message: "Could not reset section order. Try again." });
+    }
+  }, [sectionOrder]);
 
   // ── Autosave helpers ───────────────────────────────────────────────────────
 
@@ -642,6 +816,17 @@ export function BusinessPlanWorkspace({
       }
     });
     void persistDirty();
+    // Flush custom section dirty buffers too.
+    if (customPendingSaveTimer.current) {
+      clearTimeout(customPendingSaveTimer.current);
+      customPendingSaveTimer.current = null;
+    }
+    customSections.forEach((cs) => {
+      if (cs.isEditing && !customDirtyBuffersRef.current.has(cs.id)) {
+        customDirtyBuffersRef.current.set(cs.id, cs.editBuffer || null);
+      }
+    });
+    void persistCustomDirty();
   }
 
   const handleSectionPatchedFromGate = useCallback((sectionKey: string, newContent: string) => {
@@ -702,6 +887,233 @@ export function BusinessPlanWorkspace({
     }
   }, [sections, saveSection]);
 
+  // ── TIM-3111: Custom section handlers ───────────────────────────────────────
+
+  const updateCustomSection = useCallback((id: string, patch: Partial<CustomSectionState>) => {
+    setCustomSections((prev) => prev.map((cs) => (cs.id === id ? { ...cs, ...patch } : cs)));
+  }, []);
+
+  const persistCustomDirty = useCallback(async () => {
+    if (!canEdit) return;
+    const snapshot = new Map(customDirtyBuffersRef.current);
+    customDirtyBuffersRef.current.clear();
+    if (snapshot.size === 0) return;
+    setSaveState({ kind: "saving" });
+    try {
+      await Promise.all(
+        Array.from(snapshot.entries()).map(async ([id, userContent]) => {
+          const res = await fetch(`/api/business-plan/custom-sections/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_content: userContent }),
+          });
+          if (!res.ok) throw new Error(`custom section save failed (${res.status})`);
+          setCustomSections((prev) =>
+            prev.map((cs) => (cs.id !== id ? cs : { ...cs, userContent, isSaving: false }))
+          );
+        })
+      );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    } catch {
+      // Re-queue failed entries so the next manual save or debounce can retry them.
+      snapshot.forEach((val, id) => {
+        if (!customDirtyBuffersRef.current.has(id)) {
+          customDirtyBuffersRef.current.set(id, val);
+        }
+      });
+      setSaveState({ kind: "error", message: "Could not save. Try again." });
+    }
+  }, [canEdit]);
+
+  const scheduleCustomSave = useCallback(
+    (id: string, val: string | null) => {
+      customDirtyBuffersRef.current.set(id, val);
+      setSaveState({ kind: "dirty" });
+      if (customPendingSaveTimer.current) clearTimeout(customPendingSaveTimer.current);
+      customPendingSaveTimer.current = setTimeout(() => {
+        customPendingSaveTimer.current = null;
+        void persistCustomDirty();
+      }, AUTOSAVE_DEBOUNCE_MS);
+    },
+    [persistCustomDirty]
+  );
+
+  const handleAddCustomSection = useCallback(async () => {
+    if (!canEdit || isAddingCustomSection) return;
+    setIsAddingCustomSection(true);
+    setCustomSectionError(null);
+    try {
+      const res = await fetch("/api/business-plan/custom-sections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Custom Section" }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({})) as Record<string, unknown>;
+        setCustomSectionError((j.error as string) ?? "Could not add custom section.");
+        return;
+      }
+      const data = await res.json() as { customSection: { id: string; title: string; user_content: string | null; is_visible: boolean; sort_order: number } };
+      const cs = data.customSection;
+      setCustomSections((prev) => [
+        ...prev,
+        {
+          id: cs.id,
+          title: cs.title,
+          userContent: cs.user_content,
+          isVisible: cs.is_visible,
+          sortOrder: cs.sort_order,
+          isExpanded: true,
+          isEditing: false,
+          editBuffer: cs.user_content ?? "",
+          isTitleEditing: true,
+          titleBuffer: cs.title,
+          isSaving: false,
+        },
+      ]);
+    } catch {
+      setCustomSectionError("Could not add custom section. Try again.");
+    } finally {
+      setIsAddingCustomSection(false);
+    }
+  }, [canEdit, isAddingCustomSection]);
+
+  const handleCustomSectionTitleSave = useCallback(async (id: string, title: string) => {
+    const trimmed = title.trim() || "Custom Section";
+    updateCustomSection(id, { isTitleEditing: false, title: trimmed, titleBuffer: trimmed });
+    await fetch(`/api/business-plan/custom-sections/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: trimmed }),
+    });
+  }, [updateCustomSection]);
+
+  const handleDeleteCustomSection = useCallback(async (id: string) => {
+    const snapshot = customSections.find((cs) => cs.id === id);
+    if (!snapshot || snapshot.isDeleting) return;
+    updateCustomSection(id, { isDeleting: true });
+    setCustomSectionError(null);
+    try {
+      const res = await fetch(`/api/business-plan/custom-sections/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("delete failed");
+      setCustomSections((prev) => prev.filter((cs) => cs.id !== id));
+    } catch {
+      updateCustomSection(id, { isDeleting: false });
+      setCustomSections((prev) => [...prev, snapshot].sort((a, b) => a.sortOrder - b.sortOrder));
+      setCustomSectionError("Could not delete section. Try again.");
+    }
+  }, [customSections, updateCustomSection]);
+
+  const handleCustomSectionVisibility = useCallback(async (id: string, current: boolean) => {
+    const next = !current;
+    updateCustomSection(id, { isVisible: next });
+    await fetch(`/api/business-plan/custom-sections/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_visible: next }),
+    });
+  }, [updateCustomSection]);
+
+  // TIM-3490: handleCustomSectionReorder removed — custom-section sort_order
+  // PATCHes are replaced by the unified per-plan section_order on
+  // coffee_shop_plans (drag-to-reorder via the shared sortable canon).
+
+  const handleCustomSectionWriteWithAi = useCallback(async (id: string) => {
+    // Guard both: a custom section already streaming, and a standard section streaming.
+    // Do NOT abort abortRef (standard sections share it) — only block while either is running.
+    if (!canEdit || customStreamingId !== null || streamingKey !== null) return;
+    const cs = customSections.find((c) => c.id === id);
+    if (!cs) return;
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    let cancelledByUser = false;
+    const cancelOverlay = () => {
+      cancelledByUser = true;
+      controller.abort();
+      closeProgressOverlay();
+      setCustomStreamingId(null);
+      updateCustomSection(id, { isGenerating: false });
+    };
+    openProgressOverlay({ total: 1, onCancel: cancelOverlay });
+    updateCustomSection(id, { isGenerating: true });
+    setCustomStreamingId(id);
+
+    try {
+      await fetchSse(
+        "/api/business-plan/improve",
+        {
+          sectionKey: "custom",
+          sectionTitle: cs.title,
+          currentContent: cs.userContent?.trim() || `Write a first draft for the "${cs.title}" section.`,
+          shopName,
+        },
+        () => {},
+        (full) => {
+          updateProgressOverlay({ completed: 1 });
+          closeProgressOverlay();
+          setCustomStreamingId(null);
+          updateCustomSection(id, { isGenerating: false });
+          if (cancelledByUser) return;
+          openAIReviewModal({
+            suggestions: [
+              {
+                id: `custom-${id}`,
+                fieldId: id,
+                fieldLabel: cs.title,
+                originalValue: cs.userContent ?? "",
+                proposedValue: full,
+                isStructured: false,
+                consistencyContradictions: [],
+              },
+            ],
+            context: { workspace: "Business Plan", section: cs.title },
+            onApply: async () => {
+              const res = await fetch(`/api/business-plan/custom-sections/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_content: full }),
+              });
+              if (!res.ok) throw new Error("Could not save. Please try again.");
+              setCustomSections((prev) =>
+                prev.map((s) =>
+                  s.id !== id ? s : { ...s, userContent: full, editBuffer: full, isEditing: false }
+                )
+              );
+              setSaveState({ kind: "saved", at: new Date().toISOString() });
+            },
+          });
+        },
+        (msg) => {
+          closeProgressOverlay();
+          setCustomStreamingId(null);
+          updateCustomSection(id, { isGenerating: false });
+          if (!cancelledByUser) setGlobalError(msg);
+        },
+        controller.signal
+      );
+    } catch (err: unknown) {
+      closeProgressOverlay();
+      setCustomStreamingId(null);
+      updateCustomSection(id, { isGenerating: false });
+      if (err instanceof Error && err.name !== "AbortError" && !cancelledByUser) {
+        setGlobalError(err.message);
+      }
+    }
+  }, [
+    canEdit,
+    customStreamingId,
+    streamingKey,
+    customSections,
+    shopName,
+    closeProgressOverlay,
+    openProgressOverlay,
+    updateProgressOverlay,
+    updateCustomSection,
+    openAIReviewModal,
+  ]);
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   const visibleCount = sections.filter((s) => s.isVisible).length;
@@ -727,11 +1139,10 @@ export function BusinessPlanWorkspace({
       <ExportGateModal
         report={validationReport}
         shopName={shopName}
-        sections={sections.map((s) => ({
-          key: s.key,
-          title: s.title,
-          currentContent: s.userContent ?? s.autoContent,
-        }))}
+        // TIM-3490: AI prompt assemblers must respect the persisted order.
+        // orderedSectionsForAi iterates effectiveOrder so the validation /
+        // export prompts reflect the user's reorder.
+        sections={orderedSectionsForAi}
         onSectionPatched={handleSectionPatchedFromGate}
         onCancel={handleGateCancel}
         onContinue={handleGateContinue}
@@ -753,7 +1164,7 @@ export function BusinessPlanWorkspace({
                 onClick={() => setSections((prev) => prev.map((s) => ({ ...s, isExpanded: !allExpanded })))}
                 className="text-sm text-[var(--muted-foreground)] hover:text-foreground underline underline-offset-2 cursor-pointer"
               >
-                {allExpanded ? "Collapse all" : "Expand all"}
+                {allExpanded ? "Collapse All" : "Expand All"}
               </button>
               {/* TIM-2382: Scout-as-hub — top-level AskScoutButton on the
                   Business Plan workspace replaces the legacy auto-apply
@@ -769,7 +1180,10 @@ export function BusinessPlanWorkspace({
                   reachable from every workspace via the floating affordance.
                   The hamburger keeps Export PDF, Print Business Plan, and
                   Regenerate all as before. */}
-              <WorkspaceActionMenu>
+              {/* TIM-3556: hideAdvisor — the header-level AskScoutButton above
+                  already opens the same copilot drawer, so the shared menu's
+                  default "Open Advisor" row would duplicate that action. */}
+              <WorkspaceActionMenu hideAdvisor>
                 {({ closeMenu }) => (
                   <>
                     <WorkspaceActionMenuItem
@@ -794,13 +1208,12 @@ export function BusinessPlanWorkspace({
                       renderAs="menuitem"
                       closeMenu={closeMenu}
                       disabled={!canEdit || streamingKey !== null}
-                      getCurrentSections={() =>
-                        sections.map((s) => ({
-                          key: s.key,
-                          title: s.title,
-                          currentContent: s.userContent ?? s.autoContent,
-                        }))
-                      }
+                      // TIM-3490: iterate in effective (persisted) order so
+                      // the regen prompt context block reflects the user's
+                      // reorder. resolveSectionOrder filtered to standard
+                      // section keys only; custom sections are not part of
+                      // the regenerate-all flow.
+                      getCurrentSections={() => orderedSectionsForAi}
                       openAIReviewModal={openAIReviewModal}
                       openProgressOverlay={openProgressOverlay}
                       updateProgressOverlay={updateProgressOverlay}
@@ -886,44 +1299,140 @@ export function BusinessPlanWorkspace({
         {/* Financial documents panel */}
         <FinancialDocumentsPanel initialDocuments={initialFinancialDocuments} />
 
-        {/* TIM-1498: Two-level taxonomy. Top-level rows (Executive Summary)
-            render as standalone cards; grouped subsections render under a
-            collapsible group header. Cards remain inline -- no right-side
-            drawers/sheets per platform rule. */}
-        <SectionTree
-          sections={sections}
-          canEdit={canEdit}
-          collapsedGroups={collapsedGroups}
-          onToggleGroup={(g) =>
-            setCollapsedGroups((prev) => {
-              const next = new Set(prev);
-              if (next.has(g)) next.delete(g);
-              else next.add(g);
-              return next;
-            })
-          }
-          onToggleVisibility={(key, current) => toggleVisibility(key, current)}
-          onToggleExpand={(key, current) => updateSection(key, { isExpanded: !current })}
-          onEditStart={(key, content) =>
-            updateSection(key, { isEditing: true, editBuffer: content })
-          }
-          onEditChange={(key, val) => {
-            updateSection(key, { editBuffer: val });
-            scheduleSave(key, val || null);
-          }}
-          onEditSave={(key, buf) => {
-            saveSection(key, buf || null);
-          }}
-          onEditCancel={(key, fallback) => {
-            updateSection(key, {
-              isEditing: false,
-              editBuffer: fallback,
-            });
-          }}
-          onResetToAuto={(key) => saveSection(key, null)}
-          onGenerateExec={handleGenerate}
-          onImprove={handleImprove}
-        />
+        {/* TIM-3490: Flat free-reorder list. All standard + custom section
+            cards render in the persisted order; group titles appear as
+            inline non-interactive dividers at each group transition. */}
+        <DndContext
+          sensors={dndSensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={effectiveOrder} strategy={verticalListSortingStrategy}>
+            <BpFlatSectionList
+              order={effectiveOrder}
+              sections={sections}
+              customSections={customSections}
+              canEdit={canEdit}
+              streamingKey={streamingKey}
+              onToggleVisibility={(key, current) => toggleVisibility(key, current)}
+              onToggleExpand={(key, current) => updateSection(key, { isExpanded: !current })}
+              onEditStart={(key, content) =>
+                updateSection(key, { isEditing: true, editBuffer: content })
+              }
+              onEditChange={(key, val) => {
+                updateSection(key, { editBuffer: val });
+                scheduleSave(key, val || null);
+              }}
+              onEditSave={(key, buf) => saveSection(key, buf || null)}
+              onEditCancel={(key, fallback) =>
+                updateSection(key, { isEditing: false, editBuffer: fallback })
+              }
+              onResetToAuto={(key) => saveSection(key, null)}
+              onGenerateExec={handleGenerate}
+              onImprove={handleImprove}
+              onCustomToggleExpand={(id, current) =>
+                updateCustomSection(id, { isExpanded: !current })
+              }
+              onCustomToggleVisible={(id, current) =>
+                handleCustomSectionVisibility(id, current)
+              }
+              onCustomTitleEditStart={(id, title) =>
+                updateCustomSection(id, { isTitleEditing: true, titleBuffer: title })
+              }
+              onCustomTitleChange={(id, val) =>
+                updateCustomSection(id, { titleBuffer: val })
+              }
+              onCustomTitleSave={(id, buf) => handleCustomSectionTitleSave(id, buf)}
+              onCustomTitleCancel={(id, fallback) =>
+                updateCustomSection(id, { isTitleEditing: false, titleBuffer: fallback })
+              }
+              onCustomEditStart={(id, content) =>
+                updateCustomSection(id, { isEditing: true, editBuffer: content })
+              }
+              onCustomEditChange={(id, val) => {
+                updateCustomSection(id, { editBuffer: val });
+                scheduleCustomSave(id, val || null);
+              }}
+              onCustomEditSave={(id, buf) => {
+                customDirtyBuffersRef.current.delete(id);
+                updateCustomSection(id, { isSaving: true });
+                void fetch(`/api/business-plan/custom-sections/${id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ user_content: buf || null }),
+                })
+                  .then(() => {
+                    setCustomSections((prev) =>
+                      prev.map((s) =>
+                        s.id !== id
+                          ? s
+                          : { ...s, userContent: buf || null, isEditing: false, isSaving: false },
+                      ),
+                    );
+                    setSaveState({ kind: "saved", at: new Date().toISOString() });
+                  })
+                  .catch(() => {
+                    updateCustomSection(id, { isSaving: false });
+                    setSaveState({ kind: "error", message: "Could not save. Try again." });
+                  });
+              }}
+              onCustomEditCancel={(id, fallback) => {
+                customDirtyBuffersRef.current.delete(id);
+                updateCustomSection(id, { isEditing: false, editBuffer: fallback });
+              }}
+              onCustomDelete={(id) => handleDeleteCustomSection(id)}
+              onCustomWriteWithAi={(id) => void handleCustomSectionWriteWithAi(id)}
+            />
+          </SortableContext>
+        </DndContext>
+
+        {/* TIM-3111: Add Custom Section entry point */}
+        {canEdit && (
+          <div className="mt-6">
+            {customSectionError && (
+              <div className="mb-3 px-4 py-2 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+                {customSectionError}
+                <button onClick={() => setCustomSectionError(null)} className="ml-3 underline text-xs">
+                  Dismiss
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleAddCustomSection}
+              disabled={isAddingCustomSection}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-[var(--neutral-cool-400)] text-sm font-medium text-[var(--neutral-cool-600)] hover:border-[var(--teal)] hover:text-[var(--teal)] hover:bg-[var(--teal)]/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isAddingCustomSection ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              Add Custom Section
+            </button>
+          </div>
+        )}
+
+        {/* TIM-3490: Reset-to-default order — subtle, end of list per DoD. */}
+        {canEdit && sectionOrder.length > 0 && (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => setShowResetOrderModal(true)}
+              className="text-xs text-[var(--neutral-cool-600)] hover:text-[var(--teal)] underline underline-offset-2 transition-colors"
+            >
+              Reset to default order
+            </button>
+          </div>
+        )}
+
+        {showResetOrderModal && (
+          <ResetOrderConfirmationModal
+            onCancel={() => setShowResetOrderModal(false)}
+            onConfirm={handleResetSectionOrder}
+          />
+        )}
       </div>
     </div>
     {/* TIM-2416 — the AI companion mounts inside the Business Plan workspace
@@ -936,14 +1445,21 @@ export function BusinessPlanWorkspace({
   );
 }
 
-// ── SectionTree (two-level group + subsection renderer) ──────────────────────
+// ── TIM-3490: Flat sortable section list (replaces SectionTree) ─────────────
+// Renders standard sections + custom sections inline in `order`, with group
+// titles as non-interactive inline dividers above each group's first run.
+// Each card is wrapped in SortableCardRow which exposes the canon grip
+// handle. The DndContext / SortableContext are owned by the parent so the
+// optimistic-update path can stay near the rest of the workspace state.
 
-interface SectionTreeProps {
+const CUSTOM_SECTIONS_LABEL = "Custom Sections";
+
+interface BpFlatSectionListProps {
+  order: string[];
   sections: SectionState[];
+  customSections: CustomSectionState[];
   canEdit: boolean;
-  streamingKey?: BusinessPlanSectionKey | null;
-  collapsedGroups: Set<BusinessPlanGroupKey>;
-  onToggleGroup: (group: BusinessPlanGroupKey) => void;
+  streamingKey: BusinessPlanSectionKey | null;
   onToggleVisibility: (key: BusinessPlanSectionKey, current: boolean) => void;
   onToggleExpand: (key: BusinessPlanSectionKey, current: boolean) => void;
   onEditStart: (key: BusinessPlanSectionKey, content: string) => void;
@@ -951,120 +1467,274 @@ interface SectionTreeProps {
   onEditSave: (key: BusinessPlanSectionKey, buf: string) => void;
   onEditCancel: (key: BusinessPlanSectionKey, fallback: string) => void;
   onResetToAuto: (key: BusinessPlanSectionKey) => void;
-  onGenerateExec?: (key: BusinessPlanSectionKey) => void;
-  onImprove?: (key: BusinessPlanSectionKey) => void;
+  onGenerateExec: (key: BusinessPlanSectionKey) => void;
+  onImprove: (key: BusinessPlanSectionKey) => void;
+  onCustomToggleExpand: (id: string, current: boolean) => void;
+  onCustomToggleVisible: (id: string, current: boolean) => void;
+  onCustomTitleEditStart: (id: string, title: string) => void;
+  onCustomTitleChange: (id: string, val: string) => void;
+  onCustomTitleSave: (id: string, buf: string) => void;
+  onCustomTitleCancel: (id: string, fallback: string) => void;
+  onCustomEditStart: (id: string, content: string) => void;
+  onCustomEditChange: (id: string, val: string) => void;
+  onCustomEditSave: (id: string, buf: string) => void;
+  onCustomEditCancel: (id: string, fallback: string) => void;
+  onCustomDelete: (id: string) => void;
+  onCustomWriteWithAi: (id: string) => void;
 }
 
-function SectionTree(props: SectionTreeProps) {
+function BpFlatSectionList(props: BpFlatSectionListProps) {
   const sectionMetaByKey = useMemo(
     () => new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m])),
+    [],
+  );
+  const groupTitleByKey = useMemo(
+    () => new Map(BUSINESS_PLAN_GROUPS.map((g) => [g.key, g.title])),
     [],
   );
   const sectionsByKey = useMemo(
     () => new Map(props.sections.map((s) => [s.key, s])),
     [props.sections],
   );
-
-  function renderCard(section: SectionState) {
-    const blurb = sectionMetaByKey.get(section.key)?.blurb ?? "";
-    const bpExamples = BP_FIELD_EXAMPLES[section.key as BPFieldExampleKey] ?? [];
-    const displayContent = section.userContent ?? section.autoContent;
-    const hasPlaceholderContent =
-      !displayContent ||
-      displayContent.includes("workspace to populate") ||
-      displayContent.includes("Click Generate") ||
-      displayContent.includes("Complete the other") ||
-      displayContent.includes("Complete the Marketing") ||
-      displayContent.includes("click the text field");
-    const hasRealContent = Boolean(displayContent?.trim()) && !hasPlaceholderContent;
-    const onWriteWithAi =
-      props.canEdit && (props.onGenerateExec || props.onImprove)
-        ? () => {
-            if (hasRealContent && props.onImprove) props.onImprove!(section.key);
-            else if (props.onGenerateExec) props.onGenerateExec!(section.key);
-          }
-        : undefined;
-    return (
-      <SectionCard
-        key={section.key}
-        section={section}
-        canEdit={props.canEdit}
-        bpExamples={bpExamples}
-        isStreaming={props.streamingKey === section.key}
-        blurb={blurb}
-        onToggleVisible={() => props.onToggleVisibility(section.key, section.isVisible)}
-        onToggleExpand={() => props.onToggleExpand(section.key, section.isExpanded)}
-        onEditStart={() => props.onEditStart(section.key, section.userContent ?? section.autoContent)}
-        onEditChange={(val) => props.onEditChange(section.key, val)}
-        onEditSave={() => props.onEditSave(section.key, section.editBuffer)}
-        onEditCancel={() => props.onEditCancel(section.key, section.userContent ?? section.autoContent)}
-        onResetToAuto={() => props.onResetToAuto(section.key)}
-        onWriteWithAi={onWriteWithAi}
-      />
-    );
-  }
-
-  const topLevel = props.sections.filter(
-    (s) => sectionMetaByKey.get(s.key)?.groupKey == null,
+  const customSectionsById = useMemo(
+    () => new Map(props.customSections.map((cs) => [cs.id, cs])),
+    [props.customSections],
   );
 
+  function dividerLabelFor(prev: string | null, current: string): string | null {
+    // What divider (if any) should appear ABOVE `current` given the previous
+    // visible item's identity?
+    const prevMeta = prev != null ? sectionMetaByKey.get(prev as BusinessPlanSectionKey) : undefined;
+    const currentIsCustom = customSectionsById.has(current);
+    const currentMeta = sectionMetaByKey.get(current as BusinessPlanSectionKey);
+    if (currentIsCustom) {
+      const prevWasCustom = prev != null && customSectionsById.has(prev);
+      return prevWasCustom ? null : CUSTOM_SECTIONS_LABEL;
+    }
+    if (!currentMeta) return null;
+    const currentGroup = currentMeta.groupKey;
+    if (currentGroup == null) {
+      // Top-level standalone (Executive Summary). No divider above.
+      return null;
+    }
+    const prevGroup = prevMeta?.groupKey ?? null;
+    // Show the group label when transitioning INTO a new group from a
+    // different group (or from a top-level standalone or custom run).
+    if (prev == null) return groupTitleByKey.get(currentGroup) ?? null;
+    if (prevGroup !== currentGroup) {
+      return groupTitleByKey.get(currentGroup) ?? null;
+    }
+    return null;
+  }
+
+  const items: Array<
+    | { kind: "divider"; key: string; label: string }
+    | { kind: "section"; key: string; section: SectionState }
+    | { kind: "custom"; key: string; section: CustomSectionState }
+  > = [];
+  let prev: string | null = null;
+  for (const id of props.order) {
+    const standard = sectionsByKey.get(id as BusinessPlanSectionKey);
+    const custom = customSectionsById.get(id);
+    if (!standard && !custom) continue;
+    const label = dividerLabelFor(prev, id);
+    if (label) items.push({ kind: "divider", key: `divider-${id}`, label });
+    if (standard) items.push({ kind: "section", key: id, section: standard });
+    else if (custom) items.push({ kind: "custom", key: id, section: custom });
+    prev = id;
+  }
+
   return (
-    <div className="space-y-4">
-      {topLevel.map((s) => renderCard(s))}
-
-      {BUSINESS_PLAN_GROUPS.map((group) => {
-        const groupSections = BUSINESS_PLAN_SECTIONS
-          .filter((m) => m.groupKey === group.key)
-          .map((m) => sectionsByKey.get(m.key))
-          .filter((s): s is SectionState => Boolean(s));
-
-        if (groupSections.length === 0) return null;
-        const collapsed = props.collapsedGroups.has(group.key);
-        const visibleCount = groupSections.filter((s) => s.isVisible).length;
-        const firstKey = groupSections[0]?.key;
-        const groupAnchor = `bp-group-${group.key}`;
-
-        return (
-          <section key={group.key} aria-labelledby={`${groupAnchor}-label`}>
-            <button
-              type="button"
-              id={`${groupAnchor}-label`}
-              onClick={() => {
-                props.onToggleGroup(group.key);
-                if (collapsed && firstKey) {
-                  const el = document.getElementById(`bp-section-${firstKey}`);
-                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                }
-              }}
-              aria-expanded={!collapsed}
-              aria-controls={`${groupAnchor}-list`}
-              className="w-full mt-6 mb-2 flex items-center gap-2 px-1 py-2 text-left rounded-lg hover:bg-[var(--neutral-cool-50)] transition-colors"
+    <div className="space-y-3">
+      {items.map((item) => {
+        if (item.kind === "divider") {
+          return (
+            <h2
+              key={item.key}
+              className="text-base font-semibold text-[var(--foreground)] tracking-tight px-1 pt-3 pb-1 first:pt-0"
             >
-              {collapsed ? (
-                <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
-              ) : (
-                <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
-              )}
-              <h2 className="text-base font-semibold text-[var(--foreground)] tracking-tight">
-                {group.title}
-              </h2>
-              <span className="text-[11px] text-[var(--neutral-cool-600)]">
-                {visibleCount} of {groupSections.length} visible
-              </span>
-            </button>
-
-            {!collapsed && (
-              <div id={`${groupAnchor}-list`} className="space-y-3">
-                {groupSections.map((s) => (
-                  <div key={s.key} id={`bp-section-${s.key}`}>
-                    {renderCard(s)}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+              {item.label}
+            </h2>
+          );
+        }
+        if (item.kind === "section") {
+          const section = item.section;
+          const blurb = sectionMetaByKey.get(section.key)?.blurb ?? "";
+          const bpExamples = BP_FIELD_EXAMPLES[section.key as BPFieldExampleKey] ?? [];
+          const displayContent = section.userContent ?? section.autoContent;
+          const hasPlaceholderContent =
+            !displayContent ||
+            displayContent.includes("workspace to populate") ||
+            displayContent.includes("Click Generate") ||
+            displayContent.includes("Complete the other") ||
+            displayContent.includes("Complete the Marketing") ||
+            displayContent.includes("click the text field");
+          const hasRealContent = Boolean(displayContent?.trim()) && !hasPlaceholderContent;
+          const onWriteWithAi = props.canEdit
+            ? () => {
+                if (hasRealContent) props.onImprove(section.key);
+                else props.onGenerateExec(section.key);
+              }
+            : undefined;
+          return (
+            <SortableCardRow id={section.key} canEdit={props.canEdit} key={section.key}>
+              <SectionCard
+                section={section}
+                canEdit={props.canEdit}
+                bpExamples={bpExamples}
+                isStreaming={props.streamingKey === section.key}
+                blurb={blurb}
+                onToggleVisible={() =>
+                  props.onToggleVisibility(section.key, section.isVisible)
+                }
+                onToggleExpand={() =>
+                  props.onToggleExpand(section.key, section.isExpanded)
+                }
+                onEditStart={() =>
+                  props.onEditStart(section.key, section.userContent ?? section.autoContent)
+                }
+                onEditChange={(val) => props.onEditChange(section.key, val)}
+                onEditSave={() => props.onEditSave(section.key, section.editBuffer)}
+                onEditCancel={() =>
+                  props.onEditCancel(section.key, section.userContent ?? section.autoContent)
+                }
+                onResetToAuto={() => props.onResetToAuto(section.key)}
+                onWriteWithAi={onWriteWithAi}
+              />
+            </SortableCardRow>
+          );
+        }
+        // Custom section row.
+        const cs = item.section;
+        return (
+          <SortableCardRow id={cs.id} canEdit={props.canEdit} key={cs.id}>
+            <CustomSectionCard
+              section={cs}
+              canEdit={props.canEdit}
+              onToggleExpand={() => props.onCustomToggleExpand(cs.id, cs.isExpanded)}
+              onToggleVisible={() => props.onCustomToggleVisible(cs.id, cs.isVisible)}
+              onTitleEditStart={() => props.onCustomTitleEditStart(cs.id, cs.title)}
+              onTitleChange={(val) => props.onCustomTitleChange(cs.id, val)}
+              onTitleSave={() => props.onCustomTitleSave(cs.id, cs.titleBuffer)}
+              onTitleCancel={() => props.onCustomTitleCancel(cs.id, cs.title)}
+              onEditStart={() => props.onCustomEditStart(cs.id, cs.userContent ?? "")}
+              onEditChange={(val) => props.onCustomEditChange(cs.id, val)}
+              onEditSave={() => props.onCustomEditSave(cs.id, cs.editBuffer)}
+              onEditCancel={() => props.onCustomEditCancel(cs.id, cs.userContent ?? "")}
+              onDelete={() => props.onCustomDelete(cs.id)}
+              onWriteWithAi={() => props.onCustomWriteWithAi(cs.id)}
+            />
+          </SortableCardRow>
         );
       })}
+    </div>
+  );
+}
+
+// SortableCardRow — a single row in the flat list. Owns the grip handle +
+// useSortable hook. Renders the handle inline at the left of the card so
+// the card content keeps its own padding intact (TIM-3492 / TIM-3491 BP
+// card header h2 styling unchanged).
+function SortableCardRow({
+  id,
+  canEdit,
+  children,
+}: {
+  id: string;
+  canEdit: boolean;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled: !canEdit });
+
+  const liftStyle = useSortableLift({ transform, transition, isDragging });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={liftStyle}
+      id={`bp-section-${id}`}
+      className="group flex items-stretch gap-1.5 sm:gap-2"
+    >
+      {canEdit && (
+        <SortableHandle
+          ref={setActivatorNodeRef}
+          className="self-start mt-4 sm:opacity-0 sm:group-hover:opacity-100 group-focus-within:opacity-100 sm:transition-opacity"
+          {...attributes}
+          {...listeners}
+        />
+      )}
+      <div className="flex-1 min-w-0 group">{children}</div>
+    </div>
+  );
+}
+
+// ── TIM-3490: Reset-to-default order confirmation modal ─────────────────────
+
+function ResetOrderConfirmationModal({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void | Promise<void>;
+}) {
+  // TIM-3490: Escape-key dismiss + auto-focus the cancel button. /code-review
+  // catch: matches the CategorySettingsPanel modal's keyboard pattern.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onCancel();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="bp-reset-order-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3
+          id="bp-reset-order-title"
+          className="text-lg font-semibold text-[var(--foreground)] mb-2"
+        >
+          Reset to default order?
+        </h3>
+        <p className="text-sm text-[var(--neutral-cool-700)] mb-5 leading-relaxed">
+          Reset all sections to the default business plan order? Your section
+          content is not affected — only the order changes.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            autoFocus
+            className="text-sm font-medium text-[var(--neutral-cool-700)] px-4 py-2 rounded-xl border border-[var(--neutral-cool-200)] hover:bg-[var(--neutral-cool-50)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void onConfirm()}
+            className="text-sm font-medium text-white bg-[var(--teal)] px-4 py-2 rounded-xl hover:bg-[var(--teal-darker,var(--teal))] transition-colors"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1116,30 +1786,6 @@ function MarkdownContent({ content }: { content: string }) {
   );
 }
 
-function StatusChip({ section }: { section: SectionState }) {
-  const isDone = Boolean(section.userContent && section.userContent.trim().length > 0);
-  const isGenerating = section.isGenerating;
-  if (isGenerating) {
-    return (
-      <span className="flex items-center gap-1 text-[var(--teal)] shrink-0">
-        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-      </span>
-    );
-  }
-  if (isDone) {
-    return (
-      <span className="flex items-center gap-1 text-[var(--sage)] shrink-0">
-        <CheckCircle className="w-3.5 h-3.5" />
-      </span>
-    );
-  }
-  return (
-    <span className="flex items-center gap-1 text-[var(--neutral-cool-500)] shrink-0">
-      <Circle className="w-3.5 h-3.5" />
-    </span>
-  );
-}
-
 function SectionCard({
   section,
   canEdit,
@@ -1157,6 +1803,8 @@ function SectionCard({
 }: SectionCardProps) {
   const [openExample, setOpenExample] = useState(false);
   const [exampleIdx, setExampleIdx] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const hasUserOverride = section.userContent !== null;
   const displayContent = section.isEditing
     ? section.editBuffer
@@ -1172,90 +1820,195 @@ function SectionCard({
     displayContent.includes("Complete the Marketing") ||
     displayContent.includes("click the text field");
 
+  // TIM-3501: dismiss card overflow menu on outside click or Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onMouse = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onMouse);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onMouse);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  // TIM-3501 code-review fix: reset is destructive (writes userContent=null) —
+  // guard against losing unsaved edits / racing with streaming generation.
+  const canReset = hasUserOverride && !section.isEditing && !section.isGenerating && !isStreaming;
+
   return (
     <div
-      className={`group rounded-xl border bg-white transition-opacity ${
-        section.isVisible ? "border-[var(--border)] opacity-100" : "border-[var(--neutral-cool-200)] opacity-60"
+      className={`group relative rounded-xl border bg-white ${
+        section.isVisible ? "border-[var(--border)]" : "border-[var(--neutral-cool-200)]"
       }`}
     >
-      {/* Header */}
-      <div className="px-4 sm:px-5 py-4">
-        {section.isExpanded ? (
-          /* TIM-3350: SectionHeader replaces Pattern B inline markup when expanded */
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={onToggleExpand}
-              aria-expanded={true}
-              aria-label={`Collapse ${section.title}`}
-              className="flex-shrink-0 p-0.5 rounded hover:bg-[var(--neutral-cool-100)] transition-colors"
-            >
-              <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)]" />
-            </button>
-            <div className="flex-1 min-w-0">
-              <SectionHeader
-                title={section.title}
-                helpContent={blurb || undefined}
-                onWriteWithAi={canEdit && !section.isEditing && !isStreaming && onWriteWithAi ? onWriteWithAi : undefined}
-                className="mb-0"
-              />
-              <div className="flex items-center gap-2 mt-0.5">
-                <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
-                {hasUserOverride && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
-                    Edited
-                  </span>
+      {/* TIM-3501: card-level overflow menu (kebab) for low-frequency actions
+          that TIM-3492 removed from the header row per TIM-3300 canon
+          ([Title] [Help(?)] ——— [Write with AI]). Hide-from-PDF + reset-to-auto
+          live here so the canon stays clean AND hidden sections always have a
+          reveal path (no stranded state).
+          Code-review fixes:
+          - Kebab + popover render OUTSIDE the opacity-60 wrapper so the
+            reveal trigger stays full-opacity when the section is hidden
+            (otherwise the only un-hide path dims with the card).
+          - Tap target ≥44px per TIM-3428 (p-2.5 + size 18 + min-w-11 min-h-11).
+          - Popover z-30 matches SectionHelp / suppliers-workspace convention.
+          - Plain &lt;button&gt; children (no role="menu"/menuitem) — we don't
+            implement the WAI-ARIA arrow-key contract; aria-haspopup="true"
+            on the trigger conveys the popover correctly without overpromising. */}
+      {canEdit && (
+        <div ref={menuRef} className="absolute top-1.5 right-1.5 z-20">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-haspopup="true"
+            aria-expanded={menuOpen}
+            aria-label={`Section options for ${section.title}`}
+            className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] p-2.5 rounded-lg text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+          >
+            <MoreVertical size={18} aria-hidden="true" />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-12 z-30 bg-white border border-[var(--border)] rounded-lg shadow-lg py-1 min-w-[220px]">
+              <button
+                type="button"
+                onClick={() => {
+                  onToggleVisible();
+                  setMenuOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--neutral-cool-50)] flex items-center gap-2"
+              >
+                {section.isVisible ? (
+                  <>
+                    <EyeOff size={14} aria-hidden="true" className="text-[var(--neutral-cool-600)]" />
+                    Hide from PDF
+                  </>
+                ) : (
+                  <>
+                    <Eye size={14} aria-hidden="true" className="text-[var(--neutral-cool-600)]" />
+                    Show in PDF
+                  </>
                 )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {canEdit && hasUserOverride && !section.isEditing && (
+              </button>
+              {hasUserOverride && (
                 <button
-                  onClick={onResetToAuto}
-                  title="Reset to auto-generated content"
-                  className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+                  type="button"
+                  disabled={!canReset}
+                  title={
+                    section.isEditing
+                      ? "Save or cancel your edit before resetting"
+                      : section.isGenerating || isStreaming
+                        ? "Wait for the current generation to finish"
+                        : undefined
+                  }
+                  onClick={() => {
+                    onResetToAuto();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--neutral-cool-50)] flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
+                  <RotateCcw size={14} aria-hidden="true" className="text-[var(--neutral-cool-600)]" />
+                  Reset to AI-generated
                 </button>
               )}
-              <button
-                onClick={onToggleVisible}
-                title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
-                className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
-              >
-                {section.isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              </button>
             </div>
-          </div>
-        ) : (
-          /* Collapsed: standard card title row */
-          <div className="flex items-center gap-2 sm:gap-3">
+          )}
+        </div>
+      )}
+
+      {/* TIM-3501: opacity-60 dim is on this inner wrapper, NOT the outer card.
+          Keeps the kebab + popover at full opacity when the section is hidden
+          so the "Show in PDF" reveal path is always visible. */}
+      <div className={`transition-opacity ${section.isVisible ? "opacity-100" : "opacity-60"}`}>
+      {/* Header — TIM-3492: identical title styling in collapsed & expanded
+          (text-xl font-semibold per TIM-3491 directive — intentionally diverges
+          from the canonical SectionHeader's text-sm because BP cards are
+          top-level expandable sections, not sub-section headers).
+          TIM-3501: right side stays strictly [Write with AI] per TIM-3300.
+          (StatusChip was removed entirely by TIM-3506 board redirect.)
+          Collapsed-row tap target preserved per TIM-3428 (full row is the
+          expand button); expanded uses a chevron-only collapse button so
+          clicks in the title area during edit don't accidentally collapse.
+          pr-12 on the inner header flex reserves room for the kebab. */}
+      <div className="px-4 sm:px-5 py-4">
+        <div className="flex items-center gap-2 sm:gap-3 pr-12">
+          {section.isExpanded ? (
+            <>
+              <button
+                type="button"
+                onClick={onToggleExpand}
+                aria-expanded={true}
+                aria-label={`Collapse ${section.title}`}
+                className="flex-shrink-0 p-0.5 rounded hover:bg-[var(--neutral-cool-100)] transition-colors"
+              >
+                <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)]" />
+              </button>
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                <h2
+                  className="text-xl font-semibold text-[var(--foreground)] truncate min-w-0"
+                  title={section.title}
+                >
+                  {section.title}
+                </h2>
+                {blurb && (
+                  <SectionHelp title={section.title}>{blurb}</SectionHelp>
+                )}
+              </div>
+            </>
+          ) : (
             <button
+              type="button"
               onClick={onToggleExpand}
-              className="flex-1 flex items-center gap-2 text-left min-w-0"
               aria-expanded={false}
+              aria-label={`Expand ${section.title}`}
+              className="flex-1 flex items-center gap-2 sm:gap-3 text-left min-w-0"
             >
               <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-xl font-semibold text-[var(--foreground)] truncate">{section.title}</h2>
-                  <StatusChip section={section} />
-                </div>
-                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{blurb}</p>
-              </div>
+              <h2
+                className="text-xl font-semibold text-[var(--foreground)] truncate min-w-0 flex-1"
+                title={section.title}
+              >
+                {section.title}
+              </h2>
             </button>
+          )}
+          {section.isExpanded && canEdit && !section.isEditing && !isStreaming && onWriteWithAi && (
             <button
-              onClick={onToggleVisible}
-              title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
-              className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+              type="button"
+              onClick={onWriteWithAi}
+              aria-label={`Write ${section.title} with AI`}
+              className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap"
             >
-              {section.isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              <Sparkles size={12} aria-hidden="true" />
+              Write with AI
             </button>
+          )}
+        </div>
+
+        {/* Sub-header: source label + Edited badge (expanded), or blurb (collapsed).
+            TIM-3501: pl tracks chevron-button width + flex gap to align under
+            the title — expanded chevron has p-0.5 (≈20px), collapsed is plain
+            (16px); inner gap is gap-2 sm:gap-3. */}
+        {section.isExpanded ? (
+          <div className="flex items-center gap-2 mt-1 pl-7 sm:pl-8">
+            <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
+            {hasUserOverride && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
+                Edited
+              </span>
+            )}
           </div>
+        ) : (
+          <p className="text-xs text-[var(--muted-foreground)] mt-0.5 pl-6 sm:pl-7">{blurb}</p>
         )}
 
-        {/* "See an example" link — below SectionHeader when expanded */}
         {section.isExpanded && bpExamples.length > 0 && (
-          <div className="pl-6 mt-1">
+          <div className="pl-7 sm:pl-8 mt-1">
             <button
               type="button"
               onClick={() => {
@@ -1292,14 +2045,12 @@ function SectionCard({
                       {ex.shopType}
                     </p>
                   </div>
-                  <button
-                    type="button"
+                  <CollapseButton
                     onClick={() => setOpenExample(false)}
+                    size={13}
                     aria-label="Close example"
-                    className="text-[var(--dark-grey)] hover:text-[var(--foreground)] transition-colors focus-visible:outline-none ml-2 shrink-0"
-                  >
-                    <X size={13} aria-hidden="true" />
-                  </button>
+                    className="text-[var(--dark-grey)] hover:text-[var(--foreground)] focus-visible:outline-none ml-2 shrink-0"
+                  />
                 </div>
                 <p className="text-sm text-[var(--gray-1200)] leading-relaxed italic border-l-2 border-[var(--warm-950)] pl-3">
                   {ex.answer}
@@ -1388,6 +2139,217 @@ function SectionCard({
           </div>
         </div>
       )}
+      </div>
+    </div>
+  );
+}
+
+// ── TIM-3111: CustomSectionCard ───────────────────────────────────────────────
+
+interface CustomSectionCardProps {
+  section: CustomSectionState;
+  canEdit: boolean;
+  // TIM-3490: visual marker for streaming state. Optional — auto-derived
+  // from `section.isGenerating` when not provided.
+  isStreaming?: boolean;
+  onToggleExpand: () => void;
+  onToggleVisible: () => void;
+  onTitleEditStart: () => void;
+  onTitleChange: (val: string) => void;
+  onTitleSave: () => void;
+  onTitleCancel: () => void;
+  onEditStart: () => void;
+  onEditChange: (val: string) => void;
+  onEditSave: () => void;
+  onEditCancel: () => void;
+  onDelete: () => void;
+  onWriteWithAi?: () => void;
+}
+
+function CustomSectionCard({
+  section,
+  canEdit,
+  onToggleExpand,
+  onToggleVisible,
+  onTitleEditStart,
+  onTitleChange,
+  onTitleSave,
+  onTitleCancel,
+  onEditStart,
+  onEditChange,
+  onEditSave,
+  onEditCancel,
+  onDelete,
+  onWriteWithAi,
+}: CustomSectionCardProps) {
+  const displayContent = section.isEditing ? section.editBuffer : (section.userContent ?? "");
+  const hasContent = Boolean(displayContent.trim());
+
+  return (
+    <div
+      className={`group rounded-xl border bg-white ${
+        section.isVisible ? "border-[var(--border)]" : "border-[var(--neutral-cool-200)]"
+      }`}
+    >
+      {/* TIM-3501: opacity-60 wraps only the content area so the visibility
+          toggle (Eye in the action row below) stays full-opacity when the
+          section is hidden — preserves the reveal path for stranded sections. */}
+      <div className={`transition-opacity ${section.isVisible ? "opacity-100" : "opacity-60"}`}>
+      {/* Header */}
+      <div className="px-4 sm:px-5 py-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Toggle expand + title */}
+          <button
+            onClick={onToggleExpand}
+            className="flex-1 flex items-center gap-2 text-left min-w-0"
+            aria-expanded={section.isExpanded}
+          >
+            {section.isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
+            )}
+            <div className="flex-1 min-w-0">
+              {section.isTitleEditing ? (
+                <input
+                  type="text"
+                  value={section.titleBuffer}
+                  onChange={(e) => onTitleChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); onTitleSave(); }
+                    if (e.key === "Escape") onTitleCancel();
+                  }}
+                  onBlur={onTitleSave}
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                  maxLength={200}
+                  placeholder="Section name"
+                  className="w-full text-base font-semibold text-[var(--foreground)] border-b border-[var(--teal)] bg-transparent outline-none pb-0.5"
+                />
+              ) : (
+                <h2 className="text-base font-semibold text-[var(--foreground)] truncate">
+                  {section.title}
+                </h2>
+              )}
+              {!section.isExpanded && !section.isTitleEditing && (
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                  {hasContent ? "Has content" : "No content yet"}
+                </p>
+              )}
+            </div>
+          </button>
+
+          {/* TIM-3490: Up/down arrows removed — drag-to-reorder via the
+              shared sortable canon replaces this control. */}
+          <div className="flex items-center gap-1 shrink-0">
+            {canEdit && section.isExpanded && !section.isTitleEditing && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onTitleEditStart(); }}
+                title="Rename section"
+                className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {canEdit && section.isExpanded && !section.isTitleEditing && onWriteWithAi && !section.isGenerating && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onWriteWithAi(); }}
+                className="hidden sm:inline-flex text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                Write with AI
+              </button>
+            )}
+            {section.isGenerating && (
+              <Loader2 className="w-3.5 h-3.5 text-[var(--teal)] animate-spin" />
+            )}
+            {/* TIM-3501: visibility toggle restored to the existing action row
+                (custom-section pattern — reorder/rename/Write/visibility/delete
+                were always icon-clustered here, unlike standard SectionCard
+                which routes visibility through the kebab to keep TIM-3300
+                header canon). When the section is hidden the button stays
+                ALWAYS visible (not hover-revealed) so touch users — who have
+                no hover — always have a reveal path. Combined with the
+                opacity-60 wrapper, the icon renders at ~60% alpha but is
+                discoverable, fixing the stranded-hidden-state on mobile. */}
+            {canEdit && (
+              <button
+                type="button"
+                onClick={onToggleVisible}
+                title={section.isVisible ? "Hide from PDF" : "Show in PDF"}
+                aria-label={section.isVisible ? `Hide ${section.title} from PDF` : `Show ${section.title} in PDF`}
+                className={`p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors ${
+                  section.isVisible
+                    ? "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                    : "opacity-100"
+                }`}
+              >
+                {section.isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              </button>
+            )}
+            {canEdit && (
+              <button
+                type="button"
+                onClick={onDelete}
+                title="Delete section"
+                className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-red-600 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      {section.isExpanded && (
+        <div className="px-5 pb-5">
+          <div className="border-t border-[var(--neutral-cool-150)] pt-4">
+            {section.isEditing ? (
+              <div>
+                <textarea
+                  value={section.editBuffer}
+                  onChange={(e) => onEditChange(e.target.value)}
+                  className="w-full min-h-[160px] text-sm text-[var(--foreground)] border border-[var(--gray-750)] rounded-xl px-3 py-2.5 resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)] leading-relaxed"
+                  placeholder="Write your custom section content here..."
+                  disabled={section.isSaving}
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={onEditSave}
+                    disabled={section.isSaving}
+                    className="px-3 py-1.5 rounded-lg bg-[var(--teal)] text-white text-xs font-medium hover:bg-[var(--teal-850)] transition-colors disabled:opacity-50"
+                  >
+                    {section.isSaving ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={onEditCancel}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[var(--gray-1150)] text-xs font-medium hover:bg-[var(--neutral-cool-100)] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={canEdit ? onEditStart : undefined}
+                className={canEdit ? "cursor-text rounded-lg hover:bg-[var(--neutral-cool-50)] -mx-1 px-1 py-0.5 transition-colors" : ""}
+                title={canEdit ? "Click to edit" : undefined}
+              >
+                {hasContent ? (
+                  <MarkdownContent content={displayContent} />
+                ) : (
+                  <span className="text-[var(--dark-grey)] italic text-sm">
+                    Click to add content for this section.
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      </div>
     </div>
   );
 }

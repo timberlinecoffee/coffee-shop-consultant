@@ -37,7 +37,7 @@ export function LanguageSettingsCard({ initial }: { initial: AccountSettings }) 
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[var(--border)] p-6">
+    <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] p-6">
       <h2 className="font-semibold text-[var(--foreground)] mb-1">AI Output Language</h2>
       <p className="text-sm text-[var(--dark-grey)] mb-4">
         Choose the language for AI-generated content such as your business plan and coaching
@@ -65,7 +65,7 @@ export function LanguageSettingsCard({ initial }: { initial: AccountSettings }) 
           disabled={saving}
           className="text-sm font-medium bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
         >
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? "Saving…" : "Save Changes"}
         </button>
         {status === "saved" ? (
           <span className="text-sm text-[var(--teal)]">Saved</span>

@@ -7,12 +7,12 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-import { PLATFORM_AI_MODEL } from "@/lib/ai/models"
-import Anthropic from "@anthropic-ai/sdk";
+import { runScoutTurn } from "@/lib/ai/scout-adapter";
 import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import { toTitleCase } from "@/lib/text";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -194,10 +194,9 @@ function stationToCategory(station: string): string {
 
 async function aiNormalise(
   headers: string[],
-  dataRows: Record<string, CellValue>[]
+  dataRows: Record<string, CellValue>[],
+  userId: string,
 ): Promise<AiResponse> {
-  const client = new Anthropic();
-
   // Send at most 60 rows to the AI to keep prompt size reasonable
   const sample = dataRows.slice(0, 60);
 
@@ -262,19 +261,17 @@ Return ONLY valid JSON matching this exact structure (no markdown, no explanatio
   ]
 }`;
 
-  const msg = await client.messages.create({
-    model: PLATFORM_AI_MODEL,
-    max_tokens: 8192,
+  const result = await runScoutTurn({
+    lane: "buildout_import",
+    systemBlocks: [],
     messages: [{ role: "user", content: prompt }],
+    maxTokens: 8192,
+    userId,
+    routeTag: "/api/workspaces/buildout/import",
   });
 
-  const text = msg.content
-    .filter((b) => b.type === "text")
-    .map((b) => (b as { type: "text"; text: string }).text)
-    .join("");
-
   // Strip any accidental markdown fences
-  const clean = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+  const clean = result.text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
 
   try {
     return JSON.parse(clean) as AiResponse;
@@ -291,6 +288,15 @@ export async function POST(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "buildout:import",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   const { data: profile } = await supabase
     .from("users")
@@ -346,7 +352,7 @@ export async function POST(request: NextRequest) {
 
   let aiResult: AiResponse;
   try {
-    aiResult = await aiNormalise(parsed.headers, parsed.dataRows);
+    aiResult = await aiNormalise(parsed.headers, parsed.dataRows, user.id);
   } catch (err) {
     console.error("AI normalise error:", err);
     return Response.json(

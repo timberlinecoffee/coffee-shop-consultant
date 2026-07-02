@@ -5,11 +5,12 @@ export const runtime = "nodejs"
 export const maxDuration = 30
 
 import { NextResponse, type NextRequest } from "next/server"
-import Anthropic from "@anthropic-ai/sdk"
+import { runScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeAIOutput } from "@/lib/normalize"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
-const TITLE_MODEL = "claude-haiku-4-5-20251001"
+const ROUTE_PATH = "/api/copilot/threads/[threadId]/title"
 const MAX_WORDS = 6
 const SYSTEM_PROMPT =
   "You title coffee-shop coaching conversations. Reply with the title only — at most six words, no quotes, no trailing punctuation, Title Case."
@@ -56,6 +57,15 @@ export async function POST(
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
+  // Rule 4: rate-limit a paid-API route.
+  const rateLimited = await enforceRateLimit({
+    bucket: "copilot:thread-title",
+    id: user.id,
+    limit: 10,
+    windowSec: 60,
+  })
+  if (rateLimited) return rateLimited
+
   // Confirm the thread exists and belongs to the caller (RLS enforces plan ownership).
   const { data: existing, error: lookupError } = await supabase
     .from("ai_conversations")
@@ -72,29 +82,22 @@ export async function POST(
     return NextResponse.json({ title: existing.title, regenerated: false })
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    return NextResponse.json({ error: "Title model is unavailable." }, { status: 503 })
-  }
-
-  const anthropic = new Anthropic({ apiKey })
-
   let rawTitle = ""
   try {
-    const response = await anthropic.messages.create({
-      model: TITLE_MODEL,
-      max_tokens: 40,
-      system: SYSTEM_PROMPT,
+    const result = await runScoutTurn({
+      lane: "chat_title",
+      systemBlocks: [{ text: SYSTEM_PROMPT }],
       messages: [
         {
           role: "user",
           content: `First message:\n${firstUserMessage.slice(0, 2_000)}\n\nReturn just the title.`,
         },
       ],
+      maxTokens: 40,
+      userId: user.id,
+      routeTag: ROUTE_PATH,
     })
-    for (const block of response.content) {
-      if (block.type === "text") rawTitle += block.text
-    }
+    rawTitle = result.text
   } catch (err) {
     const message = err instanceof Error ? err.message : "Title generation failed."
     return NextResponse.json({ error: message }, { status: 502 })

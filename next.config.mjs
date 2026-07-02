@@ -2,6 +2,11 @@ import { withSentryConfig } from '@sentry/nextjs'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  turbopack: {
+    // Explicit root prevents Turbopack from wandering up to a parent lockfile
+    // in multi-project agent workspaces (TIM-3257).
+    root: ".",
+  },
   async redirects() {
     return [
       { source: '/links', destination: '/l', permanent: true },
