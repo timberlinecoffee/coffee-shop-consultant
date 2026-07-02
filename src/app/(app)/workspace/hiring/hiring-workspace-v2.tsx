@@ -1334,23 +1334,30 @@ function RoleScorecardSection({
   const [scorecards, setScorecards] = useState<InterviewScorecard[]>([]);
   const [selectedScorecardId, setSelectedScorecardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
+  // Refetch when the selected role changes. RolePageV2 is not remounted
+  // between roles, so we cannot rely on component identity to reset state —
+  // watch `role.id` and refresh scorecards + selection on every switch.
   useEffect(() => {
-    if (loaded || loading) return;
+    let cancelled = false;
     setLoading(true);
+    setScorecards([]);
+    setSelectedScorecardId(null);
+    setRenaming(null);
     fetch(`/api/workspaces/hiring/scorecards?role_id=${role.id}`)
       .then((r) => r.json())
       .then((sc: unknown) => {
+        if (cancelled) return;
         const list = Array.isArray(sc) ? (sc as InterviewScorecard[]) : [];
         setScorecards(list);
         const def = list.find((s) => s.is_default) ?? list[0] ?? null;
         setSelectedScorecardId(def?.id ?? null);
       })
-      .finally(() => { setLoading(false); setLoaded(true); });
-  }, [role.id, loaded, loading]);
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [role.id]);
 
   const scorecardQuestions = selectedScorecardId
     ? questions.filter((q) => q.scorecard_id === selectedScorecardId)
@@ -1396,15 +1403,12 @@ function RoleScorecardSection({
   }
 
   async function deleteScorecard(id: string) {
-    setScorecards((prev) => {
-      const next = prev.filter((s) => s.id !== id);
-      setSelectedScorecardId((cur) => {
-        if (cur !== id) return cur;
-        const fallback = next.find((s) => s.is_default) ?? next[0] ?? null;
-        return fallback?.id ?? null;
-      });
-      return next;
-    });
+    const next = scorecards.filter((s) => s.id !== id);
+    setScorecards(next);
+    if (selectedScorecardId === id) {
+      const fallback = next.find((s) => s.is_default) ?? next[0] ?? null;
+      setSelectedScorecardId(fallback?.id ?? null);
+    }
     await fetch(`/api/workspaces/hiring/scorecards?id=${id}`, { method: "DELETE" });
   }
 
@@ -1441,18 +1445,6 @@ function RoleScorecardSection({
                   ? "border-[var(--teal)] ring-1 ring-[var(--teal)]"
                   : "border-[var(--border)]"
               }`}
-              onClick={() => {
-                if (renaming !== sc.id) setSelectedScorecardId(sc.id);
-              }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (renaming === sc.id) return;
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setSelectedScorecardId(sc.id);
-                }
-              }}
             >
               {renaming === sc.id ? (
                 <>
@@ -1472,12 +1464,17 @@ function RoleScorecardSection({
                 </>
               ) : (
                 <>
-                  <span className="flex-1 text-sm text-[var(--foreground)] truncate">
-                    {sc.name}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedScorecardId(sc.id)}
+                    className="flex-1 min-w-0 text-left text-sm text-[var(--foreground)] truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)] rounded"
+                    aria-pressed={sc.id === selectedScorecardId}
+                  >
+                    <span className="truncate">{sc.name}</span>
                     {sc.is_default && (
                       <span className="ml-2 text-[10px] font-semibold text-[var(--teal)] bg-[var(--teal-bg-50)] px-1.5 py-0.5 rounded-full">Default</span>
                     )}
-                  </span>
+                  </button>
                   {canEdit && (
                     <>
                       <button
@@ -1523,8 +1520,8 @@ function RoleScorecardSection({
       {selectedScorecardId && (
         <div className="mt-4 rounded-xl border border-[var(--border)] bg-white overflow-hidden">
           <div className="px-4 py-3 border-b border-[var(--border)] flex items-center gap-1">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Scorecard grid</p>
-            <SectionHelp title="Scorecard grid">
+            <p className="text-sm font-semibold text-[var(--foreground)]">Scorecard Grid</p>
+            <SectionHelp title="Scorecard Grid">
               Rate each candidate (rows) on each competency (columns) on a 1–5 scale.
               Weighted totals appear automatically. Use multipliers to weight competencies differently.
             </SectionHelp>
