@@ -122,35 +122,64 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">6. Governing Law</h2>
             <p>
-              These Terms are governed by the laws of the State of Colorado, without regard to its
-              conflict-of-law principles. Any legal action arising from these Terms must be brought in
-              the state or federal courts located in Denver, Colorado.
+              These Terms are governed by and construed in accordance with the laws of the Province of
+              Alberta and the applicable federal laws of Canada, without regard to any conflict-of-law
+              principles that would cause the laws of another jurisdiction to apply. The United Nations
+              Convention on Contracts for the International Sale of Goods does not apply to these Terms.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold mb-3">7. Dispute Resolution</h2>
             <p>
-              Before filing any formal legal claim, you agree to first contact us at{" "}
+              <strong>Informal Resolution.</strong> Before commencing any formal proceeding, you agree
+              to contact us at{" "}
               <a href="mailto:hello@timberline.coffee" className="text-[var(--teal)] underline">
                 hello@timberline.coffee
               </a>{" "}
-              and give us 30 days to attempt to resolve the dispute informally.
+              and attempt to resolve the dispute informally. If the dispute is not resolved within
+              thirty (30) days of first contact, either party may proceed as set out below.
             </p>
             <p className="mt-3">
-              If informal resolution fails, any dispute will be resolved through binding individual
-              arbitration administered by the American Arbitration Association under its Consumer
-              Arbitration Rules. You waive any right to participate in a class action lawsuit or
-              class-wide arbitration.
+              <strong>Binding Arbitration.</strong> Subject to the consumer-law qualifications in this
+              section, any dispute, claim, or controversy arising out of or relating to these Terms,
+              the Service, or its subject matter or formation (including non-contractual disputes) that
+              is not resolved informally shall be finally determined by binding arbitration administered
+              by the ADR Institute of Canada, Inc. (&quot;ADRIC&quot;) under its National Arbitration
+              Rules (as amended from time to time), which rules are deemed incorporated by reference.
+              The arbitration shall be:
+            </p>
+            <ul className="list-disc pl-6 space-y-1 mt-2">
+              <li>conducted in the English language;</li>
+              <li>seated and held in Calgary, Alberta, Canada (or via videoconference by mutual agreement);</li>
+              <li>decided by a single arbitrator, appointed in accordance with ADRIC rules; and</li>
+              <li>confidential, except as necessary to enforce an award.</li>
+            </ul>
+            <p className="mt-3">
+              Each party shall bear its own legal costs. The ADRIC administrative fees shall be
+              allocated per ADRIC rules. The arbitral award shall be final and binding and may be
+              entered and enforced in any court of competent jurisdiction.
             </p>
             <p className="mt-3">
-              Nothing in this section prevents either party from seeking injunctive relief in court for
-              intellectual property infringement or unauthorized use.
+              <strong>Injunctive Relief Exception.</strong> Nothing in this section prevents either
+              party from seeking urgent or interim injunctive or other equitable relief from a court of
+              competent jurisdiction where necessary to prevent irreparable harm pending arbitration.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">8. Changes to These Terms</h2>
+            <h2 className="text-xl font-semibold mb-3">8. Venue and Submission to Jurisdiction</h2>
+            <p>
+              For any matter not subject to arbitration, or for recognition or enforcement of an
+              arbitral award, the parties irrevocably submit to the exclusive jurisdiction of the
+              courts of the Province of Alberta, sitting in Calgary, Alberta. Each party waives any
+              objection to the laying of venue of any proceeding in Calgary and any claim that any such
+              court is an inconvenient or inappropriate forum.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">9. Changes to These Terms</h2>
             <p>
               We may update these Terms from time to time. If we make material changes, we will notify
               you by email or by posting a notice on the Service at least 14 days before the changes
@@ -160,7 +189,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">9. Contact</h2>
+            <h2 className="text-xl font-semibold mb-3">10. Contact</h2>
             <p>
               Ivy &amp; Rill Consulting Inc.
               <br />
