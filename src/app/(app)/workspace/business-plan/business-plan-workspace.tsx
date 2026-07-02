@@ -17,8 +17,9 @@ import type {
 } from "@/lib/business-plan";
 import { BUSINESS_PLAN_GROUPS, BUSINESS_PLAN_SECTIONS } from "@/lib/business-plan";
 import { BP_FIELD_EXAMPLES, type BPFieldExample, type BPFieldExampleKey } from "@/lib/business-plan-field-examples";
-import { InfoTip } from "@/components/ui/info-tip";
-import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
+import { SectionHeader } from "@/components/section-header/SectionHeader";
+import type { CoverSettings } from "./cover-branding-panel";
+import { CoverConfigModal } from "./cover-config-modal";
 import { FinancialDocumentsPanel, type FinancialDocumentState } from "./financial-documents-panel";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -54,6 +55,8 @@ interface Props {
   initialTrialMessagesUsed?: number;
   initialCoverSettings: CoverSettings;
   logoPublicUrl: string | null;
+  // TIM-3576: user's full_name from Business Profile for cover pre-population
+  authorFullName: string | null;
   initialFinancialDocuments: FinancialDocumentState[];
   // TIM-2466: Empty source workspaces produced byte-identical BP content
   // across personas (CQ-06). The checklist names the unfinished workspaces
@@ -179,6 +182,7 @@ export function BusinessPlanWorkspace({
   initialTrialMessagesUsed,
   initialCoverSettings,
   logoPublicUrl,
+  authorFullName,
   initialFinancialDocuments,
   preGenerateChecklist,
 }: Props) {
@@ -195,6 +199,9 @@ export function BusinessPlanWorkspace({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isPrintingPdf, setIsPrintingPdf] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  // TIM-3576: cover config modal — shown before print/export so users configure
+  // the cover without it occupying the editing view.
+  const [coverModalAction, setCoverModalAction] = useState<"export" | "print" | null>(null);
   // TIM-2336: export-time validation gate. When the validate endpoint returns
   // blocking findings, we hold the export action in `pendingExportAction` and
   // show the gate modal. On Continue we replay the action with ?force=1.
@@ -581,23 +588,28 @@ export function BusinessPlanWorkspace({
     }
   }, [performPdfFetch]);
 
-  const handlePrintPlan = useCallback(async () => {
-    setIsPrintingPdf(true);
-    try {
-      await runValidationThen("print");
-    } finally {
-      setIsPrintingPdf(false);
-    }
-  }, [runValidationThen]);
+  // TIM-3576: open cover config modal before running validation + export/print.
+  const handlePrintPlan = useCallback(() => {
+    setCoverModalAction("print");
+  }, []);
 
-  const handleExportPdf = useCallback(async () => {
-    setIsExportingPdf(true);
-    try {
-      await runValidationThen("export");
-    } finally {
-      setIsExportingPdf(false);
+  const handleExportPdf = useCallback(() => {
+    setCoverModalAction("export");
+  }, []);
+
+  // Called when user clicks "Continue" in cover config modal.
+  const handleCoverModalConfirm = useCallback(async () => {
+    const mode = coverModalAction;
+    setCoverModalAction(null);
+    if (!mode) return;
+    if (mode === "print") {
+      setIsPrintingPdf(true);
+      try { await runValidationThen("print"); } finally { setIsPrintingPdf(false); }
+    } else {
+      setIsExportingPdf(true);
+      try { await runValidationThen("export"); } finally { setIsExportingPdf(false); }
     }
-  }, [runValidationThen]);
+  }, [coverModalAction, runValidationThen]);
 
   const handleGateContinue = useCallback(async () => {
     const mode = pendingExportAction;
@@ -699,6 +711,18 @@ export function BusinessPlanWorkspace({
     <>
     {AIReviewModalNode}
     {ProgressOverlayNode}
+    {/* TIM-3576: cover config modal opens before print/export */}
+    {coverModalAction && (
+      <CoverConfigModal
+        initialSettings={initialCoverSettings}
+        logoPublicUrl={logoPublicUrl}
+        shopName={shopName}
+        authorFullName={authorFullName}
+        action={coverModalAction}
+        onConfirm={handleCoverModalConfirm}
+        onCancel={() => setCoverModalAction(null)}
+      />
+    )}
     {validationReport && (
       <ExportGateModal
         report={validationReport}
@@ -739,14 +763,6 @@ export function BusinessPlanWorkspace({
                 workspaceKey="business_plan"
                 focusLabel="business plan"
                 hasContent={hasContent}
-              />
-              <SaveStatusAndButton
-                saving={saveState.kind === "saving"}
-                savedAt={saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null}
-                unsaved={saveState.kind === "dirty"}
-                error={saveState.kind === "error" ? saveState.message : null}
-                canEdit={canEdit}
-                onSave={handleManualSave}
               />
               {/* TIM-2416: the standalone "Check Plan" header CTA was removed.
                   Plan Quality Check now lives in the AI companion (Check mode)
@@ -803,6 +819,14 @@ export function BusinessPlanWorkspace({
                   </>
                 )}
               </WorkspaceActionMenu>
+              <SaveStatusAndButton
+                saving={saveState.kind === "saving"}
+                savedAt={saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null}
+                unsaved={saveState.kind === "dirty"}
+                error={saveState.kind === "error" ? saveState.message : null}
+                canEdit={canEdit}
+                onSave={handleManualSave}
+              />
             </>
           }
         />
@@ -857,12 +881,7 @@ export function BusinessPlanWorkspace({
           </div>
         )}
 
-        {/* Cover & Branding panel */}
-        <CoverBrandingPanel
-          initialSettings={initialCoverSettings}
-          logoPublicUrl={logoPublicUrl}
-          shopName={shopName}
-        />
+        {/* TIM-3576: Cover & Branding moved to print/export modal — CoverBrandingPanel removed. */}
 
         {/* Financial documents panel */}
         <FinancialDocumentsPanel initialDocuments={initialFinancialDocuments} />
@@ -1161,106 +1180,92 @@ function SectionCard({
     >
       {/* Header */}
       <div className="px-4 sm:px-5 py-4">
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Toggle button — chevron + title row */}
-          <button
-            onClick={onToggleExpand}
-            className="flex-1 flex items-center gap-2 text-left min-w-0"
-            aria-expanded={section.isExpanded}
-          >
-            {section.isExpanded ? (
-              <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
-            )}
+        {section.isExpanded ? (
+          /* TIM-3350: SectionHeader replaces Pattern B inline markup when expanded */
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={onToggleExpand}
+              aria-expanded={true}
+              aria-label={`Collapse ${section.title}`}
+              className="flex-shrink-0 p-0.5 rounded hover:bg-[var(--neutral-cool-100)] transition-colors"
+            >
+              <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)]" />
+            </button>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-xl font-semibold text-[var(--foreground)] truncate">{section.title}</h2>
-                {!section.isExpanded && <StatusChip section={section} />}
-              </div>
-              {section.isExpanded ? (
+              <SectionHeader
+                title={section.title}
+                helpContent={blurb || undefined}
+                onWriteWithAi={canEdit && !section.isEditing && !isStreaming && onWriteWithAi ? onWriteWithAi : undefined}
+                className="mb-0"
+              />
+              <div className="flex items-center gap-2 mt-0.5">
                 <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
-              ) : (
-                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{blurb}</p>
-              )}
+                {hasUserOverride && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
+                    Edited
+                  </span>
+                )}
+              </div>
             </div>
-            {hasUserOverride && section.isExpanded && (
-              <span className="ml-2 flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
-                Edited
-              </span>
-            )}
-          </button>
-
-          {/* TIM-3112: ? tooltip — InfoTip placed OUTSIDE the toggle button to avoid
-              nested <button> invalid HTML. Sibling in the flex row, visible when expanded. */}
-          {section.isExpanded && blurb && (
-            <InfoTip label={section.title}>{blurb}</InfoTip>
-          )}
-
-          <div className="flex items-center gap-2 shrink-0">
-            {/* TIM-3112: Write with AI — hover-only on desktop, matches Concept workspace pattern.
-                Replaces the old Generate/Improve chips. */}
-            {canEdit && section.isExpanded && !section.isEditing && !isStreaming && onWriteWithAi && (
+            <div className="flex items-center gap-2 shrink-0">
+              {canEdit && hasUserOverride && !section.isEditing && (
+                <button
+                  onClick={onResetToAuto}
+                  title="Reset to auto-generated content"
+                  className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              )}
               <button
-                type="button"
-                onClick={onWriteWithAi}
-                className="hidden sm:inline-flex text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-              >
-                Write with AI
-              </button>
-            )}
-
-            {canEdit && hasUserOverride && !section.isEditing && section.isExpanded && (
-              <button
-                onClick={onResetToAuto}
-                title="Reset to auto-generated content"
+                onClick={onToggleVisible}
+                title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
                 className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                {section.isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
               </button>
-            )}
-
+            </div>
+          </div>
+        ) : (
+          /* Collapsed: standard card title row */
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={onToggleExpand}
+              className="flex-1 flex items-center gap-2 text-left min-w-0"
+              aria-expanded={false}
+            >
+              <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-xl font-semibold text-[var(--foreground)] truncate">{section.title}</h2>
+                  <StatusChip section={section} />
+                </div>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{blurb}</p>
+              </div>
+            </button>
             <button
               onClick={onToggleVisible}
               title={section.isVisible ? "Hide from PDF" : "Include in PDF"}
               className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
             >
-              {section.isVisible ? (
-                <Eye className="w-3.5 h-3.5" />
-              ) : (
-                <EyeOff className="w-3.5 h-3.5" />
-              )}
+              {section.isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
             </button>
           </div>
-        </div>
+        )}
 
-        {/* TIM-3112: "See an example" text link + mobile Write with AI — below the title row when expanded */}
-        {section.isExpanded && (
-          <div className="flex items-center justify-between pl-6 mt-1">
-            {bpExamples.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setOpenExample((v) => !v);
-                  if (!openExample) setExampleIdx(0);
-                }}
-                className="text-xs text-[var(--teal)] font-medium hover:underline focus-visible:outline-none focus:underline"
-              >
-                {openExample ? "Hide example" : "See an example"}
-              </button>
-            ) : (
-              <span />
-            )}
-            {/* Mobile Write with AI — always visible on touch screens */}
-            {canEdit && !section.isEditing && !isStreaming && onWriteWithAi && (
-              <button
-                type="button"
-                onClick={onWriteWithAi}
-                className="sm:hidden text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-all"
-              >
-                Write with AI
-              </button>
-            )}
+        {/* "See an example" link — below SectionHeader when expanded */}
+        {section.isExpanded && bpExamples.length > 0 && (
+          <div className="pl-6 mt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setOpenExample((v) => !v);
+                if (!openExample) setExampleIdx(0);
+              }}
+              className="text-xs text-[var(--teal)] font-medium hover:underline focus-visible:outline-none focus:underline"
+            >
+              {openExample ? "Hide example" : "See an example"}
+            </button>
           </div>
         )}
       </div>

@@ -113,7 +113,7 @@ export default async function BusinessPlanWorkspacePage() {
       .eq("plan_id", planId),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used")
+      .select("subscription_status, subscription_tier, copilot_trial_messages_used, full_name")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -272,6 +272,7 @@ export default async function BusinessPlanWorkspacePage() {
       initialTrialMessagesUsed={initialTrialMessagesUsed}
       initialCoverSettings={initialCoverSettings}
       logoPublicUrl={logoPublicUrl}
+      authorFullName={(profile as { full_name?: string | null } | null)?.full_name ?? null}
       initialFinancialDocuments={initialFinancialDocuments}
       preGenerateChecklist={preGenerateChecklist}
     />
