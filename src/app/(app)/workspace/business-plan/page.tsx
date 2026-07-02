@@ -111,7 +111,7 @@ export default async function BusinessPlanWorkspacePage() {
       .maybeSingle(),
     supabase
       .from("business_plan_sections")
-      .select("section_key, user_content, is_visible")
+      .select("section_key, user_content, is_visible, is_archived")
       .eq("plan_id", planId),
     supabase
       .from("users")
@@ -129,14 +129,14 @@ export default async function BusinessPlanWorkspacePage() {
       .eq("plan_id", planId),
     supabase
       .from("business_plan_custom_sections")
-      .select("id, title, user_content, is_visible, sort_order")
+      .select("id, title, user_content, is_visible, sort_order, is_archived")
       .eq("plan_id", planId)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
   ]);
 
   const savedMap = new Map(
-    (savedSections ?? []).map((s) => [s.section_key, s])
+    (savedSections ?? []).map((s) => [s.section_key, s as { user_content: string | null; is_visible: boolean; is_archived: boolean }])
   );
 
   // TIM-2488: resolve the plan's currency code so the suite-derived
@@ -183,9 +183,7 @@ export default async function BusinessPlanWorkspacePage() {
   };
 
   const sections: BusinessPlanSectionData[] = BUSINESS_PLAN_SECTIONS.map((meta) => {
-    const saved = savedMap.get(meta.key) as
-      | { user_content: string | null; is_visible: boolean }
-      | undefined;
+    const saved = savedMap.get(meta.key);
     return {
       key: meta.key,
       title: meta.title,
@@ -193,6 +191,7 @@ export default async function BusinessPlanWorkspacePage() {
       autoContent: autoContent[meta.key] ?? "",
       userContent: saved?.user_content ?? null,
       isVisible: saved?.is_visible ?? meta.defaultVisible,
+      isArchived: saved?.is_archived ?? false,
     };
   });
 
@@ -223,6 +222,7 @@ export default async function BusinessPlanWorkspacePage() {
     userContent: (row.user_content as string | null) ?? null,
     isVisible: (row.is_visible as boolean) ?? true,
     sortOrder: (row.sort_order as number) ?? 0,
+    isArchived: (row.is_archived as boolean) ?? false,
   }));
 
   // TIM-2466: Pre-generate checklist. The four source workspaces below feed

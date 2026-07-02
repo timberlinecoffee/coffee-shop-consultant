@@ -5,7 +5,7 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, Pencil, Sparkles, Eye, EyeOff, RotateCcw, MoreVertical } from "lucide-react";
+import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, Pencil, Sparkles, Eye, EyeOff, RotateCcw, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
 import { SectionHelp } from "@/components/ui/section-help";
 import { CollapseButton } from "@/components/ui/CollapseButton";
 import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
@@ -98,6 +98,8 @@ interface SectionState extends BusinessPlanSectionData {
   editBuffer: string;
   isSaving: boolean;
   isGenerating?: boolean;
+  // TIM-3575: archive state is mirrored from DB; optimistically updated.
+  isArchived: boolean;
 }
 
 // ── SSE fetch helper ──────────────────────────────────────────────────────────
@@ -212,6 +214,8 @@ interface CustomSectionState extends CustomSectionData {
   isSaving: boolean;
   isGenerating?: boolean;
   isDeleting?: boolean;
+  // TIM-3575: archive state mirrored from DB.
+  isArchived: boolean;
 }
 
 export function BusinessPlanWorkspace({
@@ -242,6 +246,7 @@ export function BusinessPlanWorkspace({
       isEditing: false,
       editBuffer: s.userContent ?? s.autoContent,
       isSaving: false,
+      isArchived: s.isArchived,
     }))
   );
 
@@ -255,8 +260,15 @@ export function BusinessPlanWorkspace({
       isTitleEditing: false,
       titleBuffer: cs.title,
       isSaving: false,
+      isArchived: cs.isArchived,
     }))
   );
+
+  // TIM-3575: archive panel open/close state.
+  const [archivePanelOpen, setArchivePanelOpen] = useState(false);
+  // TIM-3575: archive confirm dialog target.
+  type ArchiveTarget = { type: "standard"; key: BusinessPlanSectionKey; title: string } | { type: "custom"; id: string; title: string };
+  const [archiveConfirmTarget, setArchiveConfirmTarget] = useState<ArchiveTarget | null>(null);
   const [isAddingCustomSection, setIsAddingCustomSection] = useState(false);
   const [customSectionError, setCustomSectionError] = useState<string | null>(null);
   // Dirty buffer for custom section content autosave, keyed by custom section id.
@@ -367,6 +379,55 @@ export function BusinessPlanWorkspace({
     });
   }, [updateSection]);
 
+  // ── TIM-3575: Archive / restore helpers ──────────────────────────────────
+
+  const archiveSection = useCallback(async (key: BusinessPlanSectionKey) => {
+    updateSection(key, { isArchived: true, isExpanded: false });
+    setArchiveConfirmTarget(null);
+    await fetch(`/api/business-plan/sections/${key}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "archived" }),
+    });
+  }, [updateSection]);
+
+  const restoreSection = useCallback(async (key: BusinessPlanSectionKey) => {
+    updateSection(key, { isArchived: false, isExpanded: true });
+    await fetch(`/api/business-plan/sections/${key}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "active" }),
+    });
+  }, [updateSection]);
+
+  const archiveCustomSection = useCallback(async (id: string) => {
+    setCustomSections((prev) => prev.map((cs) => cs.id !== id ? cs : { ...cs, isArchived: true, isExpanded: false }));
+    setArchiveConfirmTarget(null);
+    await fetch(`/api/business-plan/custom-sections/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "archived" }),
+    });
+  }, []);
+
+  const restoreCustomSection = useCallback(async (id: string) => {
+    setCustomSections((prev) => prev.map((cs) => cs.id !== id ? cs : { ...cs, isArchived: false, isExpanded: true }));
+    await fetch(`/api/business-plan/custom-sections/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "active" }),
+    });
+  }, []);
+
+  const addOptionalSection = useCallback(async (sectionKey: BusinessPlanSectionKey) => {
+    // Optimistically mark the section as not-archived and add to order.
+    updateSection(sectionKey, { isArchived: false, isExpanded: true });
+    setSectionOrder((prev) => [...prev, sectionKey]);
+    await fetch(`/api/business-plan/sections/${sectionKey}/add-optional`, {
+      method: "POST",
+    });
+  }, [updateSection]);
+
   // ── TIM-3490: Drag-to-reorder helpers ───────────────────────────────────
 
   // Effective merged order: standard keys + custom UUIDs in the persisted
@@ -376,14 +437,24 @@ export function BusinessPlanWorkspace({
     () => customSections.map((cs) => cs.id),
     [customSections],
   );
+  // TIM-3575: archived section IDs (standard keys + custom UUIDs) are filtered
+  // out of the active order so the workspace only renders non-archived sections.
+  const archivedIds = useMemo(
+    () => [
+      ...sections.filter((s) => s.isArchived).map((s) => s.key as string),
+      ...customSections.filter((cs) => cs.isArchived).map((cs) => cs.id),
+    ],
+    [sections, customSections],
+  );
   const effectiveOrder = useMemo(
     () =>
       resolveSectionOrder(
         sectionOrder,
         DEFAULT_BUSINESS_PLAN_SECTION_ORDER,
         customIds,
+        archivedIds,
       ),
-    [sectionOrder, customIds],
+    [sectionOrder, customIds, archivedIds],
   );
 
   // TIM-3490: ordered projection of standard sections for AI prompt
@@ -969,6 +1040,7 @@ export function BusinessPlanWorkspace({
           isTitleEditing: true,
           titleBuffer: cs.title,
           isSaving: false,
+          isArchived: false,
         },
       ]);
     } catch {
@@ -1383,6 +1455,8 @@ export function BusinessPlanWorkspace({
               }}
               onCustomDelete={(id) => handleDeleteCustomSection(id)}
               onCustomWriteWithAi={(id) => void handleCustomSectionWriteWithAi(id)}
+              onArchiveSection={(key, title) => setArchiveConfirmTarget({ type: "standard", key, title })}
+              onArchiveCustomSection={(id, title) => setArchiveConfirmTarget({ type: "custom", id, title })}
             />
           </SortableContext>
         </DndContext>
@@ -1433,6 +1507,34 @@ export function BusinessPlanWorkspace({
             onConfirm={handleResetSectionOrder}
           />
         )}
+
+        {/* TIM-3575: Archive panel — inline collapsible per TIM-3579 panel IA decision. */}
+        <ArchivePanel
+          sections={sections}
+          customSections={customSections}
+          sectionOrder={sectionOrder}
+          isOpen={archivePanelOpen}
+          onToggle={() => setArchivePanelOpen((v) => !v)}
+          canEdit={canEdit}
+          onRestoreSection={(key) => void restoreSection(key)}
+          onRestoreCustomSection={(id) => void restoreCustomSection(id)}
+          onAddOptional={(key) => void addOptionalSection(key)}
+        />
+
+        {/* TIM-3575: Archive confirm dialog. */}
+        {archiveConfirmTarget && (
+          <ArchiveConfirmDialog
+            title={archiveConfirmTarget.title}
+            onCancel={() => setArchiveConfirmTarget(null)}
+            onConfirm={() => {
+              if (archiveConfirmTarget.type === "standard") {
+                void archiveSection(archiveConfirmTarget.key);
+              } else {
+                void archiveCustomSection(archiveConfirmTarget.id);
+              }
+            }}
+          />
+        )}
       </div>
     </div>
     {/* TIM-2416 — the AI companion mounts inside the Business Plan workspace
@@ -1481,6 +1583,9 @@ interface BpFlatSectionListProps {
   onCustomEditCancel: (id: string, fallback: string) => void;
   onCustomDelete: (id: string) => void;
   onCustomWriteWithAi: (id: string) => void;
+  // TIM-3575: archive callbacks.
+  onArchiveSection: (key: BusinessPlanSectionKey, title: string) => void;
+  onArchiveCustomSection: (id: string, title: string) => void;
 }
 
 function BpFlatSectionList(props: BpFlatSectionListProps) {
@@ -1576,6 +1681,7 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
                 else props.onGenerateExec(section.key);
               }
             : undefined;
+          const sectionMeta = sectionMetaByKey.get(section.key);
           return (
             <SortableCardRow id={section.key} canEdit={props.canEdit} key={section.key}>
               <SectionCard
@@ -1584,6 +1690,7 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
                 bpExamples={bpExamples}
                 isStreaming={props.streamingKey === section.key}
                 blurb={blurb}
+                isLocked={sectionMeta?.isLocked}
                 onToggleVisible={() =>
                   props.onToggleVisibility(section.key, section.isVisible)
                 }
@@ -1600,6 +1707,7 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
                 }
                 onResetToAuto={() => props.onResetToAuto(section.key)}
                 onWriteWithAi={onWriteWithAi}
+                onArchive={!sectionMeta?.isLocked ? () => props.onArchiveSection(section.key, section.title) : undefined}
               />
             </SortableCardRow>
           );
@@ -1623,6 +1731,7 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
               onEditCancel={() => props.onCustomEditCancel(cs.id, cs.userContent ?? "")}
               onDelete={() => props.onCustomDelete(cs.id)}
               onWriteWithAi={() => props.onCustomWriteWithAi(cs.id)}
+              onArchive={() => props.onArchiveCustomSection(cs.id, cs.title)}
             />
           </SortableCardRow>
         );
@@ -1739,6 +1848,197 @@ function ResetOrderConfirmationModal({
   );
 }
 
+// ── TIM-3575: ArchiveConfirmDialog ────────────────────────────────────────────
+
+function ArchiveConfirmDialog({
+  title,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
+        <h2 className="text-base font-semibold text-[var(--foreground)]">Archive this section?</h2>
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+          This won&rsquo;t appear in your exported plan, but you can bring it back from the archived list anytime.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            autoFocus
+            className="text-sm font-medium text-[var(--neutral-cool-700)] px-4 py-2 rounded-xl border border-[var(--neutral-cool-200)] hover:bg-[var(--neutral-cool-50)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="text-sm font-medium text-white bg-[var(--foreground)] px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
+          >
+            Archive
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── TIM-3575: ArchivePanel ────────────────────────────────────────────────────
+// Inline collapsible panel at the bottom of the section list (TIM-3579 IA decision).
+// Shows two groups: Archived (with Restore) and Optional (with Add to Plan).
+
+function ArchivePanel({
+  sections,
+  customSections,
+  sectionOrder,
+  isOpen,
+  onToggle,
+  canEdit,
+  onRestoreSection,
+  onRestoreCustomSection,
+  onAddOptional,
+}: {
+  sections: SectionState[];
+  customSections: CustomSectionState[];
+  sectionOrder: string[];
+  isOpen: boolean;
+  onToggle: () => void;
+  canEdit: boolean;
+  onRestoreSection: (key: BusinessPlanSectionKey) => void;
+  onRestoreCustomSection: (id: string) => void;
+  onAddOptional: (key: BusinessPlanSectionKey) => void;
+}) {
+  const archivedStandard = sections.filter((s) => s.isArchived);
+  const archivedCustom = customSections.filter((cs) => cs.isArchived);
+  const hasArchived = archivedStandard.length > 0 || archivedCustom.length > 0;
+
+  // Optional sections not yet in the active order.
+  const activeOrderSet = new Set([...sectionOrder, ...DEFAULT_BUSINESS_PLAN_SECTION_ORDER]);
+  const optionalSections = BUSINESS_PLAN_SECTIONS.filter(
+    (meta) => meta.isOptional && !activeOrderSet.has(meta.key),
+  );
+
+  const hasContent = hasArchived || optionalSections.length > 0;
+
+  return (
+    <div className="mt-6">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex items-center gap-1.5 text-xs text-[var(--neutral-cool-600)] hover:text-[var(--teal)] transition-colors"
+      >
+        {isOpen ? (
+          <ChevronUp className="w-3.5 h-3.5" />
+        ) : (
+          <ChevronDown className="w-3.5 h-3.5" />
+        )}
+        View archived and optional sections
+      </button>
+
+      {isOpen && (
+        <div className="mt-4 space-y-6">
+          {/* Archived group */}
+          <div>
+            <h3 className="text-xs font-semibold text-[var(--neutral-cool-600)] uppercase tracking-wider mb-2">
+              Archived
+            </h3>
+            {!hasArchived ? (
+              <p className="text-xs text-[var(--muted-foreground)] italic">No archived sections.</p>
+            ) : (
+              <div className="space-y-2">
+                {archivedStandard.map((s) => (
+                  <div
+                    key={s.key}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-[var(--border)] bg-white"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[var(--foreground)] truncate">{s.title}</p>
+                      <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                        {s.userContent ? "Has content" : "No content"}
+                      </p>
+                    </div>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => onRestoreSection(s.key)}
+                        className="flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:text-[var(--teal-850,var(--teal))] whitespace-nowrap shrink-0"
+                      >
+                        <ArchiveRestore className="w-3.5 h-3.5" />
+                        Restore
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {archivedCustom.map((cs) => (
+                  <div
+                    key={cs.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-[var(--border)] bg-white"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[var(--foreground)] truncate">{cs.title}</p>
+                      <p className="text-xs text-[var(--muted-foreground)] mt-0.5">Custom section</p>
+                    </div>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => onRestoreCustomSection(cs.id)}
+                        className="flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:text-[var(--teal-850,var(--teal))] whitespace-nowrap shrink-0"
+                      >
+                        <ArchiveRestore className="w-3.5 h-3.5" />
+                        Restore
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Optional group */}
+          <div>
+            <h3 className="text-xs font-semibold text-[var(--neutral-cool-600)] uppercase tracking-wider mb-2">
+              Optional
+            </h3>
+            {!hasContent && optionalSections.length === 0 ? (
+              <p className="text-xs text-[var(--muted-foreground)] italic">All optional sections are active.</p>
+            ) : optionalSections.length === 0 ? (
+              <p className="text-xs text-[var(--muted-foreground)] italic">All optional sections are active.</p>
+            ) : (
+              <div className="space-y-2">
+                {optionalSections.map((meta) => (
+                  <div
+                    key={meta.key}
+                    className="flex items-start justify-between gap-3 px-3 py-2.5 rounded-xl border border-[var(--border)] bg-white"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[var(--foreground)]">{meta.title}</p>
+                      <p className="text-xs text-[var(--muted-foreground)] mt-0.5 leading-relaxed">{meta.blurb}</p>
+                    </div>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => onAddOptional(meta.key as BusinessPlanSectionKey)}
+                        className="text-xs font-medium text-[var(--teal)] hover:text-[var(--teal-850,var(--teal))] whitespace-nowrap shrink-0 mt-0.5"
+                      >
+                        Add to Plan
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── SectionCard ───────────────────────────────────────────────────────────────
 
 interface SectionCardProps {
@@ -1747,6 +2047,7 @@ interface SectionCardProps {
   bpExamples: BPFieldExample[];
   isStreaming: boolean;
   blurb: string;
+  isLocked?: boolean;
   onToggleVisible: () => void;
   onToggleExpand: () => void;
   onEditStart: () => void;
@@ -1755,6 +2056,8 @@ interface SectionCardProps {
   onEditCancel: () => void;
   onResetToAuto: () => void;
   onWriteWithAi?: () => void;
+  // TIM-3575: archive action. Absent when isLocked is true.
+  onArchive?: () => void;
 }
 
 // ── MarkdownContent ───────────────────────────────────────────────────────────
@@ -1792,6 +2095,7 @@ function SectionCard({
   bpExamples,
   isStreaming,
   blurb,
+  isLocked,
   onToggleVisible,
   onToggleExpand,
   onEditStart,
@@ -1800,6 +2104,7 @@ function SectionCard({
   onEditCancel,
   onResetToAuto,
   onWriteWithAi,
+  onArchive,
 }: SectionCardProps) {
   const [openExample, setOpenExample] = useState(false);
   const [exampleIdx, setExampleIdx] = useState(0);
@@ -1895,6 +2200,19 @@ function SectionCard({
                   </>
                 )}
               </button>
+              {!isLocked && onArchive && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onArchive();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--neutral-cool-50)] flex items-center gap-2"
+                >
+                  <Archive size={14} aria-hidden="true" className="text-[var(--neutral-cool-600)]" />
+                  Archive section
+                </button>
+              )}
               {hasUserOverride && (
                 <button
                   type="button"
@@ -2164,6 +2482,8 @@ interface CustomSectionCardProps {
   onEditCancel: () => void;
   onDelete: () => void;
   onWriteWithAi?: () => void;
+  // TIM-3575: archive action.
+  onArchive?: () => void;
 }
 
 function CustomSectionCard({
@@ -2181,6 +2501,7 @@ function CustomSectionCard({
   onEditCancel,
   onDelete,
   onWriteWithAi,
+  onArchive,
 }: CustomSectionCardProps) {
   const displayContent = section.isEditing ? section.editBuffer : (section.userContent ?? "");
   const hasContent = Boolean(displayContent.trim());
@@ -2286,6 +2607,16 @@ function CustomSectionCard({
                 }`}
               >
                 {section.isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              </button>
+            )}
+            {canEdit && onArchive && (
+              <button
+                type="button"
+                onClick={onArchive}
+                title="Archive section"
+                className="p-1.5 rounded-xl text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                <Archive className="w-3.5 h-3.5" />
               </button>
             )}
             {canEdit && (

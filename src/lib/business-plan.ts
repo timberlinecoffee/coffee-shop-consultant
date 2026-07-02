@@ -59,7 +59,19 @@ export type BusinessPlanSectionKey =
   | "financial-plan-depreciation"
   | "financial-plan-working-capital"
   | "financial-plan-statements"
-  | "appendix-monthly-statements";
+  | "appendix-monthly-statements"
+  // TIM-3575: optional sections — confirmed by TIM-3579 UX decision.
+  // Not in DEFAULT_BUSINESS_PLAN_SECTION_ORDER; added via Add-to-Plan action.
+  | "sustainability-practices"
+  | "community-engagement"
+  | "technology-pos"
+  | "catering-wholesale"
+  | "seasonal-menu"
+  | "expansion-roadmap"
+  | "supplier-relationships"
+  | "accessibility-design"
+  | "staff-training"
+  | "loyalty-online-ordering";
 
 export interface BusinessPlanSectionMeta {
   key: BusinessPlanSectionKey;
@@ -69,11 +81,16 @@ export interface BusinessPlanSectionMeta {
   defaultVisible: boolean;
   sourceLabel: string;
   blurb: string;
+  // TIM-3575: optional sections are hidden from the default plan and must be
+  // explicitly added via the "Add to Plan" action in the archive panel.
+  isOptional?: boolean;
+  // TIM-3575: locked sections cannot be archived (Executive Summary only).
+  isLocked?: boolean;
 }
 
 // Display order is the array order; ordering within a group is implicit.
 export const BUSINESS_PLAN_SECTIONS: BusinessPlanSectionMeta[] = [
-  { key: "executive-summary",              title: "Executive Summary",           groupKey: null,             defaultVisible: true,  sourceLabel: "Based on your plan",                           blurb: "A one-page snapshot of your entire plan — what your shop is, who it serves, and what the numbers show. Lenders read this first." },
+  { key: "executive-summary",              title: "Executive Summary",           groupKey: null,             defaultVisible: true,  isLocked: true, sourceLabel: "Based on your plan",                           blurb: "A one-page snapshot of your entire plan — what your shop is, who it serves, and what the numbers show. Lenders read this first." },
 
   { key: "company-overview",               title: "Business Overview",           groupKey: "company",        defaultVisible: true,  sourceLabel: "Concept workspace",                            blurb: "Your shop's name, legal structure, and the story behind why you're opening it." },
   { key: "company-team",                   title: "Management Team",             groupKey: "company",        defaultVisible: true,  sourceLabel: "Hiring workspace",                             blurb: "Who's running the shop — their backgrounds, roles, and why they're the right team." },
@@ -105,14 +122,29 @@ export const BUSINESS_PLAN_SECTIONS: BusinessPlanSectionMeta[] = [
   { key: "financial-plan-statements",        title: "Financial Statements",       groupKey: "financial-plan", defaultVisible: true,  sourceLabel: "Financials workspace",                    blurb: "Your projected income statement, balance sheet, and cash flow statement." },
 
   { key: "appendix-monthly-statements",    title: "Monthly Financial Statements", groupKey: "appendix",       defaultVisible: true,  sourceLabel: "Financials workspace",                        blurb: "Month-by-month financial detail for years one through three — the backup behind the summary tables." },
+
+  // TIM-3575: Optional sections — confirmed by TIM-3579. Not in the default
+  // section order; owners add them via the archive panel's "Add to Plan" flow.
+  { key: "sustainability-practices",  title: "Sustainability and Environmental Practices", groupKey: "execution",      defaultVisible: true, isOptional: true, sourceLabel: "Your inputs", blurb: "Your sourcing ethics, waste reduction plan, and eco-friendly packaging choices." },
+  { key: "community-engagement",      title: "Community Engagement Strategy",             groupKey: "execution",      defaultVisible: true, isOptional: true, sourceLabel: "Your inputs", blurb: "Local events, charity partnerships, and how your shop earns goodwill in the neighborhood." },
+  { key: "technology-pos",            title: "Technology Stack and POS Systems",          groupKey: "execution",      defaultVisible: true, isOptional: true, sourceLabel: "Your inputs", blurb: "Your point-of-sale system, inventory tools, and any tech that runs the back of house." },
+  { key: "catering-wholesale",        title: "Catering and Wholesale Strategy",           groupKey: "execution",      defaultVisible: true, isOptional: true, sourceLabel: "Your inputs", blurb: "Catering menus, wholesale accounts, and the revenue they add beyond your four walls." },
+  { key: "seasonal-menu",             title: "Seasonal Menu Planning",                    groupKey: "execution",      defaultVisible: true, isOptional: true, sourceLabel: "Your inputs", blurb: "How your menu shifts by season to keep regulars coming back and drive repeat visits." },
+  { key: "expansion-roadmap",         title: "Franchise or Expansion Roadmap",            groupKey: "company",        defaultVisible: true, isOptional: true, sourceLabel: "Your inputs", blurb: "Your multi-location vision: timeline, funding model, and what you need in place first." },
+  { key: "supplier-relationships",    title: "Supplier and Vendor Relationships",         groupKey: "execution",      defaultVisible: true, isOptional: true, sourceLabel: "Your inputs", blurb: "Your key vendors, roaster agreements, backup suppliers, and relationship terms." },
+  { key: "accessibility-design",      title: "Accessibility and Inclusive Design",        groupKey: "execution",      defaultVisible: true, isOptional: true, sourceLabel: "Your inputs", blurb: "ADA compliance, sensory-friendly layout, and how your space welcomes every customer." },
+  { key: "staff-training",            title: "Staff Training and Coffee Education",       groupKey: "execution",      defaultVisible: true, isOptional: true, sourceLabel: "Your inputs", blurb: "Your barista training program, certifications, and how you build a team customers trust." },
+  { key: "loyalty-online-ordering",   title: "Online Ordering and Loyalty Program",      groupKey: "execution",      defaultVisible: true, isOptional: true, sourceLabel: "Your inputs", blurb: "Your digital ordering channel, loyalty rewards, and how you turn first visits into habits." },
 ];
 
 // TIM-3490: Default top-level section order. Single source of truth for what
 // order new plans render in. Persisted per-plan reorders overlay this via
 // resolveSectionOrder() in src/lib/business-plan/default-section-order.ts.
 // Update this here whenever you intentionally change the default order.
+// TIM-3575: Optional sections (isOptional === true) are excluded from the
+// default order — they are added explicitly via the archive panel.
 export const DEFAULT_BUSINESS_PLAN_SECTION_ORDER: BusinessPlanSectionKey[] =
-  BUSINESS_PLAN_SECTIONS.map((s) => s.key);
+  BUSINESS_PLAN_SECTIONS.filter((s) => !s.isOptional).map((s) => s.key);
 
 // Convenience: subsections grouped by their parent group, in display order.
 export function getSectionsByGroup(): Array<{ group: BusinessPlanGroupMeta; sections: BusinessPlanSectionMeta[] }> {
@@ -135,6 +167,8 @@ export interface BusinessPlanSectionData {
   autoContent: string;       // assembled from source data
   userContent: string | null; // user override, null = show auto
   isVisible: boolean;
+  // TIM-3575: archived sections are hidden from the active list.
+  isArchived: boolean;
 }
 
 // ── TIM-3111: Custom sections ─────────────────────────────────────────────────
@@ -145,6 +179,8 @@ export interface CustomSectionData {
   userContent: string | null;
   isVisible: boolean;
   sortOrder: number;
+  // TIM-3575: archived custom sections are hidden from the active list.
+  isArchived: boolean;
 }
 
 // ── Data-loading types (row shapes from Supabase) ─────────────────────────────

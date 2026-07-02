@@ -565,6 +565,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
           autoContent: autoContent[meta.key] ?? "",
           userContent: saved?.user_content ?? null,
           isVisible: saved?.is_visible ?? meta.defaultVisible,
+          isArchived: false,
         };
       });
 
