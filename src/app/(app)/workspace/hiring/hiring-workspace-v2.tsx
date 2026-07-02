@@ -86,6 +86,7 @@ import { SectionHeader } from "@/components/section-header";
 import { SectionHelp } from "@/components/ui/section-help";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { ScorecardGridPanel } from "@/components/hiring/ScorecardGridPanel";
 
 interface Props {
   planId: string;
@@ -598,8 +599,13 @@ function RolePageV2(props: RolePageProps) {
             onQuestionsChange={props.onQuestionsChange}
           />
         </Accordion>
-        <Accordion id="scorecard" title="Interview scorecard" subtitle="Candidate × competency grid (TIM-3370)">
-          <RoleScorecardSection role={role} planId={props.planId} canEdit={props.canEdit} />
+        <Accordion id="scorecard" title="Interview scorecard" subtitle="Candidate × competency grid">
+          <RoleScorecardSection
+            role={role}
+            planId={props.planId}
+            canEdit={props.canEdit}
+            questions={props.questions}
+          />
         </Accordion>
         <Accordion id="competency" title="Competency forms" subtitle="Staff skill check-ins">
           <RoleCompetencyFormsSection role={role} planId={props.planId} canEdit={props.canEdit} />
@@ -1309,18 +1315,24 @@ function RoleInterviewQuestionsSection({
   );
 }
 
-// ── Scorecard (waits on TIM-3370) ────────────────────────────────────────────
+// ── Scorecard ────────────────────────────────────────────────────────────────
+// TIM-3370: candidates × competencies grid renders inline below the selected
+// scorecard. Auto-selects the default (or first) scorecard so the grid appears
+// on open; user can click another row to switch or hit Add to create one.
 
 function RoleScorecardSection({
   role,
   planId,
   canEdit,
+  questions,
 }: {
   role: OrgRole;
   planId: string;
   canEdit: boolean;
+  questions: InterviewQuestion[];
 }) {
   const [scorecards, setScorecards] = useState<InterviewScorecard[]>([]);
+  const [selectedScorecardId, setSelectedScorecardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -1331,9 +1343,18 @@ function RoleScorecardSection({
     setLoading(true);
     fetch(`/api/workspaces/hiring/scorecards?role_id=${role.id}`)
       .then((r) => r.json())
-      .then((sc: unknown) => setScorecards(Array.isArray(sc) ? (sc as InterviewScorecard[]) : []))
+      .then((sc: unknown) => {
+        const list = Array.isArray(sc) ? (sc as InterviewScorecard[]) : [];
+        setScorecards(list);
+        const def = list.find((s) => s.is_default) ?? list[0] ?? null;
+        setSelectedScorecardId(def?.id ?? null);
+      })
       .finally(() => { setLoading(false); setLoaded(true); });
   }, [role.id, loaded, loading]);
+
+  const scorecardQuestions = selectedScorecardId
+    ? questions.filter((q) => q.scorecard_id === selectedScorecardId)
+    : [];
 
   async function addScorecard() {
     const res = await fetch("/api/workspaces/hiring/scorecards", {
@@ -1344,6 +1365,7 @@ function RoleScorecardSection({
     if (res.ok) {
       const created = (await res.json()) as InterviewScorecard;
       setScorecards((prev) => [...prev, created]);
+      setSelectedScorecardId(created.id);
       setRenaming(created.id);
       setRenameValue(created.name);
     }
@@ -1358,6 +1380,7 @@ function RoleScorecardSection({
     if (res.ok) {
       const copy = (await res.json()) as InterviewScorecard;
       setScorecards((prev) => [...prev, copy]);
+      setSelectedScorecardId(copy.id);
     }
   }
 
@@ -1373,7 +1396,15 @@ function RoleScorecardSection({
   }
 
   async function deleteScorecard(id: string) {
-    setScorecards((prev) => prev.filter((s) => s.id !== id));
+    setScorecards((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      setSelectedScorecardId((cur) => {
+        if (cur !== id) return cur;
+        const fallback = next.find((s) => s.is_default) ?? next[0] ?? null;
+        return fallback?.id ?? null;
+      });
+      return next;
+    });
     await fetch(`/api/workspaces/hiring/scorecards?id=${id}`, { method: "DELETE" });
   }
 
@@ -1398,12 +1429,31 @@ function RoleScorecardSection({
         <p className="text-xs text-[var(--dark-grey)]">Loading…</p>
       ) : scorecards.length === 0 ? (
         <p className="text-xs text-[var(--dark-grey)]">
-          No scorecards yet. Create one above. The candidate × competency grid (TIM-3370) renders here once shipped.
+          No scorecards yet. Click <span className="font-semibold">+ New</span> above to create one — a candidate × competency grid will open below.
         </p>
       ) : (
         <div className="space-y-2">
           {scorecards.map((sc) => (
-            <div key={sc.id} className="flex items-center gap-2 border border-[var(--border)] rounded-lg px-3 py-2 bg-white">
+            <div
+              key={sc.id}
+              className={`flex items-center gap-2 border rounded-lg px-3 py-2 bg-white ${
+                sc.id === selectedScorecardId
+                  ? "border-[var(--teal)] ring-1 ring-[var(--teal)]"
+                  : "border-[var(--border)]"
+              }`}
+              onClick={() => {
+                if (renaming !== sc.id) setSelectedScorecardId(sc.id);
+              }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (renaming === sc.id) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedScorecardId(sc.id);
+                }
+              }}
+            >
               {renaming === sc.id ? (
                 <>
                   <input
@@ -1467,6 +1517,26 @@ function RoleScorecardSection({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {selectedScorecardId && (
+        <div className="mt-4 rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border)] flex items-center gap-1">
+            <p className="text-sm font-semibold text-[var(--foreground)]">Scorecard grid</p>
+            <SectionHelp title="Scorecard grid">
+              Rate each candidate (rows) on each competency (columns) on a 1–5 scale.
+              Weighted totals appear automatically. Use multipliers to weight competencies differently.
+            </SectionHelp>
+          </div>
+          <div className="px-4 py-4 overflow-x-auto">
+            <ScorecardGridPanel
+              scorecardId={selectedScorecardId}
+              planId={planId}
+              questions={scorecardQuestions}
+              canEdit={canEdit}
+            />
+          </div>
         </div>
       )}
     </section>
