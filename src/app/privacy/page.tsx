@@ -210,8 +210,108 @@ export default function PrivacyPage() {
             </p>
           </section>
 
+          <section id="section-pipeda-cross-border">
+            <h2 className="text-xl font-semibold mb-3">5. International Transfers of Personal Information (Canadian Users — PIPEDA)</h2>
+            <p className="font-medium text-[var(--foreground)] mb-2">
+              This section applies to individuals whose personal information is subject to Canada&rsquo;s{" "}
+              <em>Personal Information Protection and Electronic Documents Act</em>, SC 2000, c 5
+              (&ldquo;PIPEDA&rdquo;), Schedule&nbsp;1, Principle&nbsp;4.1.3.
+            </p>
+            <p className="mt-3">
+              Groundwork is a cloud-based service. To deliver the platform, we engage third-party service
+              providers (&ldquo;processors&rdquo;) who may operate servers or infrastructure outside Canada.
+              We share your personal information with these processors only to the extent necessary to
+              deliver the Service.
+            </p>
+            <p className="mt-3">
+              Your personal information may be transferred to, and processed in, the following countries:
+            </p>
+            {(() => {
+              const rows = [
+                ["Vercel Inc.", "United States — application hosting and content delivery"],
+                ["Anthropic PBC", "United States — AI language-model processing for the Groundwork CoPilot feature"],
+                ["Supabase Inc.", "United States — database hosting and user authentication"],
+                ["Stripe Inc.", "United States — payment processing and subscription management"],
+                ["Resend Inc.", "United States — transactional email delivery"],
+                ["Klaviyo Inc.", "United States — marketing email and customer communications; where Klaviyo’s EU data residency option is active, personal information of EU/UK-resident subscribers may also be processed in the European Union (Ireland)"],
+              ];
+              return (
+                <>
+                  <div className="hidden sm:block overflow-x-auto mt-3">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] text-left">
+                          <th className="py-2 pr-4 font-semibold align-top">Processor</th>
+                          <th className="py-2 font-semibold align-top">Country and role</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(([processor, detail]) => (
+                          <tr key={processor} className="border-b border-[var(--border)]">
+                            <td className="py-2 pr-4 align-top"><strong>{processor}</strong></td>
+                            <td className="py-2 align-top">{detail}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <dl className="sm:hidden mt-3 border-t border-[var(--border)]">
+                    {rows.map(([processor, detail]) => (
+                      <div key={processor} className="border-b border-[var(--border)] py-3">
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Processor</dt>
+                        <dd className="text-sm mt-1"><strong>{processor}</strong></dd>
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mt-2">Country and role</dt>
+                        <dd className="text-sm mt-1">{detail}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
+              );
+            })()}
+            <p className="mt-3">
+              For a full list of our sub-processors, see{" "}
+              <Link href="/sub-processors" className="text-[var(--teal)] underline">
+                groundwork.cafe/sub-processors
+              </Link>
+              . For data transferred to the People&rsquo;s Republic of China via the Groundwork Scout AI
+              feature, see §7 (Scout AI and Cross-Border Data Transfer to China) below.
+            </p>
+
+            <h3 className="text-base font-semibold mt-4 mb-2">Foreign laws and authorities</h3>
+            <p>
+              When your personal information is transferred to another jurisdiction, it becomes subject to
+              the laws of that country. Those laws may permit or require disclosure of your personal
+              information to courts, law enforcement agencies, national security authorities, or other
+              government bodies of that jurisdiction{" "}
+              <strong>without notice to you and without your consent</strong>. We cannot guarantee that
+              personal information processed outside Canada will receive protections equivalent to those
+              under PIPEDA.
+            </p>
+
+            <h3 className="text-base font-semibold mt-4 mb-2">Safeguards we maintain</h3>
+            <p>
+              Before transferring your personal information to any processor, we enter into a data
+              processing agreement that requires the processor to: use your personal information only for
+              the purposes we specify; maintain appropriate technical and organisational security measures;
+              notify us of any security breach or compelled-disclosure request; and delete or return
+              personal information when the processing relationship ends. These obligations are consistent
+              with PIPEDA Schedule&nbsp;1, Principle&nbsp;4.1.3. They do not, however, override the
+              mandatory laws of the receiving country.
+            </p>
+
+            <h3 className="text-base font-semibold mt-4 mb-2">Questions about your data</h3>
+            <p>
+              You may contact our Privacy Officer at{" "}
+              <a href="mailto:privacy@groundwork.cafe" className="text-[var(--teal)] underline">
+                privacy@groundwork.cafe
+              </a>{" "}
+              at any time to ask which of your personal information has been transferred outside Canada and
+              to which jurisdictions.
+            </p>
+          </section>
+
           <section>
-            <h2 className="text-xl font-semibold mb-3">5. Information We Share</h2>
+            <h2 className="text-xl font-semibold mb-3">6. Information We Share</h2>
             <p>We do not sell your personal information. We share it only as follows:</p>
             <ul className="list-none space-y-3 mt-3">
               <li>
@@ -292,7 +392,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">6. Scout AI and Cross-Border Data Transfer to China</h2>
+            <h2 className="text-xl font-semibold mb-3">7. Scout AI and Cross-Border Data Transfer to China</h2>
             <p className="text-sm text-[var(--dark-grey)] mb-3">Last updated: {EFFECTIVE_DATE}</p>
             <p>
               Groundwork&rsquo;s Scout AI assistant is powered in part by AI models provided by{" "}
@@ -367,7 +467,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">7. Data Retention</h2>
+            <h2 className="text-xl font-semibold mb-3">8. Data Retention</h2>
             <p>
               We retain your account information for as long as your account is active, plus up to 3
               years after closure for legal and audit purposes. Payment records are retained as required
@@ -383,7 +483,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">8. Your Rights</h2>
+            <h2 className="text-xl font-semibold mb-3">9. Your Rights</h2>
             <p>Depending on where you live, you may have rights to:</p>
             <ul className="list-disc pl-6 space-y-1 mt-2">
               <li>Access the personal information we hold about you.</li>
@@ -431,7 +531,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-xl font-semibold mb-3">
-              9. Complaints, Questions, and the Right to File with a Regulator (Canada &mdash; PIPEDA)
+              10. Complaints, Questions, and the Right to File with a Regulator (Canada &mdash; PIPEDA)
             </h2>
             <p>
               If you are located in Canada, the <em>Personal Information Protection and Electronic
@@ -561,7 +661,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">10. Cookies and Your Choices</h2>
+            <h2 className="text-xl font-semibold mb-3">11. Cookies and Your Choices</h2>
             <p>We group cookies and similar technologies into three categories:</p>
             <ul className="list-none space-y-3 mt-3">
               <li>
@@ -589,7 +689,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">11. Security</h2>
+            <h2 className="text-xl font-semibold mb-3">12. Security</h2>
             <p>
               We use industry-standard security measures including encryption in transit (TLS) and at
               rest, access controls, and regular security reviews. No method of transmission over the
@@ -598,7 +698,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">12. Children</h2>
+            <h2 className="text-xl font-semibold mb-3">13. Children</h2>
             <p>
               The Service is not directed to children under 13. We do not knowingly collect personal
               information from children under 13. If you believe we have collected such information,
@@ -607,7 +707,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">13. Changes to This Policy</h2>
+            <h2 className="text-xl font-semibold mb-3">14. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. If we make material changes, we will
               notify you by email at least 14 days before the changes take effect.
@@ -615,7 +715,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">14. Contact</h2>
+            <h2 className="text-xl font-semibold mb-3">15. Contact</h2>
             <p>
               Ivy &amp; Rill Consulting Inc.
               <br />
