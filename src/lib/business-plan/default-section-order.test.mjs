@@ -156,3 +156,74 @@ test("MAX_SECTION_ORDER_ENTRIES is finite and > default keys count", () => {
   assert.ok(MAX_SECTION_ORDER_ENTRIES > DEFAULT_KEYS.length);
   assert.ok(MAX_SECTION_ORDER_ENTRIES <= 1000);
 });
+
+// TIM-3575: pinning tests for the archive/optional-section feature.
+test("archivedIds filter drops standard keys from result", () => {
+  const persisted = ["executive-summary", "company-overview", "company-team"];
+  const ordered = resolveSectionOrder(
+    persisted,
+    DEFAULT_KEYS,
+    [],
+    ["company-overview"],
+  );
+  assert.ok(!ordered.includes("company-overview"));
+  assert.ok(ordered.includes("executive-summary"));
+  assert.ok(ordered.includes("company-team"));
+});
+
+test("archivedIds filter drops custom UUIDs from result", () => {
+  const customId = "abcdef12-3456-7890-abcd-ef1234567890";
+  const persisted = ["executive-summary", customId];
+  const ordered = resolveSectionOrder(
+    persisted,
+    DEFAULT_KEYS,
+    [customId],
+    [customId],
+  );
+  assert.ok(!ordered.includes(customId));
+  assert.ok(ordered.includes("executive-summary"));
+});
+
+test("allowedStandardKeys keeps optional keys that persisted contains but seed excludes", () => {
+  // Regression test: DEFAULT_BUSINESS_PLAN_SECTION_ORDER excludes optional
+  // sections (they only get added via Add-to-Plan), but persisted may
+  // contain them once added. Without the allowlist arg, the seed-only
+  // membership check silently dropped them from effectiveOrder — Add-to-Plan
+  // sections stopped rendering on the next parent re-render.
+  const OPTIONAL = "sustainability-practices";
+  const persisted = ["executive-summary", "company-overview", OPTIONAL];
+  const allowed = [...DEFAULT_KEYS, OPTIONAL];
+
+  const droppedByOldBehavior = resolveSectionOrder(persisted, DEFAULT_KEYS, []);
+  assert.ok(
+    !droppedByOldBehavior.includes(OPTIONAL),
+    "seed-only membership drops optional (documents the pre-fix bug)",
+  );
+
+  const preservedByAllowlist = resolveSectionOrder(
+    persisted,
+    DEFAULT_KEYS,
+    [],
+    [],
+    allowed,
+  );
+  assert.ok(preservedByAllowlist.includes(OPTIONAL));
+  assert.equal(
+    preservedByAllowlist.indexOf(OPTIONAL),
+    2,
+    "preserves the persisted position, not appended to tail",
+  );
+});
+
+test("allowedStandardKeys default is defaultStandardKeys (back-compat)", () => {
+  const persisted = ["executive-summary", "company-overview"];
+  const withDefault = resolveSectionOrder(persisted, DEFAULT_KEYS);
+  const withExplicit = resolveSectionOrder(
+    persisted,
+    DEFAULT_KEYS,
+    [],
+    [],
+    DEFAULT_KEYS,
+  );
+  assert.deepEqual(withDefault, withExplicit);
+});

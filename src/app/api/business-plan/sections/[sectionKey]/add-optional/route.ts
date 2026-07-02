@@ -14,7 +14,11 @@ import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getActivePlanId } from "@/lib/plan-context";
 import { enforceRateLimit, clientIp } from "@/lib/rate-limit";
-import { BUSINESS_PLAN_SECTIONS, DEFAULT_BUSINESS_PLAN_SECTION_ORDER } from "@/lib/business-plan";
+import {
+  ALL_BUSINESS_PLAN_SECTION_KEYS,
+  BUSINESS_PLAN_SECTIONS,
+  DEFAULT_BUSINESS_PLAN_SECTION_ORDER,
+} from "@/lib/business-plan";
 import { resolveSectionOrder } from "@/lib/business-plan/default-section-order";
 
 type RouteContext = { params: Promise<{ sectionKey: string }> };
@@ -73,8 +77,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     ? rawOrder.filter((v): v is string => typeof v === "string")
     : [];
 
-  // If already in the order, return 200 without re-adding.
-  const currentOrder = resolveSectionOrder(persisted, DEFAULT_BUSINESS_PLAN_SECTION_ORDER, []);
+  // If already in the order, return 200 without re-adding. Pass the full
+  // allowlist so an already-added optional key is not silently dropped by
+  // the seed-set membership check.
+  const currentOrder = resolveSectionOrder(
+    persisted,
+    DEFAULT_BUSINESS_PLAN_SECTION_ORDER,
+    [],
+    [],
+    ALL_BUSINESS_PLAN_SECTION_KEYS,
+  );
   if (currentOrder.includes(sectionKey)) {
     return Response.json({ ok: true, alreadyActive: true });
   }

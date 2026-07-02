@@ -32,6 +32,10 @@ const KEBAB_KEY_RE = /^[a-z][a-z0-9-]{0,79}$/;
  * - TIM-3575: `archivedIds` — standard keys or custom UUIDs that are
  *   archived are removed from the returned order so the workspace renders
  *   only the active section list.
+ * - TIM-3575: `allowedStandardKeys` — allowlist for standard keys in
+ *   `persisted`. Defaults to `defaultStandardKeys` for back-compat, but
+ *   callers that support optional sections (which are excluded from the
+ *   seed) pass the superset here so Add-to-Plan additions aren't dropped.
  *
  * Pure. Safe in server routes, page loaders, AI assemblers, and the
  * workspace client component.
@@ -41,8 +45,9 @@ export function resolveSectionOrder(
   defaultStandardKeys: readonly string[],
   customSectionIds: readonly string[] = [],
   archivedIds: readonly string[] = [],
+  allowedStandardKeys: readonly string[] = defaultStandardKeys,
 ): string[] {
-  const standardSet = new Set<string>(defaultStandardKeys);
+  const allowedSet = new Set<string>(allowedStandardKeys);
   const customSet = new Set<string>(customSectionIds);
   const archivedSet = new Set<string>(archivedIds);
 
@@ -54,7 +59,7 @@ export function resolveSectionOrder(
     const seen = new Set<string>();
     for (const id of persisted) {
       if (typeof id !== "string" || seen.has(id)) continue;
-      if (standardSet.has(id) || customSet.has(id)) {
+      if (allowedSet.has(id) || customSet.has(id)) {
         seen.add(id);
         base.push(id);
       }

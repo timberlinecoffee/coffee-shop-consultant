@@ -18,6 +18,7 @@ import type {
   CustomSectionData,
 } from "@/lib/business-plan";
 import {
+  ALL_BUSINESS_PLAN_SECTION_KEYS,
   BUSINESS_PLAN_GROUPS,
   BUSINESS_PLAN_SECTIONS,
   DEFAULT_BUSINESS_PLAN_SECTION_ORDER,
@@ -453,6 +454,7 @@ export function BusinessPlanWorkspace({
         DEFAULT_BUSINESS_PLAN_SECTION_ORDER,
         customIds,
         archivedIds,
+        ALL_BUSINESS_PLAN_SECTION_KEYS,
       ),
     [sectionOrder, customIds, archivedIds],
   );
@@ -460,9 +462,11 @@ export function BusinessPlanWorkspace({
   // TIM-3490: ordered projection of standard sections for AI prompt
   // assemblers (RegenerateAll + ExportGate). Custom sections are excluded
   // because the regen / export flows operate on the fixed taxonomy only.
+  // TIM-3575: include optional keys in the allowlist so Add-to-Plan
+  // sections are handed to assemblers instead of silently dropped.
   const orderedSectionsForAi = useMemo(() => {
     const byKey = new Map(sections.map((s) => [s.key, s]));
-    const standardKeys = new Set<string>(DEFAULT_BUSINESS_PLAN_SECTION_ORDER);
+    const standardKeys = new Set<string>(ALL_BUSINESS_PLAN_SECTION_KEYS);
     const ordered: Array<{ key: BusinessPlanSectionKey; title: string; currentContent: string }> = [];
     for (const id of effectiveOrder) {
       if (!standardKeys.has(id)) continue;

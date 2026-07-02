@@ -146,6 +146,16 @@ export const BUSINESS_PLAN_SECTIONS: BusinessPlanSectionMeta[] = [
 export const DEFAULT_BUSINESS_PLAN_SECTION_ORDER: BusinessPlanSectionKey[] =
   BUSINESS_PLAN_SECTIONS.filter((s) => !s.isOptional).map((s) => s.key);
 
+// TIM-3575: Full allowlist for the persisted per-plan section order — all
+// standard keys, including optional ones. resolveSectionOrder uses this to
+// decide "is this a legal standard key I should keep from persisted?" while
+// DEFAULT_BUSINESS_PLAN_SECTION_ORDER stays the seed for empty-persisted
+// plans. Without this split, an optional key appended via Add-to-Plan (and
+// therefore in persisted) fails membership in the seed set and gets silently
+// dropped from effectiveOrder — the Add-to-Plan section never renders.
+export const ALL_BUSINESS_PLAN_SECTION_KEYS: BusinessPlanSectionKey[] =
+  BUSINESS_PLAN_SECTIONS.map((s) => s.key);
+
 // Convenience: subsections grouped by their parent group, in display order.
 export function getSectionsByGroup(): Array<{ group: BusinessPlanGroupMeta; sections: BusinessPlanSectionMeta[] }> {
   return BUSINESS_PLAN_GROUPS.map((group) => ({
