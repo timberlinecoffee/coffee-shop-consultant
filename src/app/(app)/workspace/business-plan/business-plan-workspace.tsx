@@ -42,7 +42,8 @@ import {
   arrayMove,
 } from "@/lib/dnd/sortable-canon";
 import { BP_FIELD_EXAMPLES, type BPFieldExample, type BPFieldExampleKey } from "@/lib/business-plan-field-examples";
-import { CoverBrandingPanel, type CoverSettings } from "./cover-branding-panel";
+import type { CoverSettings } from "./cover-branding-panel";
+import { CoverConfigModal } from "./cover-config-modal";
 import { FinancialDocumentsPanel, type FinancialDocumentState } from "./financial-documents-panel";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -82,6 +83,8 @@ interface Props {
   initialTrialMessagesUsed?: number;
   initialCoverSettings: CoverSettings;
   logoPublicUrl: string | null;
+  // TIM-3576: user's full_name from Business Profile for cover pre-population
+  authorFullName: string | null;
   initialFinancialDocuments: FinancialDocumentState[];
   // TIM-2466: Empty source workspaces produced byte-identical BP content
   // across personas (CQ-06). The checklist names the unfinished workspaces
@@ -221,6 +224,7 @@ export function BusinessPlanWorkspace({
   initialTrialMessagesUsed,
   initialCoverSettings,
   logoPublicUrl,
+  authorFullName,
   initialFinancialDocuments,
   preGenerateChecklist,
 }: Props) {
@@ -264,6 +268,9 @@ export function BusinessPlanWorkspace({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isPrintingPdf, setIsPrintingPdf] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  // TIM-3576: cover config modal — shown before print/export so users configure
+  // the cover without it occupying the editing view.
+  const [coverModalAction, setCoverModalAction] = useState<"export" | "print" | null>(null);
   // TIM-2336: export-time validation gate. When the validate endpoint returns
   // blocking findings, we hold the export action in `pendingExportAction` and
   // show the gate modal. On Continue we replay the action with ?force=1.
@@ -755,23 +762,28 @@ export function BusinessPlanWorkspace({
     }
   }, [performPdfFetch]);
 
-  const handlePrintPlan = useCallback(async () => {
-    setIsPrintingPdf(true);
-    try {
-      await runValidationThen("print");
-    } finally {
-      setIsPrintingPdf(false);
-    }
-  }, [runValidationThen]);
+  // TIM-3576: open cover config modal before running validation + export/print.
+  const handlePrintPlan = useCallback(() => {
+    setCoverModalAction("print");
+  }, []);
 
-  const handleExportPdf = useCallback(async () => {
-    setIsExportingPdf(true);
-    try {
-      await runValidationThen("export");
-    } finally {
-      setIsExportingPdf(false);
+  const handleExportPdf = useCallback(() => {
+    setCoverModalAction("export");
+  }, []);
+
+  // Called when user clicks "Continue" in cover config modal.
+  const handleCoverModalConfirm = useCallback(async () => {
+    const mode = coverModalAction;
+    setCoverModalAction(null);
+    if (!mode) return;
+    if (mode === "print") {
+      setIsPrintingPdf(true);
+      try { await runValidationThen("print"); } finally { setIsPrintingPdf(false); }
+    } else {
+      setIsExportingPdf(true);
+      try { await runValidationThen("export"); } finally { setIsExportingPdf(false); }
     }
-  }, [runValidationThen]);
+  }, [coverModalAction, runValidationThen]);
 
   const handleGateContinue = useCallback(async () => {
     const mode = pendingExportAction;
@@ -1111,6 +1123,18 @@ export function BusinessPlanWorkspace({
     <>
     {AIReviewModalNode}
     {ProgressOverlayNode}
+    {/* TIM-3576: cover config modal opens before print/export */}
+    {coverModalAction && (
+      <CoverConfigModal
+        initialSettings={initialCoverSettings}
+        logoPublicUrl={logoPublicUrl}
+        shopName={shopName}
+        authorFullName={authorFullName}
+        action={coverModalAction}
+        onConfirm={handleCoverModalConfirm}
+        onCancel={() => setCoverModalAction(null)}
+      />
+    )}
     {validationReport && (
       <ExportGateModal
         report={validationReport}
@@ -1270,12 +1294,7 @@ export function BusinessPlanWorkspace({
           </div>
         )}
 
-        {/* Cover & Branding panel */}
-        <CoverBrandingPanel
-          initialSettings={initialCoverSettings}
-          logoPublicUrl={logoPublicUrl}
-          shopName={shopName}
-        />
+        {/* TIM-3576: Cover & Branding moved to print/export modal — CoverBrandingPanel removed. */}
 
         {/* Financial documents panel */}
         <FinancialDocumentsPanel initialDocuments={initialFinancialDocuments} />
