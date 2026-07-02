@@ -163,6 +163,10 @@ export default function PrivacyPage() {
                 ["Google LLC", "EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF"],
                 ["Stripe, Inc.", "Standard Contractual Clauses (SCCs) / EU-US DPF -- see stripe.com/legal/dpa"],
                 ["Supabase", "Standard Contractual Clauses (SCCs) -- see supabase.com/privacy"],
+                ["Anthropic PBC", "Standard Contractual Clauses (SCCs) -- see anthropic.com/legal/dpa"],
+                ["Resend, Inc.", "Standard Contractual Clauses (SCCs) -- see resend.com/dpa"],
+                ["Klaviyo, Inc.", "EU-US Data Privacy Framework (adequacy decision -- Commission Implementing Decision 2023/1795); UK Extension to the DPF; Standard Contractual Clauses (SCCs) -- see klaviyo.com/legal/dpa"],
+                ["Rewardful (if affiliate programme active)", "Standard Contractual Clauses (SCCs) -- see rewardful.com/privacy"],
               ];
               return (
                 <>
@@ -219,10 +223,47 @@ export default function PrivacyPage() {
                 account and usage data on our behalf.
               </li>
               <li>
-                <strong>AI provider(s)</strong> -- certain features (such as personalized
-                recommendations or interactive tools) may send anonymized or pseudonymized usage data to
-                AI processing services. We do not send your name, email, or payment information to AI
-                providers.
+                <strong>Anthropic PBC</strong> &mdash; our AI inference provider. When you use
+                AI-powered features on the Service (such as personalized recommendations or
+                interactive tools), the text of your query is sent to Anthropic&rsquo;s API for
+                processing. We do not send your name, email address, or payment information to
+                Anthropic. Anthropic&rsquo;s privacy policy is at{" "}
+                <a href="https://www.anthropic.com/privacy" className="text-[var(--teal)] underline">
+                  anthropic.com/privacy
+                </a>
+                .
+              </li>
+              <li>
+                <strong>Resend, Inc.</strong> &mdash; our transactional email delivery provider.
+                Resend receives your email address and the content of transactional messages (account
+                confirmations, receipts, password resets) in order to deliver them on our behalf.
+                Resend&rsquo;s privacy policy is at{" "}
+                <a href="https://resend.com/legal/privacy-policy" className="text-[var(--teal)] underline">
+                  resend.com/legal/privacy-policy
+                </a>
+                .
+              </li>
+              <li>
+                <strong>Klaviyo, Inc.</strong> &mdash; our marketing email platform. If you have
+                opted in to marketing communications, Klaviyo receives your email address and consent
+                status in order to send, track, and manage marketing and onboarding emails on our
+                behalf. You can opt out at any time via the unsubscribe link in any marketing email.
+                Klaviyo&rsquo;s privacy policy is at{" "}
+                <a href="https://www.klaviyo.com/legal/privacy" className="text-[var(--teal)] underline">
+                  klaviyo.com/legal/privacy
+                </a>
+                .
+              </li>
+              <li>
+                <strong>Rewardful</strong> &mdash; our affiliate-tracking platform (not yet
+                active). If we launch an affiliate referral programme, Rewardful will receive
+                referral attribution data (cookies and anonymised conversion identifiers) in order
+                to track and pay commissions. If you sign up as an affiliate, your email address
+                will also be shared with Rewardful. Rewardful&rsquo;s privacy policy is at{" "}
+                <a href="https://www.rewardful.com/privacy" className="text-[var(--teal)] underline">
+                  rewardful.com/privacy
+                </a>
+                .
               </li>
               <li>
                 <strong>Meta (Facebook).</strong> If you consent to marketing cookies, we use the Meta
