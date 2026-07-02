@@ -476,21 +476,22 @@ export function runCrossSuiteChecks(input: SourceSuiteCheckInputs): AuditFinding
         archived: m.archived ?? false,
       })),
     );
-    if (menuBlend !== null && menuBlend > 0) {
-      const delta = Math.abs(menuBlend - ticket);
+    // TIM-3583: only flag when the forecast is meaningfully BELOW the
+    // per-item blend. A forecast above the blend is a plausible multi-item
+    // ticket (e.g. drink + pastry combo) and no longer counts as drift —
+    // treating it as one produced false-positive "inconsistency" warnings.
+    if (menuBlend !== null && menuBlend > 0 && ticket < menuBlend) {
+      const delta = menuBlend - ticket;
       const rel = delta / Math.max(ticket, 1);
       const meaningful =
         delta >= MENU_TICKET_ABS_TOLERANCE_CENTS && rel >= MENU_TICKET_REL_TOLERANCE;
       if (meaningful) {
-        const menuHigher = menuBlend > ticket;
         out.push(
           emit({
             id: "src:menu_ticket_blend_mismatch",
             rule_id: "cross_suite_mismatch",
             severity: "warning",
-            raw_message: menuHigher
-              ? `Menu prices blend to ${fmtCents(menuBlend, cc)} (popularity-weighted), but Forecast Inputs is running on ${fmtCents(ticket, cc)} per ticket. Every revenue projection is using the lower number until the two agree.`
-              : `Forecast Inputs is running on ${fmtCents(ticket, cc)} per ticket, but the menu only blends to ${fmtCents(menuBlend, cc)} (popularity-weighted). The revenue forecast overshoots what the menu can support.`,
+            raw_message: `Menu items blend to ${fmtCents(menuBlend, cc)} per item (popularity-weighted), but Forecast Inputs is running on ${fmtCents(ticket, cc)} per ticket. On average a customer buys at least one item, so the forecast structurally understates every revenue projection.`,
             quoted_text: `Menu blend ${fmtCents(menuBlend, cc)} vs Forecast ${fmtCents(ticket, cc)}`,
             units: "currency",
             expected_text: fmtCents(menuBlend, cc),

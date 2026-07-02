@@ -1718,13 +1718,16 @@ function CostOfGoodsTabContent({
                   {formatMinorExact(benchmarkResult.current_price_cents, currencyCode)}
                 </span>{" "}
                 reads as{" "}
+                {/* TIM-3583: below/in-range are both favorable states (below
+                    = healthy margin opportunity; in-range = priced correctly),
+                    so both render in Groundwork's brand teal. Above-range is
+                    the only warning state — high price is real customer risk —
+                    and reads in the error-accent red. */}
                 <span
                   className={
-                    benchmarkResult.verdict === "below"
-                      ? "font-semibold text-[var(--warning-text)]"
-                      : benchmarkResult.verdict === "above"
-                        ? "font-semibold text-[var(--warning-text)]"
-                        : "font-semibold text-[var(--teal)]"
+                    benchmarkResult.verdict === "above"
+                      ? "font-semibold text-[var(--error-accent)]"
+                      : "font-semibold text-[var(--teal)]"
                   }
                 >
                   {benchmarkResult.verdict === "below"

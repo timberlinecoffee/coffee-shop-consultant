@@ -107,21 +107,30 @@ test("clean state — no cross-suite findings, all benchmarks pass", () => {
   assert.deepStrictEqual(out, []);
 });
 
-// TIM-2482 (F13): pin the new menu↔ticket blend mismatch check on the very
-// fixture that motivated the audit — owner builds an $8.20-blended menu but
-// the Forecast Inputs default $7.50 keeps driving revenue projections.
-test("menu blend $5.50 vs forecast $8.00 — src:menu_ticket_blend_mismatch fires", () => {
-  // Default fixture menu blends to (600×3 + 550×2 + 400×1) / 6 = 550¢
-  // Forecast avg ticket = 800¢. Drift = 250¢ (31.3% rel) — both gates clear.
+// TIM-3583: forecast ABOVE the per-item blend is a plausible multi-item
+// ticket — no longer surfaces as a blend-mismatch finding.
+test("TIM-3583: forecast $8.00 > blend $5.50 (multi-item ticket) → no blend-mismatch finding", () => {
+  // Default fixture menu blends to (600×3 + 550×2 + 400×1) / 6 = 550¢.
+  // Forecast avg ticket = 800¢. This used to fire an "overshoot warning";
+  // under TIM-3583 semantics it's normal (~1.45 items per ticket).
   const out = runCrossSuiteChecks(baseSourceInputs());
+  assert.equal(out.find((x) => x.id === "src:menu_ticket_blend_mismatch"), undefined);
+});
+
+// TIM-2482 fire case, revised: fire only when forecast is BELOW the per-item
+// blend — the physically-impossible case (customers can't spend less than one
+// item on average).
+test("forecast $5.00 < blend $5.50 → src:menu_ticket_blend_mismatch fires (forecast-below-blend)", () => {
+  const ps = basePlanState();
+  ps.revenue.avg_ticket_cents = 500; // $5.00 forecast, below the $5.50 default blend
+  const out = runCrossSuiteChecks(baseSourceInputs({ planState: ps }));
   const f = out.find((x) => x.id === "src:menu_ticket_blend_mismatch");
-  assert.ok(f, "blend mismatch should fire");
+  assert.ok(f, "blend mismatch should fire when forecast is below the per-item blend");
   assert.equal(f.rule_id, "cross_suite_mismatch");
   assert.equal(f.severity, "warning");
   assert.equal(f.units, "currency");
-  // Statement leads with the forecast-overshoots framing (forecast > menu blend).
-  assert.match(f.raw_message, /running on USD 8(\.00)? per ticket/);
-  assert.match(f.raw_message, /menu only blends to USD 5\.50/);
+  assert.match(f.raw_message, /blend to USD 5\.50/);
+  assert.match(f.raw_message, /running on USD 5(\.00)? per ticket/);
   assert.equal(f.source.workspace, "menu-pricing");
   assert.equal(f.target.workspace, "financials");
 });
