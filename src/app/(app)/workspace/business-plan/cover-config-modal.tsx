@@ -84,6 +84,7 @@ export function CoverConfigModal({
   const [logoState, setLogoState] = useState<"idle" | "uploading" | "error">("idle");
   const [logoError, setLogoError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [isConfirming, setIsConfirming] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const colorPickerRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -142,6 +143,7 @@ export function CoverConfigModal({
     setHexError(false);
     setAccentColor(hex);
     setHexInput(hex);
+    setColorPackId(null);
     broadcastBpBrandColor(hex);
     await save({ accent_color: hex, color_pack_id: null });
   }, [save]);
@@ -201,7 +203,8 @@ export function CoverConfigModal({
 
   const handleLogoRemove = useCallback(async () => {
     try {
-      await fetch("/api/business-plan/cover/logo", { method: "DELETE" });
+      const res = await fetch("/api/business-plan/cover/logo", { method: "DELETE" });
+      if (!res.ok) throw new Error("Remove failed");
       setLogoUrl(null);
       setLogoFileName(null);
       setLogoState("idle");
@@ -211,6 +214,20 @@ export function CoverConfigModal({
       setLogoError("Remove failed. Try again.");
     }
   }, []);
+
+  // Flush any pending debounced text saves before proceeding to export/print
+  const handleConfirmClick = useCallback(async () => {
+    if (isConfirming) return;
+    setIsConfirming(true);
+    await save({
+      tagline: tagline || null,
+      prepared_for: preparedFor || null,
+      author_name: authorName || null,
+    });
+    lastSavedRef.current = { tagline, preparedFor, authorName };
+    onConfirm();
+    // Modal unmounts after onConfirm; no reset needed
+  }, [isConfirming, tagline, preparedFor, authorName, save, onConfirm]);
 
   // Derived monogram for template chips
   const shopWords = shopName.toUpperCase().split(/\s+/).filter(Boolean);
@@ -498,10 +515,13 @@ export function CoverConfigModal({
           </button>
           <button
             type="button"
-            onClick={onConfirm}
-            className="px-4 py-2 rounded-xl bg-[var(--teal)] text-white text-sm font-medium hover:bg-[var(--teal-850)] transition-colors"
+            onClick={() => void handleConfirmClick()}
+            disabled={isConfirming}
+            className={`px-4 py-2 rounded-xl bg-[var(--teal)] text-white text-sm font-medium transition-colors ${isConfirming ? "opacity-60 cursor-not-allowed" : "hover:bg-[var(--teal-850)]"}`}
           >
-            {action === "print" ? "Continue to Print" : "Continue to Export"}
+            {isConfirming ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : action === "print" ? "Continue to Print" : "Continue to Export"}
           </button>
         </div>
       </div>
