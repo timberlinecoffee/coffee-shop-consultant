@@ -5,6 +5,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { twMerge } from "tailwind-merge";
 import {
   currencySymbol,
   formatCurrencyAmount,
@@ -12,6 +13,30 @@ import {
   normalizeCurrencyCode,
 } from "../../lib/currency.ts";
 import { formatMinorExact } from "../../lib/formatters.ts";
+
+// TIM-3559: pin the twMerge order MoneyInput uses so a caller's shared
+// `inputCls` (which sets `px-3` for their form-input look) can never clobber
+// the symbol clearance. Regression this pins:
+//   twMerge("pl-7", "w-full px-3 py-2")  → "w-full px-3 py-2"        (pl-7 dropped → OVERLAP)
+//   twMerge("w-full px-3 py-2", "pl-7")  → "w-full px-3 py-2 pl-7"   (pl-7 present + wins in CSS)
+// Board flag: TIM-3557 Financial Suite Beverage/Food avg-per-sale showed `$`
+// on top of `5` because the prior order let tailwind-merge drop pl-7 in favor
+// of the caller's px-3 (12px left-padding → overlap with symbol at left-2.5).
+test("TIM-3559 MoneyInput padLeft survives caller px-*/pl-*", () => {
+  const callerFormInputCls =
+    "w-full text-sm border rounded-lg px-3 py-2 text-foreground";
+  const callerGridCellCls =
+    "w-full text-xs bg-transparent border rounded-md px-2 py-1.5";
+  // Broken order — pl-7 gets stripped.
+  const broken = twMerge("pl-7", callerFormInputCls);
+  assert.doesNotMatch(broken, /\bpl-7\b/);
+  // Fixed order — pl-7 stays and (per Tailwind's single-side-after-shorthand
+  // cascade) wins over px-3 for padding-left.
+  const fixed = twMerge(callerFormInputCls, "pl-7");
+  assert.match(fixed, /\bpl-7\b/);
+  const fixedCompact = twMerge(callerGridCellCls, "pl-6");
+  assert.match(fixedCompact, /\bpl-6\b/);
+});
 
 test("currencySymbol respects the code", () => {
   // ICU symbol shapes can vary slightly across runtimes — match the symbol

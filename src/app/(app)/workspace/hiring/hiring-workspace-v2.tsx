@@ -77,6 +77,7 @@ import {
 import { progressPct } from "@/lib/formatters";
 import { usePaywallGuard } from "@/lib/use-paywall-guard";
 import { useCurrency } from "@/components/CurrencyProvider";
+import { MoneyInput } from "@/components/ui/money-input";
 import { PaywallModal } from "@/components/paywall-modal";
 import {
   WorkspaceActionButton,
@@ -871,21 +872,20 @@ function RoleCompensationSection({
         </div>
         <div className="w-32">
           <label className={labelCls}>{compPayBasis === "hourly" ? "Rate / hour" : "Pay amount"}</label>
-          <div className="relative">
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">$</span>
-            <input
-              className={inputCls + " pl-5"}
-              type="number"
-              min={0}
-              step={compPayBasis === "hourly" ? 0.25 : 100}
-              value={compPayAmount}
-              disabled={!canEdit || compLoading}
-              onChange={(e) => {
-                setCompPayAmount(e.target.value === "" ? "" : parseFloat(e.target.value));
-                setCompDirty(true);
-              }}
-            />
-          </div>
+          {/* TIM-3559: was ad-hoc `$` prefix + <input>; now uses shared MoneyInput
+              so the symbol reflects workspace currency and the primitive owns
+              left-padding (no more manual `pl-5` overlap risk). */}
+          <MoneyInput
+            className={inputCls}
+            min={0}
+            step={compPayBasis === "hourly" ? 0.25 : 100}
+            value={compPayAmount}
+            disabled={!canEdit || compLoading}
+            onChange={(e) => {
+              setCompPayAmount(e.target.value === "" ? "" : parseFloat(e.target.value));
+              setCompDirty(true);
+            }}
+          />
         </div>
         {compPayBasis === "hourly" && (
           <div className="w-28">

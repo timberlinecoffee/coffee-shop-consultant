@@ -45,6 +45,11 @@ export function MoneyInput({
   // Compact = grid-cell-sized; default = standard form input.
   const symbolPos = compact ? "left-1.5" : "left-2.5";
   const symbolText = compact ? "text-xs" : "text-sm";
+  // TIM-3559: put `padLeft` AFTER `className` so tailwind-merge lets the
+  // symbol clearance win over any `px-*` / `pl-*` the caller passes in via
+  // their shared inputCls. Prior order let a caller's `px-3` clobber `pl-7`,
+  // dropping symbol clearance from 28px to 12px and overlapping the digit
+  // (board flag on TIM-3557 — Beverage/Food avg-per-sale in Financial Suite).
   const padLeft = compact ? "pl-6" : "pl-7";
 
   return (
@@ -64,7 +69,7 @@ export function MoneyInput({
         type="number"
         value={value === 0 ? "" : value}
         placeholder={placeholder ?? "0"}
-        className={twMerge(padLeft, className)}
+        className={twMerge(className, padLeft)}
         onChange={(e) => {
           const el = e.currentTarget;
           const stripped = el.value.replace(/^(-?)0+(?=\d)/, "$1");
