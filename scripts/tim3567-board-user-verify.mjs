@@ -158,12 +158,12 @@ async function run() {
   console.log("VERIFY:", JSON.stringify({ ...markers, verdict }, null, 2));
 
   await page.screenshot({
-    path: join(OUT_DIR, "01-hiring-workspace-board-user.png"),
+    path: join(OUT_DIR, "03-hiring-workspace-board-user-AFTER.png"),
     fullPage: true,
   });
 
   await writeFile(
-    join(OUT_DIR, "board-user-verify.json"),
+    join(OUT_DIR, "board-user-verify-after.json"),
     JSON.stringify({ ...markers, verdict, userId: session.user.id, email: session.user.email }, null, 2),
   );
 
