@@ -31,6 +31,21 @@ const store: {
   listeners: new Set(),
 };
 
+// Seed the initial mode from localStorage at module load (client bundle only)
+// so the FIRST render of any hook consumer already reflects the persisted
+// choice — mirrors the pre-hydration script in layout.tsx. Without this,
+// AppearanceTab briefly renders with mode="auto" selected before the effect-
+// timed reconcile flips the radio, which shows up as a flash of the wrong
+// selected pill on cold navigation to /settings.
+if (typeof window !== "undefined") {
+  try {
+    const local = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (isThemeMode(local)) store.mode = local;
+  } catch {
+    /* localStorage unavailable — first render keeps the default "auto" */
+  }
+}
+
 function emit() {
   for (const listener of store.listeners) listener();
 }
@@ -77,16 +92,8 @@ async function ensureLoaded() {
   if (store.state === "ready" || store.state === "loading") {
     return store.loadPromise ?? Promise.resolve();
   }
-  // Seed from localStorage synchronously so the hook has the correct value
-  // before the fetch resolves.
-  if (typeof window !== "undefined") {
-    try {
-      const local = window.localStorage.getItem(THEME_STORAGE_KEY);
-      if (isThemeMode(local)) store.mode = local;
-    } catch {
-      /* localStorage unavailable — safe to skip */
-    }
-  }
+  // localStorage seed already ran at module load; here we only kick off the
+  // server-pref reconcile.
   store.state = "loading";
   emit();
   store.loadPromise = (async () => {
