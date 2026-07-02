@@ -37,6 +37,7 @@ import { Logo, LogoMark } from "@/app/_components/Logo";
 import { RevertToggle } from "@/components/account/RevertToggle";
 import { HiringRevertToggle } from "@/components/account/HiringRevertToggle";
 import { ProjectSwitcher } from "@/components/project-switcher";
+import { useThemePreference } from "@/lib/use-theme-preference";
 
 export interface SidebarV2UserInfo {
   email: string;
@@ -170,35 +171,34 @@ function useV2CategoryExpanded() {
 }
 
 // ── Dark mode hook ─────────────────────────────────────────────────────────
-
-const DARK_MODE_KEY = "tcs-dark-mode-v1";
+//
+// TIM-3569 rewire: defer to the unified theme store so this quick-toggle
+// stays in sync with Settings → Appearance. Legacy `tcs-dark-mode-v1`
+// localStorage key is no longer read or written; existing users see the
+// default (Auto) until they interact with either surface.
 
 function useDarkMode(): { isDark: boolean; toggle: () => void } {
-  const [isDark, setIsDark] = useState(false);
+  const { mode, setMode } = useThemePreference();
+  const [systemDark, setSystemDark] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem(DARK_MODE_KEY);
-    const initial = stored === "1";
-    setIsDark(initial);
-    if (initial) document.documentElement.classList.add("dark");
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    setSystemDark(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    if (typeof mql.addEventListener === "function") {
+      mql.addEventListener("change", handler);
+      return () => mql.removeEventListener("change", handler);
+    }
+    mql.addListener(handler);
+    return () => mql.removeListener(handler);
   }, []);
 
+  const isDark = mode === "dark" || (mode === "auto" && systemDark);
+
   const toggle = useCallback(() => {
-    setIsDark((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(DARK_MODE_KEY, next ? "1" : "0");
-      } catch {
-        // ignore
-      }
-      if (next) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-      return next;
-    });
-  }, []);
+    setMode(isDark ? "light" : "dark");
+  }, [isDark, setMode]);
 
   return { isDark, toggle };
 }
@@ -298,7 +298,7 @@ function ProfileMenu({
       {open && (
         <div
           role="menu"
-          className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1 z-50"
+          className="absolute bottom-full left-0 right-0 mb-1 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg py-1 z-50"
         >
           {!prefsOpen ? (
             <>
@@ -706,7 +706,7 @@ export function SidebarV2({ userInfo }: { userInfo: SidebarV2UserInfo }) {
     <>
       {/* Desktop fixed sidebar */}
       <aside
-        className="hidden lg:flex flex-col fixed top-0 left-0 h-screen w-[224px] bg-white border-r border-[var(--border)] z-30"
+        className="hidden lg:flex flex-col fixed top-0 left-0 h-screen w-[224px] bg-[var(--card)] border-r border-[var(--border)] z-30"
         aria-label="Main navigation"
       >
         <SidebarV2Content userInfo={userInfo} />
@@ -727,7 +727,7 @@ export function SidebarV2({ userInfo }: { userInfo: SidebarV2UserInfo }) {
         role="dialog"
         aria-modal="true"
         aria-label="Main navigation"
-        className={`fixed top-0 left-0 h-screen w-[280px] bg-white z-50 lg:hidden transition-transform duration-200 ease-out ${
+        className={`fixed top-0 left-0 h-screen w-[280px] bg-[var(--card)] z-50 lg:hidden transition-transform duration-200 ease-out ${
           drawerOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

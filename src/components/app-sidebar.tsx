@@ -804,7 +804,7 @@ export function AppSidebar({ items, collapsed = false, onToggleCollapse, isPro }
     <>
       {/* Desktop fixed sidebar */}
       <aside
-        className={`hidden lg:flex flex-col fixed top-0 left-0 h-screen ${sidebarWidth} bg-white border-r border-[var(--border)] z-30 transition-all duration-200`}
+        className={`hidden lg:flex flex-col fixed top-0 left-0 h-screen ${sidebarWidth} bg-[var(--card)] border-r border-[var(--border)] z-30 transition-all duration-200`}
         aria-label="Workspace navigation"
       >
         <SidebarContent
@@ -830,7 +830,7 @@ export function AppSidebar({ items, collapsed = false, onToggleCollapse, isPro }
         role="dialog"
         aria-modal="true"
         aria-label="Workspace navigation"
-        className={`fixed top-0 left-0 h-screen w-[280px] bg-white z-50 lg:hidden transition-transform duration-200 ease-out ${
+        className={`fixed top-0 left-0 h-screen w-[280px] bg-[var(--card)] z-50 lg:hidden transition-transform duration-200 ease-out ${
           drawerOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
