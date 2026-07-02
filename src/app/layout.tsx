@@ -5,6 +5,7 @@ import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { TrackingScripts } from "@/components/consent/TrackingScripts";
 import { CONSENT_COOKIE } from "@/lib/consent/consent";
 import { RewardfulScript } from "./_components/RewardfulScript";
+import { THEME_STORAGE_KEY } from "@/lib/theme";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -39,7 +40,7 @@ const CONSENT_PRE_HYDRATION_SCRIPT = `(function(){try{var m=document.cookie.matc
 // and applies `.dark` on <html> before first paint so users never see a
 // light-mode flash. Server-persisted preference (user_ui_prefs) reconciles
 // on mount via useThemePreference — that only matters cross-device.
-const THEME_PRE_HYDRATION_SCRIPT = `(function(){try{var m=localStorage.getItem("gw-theme");if(m!=="light"&&m!=="dark"&&m!=="auto")m="auto";var d=m==="dark"||(m==="auto"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",!!d);document.documentElement.dataset.theme=m;}catch(_){/* fall through to React */}})();`;
+const THEME_PRE_HYDRATION_SCRIPT = `(function(){try{var m=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});if(m!=="light"&&m!=="dark"&&m!=="auto")m="auto";var d=m==="dark"||(m==="auto"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",!!d);document.documentElement.dataset.theme=m;}catch(_){/* fall through to React */}})();`;
 
 export default function RootLayout({
   children,

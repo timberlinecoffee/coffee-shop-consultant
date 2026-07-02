@@ -352,8 +352,12 @@
   --border: #2e2e28;
   --border-subtle: #2e2e28;
   --border-medium: #4a4a42;
-  --muted: #1c1c18;
+
+  /* Kept distinct from --card so hover:bg-[var(--muted)] shows movement
+     (SettingsShell nav rail, dashboard section wells). */
+  --muted: #24241f;
   --muted-foreground: #b8b8b0;
+
   --dark-grey: #b8b8b0;               /* keep 4.5:1 on dark bg */
   --light-grey: #2e2e28;
   --off-white: #1c1c18;
@@ -365,9 +369,10 @@
   --teal-bg-300: #163e40;
   --teal-tint-100: #14383a;
 
-  /* bg-white callsites in shared UI (Card, Input, Button outline, Tabs)
-     are swept to bg-[var(--card)] so this override paints. */
-  --surface-warm-100: #2e2e28;
+  /* Graduated surface tokens driving Button secondary/outline hover feedback:
+     surface-warm-100 (base) → surface-warm-200 (hover) must be visibly
+     distinct AND distinct from --border, or hover states are no-ops. */
+  --surface-warm-100: #24241f;
   --surface-warm-200: #2e2e28;
   --surface-warm-300: #14383a;
 
