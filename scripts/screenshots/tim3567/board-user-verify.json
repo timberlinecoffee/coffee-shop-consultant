@@ -1,0 +1,23 @@
+{
+  "buildInfo": {
+    "sha": "8fc1f1e8eab08ad2523f043af11a11f65a0f953a",
+    "sha_short": "8fc1f1e8",
+    "deployment_id": "dpl_HkDuj8DYMZZjecu7zP2u9MQpZxT6",
+    "branch": "main",
+    "env": "production",
+    "built_at_iso": "unknown"
+  },
+  "url": "https://groundwork.cafe/workspace/hiring",
+  "hasRolesNavHeading": true,
+  "hasAddRoleButton": true,
+  "hasHiringLawsLink": true,
+  "hasPickARolePrompt": true,
+  "hasV2ShellClass": true,
+  "hasV1TabsRoles": false,
+  "hasV1SuppliesLikeShell": true,
+  "hasTitleH1": true,
+  "bodyLen": 61044,
+  "verdict": "V2_RENDERED",
+  "userId": "d30438c6-c9bd-4e9f-a6f4-8642038624b5",
+  "email": "trentrollings@gmail.com"
+}
