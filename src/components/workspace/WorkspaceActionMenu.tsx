@@ -37,11 +37,18 @@ type WorkspaceActionMenuProps = {
   children: (ctx: MenuContext) => ReactNode;
   /** Optional override for the trigger's accessible label. */
   triggerAriaLabel?: string;
+  /**
+   * TIM-3556: hide the default "Open Advisor" row. Set on workspaces that
+   * already expose a header-level Scout entry point (e.g. `AskScoutButton`
+   * on Business Plan) so the menu doesn't duplicate the same drawer action.
+   */
+  hideAdvisor?: boolean;
 };
 
 export function WorkspaceActionMenu({
   children,
   triggerAriaLabel = "More actions",
+  hideAdvisor = false,
 }: WorkspaceActionMenuProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -125,16 +132,18 @@ export function WorkspaceActionMenu({
           onKeyDown={handleMenuKeyDown}
           className="absolute top-[calc(100%+4px)] right-0 z-30 w-[220px] bg-white border border-[var(--border)] rounded-xl shadow-md py-1 overflow-y-auto max-h-80"
         >
-          <WorkspaceActionMenuItem
-            Icon={Sparkles}
-            label="Open Advisor"
-            onClick={() => {
-              window.dispatchEvent(
-                new CustomEvent("copilot:open-in-mode", { detail: { mode: "coach" } }),
-              );
-              closeMenu();
-            }}
-          />
+          {!hideAdvisor && (
+            <WorkspaceActionMenuItem
+              Icon={Sparkles}
+              label="Open Advisor"
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent("copilot:open-in-mode", { detail: { mode: "coach" } }),
+                );
+                closeMenu();
+              }}
+            />
+          )}
           {children({ closeMenu })}
         </div>
       )}
