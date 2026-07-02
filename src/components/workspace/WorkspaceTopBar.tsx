@@ -43,7 +43,7 @@ export function WorkspaceTopBar({ items }: WorkspaceTopBarProps) {
   }
 
   return (
-    <div className="sticky top-0 z-20 h-12 bg-white border-b border-[var(--border)] flex items-center px-4 gap-3">
+    <div className="sticky top-0 z-20 h-12 bg-[var(--card)] border-b border-[var(--border)] flex items-center px-4 gap-3">
       {/* TIM-3403: hamburger restored on mobile — Menu tab reverted, drawer is the primary mobile nav trigger */}
       <button
         onClick={openSidebar}
