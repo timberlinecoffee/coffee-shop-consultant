@@ -31,8 +31,8 @@ export function GuidedNoticesCard({ variant = "stacked-card" }: { variant?: Vari
 
   const wrapperCls =
     variant === "stacked-card"
-      ? "bg-white rounded-2xl border border-[var(--border)] p-6"
-      : "bg-white rounded-2xl border border-[var(--border)] p-6";
+      ? "bg-[var(--card)] rounded-2xl border border-[var(--border)] p-6"
+      : "bg-[var(--card)] rounded-2xl border border-[var(--border)] p-6";
 
   return (
     <div className={wrapperCls}>

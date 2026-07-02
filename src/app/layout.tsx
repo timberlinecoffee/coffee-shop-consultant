@@ -5,6 +5,7 @@ import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { TrackingScripts } from "@/components/consent/TrackingScripts";
 import { CONSENT_COOKIE } from "@/lib/consent/consent";
 import { RewardfulScript } from "./_components/RewardfulScript";
+import { THEME_STORAGE_KEY } from "@/lib/theme";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -34,6 +35,13 @@ export const metadata: Metadata = {
 // "show" state when the cookie already exists at first paint.
 const CONSENT_PRE_HYDRATION_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${CONSENT_COOKIE}=([^;]*)/);if(!m||!m[1])return;var v=JSON.parse(decodeURIComponent(m[1]));if(v&&v.version===1){document.documentElement.setAttribute("data-consent-decided","1");}}catch(_){/* fall through to React */}})();`;
 
+// TIM-3569: pre-hydration theme probe. Reads localStorage `gw-theme`
+// ("light" | "dark" | "auto"; default "auto" respects prefers-color-scheme)
+// and applies `.dark` on <html> before first paint so users never see a
+// light-mode flash. Server-persisted preference (user_ui_prefs) reconciles
+// on mount via useThemePreference — that only matters cross-device.
+const THEME_PRE_HYDRATION_SCRIPT = `(function(){try{var m=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});if(m!=="light"&&m!=="dark"&&m!=="auto")m="auto";var d=m==="dark"||(m==="auto"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",!!d);document.documentElement.dataset.theme=m;}catch(_){/* fall through to React */}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -43,6 +51,7 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <RewardfulScript />
       <body className={`${poppins.className} min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]`}>
+        <script dangerouslySetInnerHTML={{ __html: THEME_PRE_HYDRATION_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: CONSENT_PRE_HYDRATION_SCRIPT }} />
         <a href="#main-content" className="skip-to-main">Skip to main content</a>
         <div id="main-content" tabIndex={-1} className="flex flex-col flex-1">

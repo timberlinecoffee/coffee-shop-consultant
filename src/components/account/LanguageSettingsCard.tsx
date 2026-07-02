@@ -37,7 +37,7 @@ export function LanguageSettingsCard({ initial }: { initial: AccountSettings }) 
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[var(--border)] p-6">
+    <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] p-6">
       <h2 className="font-semibold text-[var(--foreground)] mb-1">AI Output Language</h2>
       <p className="text-sm text-[var(--dark-grey)] mb-4">
         Choose the language for AI-generated content such as your business plan and coaching

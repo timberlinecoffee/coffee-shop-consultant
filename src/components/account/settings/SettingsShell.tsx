@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocalizationSettingsCard } from "@/components/account/LocalizationSettingsCard";
 import { LanguageSettingsCard } from "@/components/account/LanguageSettingsCard";
 import { BillingTab } from "@/components/account/settings/BillingTab";
+import { AppearanceTab } from "@/components/account/settings/AppearanceTab";
 import { AccountDataControls } from "@/components/account/AccountDataControls";
 import { GuidedNoticesCard } from "@/components/account/GuidedNoticesCard";
 import { ProfileNameEditor } from "@/components/account/ProfileNameEditor";
@@ -121,7 +122,7 @@ export function SettingsShell({
                 <StubTab label="Data" />
               )
             )}
-            {activeTab === "appearance" && <StubTab label="Appearance" />}
+            {activeTab === "appearance" && <AppearanceTab />}
           </div>
         </div>
       </div>
