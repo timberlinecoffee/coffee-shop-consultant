@@ -1372,9 +1372,6 @@ export function BusinessPlanWorkspace({
 
         {/* TIM-3576: Cover & Branding moved to print/export modal — CoverBrandingPanel removed. */}
 
-        {/* Financial documents panel */}
-        <FinancialDocumentsPanel initialDocuments={initialFinancialDocuments} />
-
         {/* TIM-3490: Flat free-reorder list. All standard + custom section
             cards render in the persisted order; group titles appear as
             inline non-interactive dividers at each group transition. */}
@@ -1511,6 +1508,9 @@ export function BusinessPlanWorkspace({
             onConfirm={handleResetSectionOrder}
           />
         )}
+
+        {/* TIM-3587: Financial Documents panel sits between active sections and Archive. */}
+        <FinancialDocumentsPanel initialDocuments={initialFinancialDocuments} />
 
         {/* TIM-3575: Archive panel — inline collapsible per TIM-3579 panel IA decision. */}
         <ArchivePanel
