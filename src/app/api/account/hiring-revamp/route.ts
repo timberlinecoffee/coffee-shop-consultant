@@ -77,5 +77,9 @@ export async function PATCH(request: Request) {
     secure: process.env.NODE_ENV === "production",
   });
 
+  // Clear the URL-param override cookie so an explicit Preferences choice
+  // is not silently blocked by a stale ?hiring=v1/v2 session cookie.
+  cookieStore.delete(HIRING_REVAMP_OVERRIDE_COOKIE);
+
   return Response.json({ data: { enabled } });
 }

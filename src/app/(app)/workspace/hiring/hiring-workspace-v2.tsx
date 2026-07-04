@@ -4,9 +4,10 @@
 // TIM-3390: rich editor content ported from v1 RoleDetailPanel into the
 // per-section accordion bodies. v1 file (hiring-workspace.tsx) intentionally
 // untouched so the 14-day revert flag keeps a byte-identical fallback.
+// TIM-3558: Hiring Laws panel migrated from v1 RequirementsTab so left nav
+// no longer links to ?hiring=v1 (which was trapping users in v1 permanently).
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import Link from "next/link";
 import {
   ChevronDown,
   ChevronUp,
@@ -15,6 +16,7 @@ import {
   Trash2,
   GripVertical,
   Scale,
+  Globe,
   ClipboardCheck,
   Users,
   Award,
@@ -60,9 +62,11 @@ import {
   type OnboardingPhase,
   type PlanHiringSettings,
   type HiringRequirementSet,
+  type HiringCountry,
   DEFAULT_ONBOARDING_TASKS,
   PHASE_LABELS,
   PHASE_ORDER,
+  HIRING_COUNTRY_OPTIONS,
 } from "@/lib/hiring";
 import {
   type MinWageInfo,
@@ -343,6 +347,183 @@ function flattenTree(
   return out;
 }
 
+// ── Hiring Laws panel ─────────────────────────────────────────────────────────
+// TIM-3558: migrated from v1 RequirementsTab. Shown when the user clicks
+// "Hiring laws" in the left nav, replacing the old ?hiring=v1 link.
+
+function HiringLawsPanel({
+  initialSettings,
+  initialRequirementSets,
+}: {
+  initialSettings: PlanHiringSettings;
+  initialRequirementSets: HiringRequirementSet[];
+}) {
+  const [settings, setSettings] = useState<PlanHiringSettings>(initialSettings);
+  const [requirementSets, setRequirementSets] = useState<HiringRequirementSet[]>(initialRequirementSets);
+  const [saving, setSaving] = useState(false);
+  const [loadingReqs, setLoadingReqs] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  const effectiveCountry = settings.effective_country;
+  const countryLabel = HIRING_COUNTRY_OPTIONS.find((o) => o.code === effectiveCountry)?.label ?? effectiveCountry;
+
+  const grouped = useMemo(() => {
+    const map: Record<string, HiringRequirementSet[]> = {};
+    for (const r of requirementSets) {
+      if (!map[r.category]) map[r.category] = [];
+      map[r.category].push(r);
+    }
+    return map;
+  }, [requirementSets]);
+
+  async function changeCountry(code: HiringCountry | "") {
+    const newCode = code === "" ? null : code;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/workspaces/hiring/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hiring_country: newCode }),
+      });
+      if (!res.ok) return;
+      const updated: PlanHiringSettings = await res.json();
+      setSettings(updated);
+      // Reset expanded state so new country's categories all open by default.
+      setExpandedCategories({});
+      const effective = updated.effective_country;
+      if (effective) {
+        setLoadingReqs(true);
+        try {
+          const rRes = await fetch(`/api/workspaces/hiring/requirement-sets?country=${encodeURIComponent(effective)}`);
+          if (rRes.ok) setRequirementSets(await rRes.json());
+        } finally {
+          setLoadingReqs(false);
+        }
+      } else {
+        setRequirementSets([]);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function toggleCategory(cat: string) {
+    setExpandedCategories((prev) => ({ ...prev, [cat]: !prev[cat] }));
+  }
+
+  return (
+    <div className="space-y-5">
+      <SectionHeader
+        title="Hiring Laws"
+        helpContent="Jurisdiction-specific hiring requirements. Select your country to load the relevant rules. General guidance only — verify current obligations with a licensed professional."
+        className="mb-4"
+      />
+
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border)]">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--foreground)]">Hiring Jurisdiction</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                {settings.hiring_country ? "Override set." : "Auto-detected from your signed or primary location candidate."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Globe size={14} className="text-[var(--muted-foreground)]" />
+              <select
+                value={settings.hiring_country ?? ""}
+                onChange={(e) => changeCountry(e.target.value as HiringCountry | "")}
+                disabled={saving}
+                className={`text-sm border border-[var(--border-medium)] rounded-lg px-3 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] bg-white disabled:opacity-60`}
+              >
+                <option value="">Auto-detect</option>
+                {HIRING_COUNTRY_OPTIONS.map((o) => (
+                  <option key={o.code} value={o.code}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {effectiveCountry ? (
+          <div className="px-5 py-3 bg-[var(--teal-tint-500)]">
+            <p className="text-xs text-[var(--teal)] font-medium">
+              Showing requirements for: {countryLabel} ({effectiveCountry})
+            </p>
+          </div>
+        ) : (
+          <div className="px-5 py-3 bg-[var(--warning-bg-6)] border-t border-[var(--border)]">
+            <p className="text-xs text-[var(--warning-dark)] font-medium flex items-center gap-1.5">
+              <AlertTriangle size={12} />
+              No country detected. Add a location candidate or select a jurisdiction above to see requirements.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
+        <p className="text-xs font-semibold text-amber-800 mb-1">General Guidance Only</p>
+        <p className="text-xs text-amber-700 leading-relaxed">
+          Not legal advice. Requirements and rates change frequently. Verify current obligations with a licensed professional in your jurisdiction before acting.
+        </p>
+      </div>
+
+      {loadingReqs ? (
+        <div className="py-10 text-center">
+          <p className="text-sm text-[var(--dark-grey)]">Loading requirements...</p>
+        </div>
+      ) : requirementSets.length === 0 && effectiveCountry ? (
+        <div className="py-10 text-center">
+          <p className="text-sm text-[var(--dark-grey)]">No requirements found for {countryLabel}.</p>
+        </div>
+      ) : (
+        Object.entries(grouped).map(([category, items]) => {
+          const expanded = expandedCategories[category] !== false;
+          return (
+            <div key={category} className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+              <button
+                type="button"
+                onClick={() => toggleCategory(category)}
+                className="w-full px-5 py-4 border-b border-[var(--border)] flex items-center justify-between hover:bg-[var(--background)] transition-colors"
+              >
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-[var(--foreground)]">{category}</p>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                    {items.length} requirement{items.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              {expanded && (
+                <ul className="divide-y divide-[var(--border)]">
+                  {items.map((req) => (
+                    <li key={req.id} className="px-5 py-4">
+                      <p className="text-sm font-medium text-[var(--foreground)]">{req.title}</p>
+                      {req.body && (
+                        <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">{req.body}</p>
+                      )}
+                      {req.citation_url && (
+                        <a
+                          href={req.citation_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-[var(--teal)] hover:underline mt-1 inline-block"
+                        >
+                          Source
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 export function HiringWorkspaceV2(props: Props) {
   const [roles, setRoles] = useState<OrgRole[]>(props.initialRoles);
   const [questions, setQuestions] = useState<InterviewQuestion[]>(props.initialQuestions);
@@ -355,6 +536,8 @@ export function HiringWorkspaceV2(props: Props) {
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(
     props.initialRoles[0]?.id ?? null,
   );
+  // "role" shows the selected role page; "hiring_laws" shows the jurisdiction panel.
+  const [selectedView, setSelectedView] = useState<"role" | "hiring_laws">("role");
   const [navOpen, setNavOpen] = useState(false);
   const [addingRole, setAddingRole] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -453,9 +636,10 @@ export function HiringWorkspaceV2(props: Props) {
             planId={props.planId}
             roles={roles}
             canEdit={props.canEdit}
-            selectedRoleId={selectedRoleId}
+            selectedRoleId={selectedView === "role" ? selectedRoleId : null}
             onSelectRole={(id) => {
               setSelectedRoleId(id);
+              setSelectedView("role");
               setNavOpen(false);
             }}
             onRolesChange={setRoles}
@@ -494,24 +678,31 @@ export function HiringWorkspaceV2(props: Props) {
             </div>
           )}
 
-          <div className="border-t border-[var(--border)] px-3 py-3 text-xs space-y-2">
-            <Link
-              href="?hiring=v1"
-              className="flex items-center gap-2 text-[var(--dark-grey)] hover:text-[var(--foreground)]"
+          <div className="border-t border-[var(--border)] px-3 py-3 text-xs space-y-0.5">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedView("hiring_laws");
+                setNavOpen(false);
+              }}
+              className={`w-full text-left flex items-center gap-2 rounded px-2 py-1.5 transition-colors ${
+                selectedView === "hiring_laws"
+                  ? "bg-[var(--teal-bg-palest)] text-[var(--teal)] font-medium"
+                  : "text-[var(--dark-grey)] hover:bg-[var(--neutral-cool-50)] hover:text-[var(--foreground)]"
+              }`}
             >
               <Scale size={12} /> Hiring laws
-            </Link>
-            <Link
-              href="?hiring=v1"
-              className="flex items-center gap-2 text-[var(--dark-grey)] hover:text-[var(--foreground)]"
-            >
-              <ClipboardCheck size={12} /> Onboarding plan
-            </Link>
+            </button>
           </div>
         </nav>
 
         <section className="min-w-0">
-          {selectedRole ? (
+          {selectedView === "hiring_laws" ? (
+            <HiringLawsPanel
+              initialSettings={props.initialHiringSettings}
+              initialRequirementSets={props.initialRequirementSets}
+            />
+          ) : selectedRole ? (
             <RolePageV2
               role={selectedRole}
               roles={roles}
