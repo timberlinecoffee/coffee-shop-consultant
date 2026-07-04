@@ -56,5 +56,5 @@ async function invoke(dryRun) {
   for (const [key, value] of Object.entries(live.body.envVarsToSet || {})) {
     console.log(`vercel env rm ${key} production --yes 2>/dev/null; echo "${value}" | vercel env add ${key} production`);
   }
-  console.log("\n(After running the vercel env commands, redeploy: `vercel --prod --yes` or push a tiny commit to main.)");
+  console.log("\n(After running the vercel env commands above, push a trivial commit to `main` to trigger the Vercel prod redeploy — see AGENTS.md `Vercel prod deploys come from main only` for the reason we don't invoke a prod-target flag directly.)");
 })();
