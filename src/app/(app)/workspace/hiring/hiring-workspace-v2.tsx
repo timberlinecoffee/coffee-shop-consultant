@@ -388,12 +388,17 @@ function HiringLawsPanel({
       if (!res.ok) return;
       const updated: PlanHiringSettings = await res.json();
       setSettings(updated);
+      // Reset expanded state so new country's categories all open by default.
+      setExpandedCategories({});
       const effective = updated.effective_country;
       if (effective) {
         setLoadingReqs(true);
-        const rRes = await fetch(`/api/workspaces/hiring/requirement-sets?country=${effective}`);
-        if (rRes.ok) setRequirementSets(await rRes.json());
-        setLoadingReqs(false);
+        try {
+          const rRes = await fetch(`/api/workspaces/hiring/requirement-sets?country=${encodeURIComponent(effective)}`);
+          if (rRes.ok) setRequirementSets(await rRes.json());
+        } finally {
+          setLoadingReqs(false);
+        }
       } else {
         setRequirementSets([]);
       }
@@ -678,7 +683,6 @@ export function HiringWorkspaceV2(props: Props) {
               type="button"
               onClick={() => {
                 setSelectedView("hiring_laws");
-                setSelectedRoleId(null);
                 setNavOpen(false);
               }}
               className={`w-full text-left flex items-center gap-2 rounded px-2 py-1.5 transition-colors ${
