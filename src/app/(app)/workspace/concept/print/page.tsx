@@ -133,11 +133,24 @@ export default async function ConceptPrintPage() {
             @media (min-width: 1024px) {
               div.flex.min-h-screen > div.flex-1 { padding-left: 0 !important; }
             }
+            /* TIM-3641: @page owns paper margins; screen container padding
+               (pt-14 pb-20 px-8) is reset for print so the document uses the
+               page efficiently. Break rules keep uppercase section labels
+               with their body text and prevent orphan/widow lines. */
             @media print {
               .no-print { display: none !important; }
               body { margin: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              @page { margin: 1.8cm 2cm; size: A4; }
-              .section-card { break-inside: avoid; }
+              @page { margin: 14mm 16mm; size: A4; }
+              .print-doc { padding: 0 !important; max-width: 100% !important; }
+              .print-header { margin-bottom: 6mm !important; }
+              .print-header-divider { margin-top: 4mm !important; }
+              .print-stack > * + * { margin-top: 4mm !important; }
+              .section-card { break-inside: avoid; page-break-inside: avoid; orphans: 3; widows: 3; }
+              .featured-card { padding: 5mm 7mm !important; }
+              .section-label { break-after: avoid; page-break-after: avoid; }
+              h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+              p { orphans: 3; widows: 3; }
+              .print-footer { margin-top: 8mm !important; padding-top: 3mm !important; break-inside: avoid; page-break-inside: avoid; }
             }
           `,
         }}
@@ -155,10 +168,10 @@ export default async function ConceptPrintPage() {
       </div>
 
       {/* Document — constrained width on screen, full-bleed on print */}
-      <div className="max-w-[680px] mx-auto px-8 pt-14 pb-20">
+      <div className="print-doc max-w-[680px] mx-auto px-8 pt-14 pb-20">
 
         {/* ── Cover header ─────────────────────────────── */}
-        <header className="mb-12">
+        <header className="print-header mb-12">
           {/* Teal rule */}
           <div className="h-[3px] bg-[var(--teal)] mb-8 rounded-full" />
 
@@ -189,7 +202,7 @@ export default async function ConceptPrintPage() {
           </p>
 
           {/* Divider below header */}
-          <div className="mt-8 border-t border-[var(--border)]" />
+          <div className="print-header-divider mt-8 border-t border-[var(--border)]" />
         </header>
 
         {/* ── Body sections ────────────────────────────── */}
@@ -206,7 +219,7 @@ export default async function ConceptPrintPage() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="print-stack space-y-5">
             {bodySections.map((meta) => {
               const comp = conceptDoc.components[meta.id];
               const isFeatured = FEATURED_IDS.has(meta.id);
@@ -225,10 +238,10 @@ export default async function ConceptPrintPage() {
                 return (
                   <div
                     key={meta.id}
-                    className="section-card rounded-2xl bg-[var(--teal-tint-500)] border border-[var(--teal-tint-300)] px-7 py-6"
+                    className="section-card featured-card rounded-2xl bg-[var(--teal-tint-500)] border border-[var(--teal-tint-300)] px-7 py-6"
                   >
                     <p
-                      className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-3"
+                      className="section-label text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-3"
                     >
                       {meta.label}
                     </p>
@@ -252,7 +265,7 @@ export default async function ConceptPrintPage() {
 
                   <div className="px-6 py-5 flex-1 min-w-0">
                     <p
-                      className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-2.5"
+                      className="section-label text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-2.5"
                     >
                       {meta.label}
                     </p>
@@ -285,7 +298,7 @@ export default async function ConceptPrintPage() {
           <div className="section-card mt-5 bg-white border border-[var(--border)] rounded-2xl overflow-hidden flex">
             <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
             <div className="px-6 py-5 flex-1 min-w-0">
-              <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-3">
+              <p className="section-label text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-3">
                 Suppliers Locked In
               </p>
               <ul className="space-y-2.5">
@@ -324,7 +337,7 @@ export default async function ConceptPrintPage() {
         )}
 
         {/* ── Footer ───────────────────────────────────── */}
-        <footer className="mt-16 pt-6 border-t border-[var(--border)] flex items-center justify-between">
+        <footer className="print-footer mt-16 pt-6 border-t border-[var(--border)] flex items-center justify-between">
           <span className="text-xs text-[var(--dark-grey)]">
             {shopName} &middot; Concept Brief &middot; {year}
           </span>
@@ -360,7 +373,7 @@ function PersonasPrintBlock({
       <div className="section-card bg-white border border-[var(--border)] rounded-2xl overflow-hidden flex">
         <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
         <div className="px-6 py-5 flex-1 min-w-0">
-          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-2.5">
+          <p className="section-label text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-2.5">
             {label}
           </p>
           <p className="text-sm font-semibold text-[var(--foreground)] mb-1">{p.name}</p>
@@ -385,7 +398,7 @@ function PersonasPrintBlock({
       <div className="flex">
         <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
         <div className="px-6 pt-5 pb-1 flex-1 min-w-0">
-          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-4">
+          <p className="section-label text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-4">
             {label}
           </p>
           <div className="space-y-4 pb-5">
@@ -454,7 +467,7 @@ function CompetitorsPrintBlock({
       <div className="section-card bg-white border border-[var(--border)] rounded-2xl overflow-hidden flex">
         <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
         <div className="px-6 py-5 flex-1 min-w-0">
-          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-2.5">
+          <p className="section-label text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-2.5">
             {label}
           </p>
           <p
@@ -473,7 +486,7 @@ function CompetitorsPrintBlock({
       <div className="flex">
         <div className="w-1 bg-[var(--teal)] flex-shrink-0" />
         <div className="px-6 pt-5 pb-1 flex-1 min-w-0">
-          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-4">
+          <p className="section-label text-[10px] font-semibold tracking-[0.16em] uppercase text-[var(--teal)] mb-4">
             {label}
           </p>
           {noDirectCompetitors && (
