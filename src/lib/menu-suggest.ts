@@ -83,11 +83,16 @@ export function normalizeItemNameForMatch(raw: string): string {
   // Strip combining diacritical marks (U+0300..U+036F) after NFKD split, so
   // "café" and "cafe" normalize identically.
   const lower = raw.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "")
-  const tokens = lower
+  const allTokens = lower
     .replace(/[^a-z0-9\s]+/g, " ")
     .split(/\s+/)
-    .filter((w) => w.length > 0 && !FILLER_WORDS.has(w))
-  return tokens.join(" ")
+    .filter((w) => w.length > 0)
+  const nonFiller = allTokens.filter((w) => !FILLER_WORDS.has(w))
+  // If every token is filler ("Coffee", "The House Cafe"), don't collapse to
+  // "" -- that would false-positive-match any other filler-only name. Fall
+  // back to the raw token set so the strict equality check still means
+  // "same words in the same order after de-diacritics".
+  return (nonFiller.length > 0 ? nonFiller : allTokens).join(" ")
 }
 
 // True if `candidate` is a close variant of any name in `existing`. Normalization
@@ -102,8 +107,7 @@ export function isCloseNameVariant(
   if (!norm) return false
   for (const e of existing) {
     const other = normalizeItemNameForMatch(e)
-    if (!other) continue
-    if (norm === other) return true
+    if (other && norm === other) return true
   }
   return false
 }

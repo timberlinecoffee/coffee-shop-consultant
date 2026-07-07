@@ -92,6 +92,19 @@ test("isCloseNameVariant catches classic / cafe / house / signature adjectives",
   assert.equal(isCloseNameVariant("Espresso", menu), false)
 })
 
+// TIM-3683 hardening: when every token is filler ("Coffee", "Cafe"), normalize
+// must keep the raw token set so we don't false-positive-match unrelated
+// filler-only names against each other.
+test("filler-only names don't collide via empty-string normalization", () => {
+  assert.equal(normalizeItemNameForMatch("Coffee"), "coffee")
+  assert.equal(normalizeItemNameForMatch("Cafe"), "cafe")
+  assert.equal(normalizeItemNameForMatch("The House Special"), "the house special")
+  // "Coffee" on the menu should NOT block an unrelated filler-only "Cafe" suggestion.
+  assert.equal(isCloseNameVariant("Cafe", ["Coffee"]), false)
+  // But a same-name suggestion is still caught.
+  assert.equal(isCloseNameVariant("coffee", ["Coffee"]), true)
+})
+
 // TIM-3683 Bug 3: full spec (price + estimated COGS + ingredients) survives parsing.
 test("parses price, cogs, and ingredients from a full-spec response", () => {
   const raw = `{"items":[

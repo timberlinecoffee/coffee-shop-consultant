@@ -13,10 +13,15 @@
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { toTitleCase } from "@/lib/text"
+import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { enforceRateLimit } from "@/lib/rate-limit"
+import { defaultPackageSize } from "@/lib/recipe-suggest"
 import { z } from "zod"
 import type { NextRequest } from "next/server"
 
 export const runtime = "nodejs"
+
+const PACKAGE_UNIT_SET = new Set(["g", "ml", "oz", "each", "piece"])
 
 const UNIT_ENUM = z.enum(["g", "ml", "oz", "each", "piece"])
 
@@ -41,6 +46,31 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Rule 4: rate-limit paid-tier mutation so a scripted client can't spam
+  // menu_items/menu_ingredients writes bypassing the paid-tier gate below.
+  const rateLimited = await enforceRateLimit({
+    bucket: "menu:suggest-items-accept",
+    id: user.id,
+    limit: 30,
+    windowSec: 60,
+  })
+  if (rateLimited) return rateLimited
+
+  // Sibling /suggest-items enforces subscription/beta -- mirror it here so the
+  // Accept path can't be reached with a lapsed subscription via direct POST.
+  const { data: profile } = await supabase
+    .from("users")
+    .select("subscription_status, beta_waiver_until")
+    .eq("id", user.id)
+    .single()
+  if (
+    !profile ||
+    (!isSubscriptionActive(profile.subscription_status) &&
+      !isBetaWaived(profile.beta_waiver_until))
+  ) {
+    return Response.json({ error: "Subscription required" }, { status: 402 })
+  }
 
   const planId = await getActivePlanId(supabase, user.id)
   if (!planId) return Response.json({ error: "No plan found" }, { status: 404 })
@@ -116,24 +146,40 @@ export async function POST(request: NextRequest) {
       let ingredientId = byLower.get(key)?.id ?? null
 
       if (!ingredientId) {
-        // Create a placeholder ingredient. package_size/package_cost default to
-        // 0 -- owner sets real costs later; junction still records amount+unit.
+        // Create a placeholder ingredient. package_cost_cents defaults to 0
+        // (owner sets real costs later); package_size must be > 0 per the
+        // menu_ingredients CHECK -- reuse recipe-suggest's defaults so the
+        // cost-per-unit is sensible once the owner enters a package cost.
+        const packageUnit = PACKAGE_UNIT_SET.has(ing.unit) ? ing.unit : "each"
         const { data: newIng, error: newErr } = await supabase
           .from("menu_ingredients")
           .insert({
             plan_id: planId,
             name: cleanName,
-            package_size: 0,
-            package_unit: ing.unit,
+            package_size: defaultPackageSize(packageUnit as "g" | "ml" | "oz" | "each" | "piece"),
+            package_unit: packageUnit,
             package_cost_cents: 0,
             vendor_id: null,
             notes: null,
           })
           .select("id")
           .single()
-        if (newErr || !newIng) continue
-        ingredientId = newIng.id
-        byLower.set(key, { id: newIng.id, package_unit: ing.unit })
+        if (newErr || !newIng) {
+          // Race: a concurrent Accept for the same plan+name may have won.
+          // Re-read the pantry for that name so the junction row still lands.
+          const { data: raceRow } = await supabase
+            .from("menu_ingredients")
+            .select("id")
+            .eq("plan_id", planId)
+            .ilike("name", cleanName)
+            .maybeSingle()
+          if (!raceRow || typeof raceRow.id !== "string") continue
+          ingredientId = raceRow.id
+        } else {
+          ingredientId = newIng.id
+        }
+        if (!ingredientId) continue
+        byLower.set(key, { id: ingredientId, package_unit: ing.unit })
       }
 
       if (!ingredientId) continue
