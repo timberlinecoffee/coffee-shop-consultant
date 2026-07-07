@@ -50,6 +50,7 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { Illustration } from "@/components/illustrations/Illustration";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { ItemPhotoUpload } from "./ItemPhotoUpload";
 import { TABLE_CELL_TEXT } from "@/lib/workspace-table";
@@ -4456,6 +4457,12 @@ export function MenuWorkspace({
           description="Build your menu, add recipe ingredients to compute COGS, and get AI-suggested retail prices."
           actions={
             <>
+              {/* TIM-3676: shared Scout entry point, matches Business Plan / Marketing / Hiring / Ops Playbook. */}
+              <AskScoutButton
+                workspaceKey="menu_pricing"
+                focusLabel="menu and pricing"
+                hasContent={items.length > 0}
+              />
               <WorkspaceActionButton
                 variant="secondary"
                 onClick={() => window.open("/workspace/menu-pricing/print", "_blank", "noopener,noreferrer")}

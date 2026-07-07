@@ -19,6 +19,7 @@ import { SectionHeader } from "@/components/section-header";
 import { SectionHelp } from "@/components/ui/section-help";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { ConflictNoticeBadge } from "@/components/cross-suite/ConflictNoticeBadge";
 import { MenuTicketReconciliationBanner } from "@/components/cross-suite/MenuTicketReconciliationBanner";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
@@ -2404,6 +2405,12 @@ export function FinancialsWorkspace({
           description="Plan your startup costs, forecast revenue, and project Year 1–5 performance."
           actions={
             <>
+              {/* TIM-3676: shared Scout entry point, matches Business Plan / Marketing / Hiring / Ops Playbook. */}
+              <AskScoutButton
+                workspaceKey="financials"
+                focusLabel="financials"
+                hasContent
+              />
               {/* TIM-2413: primary hero CTA + SaveStatusAndButton stay outside;
                   Export PDF + Export Excel live inside the hamburger (2 secondary
                   utilities meets the >=2 threshold). Cluster order:
