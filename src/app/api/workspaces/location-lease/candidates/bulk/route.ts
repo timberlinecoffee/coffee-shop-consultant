@@ -91,18 +91,20 @@ export async function DELETE(request: NextRequest) {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const ids = body.ids
+  const rawIds = body.ids
   if (
-    !Array.isArray(ids) ||
-    ids.length === 0 ||
-    ids.length > MAX_BULK ||
-    !ids.every((x) => typeof x === "string" && UUID_RE.test(x))
+    !Array.isArray(rawIds) ||
+    rawIds.length === 0 ||
+    rawIds.length > MAX_BULK ||
+    !rawIds.every((x) => typeof x === "string" && UUID_RE.test(x))
   ) {
     return Response.json(
       { error: `ids must be a non-empty array of up to ${MAX_BULK} valid UUIDs` },
       { status: 400 }
     )
   }
+  // Deduplicate so Postgres IN(...) row-count matches ids.length in the ownership check.
+  const ids = [...new Set(rawIds as string[])]
 
   // Rule 2: Re-verify ownership — every candidate must belong to this user's plan.
   const { data: rows, error: lookupErr } = await supabase

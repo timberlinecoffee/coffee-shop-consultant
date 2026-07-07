@@ -221,11 +221,15 @@ export function CandidateListCard({
   )
 
   const bulkDelete = useCallback(async () => {
-    const ids = Array.from(selectedIds)
+    // Scope delete to the current view only — selectedIds may span both "All"
+    // and "Shortlist" tabs if the user switched views without clearing selection.
+    const visibleIds = new Set(visible.map((c) => c.id))
+    const ids = Array.from(selectedIds).filter((id) => visibleIds.has(id))
     if (ids.length === 0) return
     setBulkDeleting(true)
     const snapshot = candidates
-    setCandidates((prev) => prev.filter((c) => !selectedIds.has(c.id)))
+    const deleteSet = new Set(ids)
+    setCandidates((prev) => prev.filter((c) => !deleteSet.has(c.id)))
     try {
       const res = await fetch('/api/workspaces/location-lease/candidates/bulk', {
         method: 'DELETE',
@@ -244,20 +248,25 @@ export function CandidateListCard({
       setBulkDeleting(false)
       setDeleteConfirmOpen(false)
     }
-  }, [candidates, selectedIds])
+  }, [candidates, selectedIds, visible])
 
   // How many of the selected are currently shortlisted vs not — drives whether
   // the bulk toolbar surfaces "Add to shortlist" or "Remove from shortlist".
+  // visibleSelectedCount is the count of selected IDs that are in the current view;
+  // this is what Delete actually acts on (scoped to visible, not full selectedIds).
   const selectionSummary = useMemo(() => {
     let inShortlist = 0
     let notInShortlist = 0
+    let visibleSelected = 0
+    const visibleIds = new Set(visible.map((c) => c.id))
     for (const c of candidates) {
       if (!selectedIds.has(c.id)) continue
       if (c.status === 'shortlisted') inShortlist++
       else notInShortlist++
+      if (visibleIds.has(c.id)) visibleSelected++
     }
-    return { inShortlist, notInShortlist, total: selectedIds.size }
-  }, [candidates, selectedIds])
+    return { inShortlist, notInShortlist, total: selectedIds.size, visibleSelected }
+  }, [candidates, selectedIds, visible])
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -422,7 +431,7 @@ export function CandidateListCard({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={selectionSummary.total === 0 || bulkSaving || bulkDeleting}
+                  disabled={selectionSummary.visibleSelected === 0 || bulkSaving || bulkDeleting}
                   onClick={() => setDeleteConfirmOpen(true)}
                   title="Delete the selected locations"
                   className="text-[var(--destructive)] border-[var(--destructive)]/30 hover:border-[var(--destructive)]/60 hover:bg-[var(--destructive)]/5"
@@ -488,7 +497,7 @@ export function CandidateListCard({
         >
           <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-6 w-full max-w-sm">
             <h3 id="bulk-delete-title" className="font-semibold text-[var(--foreground)] mb-2">
-              Delete {selectionSummary.total} selected {selectionSummary.total === 1 ? 'location' : 'locations'}?
+              Delete {selectionSummary.visibleSelected} selected {selectionSummary.visibleSelected === 1 ? 'location' : 'locations'}?
             </h3>
             <p className="text-sm text-[var(--muted-foreground)] mb-5">
               This cannot be undone.
