@@ -62,7 +62,11 @@ import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton"
 import { useUiRevamp } from "@/hooks/useUiRevamp";
 import type { AuditReport } from "@/lib/business-plan/audit";
 import { stripSourceMarkers } from "@/lib/business-plan/source-markers";
-import { BPWriteWithAIModal } from "@/components/business-plan/BPWriteWithAIModal";
+import {
+  BPWriteWithAIModal,
+  isBpPlaceholderContent,
+  type WriteAiApproveExtras,
+} from "@/components/business-plan/BPWriteWithAIModal";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
@@ -541,9 +545,15 @@ export function BusinessPlanWorkspace({
     // Prefer the in-progress edit buffer when the user has been typing, so
     // the modal's pre-populated content matches what's on screen. Fall back
     // to saved user content, then to the auto-assembled draft.
-    const initial = section.isEditing
+    const raw = section.isEditing
       ? section.editBuffer
       : (section.userContent ?? section.autoContent ?? "");
+    // TIM-3675 review-fix: don't pre-populate the modal with the assembled
+    // "Complete the Marketing workspace to populate this section" style
+    // placeholders; feeding them to /improve would produce a rewrite of the
+    // placeholder itself. Empty initial content routes the modal to
+    // /generate → workspace-snapshot synthesis, which is the correct path.
+    const initial = isBpPlaceholderContent(raw) ? "" : raw;
     setBpWriteAiTarget({
       kind: "standard",
       sectionKey: key,
@@ -913,16 +923,29 @@ export function BusinessPlanWorkspace({
 
   // TIM-3675: Approve handler for the BP Write-with-AI modal — mirrors the
   // onApply body the pre-TIM-3675 AIReviewModal was using inside runStream.
-  // Standard-section approve PATCHes /api/business-plan/sections/[key]; custom
-  // section approve PATCHes /api/business-plan/custom-sections/[id].
-  const handleBpWriteAiApprove = useCallback(async (finalText: string) => {
+  // Standard-section approve PATCHes /api/business-plan/sections/[key];
+  // custom section approve PATCHes /api/business-plan/custom-sections/[id].
+  //
+  // TIM-3675 review-fix: also PATCHes estimated_claims_json alongside
+  // user_content on standard sections. TIM-2342's export-gate validator
+  // reads that column to populate the "Estimated claims to verify" band,
+  // and the pre-TIM-3675 runStream persisted it too. Custom sections don't
+  // participate in the estimated-claims flow (schema doesn't have the
+  // column) so the extras are dropped there.
+  const handleBpWriteAiApprove = useCallback(async (
+    finalText: string,
+    extras: WriteAiApproveExtras,
+  ) => {
     if (!bpWriteAiTarget) return;
     if (bpWriteAiTarget.kind === "standard") {
       const key = bpWriteAiTarget.sectionKey;
       const res = await fetch(`/api/business-plan/sections/${key}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_content: finalText }),
+        body: JSON.stringify({
+          user_content: finalText,
+          estimated_claims_json: extras.estimatedClaims,
+        }),
       });
       if (!res.ok) throw new Error("Couldn't save this change. Please try again.");
       setSections((prev) =>

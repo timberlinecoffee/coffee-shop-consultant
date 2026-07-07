@@ -23,16 +23,68 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 
+export interface ConsistencyContradiction {
+  kind: "numerical" | "categorical" | "temporal" | "other";
+  claim_a: string;
+  claim_b: string;
+  explanation: string;
+}
+
+export interface WriteAiApproveExtras {
+  estimatedClaims: unknown[];
+  consistencyContradictions: ConsistencyContradiction[];
+}
+
 interface Props {
   sectionKey: string;
   sectionTitle: string;
   shopName: string;
   initialContent: string;
   onClose: () => void;
-  onApprove: (finalText: string) => Promise<void>;
+  // TIM-3675 review-fix: onApprove takes both the final text AND the SSE-done
+  // extras (estimated_claims + consistency_contradictions) so the workspace
+  // PATCHes estimated_claims_json alongside user_content. Without this the
+  // TIM-2342 export-gate validator would surface stale claims that no longer
+  // appear in the draft.
+  onApprove: (finalText: string, extras: WriteAiApproveExtras) => Promise<void>;
 }
 
 type Step = "input" | "generating" | "preview" | "committing" | "done";
+
+// TIM-3675 review-fix: shared placeholder-detection used by the workspace's
+// modal-opener callbacks (so we don't pre-populate the modal with an
+// assembled-content placeholder like "Complete the Marketing workspace to
+// populate this section"). Exported so both callers stay in sync.
+export function isBpPlaceholderContent(content: string | null | undefined): boolean {
+  if (!content) return true;
+  return (
+    content.includes("workspace to populate") ||
+    content.includes("Click Generate") ||
+    content.includes("Complete the other") ||
+    content.includes("Complete the Marketing") ||
+    content.includes("click the text field")
+  );
+}
+
+function sanitizeContradictions(raw: unknown): ConsistencyContradiction[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((c) => {
+      if (!c || typeof c !== "object") return null;
+      const obj = c as Record<string, unknown>;
+      const kind = obj.kind;
+      const claimA = typeof obj.claim_a === "string" ? obj.claim_a : "";
+      const claimB = typeof obj.claim_b === "string" ? obj.claim_b : "";
+      const explanation = typeof obj.explanation === "string" ? obj.explanation : "";
+      if (!claimA || !claimB) return null;
+      const normalizedKind: ConsistencyContradiction["kind"] =
+        kind === "numerical" || kind === "categorical" || kind === "temporal" || kind === "other"
+          ? kind
+          : "other";
+      return { kind: normalizedKind, claim_a: claimA, claim_b: claimB, explanation };
+    })
+    .filter((c): c is ConsistencyContradiction => c !== null);
+}
 
 export function BPWriteWithAIModal({
   sectionKey,
@@ -47,13 +99,20 @@ export function BPWriteWithAIModal({
   const [step, setStep] = useState<Step>("input");
   const [streamingBuf, setStreamingBuf] = useState("");
   const [proposedText, setProposedText] = useState<string | null>(null);
+  const [estimatedClaims, setEstimatedClaims] = useState<unknown[]>([]);
+  const [contradictions, setContradictions] = useState<ConsistencyContradiction[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  // TIM-3675 review-fix: cleared on unmount so a rapid remount doesn't fire
+  // the "done → close" timer against a stale onClose captured from the prior
+  // render.
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     };
   }, []);
 
@@ -61,28 +120,40 @@ export function BPWriteWithAIModal({
     setError(null);
     setStreamingBuf("");
     setProposedText(null);
+    setEstimatedClaims([]);
+    setContradictions([]);
     setStep("generating");
 
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
-    // Empty content + empty instructions is only meaningful on the generate
-    // endpoint. Otherwise the improve endpoint handles both — with the
-    // pre-populated content acting as the draft to rewrite. Route by content
-    // presence (matches the pre-modal behavior in business-plan-workspace).
+    // Route decision: /improve rewrites whatever draft is in the textarea;
+    // /generate assembles from workspace data. Custom sections don't have a
+    // section spec in /generate (buildBpSectionPrompt.BP_SECTION_SPECS misses
+    // "custom"), so ALWAYS route custom sections through /improve — using a
+    // seed prompt if the draft is empty. Matches the pre-TIM-3675 behavior of
+    // handleCustomSectionWriteWithAi.
     const trimmed = content.trim();
     const trimmedInstructions = instructions.trim();
-    const useImprove = trimmed.length > 0;
+    const isCustom = sectionKey === "custom";
+    const useImprove = isCustom || trimmed.length > 0;
     const url = useImprove
       ? "/api/business-plan/improve"
       : "/api/business-plan/generate";
+
+    // For custom empty sections, seed with a first-draft directive so the
+    // /improve prompt has something concrete to rewrite. The instructions
+    // field still applies on top.
+    const effectiveDraft = isCustom && trimmed.length === 0
+      ? `Write a first draft for the "${sectionTitle}" section.`
+      : trimmed;
 
     const body: Record<string, unknown> = useImprove
       ? {
           sectionKey,
           sectionTitle,
-          currentContent: trimmed,
+          currentContent: effectiveDraft,
           shopName,
           instructions: trimmedInstructions || undefined,
         }
@@ -90,6 +161,12 @@ export function BPWriteWithAIModal({
           sectionKey,
           instructions: trimmedInstructions || undefined,
         };
+
+    // TIM-3675 review-fix: track whether the SSE done event fired inside the
+    // loop so the post-loop fallback doesn't double-transition on a stale
+    // closure and overwrite the server-normalized final text with the raw
+    // accumulated buffer.
+    let sawDone = false;
 
     try {
       const res = await fetch(url, {
@@ -145,7 +222,16 @@ export function BPWriteWithAIModal({
               full += chunk;
               setStreamingBuf((prev) => prev + chunk);
             } else if (evt === "done") {
+              sawDone = true;
               const final = ((parsed.text as string) ?? "") || full;
+              // TIM-2342: capture estimated_claims for PATCH-time persistence.
+              // TIM-2343: capture consistency_contradictions for preview
+              // advisory band. Both round-trip through onApprove.
+              const claims = Array.isArray(parsed.estimated_claims)
+                ? (parsed.estimated_claims as unknown[])
+                : [];
+              setEstimatedClaims(claims);
+              setContradictions(sanitizeContradictions(parsed.consistency_contradictions));
               setProposedText(final);
               setStep("preview");
             } else if (evt === "error") {
@@ -158,7 +244,12 @@ export function BPWriteWithAIModal({
         }
       }
 
-      if (!proposedText && full.trim().length > 0 && step !== "preview") {
+      // Post-loop fallback: only fire when the server closed the stream
+      // without a "done" event AND we accumulated text. Guards against a
+      // truncated SSE frame at network end. Guard uses a local `sawDone`
+      // bool — not `proposedText`/`step` from the pre-loop closure, which
+      // would always look stale.
+      if (!sawDone && full.trim().length > 0) {
         setProposedText(full);
         setStep("preview");
       }
@@ -173,10 +264,19 @@ export function BPWriteWithAIModal({
     if (!proposedText) return;
     setStep("committing");
     try {
-      await onApprove(proposedText);
+      await onApprove(proposedText, {
+        estimatedClaims,
+        consistencyContradictions: contradictions,
+      });
       setStep("done");
-      // Small hold on "done" so the user sees the success state; then close.
-      setTimeout(() => onClose(), 600);
+      // TIM-3675 review-fix: track the close-timer in a ref so unmount
+      // (parent nulls bpWriteAiTarget, or the user opens a different
+      // section's modal within 600ms) clears it.
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = setTimeout(() => {
+        closeTimerRef.current = null;
+        onClose();
+      }, 600);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Could not save. Try again.");
       setStep("preview");
@@ -192,14 +292,25 @@ export function BPWriteWithAIModal({
     setStep("input");
   }
 
+  // TIM-3675 review-fix: Generate is now enabled when EITHER the draft OR
+  // the instructions field has content. Empty custom sections seed a
+  // first-draft directive server-side, and empty standard sections route
+  // through /generate (workspace-snapshot synthesis) — both are valid.
   const canGenerate =
-    step === "input" && (content.trim().length > 0 || sectionKey === "executive-summary");
+    step === "input" &&
+    (content.trim().length > 0 ||
+      instructions.trim().length > 0 ||
+      sectionKey === "executive-summary");
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40"
       onClick={(e) => {
-        if (e.target === e.currentTarget && step !== "generating" && step !== "committing") {
+        // TIM-3675 review-fix: backdrop close is only safe in the "input"
+        // state. Once a draft is generating, previewing, or committing, a
+        // stray backdrop click would silently discard the draft the user
+        // just spent an AI credit on. Force explicit Reject/Approve/Close.
+        if (e.target === e.currentTarget && step === "input") {
           onClose();
         }
       }}
@@ -213,8 +324,10 @@ export function BPWriteWithAIModal({
           <div className="flex items-center gap-2.5">
             <Sparkles size={16} className="text-[var(--teal)]" aria-hidden="true" />
             <div>
+              {/* TIM-3675 review-fix: colon separator instead of an em dash
+                  to match the product voice rule (no em dashes in UI copy). */}
               <h2 className="text-base font-bold text-[var(--foreground)]">
-                Write with AI — {sectionTitle}
+                Write with AI: {sectionTitle}
               </h2>
               <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                 {step === "input" && "Edit the draft and tell the AI how to improve it."}
@@ -347,6 +460,27 @@ export function BPWriteWithAIModal({
                   </ReactMarkdown>
                 </div>
               </div>
+
+              {/* TIM-2343 / TIM-3675 review-fix: surface any unresolved
+                  self-consistency contradictions the proofreader flagged, so
+                  the founder can spot claim-pair conflicts BEFORE approving.
+                  Rendered as an amber advisory band, non-blocking. */}
+              {contradictions.length > 0 && (
+                <div className="rounded-xl border border-[var(--warning-bg)] bg-[var(--warning-bg-3)] px-4 py-3">
+                  <p className="text-xs font-semibold text-[var(--warning-text)] mb-1.5 uppercase tracking-wide">
+                    Check these before approving
+                  </p>
+                  <ul className="space-y-1.5 text-xs text-[var(--foreground)] list-disc list-outside pl-4">
+                    {contradictions.slice(0, 5).map((c, i) => (
+                      <li key={i} className="leading-relaxed">
+                        <span className="font-semibold">{c.claim_a}</span> vs.{" "}
+                        <span className="font-semibold">{c.claim_b}</span>
+                        {c.explanation ? <span className="text-[var(--muted-foreground)]"> ({c.explanation})</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {instructions.trim().length > 0 && (
                 <div>
