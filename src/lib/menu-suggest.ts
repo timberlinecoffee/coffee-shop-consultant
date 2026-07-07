@@ -60,23 +60,53 @@ export function normalizeNameForDedupe(raw: string): string {
 }
 
 // TIM-3683 Bug 2: is `candidate` a duplicate or close variant of `existing`?
-// Uses normalized-substring matching in both directions so "Vanilla Latte"
-// matches "Classic Vanilla Latte" AND "Vanilla Café Latte". Also matches when
-// the head of one is the whole of the other (e.g. "Iced Vanilla Latte" vs
-// "Vanilla Latte" — the shared core is a full existing item).
+//
+// Token-set match after filler-word stripping: A ≡ B iff their normalized
+// token sets are equal, OR one is a superset with a small size delta AND
+// contains all the other's tokens. This catches "Classic Vanilla Latte" ↔
+// "Vanilla Latte" (superset by one filler) without collapsing every latte
+// suggestion when the owner has a single "Latte" on the menu (the strict
+// superset guard requires ALL of the shorter side's non-filler tokens to
+// appear — a bare "Latte" only matches "Latte" or "Classic Latte", not
+// "Vanilla Latte" or "Maple Syrup Latte").
 export function isDuplicateOfExisting(
   candidate: string,
   existing: ReadonlyArray<string>,
 ): boolean {
-  const cand = normalizeNameForDedupe(candidate)
-  if (!cand) return false
+  const candTokens = tokenSet(candidate)
+  if (candTokens.size === 0) return false
   for (const e of existing) {
-    const en = normalizeNameForDedupe(e)
-    if (!en) continue
-    if (cand === en) return true
-    if (cand.includes(en) || en.includes(cand)) return true
+    const eTokens = tokenSet(e)
+    if (eTokens.size === 0) continue
+    if (isSameOrCloseVariant(candTokens, eTokens)) return true
   }
   return false
+}
+
+function tokenSet(name: string): Set<string> {
+  const normalized = normalizeNameForDedupe(name)
+  if (!normalized) return new Set()
+  return new Set(normalized.split(" ").filter(Boolean))
+}
+
+function isSameOrCloseVariant(a: Set<string>, b: Set<string>): boolean {
+  // Exact set equality.
+  if (a.size === b.size) {
+    for (const t of a) if (!b.has(t)) return false
+    return true
+  }
+  // Otherwise the SHORTER side must be fully contained in the longer side
+  // AND the shorter side must have at least one "content" token — otherwise
+  // a 1-token existing item like "Latte" would match every multi-token
+  // suggestion that happens to end in "Latte". Two tokens is the practical
+  // floor for a menu item name that carries a distinct identity ("Vanilla
+  // Latte" vs "Latte"). 1-token existing items only match 1-token dupes,
+  // handled by the equality branch above.
+  const shorter = a.size < b.size ? a : b
+  const longer = a.size < b.size ? b : a
+  if (shorter.size < 2) return false
+  for (const t of shorter) if (!longer.has(t)) return false
+  return true
 }
 
 // Founder voice mandate: no em/en dashes in user-facing copy. Normalize any the

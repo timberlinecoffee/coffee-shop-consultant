@@ -87,6 +87,12 @@ export async function POST(request: NextRequest) {
     : null
   const useSupplied = suppliedIngredients !== null && suppliedIngredients.length > 0
 
+  // Track whether the supplied-ingredients path actually attached anything —
+  // if the AI produced an ingredient list but every row failed validation
+  // (unit unknown, amount ≤ 0, empty name) we fall back to category defaults
+  // rather than shipping a bare item. TIM-3683 code-review Finding #3.
+  let suppliedAttachedCount = 0
+
   if (useSupplied) {
     // TIM-3683 Bug 3: AI-suggested full-recipe path. Lazily upsert the master
     // ingredient rows (name + unit are enough for the owner to see the
@@ -155,9 +161,17 @@ export async function POST(request: NextRequest) {
         .filter((r): r is NonNullable<typeof r> => r !== null)
       if (junctionRows.length > 0) {
         await supabase.from("menu_item_ingredients").insert(junctionRows)
+        suppliedAttachedCount = junctionRows.length
       }
     }
-  } else if (!skipDefaults) {
+  }
+
+  // Fallback: supplied path was chosen but produced no valid attachments —
+  // apply category defaults so the item isn't shipped bare (unless the client
+  // explicitly asked for a blank item via skip_category_defaults on its own).
+  const shouldApplyDefaults =
+    !skipDefaults && (!useSupplied || suppliedAttachedCount === 0)
+  if (shouldApplyDefaults) {
     const { data: defaults } = await supabase
       .from("category_default_ingredients")
       .select("ingredient_id, amount, unit")

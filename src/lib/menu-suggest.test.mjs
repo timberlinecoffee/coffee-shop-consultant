@@ -125,6 +125,29 @@ test("isDuplicateOfExisting lets net-new items through", () => {
   assert.equal(isDuplicateOfExisting("Breakfast Sandwich", existing), false)
 })
 
+// TIM-3683 code-review Finding #1: bare 1-token existing items (e.g. a menu
+// with just "Latte") must NOT collapse every multi-token latte suggestion
+// into a dupe. Only exact 1-token matches trigger. Regression guard for the
+// substring-over-match the naive impl had.
+test("isDuplicateOfExisting: bare 'Latte' does NOT match 'Vanilla Latte'", () => {
+  const existing = ["Latte"]
+  assert.equal(isDuplicateOfExisting("Vanilla Latte", existing), false)
+  assert.equal(isDuplicateOfExisting("Maple Syrup Latte", existing), false)
+  assert.equal(isDuplicateOfExisting("Iced Vanilla Latte", existing), false)
+  // But an exact-same suggestion is still a dupe.
+  assert.equal(isDuplicateOfExisting("Latte", existing), true)
+  assert.equal(isDuplicateOfExisting("Classic Latte", existing), true) // filler-stripped equal
+})
+
+test("isDuplicateOfExisting: bare 'Coffee' does not eat every coffee suggestion", () => {
+  // "Coffee" is a filler token in normalizeNameForDedupe → an existing item
+  // literally named "Coffee" normalizes to an empty token set, which now
+  // returns false for any candidate. Guards against 422s on legit menus.
+  const existing = ["Coffee"]
+  assert.equal(isDuplicateOfExisting("Cold Brew Coffee", existing), false)
+  assert.equal(isDuplicateOfExisting("Vietnamese Iced Coffee", existing), false)
+})
+
 test("isDuplicateOfExisting handles empty inputs", () => {
   assert.equal(isDuplicateOfExisting("", ["Vanilla Latte"]), false)
   assert.equal(isDuplicateOfExisting("Vanilla Latte", []), false)
