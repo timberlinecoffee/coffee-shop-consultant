@@ -159,6 +159,11 @@ export interface BpPromptInputs {
   // TIM-3076: BCP 47-ish language code — prose is written in this language.
   // "en" or empty string means English (no directive injected).
   preferredLanguage?: string;
+  // TIM-3675: optional founder instructions to the AI, entered in the
+  // Business Plan Write-with-AI modal ("make this shorter", "rewrite in
+  // first person"). When present, treated as primary rewrite directive but
+  // still gated by the shared voice rules above.
+  userInstructions?: string;
 }
 
 export interface BpPromptOutput {
@@ -202,6 +207,16 @@ export function buildBpSectionPrompt(inp: BpPromptInputs): BpPromptOutput {
     ? `\n\nLanguage: Write ALL narrative prose in the language matching code "${langCode}". Field names, section headings, numeric formats, and labels must stay in English -- only the generated paragraph text must be in the requested language.`
     : "";
 
+  // TIM-3675: founder-authored instructions from the Write-with-AI modal. Bounded
+  // (2000 chars) so a malicious client cannot blow up the context window; the
+  // block is a plain-text user directive appended to the user message so the
+  // model sees it inside the section-generation context.
+  const rawInstructions = typeof inp.userInstructions === "string" ? inp.userInstructions.trim() : "";
+  const boundedInstructions = rawInstructions.slice(0, 2000);
+  const instructionsBlock = boundedInstructions.length > 0
+    ? `\n\nUser instructions (apply these when writing this section — primary rewrite directive, but never break the voice rules above):\n${boundedInstructions}`
+    : "";
+
   if (inp.sectionKey === "executive-summary") {
     const systemPrompt = `You are an expert coffee shop business advisor writing an executive summary for a founder's business plan.
 
@@ -219,7 +234,7 @@ Founder context:
 - Stage: ${inp.founderStage}
 ${groundTruthBlock}${benchmarksBlock}
 Plan data:
-${inp.planSnapshot || "The workspaces are mostly empty, so generate from the founder context above plus reasonable, clearly-grounded assumptions for a coffee shop at this stage and location. Write a complete four-paragraph executive summary now -- do not refuse or list what is missing."}`;
+${inp.planSnapshot || "The workspaces are mostly empty, so generate from the founder context above plus reasonable, clearly-grounded assumptions for a coffee shop at this stage and location. Write a complete four-paragraph executive summary now -- do not refuse or list what is missing."}${instructionsBlock}`;
 
     return { systemPrompt, userMessage, maxTokens };
   }
@@ -243,7 +258,7 @@ Assembled plan data for this section:
 ${inp.sectionAutoContent || "(No section-specific data entered for this section yet.)"}
 
 Wider plan context (use this to ground the section even when the section-specific data above is thin):
-${inp.planSnapshot || "(Other workspaces are not filled in yet -- lean on the founder context and reasonable coffee-business assumptions.)"}
+${inp.planSnapshot || "(Other workspaces are not filled in yet -- lean on the founder context and reasonable coffee-business assumptions.)"}${instructionsBlock}
 
 Write a complete, usable draft of this section now. Generate from whatever context is available above plus your coffee-business expertise, making and grounding reasonable assumptions. Do not refuse and do not tell the founder there is not enough context.`;
 

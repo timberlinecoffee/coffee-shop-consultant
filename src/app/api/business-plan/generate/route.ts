@@ -131,8 +131,15 @@ export async function POST(request: NextRequest) {
 
   if (!plan) return Response.json({ error: "No plan" }, { status: 404 });
 
-  const reqBody = await request.json().catch(() => ({})) as { sectionKey?: string };
+  // TIM-3675: accept optional `instructions` from the Write-with-AI modal.
+  // Backwards-compatible — legacy callers omit and the prompt keeps its
+  // prior shape.
+  const reqBody = await request.json().catch(() => ({})) as {
+    sectionKey?: string;
+    instructions?: string;
+  };
   const sectionKey = reqBody.sectionKey ?? "executive-summary";
+  const rawUserInstructions = typeof reqBody.instructions === "string" ? reqBody.instructions : "";
 
   const planId = plan.id;
 
@@ -278,6 +285,9 @@ export async function POST(request: NextRequest) {
     sourceMarkerDirective: SOURCE_MARKER_DIRECTIVE,
     industryBenchmarks: formatBenchmarksForPrompt(sectionKey),
     preferredLanguage,
+    // TIM-3675: pipe founder instructions from the Write-with-AI modal into
+    // the prompt builder. Bounded server-side in buildBpSectionPrompt.
+    userInstructions: rawUserInstructions,
   });
 
   // TIM-3468: lane chosen by section. "executive-summary" is the synthesis
