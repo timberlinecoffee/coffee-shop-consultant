@@ -80,6 +80,7 @@ import {
   costPerUnit,
   aggregateMargins,
   computeMsrpCents,
+  cogsChipStatusFor,
 } from "@/lib/menu";
 import {
   type ExpectedPopularity,
@@ -232,11 +233,24 @@ type PriceSuggestion = {
 };
 
 // TIM-1323: an AI-suggested candidate menu item the owner can add in one tap.
+// TIM-3683 Bug 3: the AI now returns a full item spec — retail price, COGS
+// estimate, and full ingredient list including non-defaults (syrups, alt
+// milks, toppings) so accepting a suggestion yields a complete item, not one
+// missing its signature ingredients.
+type SuggestedIngredient = {
+  name: string;
+  amount: number;
+  unit: IngredientUnit;
+};
+
 type MenuSuggestion = {
   name: string;
   category_id: string;
   category_name: string;
   rationale: string | null;
+  estimated_price_cents: number | null;
+  estimated_cogs_cents: number | null;
+  ingredients: SuggestedIngredient[];
 };
 
 // ─── Expected-popularity selector (TIM-1322) ─────────────────────────────────
@@ -1523,13 +1537,11 @@ function CostOfGoodsTabContent({
   let editorChipStatus: BenchmarkStatus | null = null;
   let editorChipLabel = "";
   if (hasCatRange && cogsPctEditor !== null) {
-    if (cogsPctEditor >= catLow! && cogsPctEditor <= catHigh!) {
-      editorChipStatus = "green"; editorChipLabel = "On target";
-    } else if (cogsPctEditor < catLow!) {
-      editorChipStatus = "yellow"; editorChipLabel = "Under target";
-    } else {
-      editorChipStatus = "red"; editorChipLabel = "Over target";
-    }
+    // TIM-3683: COGS % is lower-is-better. In-or-under range = green (beating
+    // the margin target). Slightly over = yellow, significantly over = red.
+    const chip = cogsChipStatusFor(cogsPctEditor, catLow!, catHigh!);
+    editorChipStatus = chip.status;
+    editorChipLabel = chip.label;
   }
 
   return (
@@ -1986,13 +1998,11 @@ function SortableMenuItemRow({
   let cogsChipStatus: BenchmarkStatus | null = null;
   let cogsChipLabel = "";
   if (hasRange && cogsPct !== null) {
-    if (cogsPct >= catLow! && cogsPct <= catHigh!) {
-      cogsChipStatus = "green"; cogsChipLabel = "On target";
-    } else if (cogsPct < catLow!) {
-      cogsChipStatus = "yellow"; cogsChipLabel = "Under target";
-    } else {
-      cogsChipStatus = "red"; cogsChipLabel = "Over target";
-    }
+    // TIM-3683: COGS % is lower-is-better. In-or-under range = green (beating
+    // the margin target). Slightly over = yellow, significantly over = red.
+    const chip = cogsChipStatusFor(cogsPct, catLow!, catHigh!);
+    cogsChipStatus = chip.status;
+    cogsChipLabel = chip.label;
   }
 
   return (
@@ -4384,7 +4394,10 @@ export function MenuWorkspace({
   }
 
   // One-tap add: create the item in its resolved category via the standard
-  // item-create flow, so category-default ingredients + COGS carry over.
+  // item-create flow. TIM-3683 Bug 3: when the AI supplied a full recipe
+  // (Option A), pass ingredients + estimated price through so the item lands
+  // with a complete recipe, not category defaults alone. Category defaults are
+  // skipped in that path (the AI recipe already covers the base).
   async function addSuggestedItem(s: MenuSuggestion) {
     const key = s.name.toLowerCase();
     if (addedSuggestionKeys.has(key) || addingSuggestionKeys.has(key)) return;
@@ -4393,6 +4406,7 @@ export function MenuWorkspace({
       const position = items.filter(
         (i) => i.category_id === s.category_id && !i.archived
       ).length;
+      const hasAiIngredients = s.ingredients && s.ingredients.length > 0;
       const res = await fetch("/api/workspaces/menu-pricing/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -4400,7 +4414,14 @@ export function MenuWorkspace({
           name: s.name,
           category_id: s.category_id,
           position,
-          price_cents: 0,
+          price_cents: s.estimated_price_cents ?? 0,
+          cogs_cents: s.estimated_cogs_cents ?? null,
+          ...(hasAiIngredients
+            ? {
+                ingredients: s.ingredients,
+                skip_category_defaults: true,
+              }
+            : {}),
         }),
       });
       if (res.status === 402) {

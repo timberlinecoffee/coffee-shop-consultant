@@ -5,6 +5,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { toTitleCase } from "@/lib/text"
+import { defaultPackageSize } from "@/lib/recipe-suggest"
+import type { IngredientUnit } from "@/lib/menu"
 import type { NextRequest } from "next/server"
 
 export const runtime = "nodejs"
@@ -78,9 +80,105 @@ export async function POST(request: NextRequest) {
   if (error || !created) return Response.json({ error: "Failed to create menu item" }, { status: 500 })
 
   // TIM-1140: auto-populate category default ingredients onto the new item.
-  // Skip if the client explicitly opts out (e.g. duplicating an item).
+  // Skip if the client explicitly opts out (e.g. duplicating an item, or when
+  // TIM-3683 AI-suggested ingredients are supplied — those replace defaults so
+  // an accepted "Maple Syrup Latte" gets the syrup, not just espresso base).
   const skipDefaults = body.skip_category_defaults === true
-  if (!skipDefaults) {
+  const suppliedIngredients = Array.isArray(body.ingredients)
+    ? (body.ingredients as Array<Record<string, unknown>>)
+    : null
+  const useSupplied = suppliedIngredients !== null && suppliedIngredients.length > 0
+
+  // Track whether the supplied-ingredients path actually attached anything —
+  // if the AI produced an ingredient list but every row failed validation
+  // (unit unknown, amount ≤ 0, empty name) we fall back to category defaults
+  // rather than shipping a bare item. TIM-3683 code-review Finding #3.
+  let suppliedAttachedCount = 0
+
+  if (useSupplied) {
+    // TIM-3683 Bug 3: AI-suggested full-recipe path. Lazily upsert the master
+    // ingredient rows (name + unit are enough for the owner to see the
+    // ingredient; package cost defaults to 0 so the item starts with $0 COGS
+    // and the owner fills in real costs later). Then attach via
+    // menu_item_ingredients.
+    const validUnits = new Set(["g", "ml", "oz", "each", "piece"])
+    const cleaned = suppliedIngredients
+      .map((raw) => {
+        const name = typeof raw.name === "string" ? toTitleCase(raw.name.trim()) : ""
+        const amount = typeof raw.amount === "number" ? raw.amount : Number.NaN
+        const unitRaw = typeof raw.unit === "string" ? raw.unit.trim().toLowerCase() : ""
+        if (!name || !Number.isFinite(amount) || amount <= 0 || !validUnits.has(unitRaw)) {
+          return null
+        }
+        return { name, amount, unit: unitRaw }
+      })
+      .filter((r): r is { name: string; amount: number; unit: string } => r !== null)
+
+    if (cleaned.length > 0) {
+      // Look up which of these already exist for this plan (case-insensitive).
+      const { data: existingRows } = await supabase
+        .from("menu_ingredients")
+        .select("id, name, package_unit")
+        .eq("plan_id", planId)
+      const existing = new Map<string, { id: string; unit: string }>()
+      for (const r of existingRows ?? []) {
+        existing.set(String(r.name).trim().toLowerCase(), {
+          id: r.id as string,
+          unit: r.package_unit as string,
+        })
+      }
+
+      const toCreate = cleaned.filter((c) => !existing.has(c.name.toLowerCase()))
+      if (toCreate.length > 0) {
+        // Package size defaults track the canonical helper used by the sibling
+        // /suggest-recipe/apply route: 1000 for g/ml, 32 for oz, 1 otherwise.
+        // Package cost starts at 0 so the item ships with $0 COGS and the
+        // owner fills in real per-package cost later; the sensible package
+        // size means one edit (cost) instead of two (size + cost).
+        const insertRows = toCreate.map((c) => ({
+          plan_id: planId,
+          name: c.name,
+          package_size: defaultPackageSize(c.unit as IngredientUnit),
+          package_unit: c.unit,
+          package_cost_cents: 0,
+        }))
+        const { data: created2 } = await supabase
+          .from("menu_ingredients")
+          .insert(insertRows)
+          .select("id, name, package_unit")
+        for (const r of created2 ?? []) {
+          existing.set(String(r.name).trim().toLowerCase(), {
+            id: r.id as string,
+            unit: r.package_unit as string,
+          })
+        }
+      }
+
+      const junctionRows = cleaned
+        .map((c) => {
+          const master = existing.get(c.name.toLowerCase())
+          if (!master) return null
+          return {
+            menu_item_id: created.id,
+            ingredient_id: master.id,
+            amount: c.amount,
+            unit: c.unit,
+          }
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null)
+      if (junctionRows.length > 0) {
+        await supabase.from("menu_item_ingredients").insert(junctionRows)
+        suppliedAttachedCount = junctionRows.length
+      }
+    }
+  }
+
+  // Fallback: supplied path was chosen but produced no valid attachments —
+  // apply category defaults so the item isn't shipped bare (unless the client
+  // explicitly asked for a blank item via skip_category_defaults on its own).
+  const shouldApplyDefaults =
+    !skipDefaults && (!useSupplied || suppliedAttachedCount === 0)
+  if (shouldApplyDefaults) {
     const { data: defaults } = await supabase
       .from("category_default_ingredients")
       .select("ingredient_id, amount, unit")

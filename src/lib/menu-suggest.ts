@@ -7,6 +7,17 @@
 
 import { toTitleCase } from "./text.ts"
 import { normalizeAIOutput } from "./normalize.ts"
+import { normalizeUnitAndAmount } from "./recipe-suggest.ts"
+
+// TIM-3683 Bug 3: AI-suggested ingredient with amount and unit, including
+// non-default items (syrups, alt milks, toppings, sauces). Client accepts a
+// suggestion and the item-create path hydrates these onto the new item so the
+// owner gets a complete recipe, not category defaults alone.
+export type SuggestedIngredient = {
+  name: string
+  amount: number
+  unit: "g" | "ml" | "oz" | "each" | "piece"
+}
 
 export type SuggestedMenuItem = {
   name: string
@@ -14,9 +25,87 @@ export type SuggestedMenuItem = {
   // it to a real category id; an unmatched/blank value falls back server-side.
   category: string
   rationale?: string
+  // TIM-3683: full item spec from the AI (Option A from the board directive).
+  estimated_price_cents?: number
+  estimated_cogs_cents?: number
+  ingredients?: SuggestedIngredient[]
 }
 
 const MAX_ITEMS = 16
+const MAX_INGREDIENTS_PER_ITEM = 12
+
+// TIM-3683 Bug 2: normalize an item name for dedupe checks. Lowercase, strip
+// punctuation, collapse whitespace, drop common filler tokens (café, coffee,
+// house, classic, our, the, style, drink) so "Classic Vanilla Latte", "Our
+// Vanilla Café Latte" and "Vanilla Latte" all collide.
+const DEDUPE_FILLER = new Set([
+  "cafe", "café", "coffee", "house", "classic", "our", "the", "a", "an", "of",
+  "style", "drink", "signature", "special",
+])
+
+export function normalizeNameForDedupe(raw: string): string {
+  const stripped = raw
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+  const tokens = stripped
+    .split(" ")
+    .filter((t) => t && !DEDUPE_FILLER.has(t))
+  return tokens.join(" ")
+}
+
+// TIM-3683 Bug 2: is `candidate` a duplicate or close variant of `existing`?
+//
+// Token-set match after filler-word stripping: A ≡ B iff their normalized
+// token sets are equal, OR one is a superset with a small size delta AND
+// contains all the other's tokens. This catches "Classic Vanilla Latte" ↔
+// "Vanilla Latte" (superset by one filler) without collapsing every latte
+// suggestion when the owner has a single "Latte" on the menu (the strict
+// superset guard requires ALL of the shorter side's non-filler tokens to
+// appear — a bare "Latte" only matches "Latte" or "Classic Latte", not
+// "Vanilla Latte" or "Maple Syrup Latte").
+export function isDuplicateOfExisting(
+  candidate: string,
+  existing: ReadonlyArray<string>,
+): boolean {
+  const candTokens = tokenSet(candidate)
+  if (candTokens.size === 0) return false
+  for (const e of existing) {
+    const eTokens = tokenSet(e)
+    if (eTokens.size === 0) continue
+    if (isSameOrCloseVariant(candTokens, eTokens)) return true
+  }
+  return false
+}
+
+function tokenSet(name: string): Set<string> {
+  const normalized = normalizeNameForDedupe(name)
+  if (!normalized) return new Set()
+  return new Set(normalized.split(" ").filter(Boolean))
+}
+
+function isSameOrCloseVariant(a: Set<string>, b: Set<string>): boolean {
+  // Exact set equality.
+  if (a.size === b.size) {
+    for (const t of a) if (!b.has(t)) return false
+    return true
+  }
+  // Otherwise the SHORTER side must be fully contained in the longer side
+  // AND the shorter side must have at least one "content" token — otherwise
+  // a 1-token existing item like "Latte" would match every multi-token
+  // suggestion that happens to end in "Latte". Two tokens is the practical
+  // floor for a menu item name that carries a distinct identity ("Vanilla
+  // Latte" vs "Latte"). 1-token existing items only match 1-token dupes,
+  // handled by the equality branch above.
+  const shorter = a.size < b.size ? a : b
+  const longer = a.size < b.size ? b : a
+  if (shorter.size < 2) return false
+  for (const t of shorter) if (!longer.has(t)) return false
+  return true
+}
 
 // Founder voice mandate: no em/en dashes in user-facing copy. Normalize any the
 // model emits to a plain hyphen and collapse stray whitespace.
@@ -102,10 +191,59 @@ function extractItems(candidate: string): SuggestedMenuItem[] | null {
 
     const category = typeof r.category === "string" ? r.category.trim() : ""
     const rationale = sanitizeRationale(r.rationale)
+    const estimated_price_cents = parseCents(r.estimated_price_cents ?? r.price_cents)
+    const estimated_cogs_cents = parseCents(r.estimated_cogs_cents ?? r.cogs_cents)
+    const ingredients = parseIngredients(r.ingredients)
 
-    items.push({ name, category, rationale })
+    items.push({
+      name,
+      category,
+      rationale,
+      estimated_price_cents,
+      estimated_cogs_cents,
+      ingredients,
+    })
     if (items.length >= MAX_ITEMS) break
   }
 
   return items.length > 0 ? items : null
+}
+
+function parseCents(raw: unknown): number | undefined {
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return undefined
+  // Model may return cents or dollars — accept either. A "price under $2" makes
+  // no sense for menu items, so anything under 100 is treated as dollars.
+  const cents = raw < 100 ? Math.round(raw * 100) : Math.round(raw)
+  return cents > 0 ? cents : undefined
+}
+
+function parseIngredients(raw: unknown): SuggestedIngredient[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const out: SuggestedIngredient[] = []
+  const seen = new Set<string>()
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue
+    const r = item as Record<string, unknown>
+    const rawName = typeof r.name === "string" ? r.name.trim() : ""
+    if (!rawName) continue
+    const name = toTitleCase(rawName)
+    const key = name.toLowerCase()
+    if (seen.has(key)) continue
+    const amountRaw = typeof r.amount === "number"
+      ? r.amount
+      : typeof r.amount === "string"
+        ? Number.parseFloat(r.amount)
+        : NaN
+    if (!Number.isFinite(amountRaw) || amountRaw <= 0) continue
+    // Delegate unit + amount coercion to recipe-suggest.ts so "shot"/"tbsp"/
+    // "cup"/"kg"/"lb" etc. from the model get converted (with amount rescaling)
+    // instead of silently dropped. Two divergent AI-recipe pipelines were what
+    // caused TIM-3683 Bug 3 in the first place — this collapses them onto the
+    // same normalizer that /suggest-recipe already uses.
+    const { unit, amount } = normalizeUnitAndAmount(r.unit, amountRaw)
+    seen.add(key)
+    out.push({ name, amount, unit })
+    if (out.length >= MAX_INGREDIENTS_PER_ITEM) break
+  }
+  return out.length > 0 ? out : undefined
 }

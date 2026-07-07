@@ -5,7 +5,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { blendedTicketCentsFromMenu, costPerUnit } from "./menu.ts";
+import { blendedTicketCentsFromMenu, cogsChipStatusFor, costPerUnit } from "./menu.ts";
 
 const EPSILON = 1e-9;
 
@@ -216,4 +216,46 @@ test("drift guard: every priced row participates (no skip on null popularity)", 
   // selector would return null — caller would render "—" instead of the
   // honest 1000.
   assert.equal(blendedTicketCentsFromMenu(items), 1000);
+});
+
+// TIM-3683: profitability meter color logic for COGS % (lower-is-better).
+// TIM-3248 shipped the inverted mapping — under-range showed yellow "Under
+// target" when under-range is actually *beating* the margin target and should
+// be green. These tests lock in the corrected direction and the slight-vs-
+// significant over-range distinction.
+test("cogsChipStatusFor: at low end of range is green (on target)", () => {
+  assert.deepEqual(cogsChipStatusFor(22, 22, 28), { status: "green", label: "On target" });
+});
+
+test("cogsChipStatusFor: at high end of range is green (on target)", () => {
+  assert.deepEqual(cogsChipStatusFor(28, 22, 28), { status: "green", label: "On target" });
+});
+
+test("cogsChipStatusFor: BELOW range is GREEN, not yellow — beating the margin target", () => {
+  // Regression guard for TIM-3683 Bug 1. If this fails, the inverted TIM-3248
+  // mapping is back — do not just change the assertion.
+  const chip = cogsChipStatusFor(15, 22, 28);
+  assert.equal(chip.status, "green", "sub-range COGS % must be green — item is beating margin target");
+  assert.notEqual(chip.label, "Under target", "label must NOT read as a warning");
+});
+
+test("cogsChipStatusFor: BELOW range at 0% is still green", () => {
+  assert.equal(cogsChipStatusFor(0, 22, 28).status, "green");
+});
+
+test("cogsChipStatusFor: slightly over is yellow", () => {
+  // catHigh=28 → tolerance = max(2, 28*0.15) = 4.2 → yellow band 28.01–32.20
+  assert.deepEqual(cogsChipStatusFor(30, 22, 28), { status: "yellow", label: "Slightly over" });
+});
+
+test("cogsChipStatusFor: significantly over is red", () => {
+  // catHigh=28 → tolerance 4.2 → red > 32.20
+  assert.deepEqual(cogsChipStatusFor(40, 22, 28), { status: "red", label: "Over target" });
+});
+
+test("cogsChipStatusFor: 2pp floor kicks in for tight low-COGS categories", () => {
+  // catHigh=10 → 15% = 1.5 → floor to 2pp → yellow band 10.01–12.00
+  assert.equal(cogsChipStatusFor(11, 8, 10).status, "yellow");
+  assert.equal(cogsChipStatusFor(12, 8, 10).status, "yellow");
+  assert.equal(cogsChipStatusFor(12.5, 8, 10).status, "red");
 });
