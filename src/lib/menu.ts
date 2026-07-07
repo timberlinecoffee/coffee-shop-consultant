@@ -149,6 +149,30 @@ export function effectiveCogsCents(item: MenuItemWithCogs): number {
   return item.cogs_cents ?? 0
 }
 
+// TIM-3683: shared color logic for the profitability meter chip. COGS % is a
+// lower-is-better metric: at or below the category target range is *good*
+// (beating the margin target), not "under" and yellow — that was the inverted
+// TIM-3248 mapping. Slightly above the range is yellow; significantly above is
+// red. "Slightly" = within max(2 percentage points, 15% of catHigh) so both
+// low-COGS food categories (e.g. 22-28% target → tolerance ~4pp) and high-COGS
+// beverage categories (e.g. 8-12% target → tolerance 2pp floor) behave sanely.
+export type CogsChipStatus = "green" | "yellow" | "red"
+
+export function cogsChipStatusFor(
+  cogsPct: number,
+  catLow: number,
+  catHigh: number,
+): { status: CogsChipStatus; label: string } {
+  if (cogsPct <= catHigh) {
+    return { status: "green", label: "On target" }
+  }
+  const tolerance = Math.max(2, catHigh * 0.15)
+  if (cogsPct <= catHigh + tolerance) {
+    return { status: "yellow", label: "Slightly over" }
+  }
+  return { status: "red", label: "Over target" }
+}
+
 // TIM-1471: Minimum Suggested Retail Price from COGS and a target gross margin.
 // Returns null when COGS is unknown (a meaningful MSRP requires it). Margin is
 // clamped into the valid open interval (0, 1) defensively.
