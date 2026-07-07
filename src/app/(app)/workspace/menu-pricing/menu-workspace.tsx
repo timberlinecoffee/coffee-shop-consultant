@@ -174,6 +174,21 @@ function makeLocalId() {
   return "local_" + Math.random().toString(36).slice(2, 10);
 }
 
+// TIM-3683 Bug 4: bring a freshly-added menu row into view. Add appends to the
+// end of a category and can leave the new row + its editor panel below the
+// fold on any category with more than a handful of items -- the click reads as
+// "did nothing" from the founder's viewport. Two rAFs so the row mounts before
+// we look for it; `block: "center"` frames the row and the editor panel below.
+function scrollMenuItemIntoView(id: string) {
+  if (typeof window === "undefined") return;
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`[data-menu-item-id="${id}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  });
+}
+
 // TIM-2921: extract the first dollar/currency amount from a free-text blob
 // (e.g. the AI price-suggestion proposedValue: "$5.50\n\nMarket range: ...").
 // Used when the founder edits the suggested price in the review modal — the
@@ -231,11 +246,16 @@ type PriceSuggestion = {
 };
 
 // TIM-1323: an AI-suggested candidate menu item the owner can add in one tap.
+// TIM-3683 Bug 3: candidates now carry a full spec (price, estimated COGS, and
+// the ingredient list w/ amounts + units) so Accept lands a complete item.
 type MenuSuggestion = {
   name: string;
   category_id: string;
   category_name: string;
   rationale: string | null;
+  suggested_price_cents: number | null;
+  estimated_cogs_cents: number | null;
+  ingredients: { name: string; amount: number; unit: "g" | "ml" | "oz" | "each" | "piece" }[];
 };
 
 // ─── Expected-popularity selector (TIM-1322) ─────────────────────────────────
@@ -1519,13 +1539,18 @@ function CostOfGoodsTabContent({
   const cogsPctEditor = effectiveCogs > 0 && item.price_cents > 0
     ? (effectiveCogs / item.price_cents) * 100
     : null;
+  // TIM-3683 Bug 1: same lower-is-better mapping as the row chip -- below range
+  // beats the target and is GREEN; only above-range is yellow/red.
   let editorChipStatus: BenchmarkStatus | null = null;
   let editorChipLabel = "";
   if (hasCatRange && cogsPctEditor !== null) {
-    if (cogsPctEditor >= catLow! && cogsPctEditor <= catHigh!) {
-      editorChipStatus = "green"; editorChipLabel = "On target";
-    } else if (cogsPctEditor < catLow!) {
-      editorChipStatus = "yellow"; editorChipLabel = "Under target";
+    const editorBand = catHigh! - catLow!;
+    const editorOver = cogsPctEditor - catHigh!;
+    if (cogsPctEditor <= catHigh!) {
+      editorChipStatus = "green";
+      editorChipLabel = cogsPctEditor < catLow! ? "Beating target" : "On target";
+    } else if (editorBand > 0 && editorOver <= editorBand * 0.2) {
+      editorChipStatus = "yellow"; editorChipLabel = "Slightly over";
     } else {
       editorChipStatus = "red"; editorChipLabel = "Over target";
     }
@@ -1982,13 +2007,20 @@ function SortableMenuItemRow({
   const cogsPct = item.price_cents > 0 && cogs > 0
     ? (cogs / item.price_cents) * 100
     : null;
+  // TIM-3683 Bug 1: COGS % is cost-based (lower is better). Below range means
+  // the item is beating its margin target -- that is GREEN, not yellow. Only
+  // above-range values should be yellow (slightly over) or red (significantly
+  // over). Slightly-over threshold = 20% of the band width above catHigh.
   let cogsChipStatus: BenchmarkStatus | null = null;
   let cogsChipLabel = "";
   if (hasRange && cogsPct !== null) {
-    if (cogsPct >= catLow! && cogsPct <= catHigh!) {
-      cogsChipStatus = "green"; cogsChipLabel = "On target";
-    } else if (cogsPct < catLow!) {
-      cogsChipStatus = "yellow"; cogsChipLabel = "Under target";
+    const bandWidth = catHigh! - catLow!;
+    const overBy = cogsPct - catHigh!;
+    if (cogsPct <= catHigh!) {
+      cogsChipStatus = "green";
+      cogsChipLabel = cogsPct < catLow! ? "Beating target" : "On target";
+    } else if (bandWidth > 0 && overBy <= bandWidth * 0.2) {
+      cogsChipStatus = "yellow"; cogsChipLabel = "Slightly over";
     } else {
       cogsChipStatus = "red"; cogsChipLabel = "Over target";
     }
@@ -1998,6 +2030,11 @@ function SortableMenuItemRow({
     <div
       ref={setNodeRef}
       style={style}
+      // TIM-3683 Bug 4: data-menu-item-id lets the workspace-level Add handler
+      // scroll a freshly-added row into view. Add previously appended to the
+      // bottom of a long category, so a click on the "+" from a scrolled-down
+      // viewport landed a new row off-screen and read as "click does nothing".
+      data-menu-item-id={item.id}
       className={`flex items-start gap-2 sm:gap-3 px-4 sm:px-5 py-3 transition-colors cursor-pointer hover:bg-[var(--background)] ${
         isSelected
           ? "border-l-2 border-[var(--teal)] bg-[var(--teal-bg-f0f8)]"
@@ -3537,9 +3574,22 @@ function SuggestItemsModal({
                           className="flex items-start justify-between gap-3 rounded-lg border border-[var(--border)] px-3 py-2.5"
                         >
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-[var(--foreground)]">{s.name}</p>
+                            <div className="flex items-baseline justify-between gap-2">
+                              <p className="text-sm font-medium text-[var(--foreground)]">{s.name}</p>
+                              {typeof s.suggested_price_cents === "number" && s.suggested_price_cents > 0 && (
+                                <p className="text-xs font-semibold text-[var(--teal)] whitespace-nowrap">
+                                  {formatCents(s.suggested_price_cents)}
+                                </p>
+                              )}
+                            </div>
                             {s.rationale && (
                               <p className="text-xs text-[var(--muted-foreground)] leading-snug mt-0.5">{s.rationale}</p>
+                            )}
+                            {s.ingredients && s.ingredients.length > 0 && (
+                              <p className="text-[11px] text-[var(--muted-foreground)] mt-1">
+                                <span className="text-[var(--foreground)] font-medium">Includes:</span>{" "}
+                                {s.ingredients.map((i) => i.name).join(", ")}
+                              </p>
                             )}
                           </div>
                           <button
@@ -3695,6 +3745,11 @@ export function MenuWorkspace({
     };
     setItems((prev) => [...prev, optimistic]);
     setSelectedItemId(optimistic.id);
+    // TIM-3683 Bug 4: scroll the new row + its editor panel into view. Without
+    // this, a scrolled-down viewport lands the appended row off-screen and the
+    // click reads as "did nothing". Two rAFs so we wait for both the row and
+    // the editor panel below it to lay out before scrolling.
+    scrollMenuItemIntoView(optimistic.id);
 
     const res = await fetch("/api/workspaces/menu-pricing/items", {
       method: "POST",
@@ -3712,6 +3767,10 @@ export function MenuWorkspace({
       // both items (for new computed COGS) and item-ingredients.
       setItems((prev) => prev.map((i) => (i.id === optimistic.id ? created : i)));
       setSelectedItemId(created.id);
+      // TIM-3683 Bug 4: re-scroll after the server round-trip so the row lands
+      // in view even when the initial optimistic scroll fired before the row
+      // mounted (StrictMode/slow first paint).
+      scrollMenuItemIntoView(created.id);
       const r = await fetch("/api/workspaces/menu-pricing/item-ingredients?item_id=" + created.id);
       if (r.ok) {
         const lines = (await r.json()) as MenuItemIngredient[];
@@ -4382,8 +4441,13 @@ export function MenuWorkspace({
     }
   }
 
-  // One-tap add: create the item in its resolved category via the standard
-  // item-create flow, so category-default ingredients + COGS carry over.
+  // One-tap add: create the item in its resolved category with the AI's full
+  // spec (price + complete ingredient list) via /suggest-items/accept. Before
+  // TIM-3683 Bug 3 this used the generic items POST which only auto-copied
+  // category defaults, dropping non-default AI ingredients like syrups + alt
+  // milks. The accept route creates missing ingredients and inserts every
+  // suggested line atomically. Refresh ingredients too so newly-created rows
+  // land in the plan's pantry list without a page reload.
   async function addSuggestedItem(s: MenuSuggestion) {
     const key = s.name.toLowerCase();
     if (addedSuggestionKeys.has(key) || addingSuggestionKeys.has(key)) return;
@@ -4392,14 +4456,15 @@ export function MenuWorkspace({
       const position = items.filter(
         (i) => i.category_id === s.category_id && !i.archived
       ).length;
-      const res = await fetch("/api/workspaces/menu-pricing/items", {
+      const res = await fetch("/api/workspaces/menu-pricing/suggest-items/accept", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: s.name,
           category_id: s.category_id,
           position,
-          price_cents: 0,
+          price_cents: s.suggested_price_cents ?? 0,
+          ingredients: s.ingredients,
         }),
       });
       if (res.status === 402) {
@@ -4411,18 +4476,26 @@ export function MenuWorkspace({
         setSuggestError("Couldn't add that item. Try again in a moment.");
         return;
       }
-      const created = (await res.json()) as MenuItemWithCogs;
+      const payload = (await res.json()) as { item: MenuItemWithCogs };
+      const created = payload.item;
       setItems((prev) => [...prev, created]);
-      // Server may have auto-attached category default ingredients.
-      const r = await fetch(
-        "/api/workspaces/menu-pricing/item-ingredients?item_id=" + created.id
-      );
-      if (r.ok) {
-        const lines = (await r.json()) as MenuItemIngredient[];
+      // Refresh the item's ingredient rows (accept route inserts them
+      // server-side) and the plan-level ingredient list (accept may have
+      // created new pantry rows).
+      const [rItemIng, rIng] = await Promise.all([
+        fetch("/api/workspaces/menu-pricing/item-ingredients?item_id=" + created.id),
+        fetch("/api/workspaces/menu-pricing/ingredients"),
+      ]);
+      if (rItemIng.ok) {
+        const lines = (await rItemIng.json()) as MenuItemIngredient[];
         setItemIngredients((prev) => [
           ...prev.filter((ii) => ii.menu_item_id !== created.id),
           ...lines,
         ]);
+      }
+      if (rIng.ok) {
+        const allIng = (await rIng.json()) as MenuIngredient[];
+        setIngredients(allIng);
       }
       setAddedSuggestionKeys((prev) => new Set(prev).add(key));
     } finally {
