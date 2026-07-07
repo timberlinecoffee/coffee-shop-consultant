@@ -251,6 +251,21 @@ export async function POST(request: NextRequest) {
       "financial-plan-working-capital": assembleWorkingCapitalSection(lenderMetrics, currencyCode),
       "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode),
       "appendix-monthly-statements": "",
+      // TIM-3677: optional sections have no workspace-data assembler — they are
+      // user-authored (sourceLabel "Your inputs"). The section spec in
+      // business-plan-prompts.ts is the only section-specific guidance the LLM
+      // sees. Listed explicitly so the emptiness is intentional, not a
+      // forgotten map entry.
+      "sustainability-practices": "",
+      "community-engagement": "",
+      "technology-pos": "",
+      "catering-wholesale": "",
+      "seasonal-menu": "",
+      "expansion-roadmap": "",
+      "supplier-relationships": "",
+      "accessibility-design": "",
+      "staff-training": "",
+      "loyalty-online-ordering": "",
     } as Record<string, string>)[meta.key] ?? "",
     userContent: null,
     isVisible: meta.defaultVisible,

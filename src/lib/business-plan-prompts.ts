@@ -102,6 +102,54 @@ Keep it short and factual. Lenders expect to see it; they don't need narrative a
   "financial-plan-working-capital": `Length: 200 to 350 words. Two paragraphs after the auto-assembled working capital table.
 Structure: Paragraph 1 -- state the inventory, A/P, and A/R days the plan assumes and what each translates into in dollar terms at the Year 1 run rate, using the EXACT numbers from the Ground Truth block. Paragraph 2 -- net working capital tied up in operations and how the opening working-capital reserve in the uses-of-funds line covers it.
 Lender wants to see the days × daily-flow math and the cash buffer. Avoid theoretical discussion of working capital management.`,
+
+  // TIM-3677: appendix + 10 optional sections. Optional sections are user-authored
+  // (sourceLabel "Your inputs") and have no workspace-data assembler, so the spec
+  // is the only section-specific guidance the LLM sees. Length + structure tuned
+  // to lender-friendly detail without inflating short-form appendix material.
+  "appendix-monthly-statements": `Length: 60 to 120 words. One short paragraph, no bullets, no headings.
+Structure: One sentence stating that the month-by-month profit and loss, cash flow, and balance sheet detail for the projection period follows below. One sentence noting the summary tables in the Financial Plan section aggregate this monthly detail so the two agree by construction. One optional sentence citing the reporting currency and that assumptions match the Financial Plan section.
+This is a data-appendix lead-in, not a narrative section. Do not restate the numbers. Do not recap the Financial Plan section. Keep it tight and factual so the reader moves straight to the tables.`,
+
+  "sustainability-practices": `Length: 250 to 400 words. Three paragraphs, no bullet lists.
+Structure: Paragraph 1 -- sourcing posture: name the roaster or direct-trade partner, the origin countries or farms the beans come from, and the specific certifications or relationships the shop leans on (Fair Trade, Rainforest Alliance, single-origin direct relationships, local dairy). Paragraph 2 -- in-shop waste and energy practices: cup and lid choices (compostable, reusable-mug incentive), grounds diversion (compost pickup, community garden partner), water and energy specifics (Energy Star equipment, low-flow fixtures). Paragraph 3 -- the operational cost of these choices and why the shop absorbs it (customer expectation in this catchment, brand credibility with regulars, local health and environmental context).
+Name the actual roaster, the actual compost partner, the actual cup vendor. Avoid "eco-friendly practices" and "environmentally conscious" -- specifics or nothing. Do not claim certifications the shop does not hold.`,
+
+  "community-engagement": `Length: 250 to 400 words. Three paragraphs.
+Structure: Paragraph 1 -- the specific neighborhood or community the shop anchors and what "community" means concretely here (block, school district, farmer's market cohort, artist collective). Paragraph 2 -- named partnerships and recurring programs: monthly nonprofit round-up, open-mic night, local school fundraiser, farmer's market Saturday. Say what happens, how often, and who else is involved. Paragraph 3 -- how community engagement drives repeat traffic and word-of-mouth in this catchment, and what the shop deliberately does not sponsor to stay focused.
+Name the actual nonprofits, schools, and partners. Avoid "give back to the community" and "community-focused" -- name the actual programs. If the shop is pre-opening, describe the programs the owner will launch in the first six months, with specifics.`,
+
+  "technology-pos": `Length: 250 to 400 words. Three paragraphs.
+Structure: Paragraph 1 -- the point-of-sale platform (Square, Toast, Clover, Lightspeed) and why this choice fits the shop's transaction volume, hardware footprint, and integrations. Paragraph 2 -- back-of-house tools: inventory tracking, scheduling (7shifts, Homebase, When I Work), payroll (Gusto, ADP, in-POS), accounting sync (QuickBooks, Xero) and how they connect. Paragraph 3 -- customer-facing tech: online ordering channel, gift cards, loyalty, marketing automation, and any hardware (kiosk, KDS, drive-through timer) with monthly cost.
+Name the actual platforms and monthly subscription cost per platform. Avoid "cutting-edge technology" and "state-of-the-art POS" -- name the vendor and version. Explain the reasoning behind each choice, not just what was picked.`,
+
+  "catering-wholesale": `Length: 300 to 450 words. Three to four paragraphs.
+Structure: Paragraph 1 -- the catering menu and price points, distinguishing drop-off (boxes of pastries, airpots of drip) from staffed events (barista onsite, espresso cart, mobile bar). Paragraph 2 -- the wholesale channel: which local businesses buy whole bean or prepared drinks, delivery cadence, and per-account revenue. Name accounts if they exist; describe target account profiles if pre-opening. Paragraph 3 -- how these off-premise channels affect kitchen throughput, staffing, and equipment (a second grinder, delivery van, larger pastry order). Paragraph 4 (optional) -- the revenue split you expect between retail, catering, and wholesale at steady state and why that mix is realistic here.
+Cite actual account names, actual per-order revenue, actual monthly volumes if the shop is open. If pre-opening, ground assumptions in comparable-shop benchmarks and named prospective accounts. Avoid "expand our revenue streams" -- give the specific channels and the specific numbers.`,
+
+  "seasonal-menu": `Length: 250 to 400 words. Three paragraphs.
+Structure: Paragraph 1 -- the shop's four-season rhythm: which seasonal drinks and food items rotate in each quarter, the launch cadence, and what stays year-round. Name the actual drinks (Maple Cortado in fall, Iced Horchata Latte in summer) and food (savory scones in winter, cold noodle salads in summer). Paragraph 2 -- how seasonal changeovers affect purchasing, staff training, and back-bar layout. Paragraph 3 -- what the seasonal program does for regulars: the pull that brings them back on launch day, seasonal-drink loyalty stamps, or a preview email to loyalty subscribers.
+Name the actual drink names in Title Case. Avoid "fresh seasonal offerings" and "unique creations" -- name the drinks. Tie every seasonal choice to what makes sense at this shop's latitude and customer base.`,
+
+  "expansion-roadmap": `Length: 350 to 500 words. Four paragraphs.
+Structure: Paragraph 1 -- the multi-location vision: how many locations over what timeframe, corporate-owned versus franchised, and the geographic strategy (same city cluster, second-tier city expansion, tourist-corridor sites). Paragraph 2 -- the operational readiness bar the first location must clear before opening the second: revenue threshold, months of positive cash flow, documented SOPs, a hired general manager the owner trusts to run location one. Paragraph 3 -- the capital plan for expansion: retained earnings, new debt, franchise fees, or outside investors, and the DSCR or IRR guardrails you use to green-light each new site. Paragraph 4 -- the specific risks of expanding too fast in coffee retail (dilution of quality, thin bench of trained baristas, franchise support burden) and how the roadmap sequences hires and systems to avoid them.
+Cite realistic per-location build-out costs and realistic same-store-sales assumptions. Avoid "scale nationwide" and "franchise model" without specifics. If the shop is not yet open, frame this as a Year-3-plus consideration, not an active plan.`,
+
+  "supplier-relationships": `Length: 300 to 450 words. Three to four paragraphs.
+Structure: Paragraph 1 -- the roaster relationship: named roaster, pricing structure (per-pound cost, minimum weekly order), delivery cadence, and the training or bar-calibration support they include. Paragraph 2 -- dairy, food, and pastry: named vendors, delivery days, and per-item cost or margin. Paragraph 3 -- named backup suppliers for the top two ingredients (roaster and dairy) with the pricing delta, so a supply disruption is a phone call away from resolved. Paragraph 4 (optional) -- payment terms with each vendor (Net 15, Net 30) and how those terms sit against the shop's cash conversion cycle.
+Name the actual vendors. Cite the actual per-unit costs. Avoid "trusted suppliers" and "long-standing partnerships" -- name the vendors and cite the relationship terms. Show the reader you know what happens if the roaster van breaks down on a Monday morning.`,
+
+  "accessibility-design": `Length: 250 to 400 words. Three paragraphs.
+Structure: Paragraph 1 -- physical accessibility: entrance grade and door width, the accessible bathroom, aisle clearance, counter height, and how the queue path works for wheelchair, walker, and stroller users. Cite ADA (Americans with Disabilities Act) requirements the space clears and any variances or upgrades the build-out includes. Paragraph 2 -- sensory-friendly design: lighting, acoustics, music policy, and the quiet-hour or sensory-friendly window (if any). Menu-readability choices for low-vision customers (large-print menu, high-contrast board, tactile signage). Paragraph 3 -- staff training on accessibility: language guidance, mobility assistance, allergen and dietary-restriction protocol, and how the shop responds to a customer request the space cannot fully meet.
+Cite ADA specifically on first use, then abbreviate. Avoid "inclusive space" and "welcoming to all" without specifics. Describe what a customer using a mobility device actually experiences from sidewalk to counter to bathroom to seat.`,
+
+  "staff-training": `Length: 300 to 450 words. Three to four paragraphs.
+Structure: Paragraph 1 -- the barista training arc: hours of paid pre-shift training, the milestones (dial-in an espresso to spec, pour a rosetta, hand off a five-drink ticket) and the sign-off owner or lead barista. Paragraph 2 -- ongoing education: monthly calibrations, cuppings, brew-method rotations, and any SCA (Specialty Coffee Association) certifications the shop sponsors or reimburses. Paragraph 3 -- non-coffee training: customer-service scripts, cash handling, allergen protocol, opening and closing checklists, and food-handler certification. Paragraph 4 -- how training investment shows up in retention, ticket size, and speed-of-service, and what the owner tracks to know training is landing.
+Spell out SCA as "Specialty Coffee Association (SCA)" on first use. Cite the actual hours, the actual milestones, and the actual retention or ticket-size metrics the shop watches. Avoid "well-trained staff" and "invest in our people" -- cite the curriculum.`,
+
+  "loyalty-online-ordering": `Length: 250 to 400 words. Three paragraphs.
+Structure: Paragraph 1 -- the online ordering channel: platform (Square Online, Toast Online, Cloosiv, Odeko), the order types offered (pickup, delivery, catering), and what the shop deliberately does not offer to protect the in-shop experience (no third-party delivery marketplace, no all-day catering minimum). Paragraph 2 -- the loyalty program mechanics: earn rate, redemption threshold, sign-up incentive, and how the program integrates with the POS from paragraph 1. Paragraph 3 -- how the shop converts first-time customers into loyalty members and turns loyalty members into regulars: barista sign-up ask, welcome-drink offer, birthday bonus, and the specific frequency lift the owner is targeting.
+Name the actual platforms and the actual earn/redeem numbers (5 percent back, 100 stars = free drink). Avoid "boost customer loyalty" and "drive repeat business" -- cite the mechanics and the target frequency lift.`,
 };
 
 export const BP_MAX_TOKENS_BY_SECTION: Record<string, number> = {
@@ -127,6 +175,20 @@ export const BP_MAX_TOKENS_BY_SECTION: Record<string, number> = {
   "financial-plan-depreciation": 800,
   "financial-plan-working-capital": 1000,
   "financial-plan-statements": 1600,
+  // TIM-3677: appendix + 10 optional sections. Appendix kept small (data-appendix
+  // lead-in, not a narrative section); optional sections sized to their spec
+  // word count with ~3.2 tokens per word plus headroom.
+  "appendix-monthly-statements": 400,
+  "sustainability-practices": 1200,
+  "community-engagement": 1200,
+  "technology-pos": 1200,
+  "catering-wholesale": 1400,
+  "seasonal-menu": 1200,
+  "expansion-roadmap": 1600,
+  "supplier-relationships": 1400,
+  "accessibility-design": 1200,
+  "staff-training": 1400,
+  "loyalty-online-ordering": 1200,
 };
 
 export interface BpPromptInputs {
@@ -265,8 +327,17 @@ Write a complete, usable draft of this section now. Generate from whatever conte
   return { systemPrompt, userMessage, maxTokens };
 }
 
-// Section keys eligible for regenerate-all are exactly the keys with a section
-// spec above (i.e. AI-generated sections, not a pure data appendix). Kept as
-// a pure list here so this module has no transitive @/ imports and stays
-// loadable from the node:test runner.
-export const BP_REGENERABLE_SECTION_KEYS: string[] = Object.keys(BP_SECTION_SPECS);
+// Section keys eligible for regenerate-all. Per-section Write-with-AI on
+// individual sections goes through /generate, which reads BP_SECTION_SPECS
+// directly, so a key being in BP_SECTION_SPECS but NOT here means "has AI
+// guidance for one-off Write-with-AI runs, but is skipped by bulk regen".
+// TIM-3677: appendix-monthly-statements is deliberately excluded — it's a
+// short boilerplate lead-in to the monthly-detail tables, not a narrative
+// section that benefits from bulk regeneration (would burn credits rewriting
+// essentially-static text). Optional sections (sustainability-practices etc.)
+// are INCLUDED so a user who adds one via Add-to-Plan gets it swept into a
+// full-plan regeneration alongside the standard sections.
+// Kept as a pure list here so this module has no transitive @/ imports and
+// stays loadable from the node:test runner.
+export const BP_REGENERABLE_SECTION_KEYS: string[] = Object.keys(BP_SECTION_SPECS)
+  .filter((k) => k !== "appendix-monthly-statements");
