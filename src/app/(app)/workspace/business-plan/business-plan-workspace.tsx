@@ -1681,6 +1681,10 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
           const hasRealContent = Boolean(displayContent?.trim()) && !hasPlaceholderContent;
           const onWriteWithAi = props.canEdit
             ? () => {
+                // TIM-3672: Write with AI now surfaces on collapsed cards too.
+                // Auto-expand on click so the eventual AI review modal + saved
+                // content anchor visually to the section the user acted on.
+                if (!section.isExpanded) props.onToggleExpand(section.key, section.isExpanded);
                 if (hasRealContent) props.onImprove(section.key);
                 else props.onGenerateExec(section.key);
               }
@@ -2270,9 +2274,13 @@ function SectionCard({
           top-level expandable sections, not sub-section headers).
           TIM-3501: right side stays strictly [Write with AI] per TIM-3300.
           (StatusChip was removed entirely by TIM-3506 board redirect.)
-          Collapsed-row tap target preserved per TIM-3428 (full row is the
-          expand button); expanded uses a chevron-only collapse button so
-          clicks in the title area during edit don't accidentally collapse.
+          TIM-3672: Write with AI is shown in BOTH collapsed and expanded
+          headers so the affordance is discoverable per-section without
+          requiring an expand click first (board flag: "Management Team has
+          no Write with AI button" — Trent never expanded it). Collapsed row
+          splits chevron+title into their own click-to-expand region so the
+          sparkle button can sit beside it as a shrink-0 sibling; row tap
+          target stays ≥44px (chevron+title is still the majority of the row).
           pr-12 on the inner header flex reserves room for the kebab. */}
       <div className="px-4 sm:px-5 py-4">
         <div className="flex items-center gap-2 sm:gap-3 pr-12">
@@ -2305,7 +2313,7 @@ function SectionCard({
               onClick={onToggleExpand}
               aria-expanded={false}
               aria-label={`Expand ${section.title}`}
-              className="flex-1 flex items-center gap-2 sm:gap-3 text-left min-w-0"
+              className="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 text-left"
             >
               <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
               <h2
@@ -2316,7 +2324,7 @@ function SectionCard({
               </h2>
             </button>
           )}
-          {section.isExpanded && canEdit && !section.isEditing && !isStreaming && onWriteWithAi && (
+          {canEdit && !section.isEditing && !isStreaming && onWriteWithAi && (
             <button
               type="button"
               onClick={onWriteWithAi}
