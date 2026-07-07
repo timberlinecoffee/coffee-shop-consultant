@@ -62,6 +62,11 @@ import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton"
 import { useUiRevamp } from "@/hooks/useUiRevamp";
 import type { AuditReport } from "@/lib/business-plan/audit";
 import { stripSourceMarkers } from "@/lib/business-plan/source-markers";
+import {
+  BPWriteWithAIModal,
+  isBpPlaceholderContent,
+  type WriteAiApproveExtras,
+} from "@/components/business-plan/BPWriteWithAIModal";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
@@ -103,92 +108,12 @@ interface SectionState extends BusinessPlanSectionData {
   isArchived: boolean;
 }
 
-// ── SSE fetch helper ──────────────────────────────────────────────────────────
-
-// TIM-2342: estimated_claims arrives on the "done" event from /generate. Pass
-// it back to onDone so the workspace can persist it via PATCH alongside
-// user_content. Shape mirrors EstimatedClaim in source-markers.ts; the SSE
-// helper keeps it opaque (the consumer types it).
-// TIM-2343: consistency_contradictions also arrives on the "done" event when
-// the self-consistency proofreader flagged pairs the regen couldn't resolve.
-// Surfaced in the AI review modal as an advisory band so the founder can
-// edit before applying. Not persisted — these are a generate-time signal.
-interface SseDoneExtras {
-  estimated_claims?: unknown;
-  consistency_contradictions?: unknown;
-}
-
-async function fetchSse(
-  url: string,
-  body: Record<string, unknown>,
-  onChunk: (text: string) => void,
-  onDone: (full: string, extras: SseDoneExtras) => void,
-  onError: (msg: string) => void,
-  signal: AbortSignal
-) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal,
-  });
-
-  if (!res.ok) {
-    const j = await res.json().catch(() => ({})) as Record<string, unknown>;
-    if (res.status === 402) {
-      onError("AI credits required. Upgrade your plan to use this feature.");
-    } else {
-      onError((j.error as string) ?? "Request failed");
-    }
-    return;
-  }
-
-  const reader = res.body?.getReader();
-  if (!reader) { onError("No response stream"); return; }
-
-  const dec = new TextDecoder();
-  let buf = "";
-  let full = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-
-    const parts = buf.split("\n\n");
-    buf = parts.pop() ?? "";
-
-    for (const part of parts) {
-      const lines = part.split("\n");
-      let event = "";
-      let data = "";
-      for (const line of lines) {
-        if (line.startsWith("event: ")) event = line.slice(7);
-        if (line.startsWith("data: ")) data = line.slice(6);
-      }
-      if (!data) continue;
-      try {
-        const parsed = JSON.parse(data) as Record<string, unknown>;
-        if (event === "text") {
-          const chunk = (parsed.text as string) ?? "";
-          full += chunk;
-          onChunk(chunk);
-        } else if (event === "done") {
-          onDone(((parsed.text as string) ?? "") || full, {
-            estimated_claims: parsed.estimated_claims,
-            consistency_contradictions: parsed.consistency_contradictions,
-          });
-        } else if (event === "error") {
-          onError((parsed.message as string) ?? "Error");
-        }
-      } catch {
-        // ignore malformed SSE
-      }
-    }
-  }
-}
-
 // ── Progressive disclosure helpers ───────────────────────────────────────────
+
+// TIM-3675: the previous per-section fetchSse helper moved into the
+// BPWriteWithAIModal component when TIM-3675 replaced the workspace's
+// inline stream + AIReviewModal path with a dedicated per-section modal
+// that owns its own generate flow.
 
 function determineInitialExpanded(
   section: BusinessPlanSectionData,
@@ -275,8 +200,9 @@ export function BusinessPlanWorkspace({
   // Dirty buffer for custom section content autosave, keyed by custom section id.
   const customDirtyBuffersRef = useRef<Map<string, string | null>>(new Map());
   const customPendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // TIM-3111: tracks which custom section (if any) is streaming a Write with AI response.
-  const [customStreamingId, setCustomStreamingId] = useState<string | null>(null);
+  // TIM-3111: tracked which custom section was streaming inline. TIM-3675
+  // routes per-section Write-with-AI through a modal that owns its own
+  // stream state, so the workspace no longer holds a custom streaming id.
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isPrintingPdf, setIsPrintingPdf] = useState(false);
@@ -297,6 +223,16 @@ export function BusinessPlanWorkspace({
   // removed because once sections can move across group boundaries it no
   // longer maps cleanly to a Set<groupKey>.
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
+  // TIM-3675: Per-section Write-with-AI modal state. The modal owns the
+  // pre-populated content + optional instructions + generate + approval flow;
+  // approve calls the same PATCH the pre-TIM-3675 AIReviewModal onApply used.
+  // Standard sections and custom sections share the modal component but keep
+  // separate PATCH targets.
+  const [bpWriteAiTarget, setBpWriteAiTarget] = useState<
+    | { kind: "standard"; sectionKey: BusinessPlanSectionKey; sectionTitle: string; initialContent: string }
+    | { kind: "custom"; sectionId: string; sectionTitle: string; initialContent: string }
+    | null
+  >(null);
   // TIM-2385: Two-phase loading UX. Phase 1 — this overlay covers the workspace
   // while a Generate or Improve run streams. Phase 2 — the modal opens on done.
   const {
@@ -318,15 +254,16 @@ export function BusinessPlanWorkspace({
     if (hasContent) promoteOnEdit("business_plan");
   }, [hasContent, promoteOnEdit]);
 
-  const abortRef = useRef<AbortController | null>(null);
-
   // ── Autosave state ─────────────────────────────────────────────────────────
 
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle", lastSavedAt: null });
-  // Tracks which section (if any) is currently streaming an Improve/Regenerate
-  // response so per-section CTAs can show progress and the RegenerateAll
-  // button can disable itself while a single-section run is in flight.
-  const [streamingKey, setStreamingKey] = useState<BusinessPlanSectionKey | null>(null);
+  // TIM-3675: per-section Write-with-AI now runs inside its own modal, which
+  // owns the SSE stream. The workspace no longer tracks a per-section
+  // streaming key; the value is retained (always null) purely so consumers
+  // that gated on it before — the RegenerateAll disable + the flat list's
+  // per-card streaming decoration — keep the same shape without needing a
+  // prop-drilling refactor. A future consolidation can drop this entirely.
+  const streamingKey: BusinessPlanSectionKey | null = null;
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Accumulates edits waiting to be persisted; keyed by section key.
   const dirtyBuffersRef = useRef<Map<BusinessPlanSectionKey, string | null>>(new Map());
@@ -591,171 +528,39 @@ export function BusinessPlanWorkspace({
     [persistDirty]
   );
 
-  // ── AI streaming ───────────────────────────────────────────────────────────
+  // ── Per-section Write-with-AI (TIM-3675) ──────────────────────────────────
+  //
+  // TIM-3675 replaces the pre-existing inline stream + AIReviewModal path
+  // with a dedicated per-section modal. The modal itself owns the SSE call
+  // (see BPWriteWithAIModal.tsx) — parent-side we only need to open it and
+  // handle approve. Handlers below.
 
-  const runStream = useCallback(async (
-    url: string,
-    body: Record<string, unknown>,
-    sectionKey: BusinessPlanSectionKey
-  ) => {
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    // TIM-2385: Phase 1 — keep the section card untouched. The overlay covers
-    // the workspace while the section streams; the modal opens on done.
-    let cancelledByUser = false;
-    const cancelOverlay = () => {
-      cancelledByUser = true;
-      controller.abort();
-      closeProgressOverlay();
-      setStreamingKey(null);
-      updateSection(sectionKey, { isGenerating: false });
-    };
-    openProgressOverlay({ total: 1, onCancel: cancelOverlay });
-    updateSection(sectionKey, { isGenerating: true });
-    setStreamingKey(sectionKey);
-
-    try {
-      await fetchSse(
-        url,
-        body,
-        () => {
-          // Phase 1: deliberately do not surface the streaming buffer inline.
-          // The overlay is the only progress UX during generation.
-        },
-        (full, extras) => {
-          updateProgressOverlay({ completed: 1 });
-          closeProgressOverlay();
-          setStreamingKey(null);
-          updateSection(sectionKey, { isGenerating: false, isEditing: false });
-          if (cancelledByUser) return;
-          // TIM-1561: route AI result through unified review modal before applying.
-          const sectionMeta = BUSINESS_PLAN_SECTIONS.find((s) => s.key === sectionKey);
-          const currentSection = sections.find((s) => s.key === sectionKey);
-          const originalValue = currentSection?.userContent ?? currentSection?.autoContent ?? "";
-          // TIM-2342: capture estimated_claims off the SSE done payload so
-          // we PATCH them alongside user_content. The validator + export-gate
-          // modal pull them back out of the column to populate the "Estimated
-          // claims to verify" section.
-          const estimatedClaims = Array.isArray(extras.estimated_claims)
-            ? (extras.estimated_claims as unknown[])
-            : [];
-          // TIM-2343: surface unresolved self-consistency contradictions as
-          // an advisory inside the AI review modal card. Sanitize the shape
-          // defensively — anything malformed gets dropped rather than
-          // crashing the modal.
-          const consistencyRaw = Array.isArray(extras.consistency_contradictions)
-            ? extras.consistency_contradictions
-            : [];
-          const consistencyContradictions = consistencyRaw
-            .map((c) => {
-              if (!c || typeof c !== "object") return null;
-              const obj = c as Record<string, unknown>;
-              const kind = obj.kind;
-              const claimA = typeof obj.claim_a === "string" ? obj.claim_a : "";
-              const claimB = typeof obj.claim_b === "string" ? obj.claim_b : "";
-              const explanation = typeof obj.explanation === "string" ? obj.explanation : "";
-              if (!claimA || !claimB) return null;
-              const normalizedKind = (kind === "numerical" || kind === "categorical" || kind === "temporal" || kind === "other") ? kind : "other";
-              return { kind: normalizedKind as "numerical" | "categorical" | "temporal" | "other", claim_a: claimA, claim_b: claimB, explanation };
-            })
-            .filter((c): c is NonNullable<typeof c> => c !== null);
-          openAIReviewModal({
-            suggestions: [
-              {
-                id: `bp-${sectionKey}`,
-                fieldId: sectionKey,
-                fieldLabel: sectionMeta?.title ?? sectionKey,
-                originalValue,
-                proposedValue: full,
-                isStructured: false,
-                consistencyContradictions,
-              },
-            ],
-            context: { workspace: "Business Plan", section: sectionMeta?.title },
-            onApply: async () => {
-              // Inline save (avoids hoisting issue with handleSaveAfterImprove ref)
-              const res = await fetch(`/api/business-plan/sections/${sectionKey}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  user_content: full,
-                  estimated_claims_json: estimatedClaims,
-                }),
-              });
-              if (!res.ok) throw new Error("Couldn't save this change. Please try again.");
-              setSections((prev) =>
-                prev.map((s) => {
-                  if (s.key !== sectionKey) return s;
-                  return { ...s, userContent: full };
-                })
-              );
-              updateSection(sectionKey, { isEditing: false, isGenerating: false });
-            },
-          });
-        },
-        (msg) => {
-          closeProgressOverlay();
-          setStreamingKey(null);
-          updateSection(sectionKey, { isGenerating: false });
-          if (!cancelledByUser) setGlobalError(msg);
-        },
-        controller.signal
-      );
-    } catch (err: unknown) {
-      closeProgressOverlay();
-      setStreamingKey(null);
-      updateSection(sectionKey, { isGenerating: false });
-      if (err instanceof Error && err.name !== "AbortError" && !cancelledByUser) {
-        setGlobalError(err.message);
-      }
-    }
-  }, [
-    updateSection,
-    sections,
-    openAIReviewModal,
-    openProgressOverlay,
-    updateProgressOverlay,
-    closeProgressOverlay,
-  ]);
-
-  const handleGenerate = useCallback(async (key: BusinessPlanSectionKey) => {
-    await runStream("/api/business-plan/generate", { sectionKey: key }, key);
-  }, [runStream]);
-
-  const handleImprove = useCallback(async (key: BusinessPlanSectionKey) => {
+  const handleOpenWriteAiModal = useCallback((key: BusinessPlanSectionKey) => {
+    if (!canEdit) return;
     const section = sections.find((s) => s.key === key);
     if (!section) return;
-    const content = section.userContent ?? section.autoContent;
-    await runStream("/api/business-plan/improve", {
+    // Auto-expand on open so the eventual saved content anchors visually to
+    // the section the user acted on (parity with the pre-TIM-3675 behavior).
+    if (!section.isExpanded) updateSection(key, { isExpanded: true });
+    // Prefer the in-progress edit buffer when the user has been typing, so
+    // the modal's pre-populated content matches what's on screen. Fall back
+    // to saved user content, then to the auto-assembled draft.
+    const raw = section.isEditing
+      ? section.editBuffer
+      : (section.userContent ?? section.autoContent ?? "");
+    // TIM-3675 review-fix: don't pre-populate the modal with the assembled
+    // "Complete the Marketing workspace to populate this section" style
+    // placeholders; feeding them to /improve would produce a rewrite of the
+    // placeholder itself. Empty initial content routes the modal to
+    // /generate → workspace-snapshot synthesis, which is the correct path.
+    const initial = isBpPlaceholderContent(raw) ? "" : raw;
+    setBpWriteAiTarget({
+      kind: "standard",
       sectionKey: key,
       sectionTitle: section.title,
-      currentContent: content,
-      shopName,
-    }, key);
-  }, [sections, runStream, shopName]);
-
-  // After AI finishes editing, auto-save the result
-  const handleSaveAfterImprove = useCallback(async (key: BusinessPlanSectionKey, content: string) => {
-    setSaveState({ kind: "saving" });
-    try {
-      await fetch(`/api/business-plan/sections/${key}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_content: content }),
-      });
-      setSections((prev) =>
-        prev.map((s) => {
-          if (s.key !== key) return s;
-          return { ...s, userContent: content };
-        })
-      );
-      setSaveState({ kind: "saved", at: new Date().toISOString() });
-    } catch {
-      setSaveState({ kind: "error", message: "Could not save. Try again." });
-    }
-  }, []);
+      initialContent: initial,
+    });
+  }, [canEdit, sections, updateSection]);
 
   // ── PDF export / print ──────────────────────────────────────────────────────
 
@@ -1094,111 +899,97 @@ export function BusinessPlanWorkspace({
   // PATCHes are replaced by the unified per-plan section_order on
   // coffee_shop_plans (drag-to-reorder via the shared sortable canon).
 
-  const handleCustomSectionWriteWithAi = useCallback(async (id: string) => {
-    // Guard both: a custom section already streaming, and a standard section streaming.
-    // Do NOT abort abortRef (standard sections share it) — only block while either is running.
-    if (!canEdit || customStreamingId !== null || streamingKey !== null) return;
+  // TIM-3675: open the Write-with-AI modal for a custom section. Same shape
+  // as handleOpenWriteAiModal for standard sections, but the modal wires
+  // approve to the custom-sections PATCH endpoint.
+  const handleOpenCustomWriteAiModal = useCallback((id: string) => {
+    if (!canEdit) return;
     const cs = customSections.find((c) => c.id === id);
     if (!cs) return;
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    let cancelledByUser = false;
-    const cancelOverlay = () => {
-      cancelledByUser = true;
-      controller.abort();
-      closeProgressOverlay();
-      setCustomStreamingId(null);
-      updateCustomSection(id, { isGenerating: false });
-    };
-    openProgressOverlay({ total: 1, onCancel: cancelOverlay });
-    updateCustomSection(id, { isGenerating: true });
-    setCustomStreamingId(id);
-
-    try {
-      await fetchSse(
-        "/api/business-plan/improve",
-        {
-          sectionKey: "custom",
-          sectionTitle: cs.title,
-          currentContent: cs.userContent?.trim() || `Write a first draft for the "${cs.title}" section.`,
-          shopName,
-        },
-        () => {},
-        (full) => {
-          updateProgressOverlay({ completed: 1 });
-          closeProgressOverlay();
-          setCustomStreamingId(null);
-          updateCustomSection(id, { isGenerating: false });
-          if (cancelledByUser) return;
-          openAIReviewModal({
-            suggestions: [
-              {
-                id: `custom-${id}`,
-                fieldId: id,
-                fieldLabel: cs.title,
-                originalValue: cs.userContent ?? "",
-                proposedValue: full,
-                isStructured: false,
-                consistencyContradictions: [],
-              },
-            ],
-            context: { workspace: "Business Plan", section: cs.title },
-            onApply: async () => {
-              const res = await fetch(`/api/business-plan/custom-sections/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ user_content: full }),
-              });
-              if (!res.ok) throw new Error("Could not save. Please try again.");
-              setCustomSections((prev) =>
-                prev.map((s) =>
-                  s.id !== id ? s : { ...s, userContent: full, editBuffer: full, isEditing: false }
-                )
-              );
-              setSaveState({ kind: "saved", at: new Date().toISOString() });
-            },
-          });
-        },
-        (msg) => {
-          closeProgressOverlay();
-          setCustomStreamingId(null);
-          updateCustomSection(id, { isGenerating: false });
-          if (!cancelledByUser) setGlobalError(msg);
-        },
-        controller.signal
-      );
-    } catch (err: unknown) {
-      closeProgressOverlay();
-      setCustomStreamingId(null);
-      updateCustomSection(id, { isGenerating: false });
-      if (err instanceof Error && err.name !== "AbortError" && !cancelledByUser) {
-        setGlobalError(err.message);
-      }
-    }
-  }, [
-    canEdit,
-    customStreamingId,
-    streamingKey,
-    customSections,
-    shopName,
-    closeProgressOverlay,
-    openProgressOverlay,
-    updateProgressOverlay,
-    updateCustomSection,
-    openAIReviewModal,
-  ]);
+    if (!cs.isExpanded) updateCustomSection(id, { isExpanded: true });
+    const initial = cs.isEditing ? cs.editBuffer : (cs.userContent ?? "");
+    setBpWriteAiTarget({
+      kind: "custom",
+      sectionId: id,
+      sectionTitle: cs.title,
+      initialContent: initial,
+    });
+  }, [canEdit, customSections, updateCustomSection]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
   const visibleCount = sections.filter((s) => s.isVisible).length;
   const allExpanded = sections.every((s) => s.isExpanded);
 
+  // TIM-3675: Approve handler for the BP Write-with-AI modal — mirrors the
+  // onApply body the pre-TIM-3675 AIReviewModal was using inside runStream.
+  // Standard-section approve PATCHes /api/business-plan/sections/[key];
+  // custom section approve PATCHes /api/business-plan/custom-sections/[id].
+  //
+  // TIM-3675 review-fix: also PATCHes estimated_claims_json alongside
+  // user_content on standard sections. TIM-2342's export-gate validator
+  // reads that column to populate the "Estimated claims to verify" band,
+  // and the pre-TIM-3675 runStream persisted it too. Custom sections don't
+  // participate in the estimated-claims flow (schema doesn't have the
+  // column) so the extras are dropped there.
+  const handleBpWriteAiApprove = useCallback(async (
+    finalText: string,
+    extras: WriteAiApproveExtras,
+  ) => {
+    if (!bpWriteAiTarget) return;
+    if (bpWriteAiTarget.kind === "standard") {
+      const key = bpWriteAiTarget.sectionKey;
+      const res = await fetch(`/api/business-plan/sections/${key}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_content: finalText,
+          estimated_claims_json: extras.estimatedClaims,
+        }),
+      });
+      if (!res.ok) throw new Error("Couldn't save this change. Please try again.");
+      setSections((prev) =>
+        prev.map((s) =>
+          s.key !== key ? s : { ...s, userContent: finalText, isEditing: false, editBuffer: finalText },
+        ),
+      );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    } else {
+      const id = bpWriteAiTarget.sectionId;
+      const res = await fetch(`/api/business-plan/custom-sections/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_content: finalText }),
+      });
+      if (!res.ok) throw new Error("Could not save. Please try again.");
+      setCustomSections((prev) =>
+        prev.map((s) =>
+          s.id !== id ? s : { ...s, userContent: finalText, editBuffer: finalText, isEditing: false },
+        ),
+      );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    }
+  }, [bpWriteAiTarget]);
+
   return (
     <>
     {AIReviewModalNode}
     {ProgressOverlayNode}
+    {/* TIM-3675: BP Write-with-AI modal (per-section). Opens when the user
+        clicks the Write-with-AI button on a section header. Owns the input
+        state (pre-populated content + optional instructions), the generate
+        stream, and the approve/reject flow. Approve merges the AI draft into
+        the section via the sections / custom-sections PATCH endpoints. */}
+    {bpWriteAiTarget && (
+      <BPWriteWithAIModal
+        sectionKey={bpWriteAiTarget.kind === "standard" ? bpWriteAiTarget.sectionKey : "custom"}
+        sectionTitle={bpWriteAiTarget.sectionTitle}
+        shopName={shopName}
+        initialContent={bpWriteAiTarget.initialContent}
+        onClose={() => setBpWriteAiTarget(null)}
+        onApprove={handleBpWriteAiApprove}
+      />
+    )}
     {/* TIM-3576: cover config modal opens before print/export */}
     {coverModalAction && (
       <CoverConfigModal
@@ -1402,8 +1193,15 @@ export function BusinessPlanWorkspace({
                 updateSection(key, { isEditing: false, editBuffer: fallback })
               }
               onResetToAuto={(key) => saveSection(key, null)}
-              onGenerateExec={handleGenerate}
-              onImprove={handleImprove}
+              // TIM-3675: per-section Write-with-AI now goes through the new
+              // modal (pre-populated content + optional instructions + approve
+              // flow) instead of the inline stream + AIReviewModal chain. The
+              // flat list still branches on content presence for its own
+              // reasons but both callbacks open the same modal — the modal
+              // internally routes /improve vs /generate based on whether the
+              // pre-populated draft is empty.
+              onGenerateExec={handleOpenWriteAiModal}
+              onImprove={handleOpenWriteAiModal}
               onCustomToggleExpand={(id, current) =>
                 updateCustomSection(id, { isExpanded: !current })
               }
@@ -1455,7 +1253,9 @@ export function BusinessPlanWorkspace({
                 updateCustomSection(id, { isEditing: false, editBuffer: fallback });
               }}
               onCustomDelete={(id) => handleDeleteCustomSection(id)}
-              onCustomWriteWithAi={(id) => void handleCustomSectionWriteWithAi(id)}
+              // TIM-3675: custom-section Write-with-AI routes through the same
+              // modal as standard sections.
+              onCustomWriteWithAi={handleOpenCustomWriteAiModal}
               onArchiveSection={(key, title) => setArchiveConfirmTarget({ type: "standard", key, title })}
               onArchiveCustomSection={(id, title) => setArchiveConfirmTarget({ type: "custom", id, title })}
             />
@@ -2324,7 +2124,14 @@ function SectionCard({
               </h2>
             </button>
           )}
-          {canEdit && !section.isEditing && !isStreaming && onWriteWithAi && (
+          {/* TIM-3675: button is persistent — no `section.isEditing` gate. The
+              board flag was that typing manually into a section made the button
+              disappear, so users lost the affordance mid-draft. The modal now
+              pre-populates whatever's in the section (userContent or the edit
+              buffer) so the mid-edit path stays intact. Still hidden while an
+              inline stream is in flight — the modal owns the new stream path
+              instead. */}
+          {canEdit && !isStreaming && onWriteWithAi && (
             <button
               type="button"
               onClick={onWriteWithAi}

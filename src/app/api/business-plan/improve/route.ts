@@ -63,14 +63,26 @@ export async function POST(request: NextRequest) {
     return Response.json({ reason: "out_of_credits", tier_required: "pro" }, { status: 402 });
   }
 
+  // TIM-3675: accept an optional user-authored `instructions` string. The
+  // BP Write-with-AI modal surfaces this as a second textarea below the
+  // pre-populated draft ("make this shorter", "add more detail on how we'll
+  // hire the assistant manager", etc.). Backwards-compatible — legacy
+  // callers omit the field and the prompt keeps its prior shape.
   const body = await request.json() as {
     sectionKey: string;
     sectionTitle: string;
     currentContent: string;
     shopName?: string;
+    instructions?: string;
   };
 
   const { sectionKey, sectionTitle, currentContent, shopName } = body;
+  const instructions = typeof body.instructions === "string" ? body.instructions.trim() : "";
+  // Rule 3 — bound user-controlled input; the rest of the prompt is fixed.
+  // 2000 chars is roomy enough for a multi-sentence directive without
+  // meaningfully impacting cost or letting a malicious client blow up the
+  // context window.
+  const boundedInstructions = instructions.slice(0, 2000);
 
   if (!sectionKey || !currentContent) {
     return Response.json({ error: "sectionKey and currentContent required" }, { status: 400 });
@@ -88,13 +100,18 @@ Rules:
 - No AI vocabulary: leverage, unlock, embark, elevate, delve, seamlessly, robust, comprehensive, innovative, holistic, synergy, passionate.
 - No filler phrases: "high-quality experience," "welcoming space," "wide variety," "we pride ourselves on," "is committed to."
 - Title case for named items (role titles, equipment names, drink names, persona names). Body prose is sentence case.
-- Where the original has terse data summaries (bullet lists of raw numbers with no prose), rewrite them as complete sentences and paragraphs.`;
+- Where the original has terse data summaries (bullet lists of raw numbers with no prose), rewrite them as complete sentences and paragraphs.
+- If the founder supplies user instructions below, treat them as the primary rewrite directive: prioritize them over your own stylistic instincts, but never break the rules above.`;
+
+  const instructionsBlock = boundedInstructions.length > 0
+    ? `\n\nUser instructions (apply these when rewriting):\n${boundedInstructions}`
+    : "";
 
   const userMessage = `Section: ${sectionTitle}
 Shop: ${shopName ?? "this coffee shop"}
 
 Improve this section:
-${currentContent}`;
+${currentContent}${instructionsBlock}`;
 
   const stream = new ReadableStream({
     async start(controller) {
