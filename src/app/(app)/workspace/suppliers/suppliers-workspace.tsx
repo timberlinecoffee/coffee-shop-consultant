@@ -27,6 +27,7 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { SectionHeader } from "@/components/section-header";
 import { useMutationStatus } from "@/hooks/use-mutation-status";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
@@ -598,6 +599,12 @@ export function SuppliersWorkspace({
                   </span>
                 </div>
               )}
+              {/* TIM-3676: shared Scout entry point, matches Business Plan / Marketing / Hiring / Ops Playbook. */}
+              <AskScoutButton
+                workspaceKey="suppliers"
+                focusLabel="supplier and vendor plan"
+                hasContent={chosenCount > 0}
+              />
               <SaveStatusAndButton
                 saving={mutationSaving}
                 savedAt={mutationSavedAt}

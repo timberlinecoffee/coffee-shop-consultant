@@ -30,6 +30,7 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import {
   WorkspaceActionMenu,
@@ -393,6 +394,12 @@ export function BuildoutEquipmentWorkspace({
           description="Plan the gear that goes on the bar: espresso machines, grinders, fridges, furniture, and fixtures. Opening-day consumables live on the Supplies page."
           actions={
             <>
+            {/* TIM-3676: shared Scout entry point, matches Business Plan / Marketing / Hiring / Ops Playbook. */}
+            <AskScoutButton
+              workspaceKey="buildout_equipment"
+              focusLabel="equipment and supplies plan"
+              hasContent={activeEquipment.length > 0}
+            />
             {/* TIM-2413: primary hero CTA + SaveStatusAndButton stay outside;
                 secondary utilities (Manage Stations, Import, View options)
                 live inside the hamburger. */}

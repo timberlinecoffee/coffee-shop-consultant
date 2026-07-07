@@ -9,6 +9,7 @@ import { BarChart2, ChevronDown, CheckCircle, Circle, Minus } from "lucide-react
 import { SectionHeader } from "@/components/section-header";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceActionMenu, WorkspaceActionMenuItem } from "@/components/workspace/WorkspaceActionMenu";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
@@ -1457,6 +1458,12 @@ export function FinancialsV2({
           description="Plan your startup costs, forecast revenue, and project Year 1–5 performance."
           actions={
             <>
+              {/* TIM-3676: shared Scout entry point, matches Business Plan / Marketing / Hiring / Ops Playbook. */}
+              <AskScoutButton
+                workspaceKey="financials"
+                focusLabel="financials"
+                hasContent
+              />
               {canEdit && (
                 <WorkspaceActionButton
                   variant="primary"
