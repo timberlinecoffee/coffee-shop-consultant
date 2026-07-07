@@ -7,6 +7,7 @@
 
 import { toTitleCase } from "./text.ts"
 import { normalizeAIOutput } from "./normalize.ts"
+import { normalizeUnitAndAmount } from "./recipe-suggest.ts"
 
 // TIM-3683 Bug 3: AI-suggested ingredient with amount and unit, including
 // non-default items (syrups, alt milks, toppings, sauces). Client accepts a
@@ -32,9 +33,6 @@ export type SuggestedMenuItem = {
 
 const MAX_ITEMS = 16
 const MAX_INGREDIENTS_PER_ITEM = 12
-const VALID_UNITS: ReadonlyArray<SuggestedIngredient["unit"]> = [
-  "g", "ml", "oz", "each", "piece",
-]
 
 // TIM-3683 Bug 2: normalize an item name for dedupe checks. Lowercase, strip
 // punctuation, collapse whitespace, drop common filler tokens (café, coffee,
@@ -237,26 +235,15 @@ function parseIngredients(raw: unknown): SuggestedIngredient[] | undefined {
         ? Number.parseFloat(r.amount)
         : NaN
     if (!Number.isFinite(amountRaw) || amountRaw <= 0) continue
-    const rawUnit = typeof r.unit === "string" ? r.unit.trim().toLowerCase() : ""
-    const unit = normalizeUnit(rawUnit)
-    if (!unit) continue
+    // Delegate unit + amount coercion to recipe-suggest.ts so "shot"/"tbsp"/
+    // "cup"/"kg"/"lb" etc. from the model get converted (with amount rescaling)
+    // instead of silently dropped. Two divergent AI-recipe pipelines were what
+    // caused TIM-3683 Bug 3 in the first place — this collapses them onto the
+    // same normalizer that /suggest-recipe already uses.
+    const { unit, amount } = normalizeUnitAndAmount(r.unit, amountRaw)
     seen.add(key)
-    out.push({ name, amount: Math.round(amountRaw * 100) / 100, unit })
+    out.push({ name, amount, unit })
     if (out.length >= MAX_INGREDIENTS_PER_ITEM) break
   }
   return out.length > 0 ? out : undefined
-}
-
-function normalizeUnit(u: string): SuggestedIngredient["unit"] | null {
-  // Accept common variants: "grams" → "g", "milliliter" → "ml", etc.
-  if (!u) return null
-  if (u === "gram" || u === "grams") return "g"
-  if (u === "milliliter" || u === "milliliters" || u === "millilitre" || u === "millilitres") return "ml"
-  if (u === "ounce" || u === "ounces" || u === "fl oz" || u === "floz") return "oz"
-  if (u === "pcs" || u === "piece") return "piece"
-  if (u === "count" || u === "unit" || u === "units") return "each"
-  if ((VALID_UNITS as ReadonlyArray<string>).includes(u)) {
-    return u as SuggestedIngredient["unit"]
-  }
-  return null
 }

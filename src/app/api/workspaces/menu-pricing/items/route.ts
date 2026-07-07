@@ -5,6 +5,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { toTitleCase } from "@/lib/text"
+import { defaultPackageSize } from "@/lib/recipe-suggest"
+import type { IngredientUnit } from "@/lib/menu"
 import type { NextRequest } from "next/server"
 
 export const runtime = "nodejs"
@@ -128,10 +130,15 @@ export async function POST(request: NextRequest) {
 
       const toCreate = cleaned.filter((c) => !existing.has(c.name.toLowerCase()))
       if (toCreate.length > 0) {
+        // Package size defaults track the canonical helper used by the sibling
+        // /suggest-recipe/apply route: 1000 for g/ml, 32 for oz, 1 otherwise.
+        // Package cost starts at 0 so the item ships with $0 COGS and the
+        // owner fills in real per-package cost later; the sensible package
+        // size means one edit (cost) instead of two (size + cost).
         const insertRows = toCreate.map((c) => ({
           plan_id: planId,
           name: c.name,
-          package_size: 1,
+          package_size: defaultPackageSize(c.unit as IngredientUnit),
           package_unit: c.unit,
           package_cost_cents: 0,
         }))

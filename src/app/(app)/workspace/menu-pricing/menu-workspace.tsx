@@ -4415,9 +4415,7 @@ export function MenuWorkspace({
           category_id: s.category_id,
           position,
           price_cents: s.estimated_price_cents ?? 0,
-          // If the AI gave us a full recipe, use it and skip the category
-          // default template so the AI-suggested ingredients aren't shadowed
-          // by "12oz cup" defaults that don't match the item.
+          cogs_cents: s.estimated_cogs_cents ?? null,
           ...(hasAiIngredients
             ? {
                 ingredients: s.ingredients,

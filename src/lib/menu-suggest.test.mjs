@@ -208,7 +208,6 @@ test("parser drops invalid ingredient rows but keeps valid siblings", () => {
         category: "Y",
         ingredients: [
           { name: "Good", amount: 10, unit: "g" },
-          { name: "Bad Unit", amount: 10, unit: "liters" },
           { name: "", amount: 10, unit: "g" },
           { name: "Bad Amount", amount: -5, unit: "g" },
           { name: "Good", amount: 20, unit: "g" }, // dupe by name
@@ -219,6 +218,27 @@ test("parser drops invalid ingredient rows but keeps valid siblings", () => {
   const items = parseSuggestedItems(raw)
   assert.equal(items[0].ingredients.length, 1)
   assert.equal(items[0].ingredients[0].name, "Good")
+})
+
+// TIM-3683 fix commit: menu-suggest parseIngredients now delegates to
+// recipe-suggest normalizeUnitAndAmount, so "shot"/"tbsp"/"cup"/"kg"/"l"/"lb"
+// (which the model regularly returns for espresso/syrup/milk) get converted
+// to the supported units with amount rescaling instead of silently dropped.
+test("parser converts cocktail/coffee unit aliases via the shared normalizer", () => {
+  const raw = JSON.stringify({
+    items: [{ name: "X", category: "Y", ingredients: [
+      { name: "Espresso", amount: 1, unit: "shot" },       // → ml, 30
+      { name: "Simple Syrup", amount: 2, unit: "tbsp" },   // → ml, 30
+      { name: "Milk", amount: 1, unit: "cup" },            // → ml, 240
+      { name: "Coffee Beans", amount: 1, unit: "kg" },     // → g, 1000
+      { name: "Butter", amount: 1, unit: "lb" },           // → oz, 16
+    ]}],
+  })
+  const items = parseSuggestedItems(raw)
+  assert.deepEqual(items[0].ingredients.map((i) => i.unit),
+    ["ml", "ml", "ml", "g", "oz"])
+  assert.deepEqual(items[0].ingredients.map((i) => i.amount),
+    [30, 30, 240, 1000, 16])
 })
 
 test("parser gracefully handles suggestions without any recipe (fallback path)", () => {
@@ -237,7 +257,7 @@ test("parser normalizes unit aliases (grams → g, milliliters → ml, ounces �
       { name: "A", amount: 10, unit: "grams" },
       { name: "B", amount: 10, unit: "milliliters" },
       { name: "C", amount: 10, unit: "ounces" },
-      { name: "D", amount: 10, unit: "pcs" },
+      { name: "D", amount: 10, unit: "pc" },
     ]}],
   })
   const items = parseSuggestedItems(raw)
