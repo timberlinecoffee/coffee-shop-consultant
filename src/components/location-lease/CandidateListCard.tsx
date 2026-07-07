@@ -87,6 +87,7 @@ export function CandidateListCard({
   const [bulkSaving, setBulkSaving] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const shortlisted = useMemo(
     () => candidates.filter((c) => c.status === 'shortlisted'),
@@ -225,11 +226,15 @@ export function CandidateListCard({
     // and "Shortlist" tabs if the user switched views without clearing selection.
     const visibleIds = new Set(visible.map((c) => c.id))
     const ids = Array.from(selectedIds).filter((id) => visibleIds.has(id))
-    if (ids.length === 0) return
+    if (ids.length === 0) {
+      setDeleteConfirmOpen(false)
+      return
+    }
     setBulkDeleting(true)
-    const snapshot = candidates
-    const deleteSet = new Set(ids)
-    setCandidates((prev) => prev.filter((c) => !deleteSet.has(c.id)))
+    setDeleteError(null)
+    const deletedIds = new Set(ids)
+    const prev = candidates.filter((c) => !deletedIds.has(c.id))
+    setCandidates(prev)
     try {
       const res = await fetch('/api/workspaces/location-lease/candidates/bulk', {
         method: 'DELETE',
@@ -237,16 +242,28 @@ export function CandidateListCard({
         body: JSON.stringify({ ids }),
       })
       if (!res.ok) {
-        setCandidates(snapshot)
+        // Restore optimistically removed items using the functional form so
+        // any concurrent additions between the optimistic remove and now are preserved.
+        setCandidates((cur) => {
+          const curIds = new Set(cur.map((c) => c.id))
+          const restored = candidates.filter((c) => deletedIds.has(c.id) && !curIds.has(c.id))
+          return [...cur, ...restored]
+        })
+        setDeleteError('Failed to delete. Please try again.')
       } else {
         setSelectedIds(new Set())
         setSelectMode(false)
+        setDeleteConfirmOpen(false)
       }
     } catch {
-      setCandidates(snapshot)
+      setCandidates((cur) => {
+        const curIds = new Set(cur.map((c) => c.id))
+        const restored = candidates.filter((c) => deletedIds.has(c.id) && !curIds.has(c.id))
+        return [...cur, ...restored]
+      })
+      setDeleteError('Failed to delete. Please try again.')
     } finally {
       setBulkDeleting(false)
-      setDeleteConfirmOpen(false)
     }
   }, [candidates, selectedIds, visible])
 
@@ -405,7 +422,7 @@ export function CandidateListCard({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={selectionSummary.notInShortlist === 0 || bulkSaving}
+                  disabled={selectionSummary.notInShortlist === 0 || bulkSaving || bulkDeleting}
                   onClick={() => bulkUpdateStatus('shortlisted')}
                   title="Mark the selected locations as shortlisted"
                 >
@@ -418,7 +435,7 @@ export function CandidateListCard({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={selectionSummary.inShortlist === 0 || bulkSaving}
+                  disabled={selectionSummary.inShortlist === 0 || bulkSaving || bulkDeleting}
                   onClick={() => bulkUpdateStatus('viewing_scheduled')}
                   title="Remove the selected locations from your shortlist"
                 >
@@ -440,7 +457,9 @@ export function CandidateListCard({
                   <span className="ml-1">Delete</span>
                 </Button>
                 {(bulkSaving || bulkDeleting) && (
-                  <span className="text-[10px] italic text-[var(--neutral-cool-600)]">Saving…</span>
+                  <span className="text-[10px] italic text-[var(--neutral-cool-600)]">
+                    {bulkDeleting ? 'Deleting…' : 'Saving…'}
+                  </span>
                 )}
               </div>
             </div>
@@ -499,13 +518,16 @@ export function CandidateListCard({
             <h3 id="bulk-delete-title" className="font-semibold text-[var(--foreground)] mb-2">
               Delete {selectionSummary.visibleSelected} selected {selectionSummary.visibleSelected === 1 ? 'location' : 'locations'}?
             </h3>
-            <p className="text-sm text-[var(--muted-foreground)] mb-5">
+            <p className="text-sm text-[var(--muted-foreground)] mb-3">
               This cannot be undone.
             </p>
+            {deleteError && (
+              <p className="text-sm text-[var(--destructive)] mb-3">{deleteError}</p>
+            )}
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setDeleteConfirmOpen(false)}
+                onClick={() => { setDeleteConfirmOpen(false); setDeleteError(null) }}
                 disabled={bulkDeleting}
                 className="text-sm text-[var(--foreground)] border border-[var(--border)] px-4 py-2 rounded-xl hover:bg-[var(--muted)] transition-colors disabled:opacity-60"
               >

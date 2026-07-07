@@ -95,16 +95,21 @@ export async function DELETE(request: NextRequest) {
   if (
     !Array.isArray(rawIds) ||
     rawIds.length === 0 ||
-    rawIds.length > MAX_BULK ||
     !rawIds.every((x) => typeof x === "string" && UUID_RE.test(x))
   ) {
     return Response.json(
-      { error: `ids must be a non-empty array of up to ${MAX_BULK} valid UUIDs` },
+      { error: `ids must be a non-empty array of valid UUIDs` },
       { status: 400 }
     )
   }
-  // Deduplicate so Postgres IN(...) row-count matches ids.length in the ownership check.
-  const ids = [...new Set(rawIds as string[])]
+  // Deduplicate and normalise to lowercase so Postgres text comparison always matches.
+  const ids = [...new Set((rawIds as string[]).map((x) => x.toLowerCase()))]
+  if (ids.length > MAX_BULK) {
+    return Response.json(
+      { error: `ids must contain at most ${MAX_BULK} distinct UUIDs` },
+      { status: 400 }
+    )
+  }
 
   // Rule 2: Re-verify ownership — every candidate must belong to this user's plan.
   const { data: rows, error: lookupErr } = await supabase
