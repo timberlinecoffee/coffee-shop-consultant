@@ -64,6 +64,56 @@ test("every regenerable key has a section spec", () => {
   }
 });
 
+// TIM-3677: every section key that surfaces the Write-with-AI button in the
+// workspace must have a section spec so /generate produces section-shaped
+// prose rather than falling back to generic voice-rules-only output. The
+// appendix + 10 optional sections were audit findings on TIM-3672 (button
+// visible but no spec — LLM wrote generic prose). Locking the coverage here
+// so a future section added to BUSINESS_PLAN_SECTIONS is caught before merge.
+test("every standard section (appendix + optionals included) has a section spec", () => {
+  const REQUIRED_SPECS = [
+    // Standard non-optional sections (executive-summary through appendix).
+    "executive-summary",
+    "company-overview",
+    "company-team",
+    "opportunity-problem-solution",
+    "opportunity-target-market",
+    "opportunity-competition",
+    "opportunity-risks",
+    "execution-marketing-sales",
+    "execution-operations",
+    "execution-milestones-metrics",
+    "financial-plan-forecast",
+    "financial-plan-unit-economics",
+    "financial-plan-break-even",
+    "financial-plan-sensitivity",
+    "financial-plan-financing",
+    "financial-plan-dscr",
+    "financial-plan-capex-schedule",
+    "financial-plan-depreciation",
+    "financial-plan-working-capital",
+    "financial-plan-statements",
+    "appendix-monthly-statements",
+    // Optional sections (opt-in via Add-to-Plan).
+    "sustainability-practices",
+    "community-engagement",
+    "technology-pos",
+    "catering-wholesale",
+    "seasonal-menu",
+    "expansion-roadmap",
+    "supplier-relationships",
+    "accessibility-design",
+    "staff-training",
+    "loyalty-online-ordering",
+  ];
+  for (const key of REQUIRED_SPECS) {
+    assert.ok(
+      typeof BP_SECTION_SPECS[key] === "string" && BP_SECTION_SPECS[key].length > 0,
+      `missing spec for ${key} — Write-with-AI on this section will produce generic prose`,
+    );
+  }
+});
+
 test("empty section auto-content falls back to a hint string in the user message", () => {
   const out = buildBpSectionPrompt({
     ...baseInputs,
