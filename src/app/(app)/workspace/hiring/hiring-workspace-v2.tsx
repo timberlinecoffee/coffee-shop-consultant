@@ -87,6 +87,7 @@ import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { SectionHeader } from "@/components/section-header";
 import { SectionHelp } from "@/components/ui/section-help";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
@@ -612,6 +613,10 @@ export function HiringWorkspaceV2(props: Props) {
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-7xl mx-auto">
+      {/* TIM-3676: Scout entry point — v2 has no WorkspaceHeader so we add a right-aligned action row. */}
+      <div className="flex justify-end mb-4">
+        <AskScoutButton workspaceKey="hiring" focusLabel="hiring plan" hasContent={roles.length > 0} />
+      </div>
       {/* TIM-3369 shell — left role nav + right role page. */}
       <div className="flex items-center justify-between mb-4 lg:hidden">
         <h1 className="text-xl font-semibold">Hiring &amp; Onboarding</h1>
