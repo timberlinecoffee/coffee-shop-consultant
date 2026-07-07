@@ -32,10 +32,13 @@ export function LocationLeaseWorkspaceClient({
         actions={
           <>
             {/* TIM-3676: shared Scout entry point, matches Business Plan / Marketing / Hiring / Ops Playbook. */}
+            {/* hasContent stays true (workspace surface is meaningful even with 0 candidates:
+                empty-state prompt, competitive analysis, lease terms) — SSR-only `initialCandidates`
+                would go stale after the user adds one; live candidate state lives inside CandidateListCard. */}
             <AskScoutButton
               workspaceKey="location_lease"
               focusLabel="location and lease"
-              hasContent={initialCandidates.length > 0}
+              hasContent
             />
             <SaveStatusAndButton
               saving={saving}
