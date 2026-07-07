@@ -1147,7 +1147,7 @@ function OrgTab({
               onClick={addRole}
               className="text-sm text-[var(--teal)] hover:underline font-medium"
             >
-              Add your first role →
+              Add Your First Role →
             </button>
           )}
         </div>

@@ -1326,6 +1326,14 @@ function RoleScorecardSection({
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
+  // Reset on role change so the new role's scorecards are fetched.
+  // RolePageV2 has no key={role.id} so this component stays mounted across role switches.
+  useEffect(() => {
+    setScorecards([]);
+    setLoaded(false);
+    setRenaming(null);
+  }, [role.id]);
+
   useEffect(() => {
     if (loaded || loading) return;
     setLoading(true);
@@ -1333,7 +1341,7 @@ function RoleScorecardSection({
       .then((r) => r.json())
       .then((sc: unknown) => setScorecards(Array.isArray(sc) ? (sc as InterviewScorecard[]) : []))
       .finally(() => { setLoading(false); setLoaded(true); });
-  }, [role.id, loaded, loading]);
+  }, [loaded, loading]);
 
   async function addScorecard() {
     const res = await fetch("/api/workspaces/hiring/scorecards", {
@@ -1491,13 +1499,19 @@ function RoleCompetencyFormsSection({
   const [renameValue, setRenameValue] = useState("");
 
   useEffect(() => {
+    setForms([]);
+    setLoaded(false);
+    setRenaming(null);
+  }, [role.id]);
+
+  useEffect(() => {
     if (loaded || loading) return;
     setLoading(true);
     fetch(`/api/workspaces/hiring/competency-forms?role_id=${role.id}`)
       .then((r) => r.json())
       .then((cf: unknown) => setForms(Array.isArray(cf) ? (cf as CompetencyFormTemplate[]) : []))
       .finally(() => { setLoading(false); setLoaded(true); });
-  }, [role.id, loaded, loading]);
+  }, [loaded, loading]);
 
   async function addCompForm() {
     const res = await fetch("/api/workspaces/hiring/competency-forms", {
