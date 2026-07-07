@@ -5,7 +5,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { Plus, Star, Sparkles, MessageCircle, CheckSquare, X } from 'lucide-react'
+import { Plus, Star, Sparkles, MessageCircle, CheckSquare, X, Trash2 } from 'lucide-react'
 import {
   Card,
   CardHeader,
@@ -85,6 +85,8 @@ export function CandidateListCard({
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkSaving, setBulkSaving] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   const shortlisted = useMemo(
     () => candidates.filter((c) => c.status === 'shortlisted'),
@@ -218,6 +220,32 @@ export function CandidateListCard({
     [candidates, selectedIds]
   )
 
+  const bulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    setBulkDeleting(true)
+    const snapshot = candidates
+    setCandidates((prev) => prev.filter((c) => !selectedIds.has(c.id)))
+    try {
+      const res = await fetch('/api/workspaces/location-lease/candidates/bulk', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      if (!res.ok) {
+        setCandidates(snapshot)
+      } else {
+        setSelectedIds(new Set())
+        setSelectMode(false)
+      }
+    } catch {
+      setCandidates(snapshot)
+    } finally {
+      setBulkDeleting(false)
+      setDeleteConfirmOpen(false)
+    }
+  }, [candidates, selectedIds])
+
   // How many of the selected are currently shortlisted vs not — drives whether
   // the bulk toolbar surfaces "Add to shortlist" or "Remove from shortlist".
   const selectionSummary = useMemo(() => {
@@ -331,15 +359,17 @@ export function CandidateListCard({
             </div>
           </div>
 
-          {/* ── Bulk action toolbar (TIM-1153) ── */}
+          {/* ── Bulk action toolbar (TIM-1153 / TIM-3686) ── */}
           {selectMode && (
             <div
               role="toolbar"
-              aria-label="Bulk shortlist actions"
+              aria-label="Bulk location actions"
               className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--teal)]/30 bg-[var(--teal)]/[0.04] px-3 py-2"
             >
               <div className="flex items-center gap-2 text-xs text-foreground">
-                <span className="font-semibold">{selectionSummary.total} selected</span>
+                <span className="font-semibold">
+                  {selectionSummary.total} of {visible.length} selected
+                </span>
                 {selectionSummary.total === 0 && (
                   <span className="text-[var(--neutral-cool-600)]">Tap a card to select it.</span>
                 )}
@@ -349,7 +379,7 @@ export function CandidateListCard({
                     onClick={selectAllVisible}
                     className="text-[var(--teal)] underline-offset-2 hover:underline"
                   >
-                    Select all visible ({visible.length})
+                    Select all {visible.length} visible
                   </button>
                 )}
                 {selectionSummary.total > 0 && (
@@ -358,7 +388,7 @@ export function CandidateListCard({
                     onClick={clearSelection}
                     className="text-[var(--neutral-cool-600)] underline-offset-2 hover:underline"
                   >
-                    Clear
+                    Deselect all
                   </button>
                 )}
               </div>
@@ -372,7 +402,7 @@ export function CandidateListCard({
                 >
                   <Star className="size-3.5 fill-amber-400 text-amber-500" />
                   <span className="ml-1">
-                    Shortlist
+                    Add to Shortlist
                     {selectionSummary.notInShortlist > 0 && ` (${selectionSummary.notInShortlist})`}
                   </span>
                 </Button>
@@ -385,11 +415,22 @@ export function CandidateListCard({
                 >
                   <X className="size-3.5" />
                   <span className="ml-1">
-                    Remove from shortlist
+                    Remove from Shortlist
                     {selectionSummary.inShortlist > 0 && ` (${selectionSummary.inShortlist})`}
                   </span>
                 </Button>
-                {bulkSaving && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={selectionSummary.total === 0 || bulkSaving || bulkDeleting}
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  title="Delete the selected locations"
+                  className="text-[var(--destructive)] border-[var(--destructive)]/30 hover:border-[var(--destructive)]/60 hover:bg-[var(--destructive)]/5"
+                >
+                  <Trash2 className="size-3.5" />
+                  <span className="ml-1">Delete</span>
+                </Button>
+                {(bulkSaving || bulkDeleting) && (
                   <span className="text-[10px] italic text-[var(--neutral-cool-600)]">Saving…</span>
                 )}
               </div>
@@ -436,6 +477,43 @@ export function CandidateListCard({
           )}
         </CardContent>
       </Card>
+
+      {/* Delete confirm dialog */}
+      {deleteConfirmOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bulk-delete-title"
+        >
+          <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-6 w-full max-w-sm">
+            <h3 id="bulk-delete-title" className="font-semibold text-[var(--foreground)] mb-2">
+              Delete {selectionSummary.total} selected {selectionSummary.total === 1 ? 'location' : 'locations'}?
+            </h3>
+            <p className="text-sm text-[var(--muted-foreground)] mb-5">
+              This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmOpen(false)}
+                disabled={bulkDeleting}
+                className="text-sm text-[var(--foreground)] border border-[var(--border)] px-4 py-2 rounded-xl hover:bg-[var(--muted)] transition-colors disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={bulkDelete}
+                disabled={bulkDeleting}
+                className="text-sm text-white bg-[var(--destructive)] hover:opacity-90 px-4 py-2 rounded-xl transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {bulkDeleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* AI Trade-Off panel */}
       <TradeoffPanel
