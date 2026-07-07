@@ -5,8 +5,7 @@
 // dedicated API routes directly with optimistic local state updates.
 // TIM-2968: OrgTab upgraded with drag-and-drop hierarchy list.
 
-import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
-import { CollapseButton } from "@/components/ui/CollapseButton";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Users,
   Network,
@@ -18,7 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronRight,
-
+  X,
   Check,
   ExternalLink,
   Copy,
@@ -31,8 +30,7 @@ import {
   Download,
   Sparkles,
 } from "lucide-react";
-import { MoneyInput } from "@/components/ui/money-input";
-import { MoneyDisplay } from "@/components/ui/money-display";
+import { useCurrency } from "@/components/CurrencyProvider";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
@@ -45,7 +43,7 @@ import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import type { ApprovedChange } from "@/hooks/useAIReviewModal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { TruncatedText } from "@/components/ui/TruncatedText";
-import { SectionHelp } from "@/components/ui/section-help";
+import { SectionHeader } from "@/components/section-header";
 import type { PersonnelLine, PersonnelPayBasis } from "@/lib/financial-projection";
 import { personnelLoadedMonthlyCents } from "@/lib/financial-projection";
 import { formatHourlyWage, isBelowMinimumWage, type MinWageInfo } from "@/lib/wages/minimum-wage";
@@ -252,11 +250,13 @@ function ScorecardWorksheetButton({ scorecardId }: { scorecardId: string }) {
         >
           <Download size={WORKSPACE_ACTION_ICON_SIZE} />
         </WorkspaceActionButton>
-        <CollapseButton
+        <button
+          type="button"
           onClick={() => setOpen(false)}
-          size={11}
           className="text-[var(--dark-grey)] hover:text-[var(--foreground)] p-0.5"
-        />
+        >
+          <X size={11} />
+        </button>
       </div>
       {paywalled && (
         <PaywallModal
@@ -568,7 +568,8 @@ function RoleDetailPanel({
     }
   }
 
-  // Live loaded cost preview (from entered fields, not just saved line)
+  const { formatMinor } = useCurrency();
+
   const compPreviewCents =
     typeof compPayAmount === "number" && compPayAmount > 0
       ? personnelLoadedMonthlyCents({
@@ -584,9 +585,6 @@ function RoleDetailPanel({
       : null;
 
   const parentOptions = roles.filter((r) => r.id !== role.id);
-  const parentTitle = role.parent_role_id
-    ? (roles.find((r) => r.id === role.parent_role_id)?.role_title ?? null)
-    : null;
 
   return (
     <div className="border-t border-[var(--neutral-cool-150)] bg-[var(--background)] divide-y divide-[var(--neutral-cool-100)]">
@@ -676,16 +674,9 @@ function RoleDetailPanel({
           )}
           {compPreviewCents !== null && (
             <span className="text-xs font-semibold text-[var(--teal)]">
-              Loaded: <MoneyDisplay cents={compPreviewCents} />/mo
+              Loaded: {formatMinor(compPreviewCents)}/mo
             </span>
           )}
-          <span className="text-xs text-[var(--muted-foreground)]">
-            {role.headcount} headcount
-            {role.monthly_cost_cents
-              ? <> · <MoneyDisplay cents={role.monthly_cost_cents} />/mo</>
-              : ""}
-            {parentTitle ? ` · Reports to ${parentTitle}` : ""}
-          </span>
         </div>
         <div className="flex flex-wrap gap-3 items-end bg-white border border-[var(--neutral-cool-200)] rounded-lg p-3">
           <div className="w-36">
@@ -708,17 +699,21 @@ function RoleDetailPanel({
           </div>
           <div className="w-32">
             <label className={labelCls}>{compPayBasis === "hourly" ? "Rate / hour" : "Pay amount"}</label>
-            <MoneyInput
-              className={inputCls}
-              min={0}
-              step={compPayBasis === "hourly" ? 0.25 : 100}
-              value={compPayAmount}
-              disabled={!canEdit || compLoading}
-              onChange={(e) => {
-                setCompPayAmount(e.target.value === "" ? "" : parseFloat(e.target.value));
-                setCompDirty(true);
-              }}
-            />
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--dark-grey)] pointer-events-none">$</span>
+              <input
+                className={inputCls + " pl-5"}
+                type="number"
+                min={0}
+                step={compPayBasis === "hourly" ? 0.25 : 100}
+                value={compPayAmount}
+                disabled={!canEdit || compLoading}
+                onChange={(e) => {
+                  setCompPayAmount(e.target.value === "" ? "" : parseFloat(e.target.value));
+                  setCompDirty(true);
+                }}
+              />
+            </div>
           </div>
           {compPayBasis === "hourly" && (
             <div className="w-28">
@@ -1129,12 +1124,11 @@ function OrgTab({
     <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1">
-          <p className="text-sm font-semibold text-[var(--foreground)]">Planned Roles</p>
-          <SectionHelp title="Planned Roles">
-            Drag rows to reorder hierarchy. Drag right to nest a role under a parent. Click any role to expand its details — job description, scorecard, and compensation.
-          </SectionHelp>
-        </div>
+        <SectionHeader
+          title="Planned Roles"
+          helpContent="Drag rows to reorder hierarchy. Drag right to nest a role under a parent. Click any role to expand its details — job description, scorecard, and compensation."
+          className="mb-0"
+        />
         {canEdit && (
           <WorkspaceActionButton variant="primary" onClick={addRole}>
             <Plus size={WORKSPACE_ACTION_ICON_SIZE} />
@@ -1332,12 +1326,11 @@ function InterviewTab({
       {selectedRoleId && (
         <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
           <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-1">
-                <p className="text-sm font-semibold text-[var(--foreground)]">Interview Questions</p>
-                <SectionHelp title="Interview Questions">Template questions and weights for this scorecard.</SectionHelp>
-              </div>
-            </div>
+            <SectionHeader
+              title="Interview Questions"
+              helpContent="Template questions and weights for this scorecard."
+              className="mb-0"
+            />
             {canEdit && (
               <button
                 type="button"
@@ -1410,13 +1403,11 @@ function InterviewTab({
       {selectedScorecardId && (
         <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
           <div className="px-5 py-4 border-b border-[var(--border)]">
-            <div className="flex items-center gap-1">
-              <p className="text-sm font-semibold text-[var(--foreground)]">Scorecard Grid</p>
-              <SectionHelp title="Scorecard Grid">
-                Rate each candidate (rows) on each competency (columns) on a 1–5 scale.
-                Weighted totals appear automatically. Use multipliers to weight competencies differently.
-              </SectionHelp>
-            </div>
+            <SectionHeader
+              title="Scorecard Grid"
+              helpContent="Rate each candidate (rows) on each competency (columns) on a 1–5 scale. Weighted totals appear automatically. Use multipliers to weight competencies differently."
+              className="mb-0"
+            />
           </div>
           <div className="px-5 py-4">
             <ScorecardGridPanel
@@ -2207,12 +2198,11 @@ function CompetencyTab({
       {/* Competency template */}
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-1">
-              <p className="text-sm font-semibold text-[var(--foreground)]">Competency Framework</p>
-              <SectionHelp title="Competency Framework">Shared skills and rubric for all staff evaluations.</SectionHelp>
-            </div>
-          </div>
+          <SectionHeader
+            title="Competency Framework"
+            helpContent="Shared skills and rubric for all staff evaluations."
+            className="mb-0"
+          />
           {canEdit && (
             <button
               type="button"
@@ -2376,16 +2366,13 @@ function RequirementsTab({
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <div className="flex items-center gap-1">
-                <p className="text-sm font-semibold text-[var(--foreground)]">Hiring Jurisdiction</p>
-                <SectionHelp title="Hiring Jurisdiction">
-                  {settings.hiring_country
-                    ? "Override set. Requirement set sourced from your selection."
-                    : "Auto-detected from your signed or primary location candidate."}
-                </SectionHelp>
-              </div>
-            </div>
+            <SectionHeader
+              title="Hiring Jurisdiction"
+              helpContent={settings.hiring_country
+                ? "Override set. Requirement set sourced from your selection."
+                : "Auto-detected from your signed or primary location candidate."}
+              className="mb-0"
+            />
             <div className="flex items-center gap-2">
               <Globe size={14} className="text-[var(--muted-foreground)]" />
               <select
