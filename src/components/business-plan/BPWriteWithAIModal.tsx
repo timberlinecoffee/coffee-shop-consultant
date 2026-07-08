@@ -68,14 +68,24 @@ type Step = "input" | "generating" | "preview" | "committing" | "done";
 // modal-opener callbacks (so we don't pre-populate the modal with an
 // assembled-content placeholder like "Complete the Marketing workspace to
 // populate this section"). Exported so both callers stay in sync.
+//
+// TIM-3672 follow-up: extended to cover placeholder strings that the seed-
+// context button was surfacing as excerpts: LENDER_PLACEHOLDER_PREFIX
+// ("Complete the Financials workspace and re-open ..."), the plural
+// "workspaces to populate" from the Execution > Operations assembler when
+// both Location and Equipment are empty, and the appendix PDF-note that is
+// always self-referential ("rendered in the exported PDF appendix").
 export function isBpPlaceholderContent(content: string | null | undefined): boolean {
   if (!content) return true;
   return (
     content.includes("workspace to populate") ||
+    content.includes("workspaces to populate") ||
     content.includes("Click Generate") ||
     content.includes("Complete the other") ||
     content.includes("Complete the Marketing") ||
-    content.includes("click the text field")
+    content.includes("Complete the Financials workspace") ||
+    content.includes("click the text field") ||
+    content.includes("rendered in the exported PDF appendix")
   );
 }
 
@@ -309,19 +319,26 @@ export function BPWriteWithAIModal({
     setStreamingBuf("");
     setError(null);
     setStep("input");
+    // TIM-3672 follow-up: allow re-seeding after Reject. The user may want
+    // to try again with a different draft as the AI's starting point.
+    setHasSeededContext(false);
   }
 
   // TIM-3672 follow-up: assemble other-section excerpts into a labeled block
   // and append to the draft field. Uses a clear divider so the AI treats it
   // as reference context (and so the user can easily strip it before Generate
-  // if they want a clean draft). Idempotent per modal session via
-  // `hasSeededContext`.
+  // if they want a clean draft). Idempotent within a filled draft via
+  // `hasSeededContext` — cleared on Reject and when the user wipes the draft
+  // to empty.
   function handleSeedFromOtherSections() {
     if (hasSeededContext) return;
     const excerpts = otherSectionsForContext ?? [];
     if (excerpts.length === 0) return;
+    // Plain-text heading — the textarea does not render Markdown, so
+    // "**Title**" would leak literal asterisks to the user. Uppercase +
+    // colon reads as a section break in a mono/proportional font both.
     const block = excerpts
-      .map((e) => `**${e.title}:**\n${e.excerpt.trim()}`)
+      .map((e) => `${e.title.toUpperCase()}:\n${e.excerpt.trim()}`)
       .join("\n\n");
     const header = `Context from other business plan sections (edit or remove any lines you don't want the AI to use):\n\n${block}`;
     const currentTrimmed = content.trim();
@@ -449,7 +466,16 @@ export function BPWriteWithAIModal({
                   id="bp-wai-content"
                   ref={contentRef}
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setContent(next);
+                    // TIM-3672 follow-up: if the user wipes the draft back to
+                    // empty, allow re-seeding — they cleared the previous
+                    // seed and may want a fresh block.
+                    if (hasSeededContext && next.trim().length === 0) {
+                      setHasSeededContext(false);
+                    }
+                  }}
                   placeholder="Section content..."
                   rows={8}
                   className="w-full text-sm text-[var(--foreground)] border border-[var(--neutral-cool-350)] rounded-xl px-3 py-2.5 focus:border-[var(--teal)] focus-visible:outline-none placeholder:text-[var(--neutral-cool-400)] leading-relaxed"
