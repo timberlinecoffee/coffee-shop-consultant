@@ -56,8 +56,15 @@ import {
   manualOverrideCountsByLine,
   computeMenuBlendedCogsPct,
   buildMenuCogsBreakdown,
+  groupMenuItemsByCategory,
+  type MenuCogsCategoryGroup,
   type ApplyForwardRange,
 } from "@/lib/financial-projection";
+import {
+  MenuCogsSyncSection,
+  AdditionalCogsSection,
+  CogsSectionsGrandTotal,
+} from "./cogs-sections";
 import { createClient } from "@/lib/supabase/client";
 import { CURRENCIES } from "@/lib/currency";
 import { fmtIntegerPct } from "@/lib/formatters";
@@ -403,7 +410,7 @@ function OwnerContributionsEditor({
           onClick={add}
           className="text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5 px-2 py-1 rounded-md"
         >
-          + Add Contribution
+          + Add contribution
         </button>
       )}
       <p className="text-[10px] text-[var(--dark-grey)] mt-1">
@@ -556,6 +563,7 @@ function ForecastTab({
   onUpdateMp,
   menuBlendedCogsPct,
   menuCogsItems,
+  menuCogsByCategory,
   onStartWizard,
   onGoToStartup,
   manualLines,
@@ -572,6 +580,8 @@ function ForecastTab({
   onUpdateMp: (next: MonthlyProjections) => void;
   menuBlendedCogsPct: number | null;
   menuCogsItems: { name: string; price_cents: number; cogs_cents: number; expected_mix_pct: number; cogs_pct: number }[];
+  // TIM-3733: menu items grouped by category for the COGS sync section
+  menuCogsByCategory: MenuCogsCategoryGroup[];
   onStartWizard?: () => void;
   onGoToStartup?: () => void;
   // TIM-1310: grid-level customizations surfaced on the input page so the
@@ -845,7 +855,7 @@ function ForecastTab({
                     onClick={onGoToProjections}
                     className="text-[11px] font-semibold text-[var(--teal)] hover:underline"
                   >
-                    View on Grid
+                    View on grid
                   </button>
                 )}
                 {canEdit && (
@@ -925,23 +935,48 @@ function ForecastTab({
                 />
               </div>
             )}
-            <div id="tour-cogs">
-              <LabelWithHint
-                className={labelCls.replace(" mb-1", "")}
-                hintLabel="COGS % of revenue"
-                hint="Typical coffee shop: 28–35%"
-              >
-                COGS % of revenue
-              </LabelWithHint>
-              <NumericInput
-                className={inputCls}
-                type="number"
-                min={0}
-                max={100}
-                value={mp.cogs_pct || ""}
-                onChange={(e) => update({ cogs_pct: parseFloat(e.target.value) || 0 })}
-                placeholder="30"
-                disabled={!canEdit}
+            {/* TIM-3733: COGS replaced with three-section block */}
+            <div id="tour-cogs" className="col-span-full">
+              <MenuCogsSyncSection
+                canEdit={canEdit}
+                categoryGroups={menuCogsByCategory}
+                categoryUnits={mp.menu_cogs_category_units ?? {}}
+                onCategoryUnitsChange={(units) => update({ menu_cogs_category_units: units })}
+                syncedAt={mp.menu_cogs_synced_at}
+                isRefreshing={isRefreshingMenu ?? false}
+                onSync={() => {
+                  onRefreshMenu?.();
+                  update({ menu_cogs_synced_at: new Date().toISOString() });
+                }}
+                currencyCode={mp.currency_code ?? "USD"}
+              />
+              <AdditionalCogsSection
+                canEdit={canEdit}
+                items={mp.additional_cogs_items ?? []}
+                onItemsChange={(items) => update({ additional_cogs_items: items })}
+                currencyCode={mp.currency_code ?? "USD"}
+              />
+              <CogsSectionsGrandTotal
+                menuSubtotalCents={
+                  menuCogsByCategory.reduce((sum, g) => {
+                    const units = (mp.menu_cogs_category_units ?? {})[g.category_id ?? "__uncategorized__"] ?? 0;
+                    const totalWeight = g.items.reduce(
+                      (s, it) => s + (it.expected_popularity === "high" ? 3 : it.expected_popularity === "medium" ? 2 : 1),
+                      0
+                    );
+                    if (totalWeight === 0 || units <= 0) return sum;
+                    return sum + Math.round(
+                      g.items.reduce((s, it) => {
+                        const w = it.expected_popularity === "high" ? 3 : it.expected_popularity === "medium" ? 2 : 1;
+                        return s + (units * w / totalWeight) * it.computed_cogs_cents;
+                      }, 0)
+                    );
+                  }, 0)
+                }
+                additionalSubtotalCents={
+                  (mp.additional_cogs_items ?? []).reduce((s, it) => s + (it.monthly_cost_cents || 0), 0)
+                }
+                currencyCode={mp.currency_code ?? "USD"}
               />
             </div>
           </div>
@@ -1894,6 +1929,8 @@ export function FinancialsWorkspace({
   // TIM-1713: live-refreshable copies of server-fetched sync sources.
   const [liveMenuBlendedCogsPct, setLiveMenuBlendedCogsPct] = useState<number | null>(menuBlendedCogsPct);
   const [liveMenuCogsItems, setLiveMenuCogsItems] = useState(menuCogsItems);
+  // TIM-3733: category-grouped menu COGS for the Finance COGS sync section.
+  const [liveMenuCogsByCategory, setLiveMenuCogsByCategory] = useState<MenuCogsCategoryGroup[]>([]);
   const [liveEquipmentItems, setLiveEquipmentItems] = useState<EquipmentItem[]>(initialEquipmentItems);
   const [isRefreshingMenu, setIsRefreshingMenu] = useState(false);
   const [isRefreshingEquipment, setIsRefreshingEquipment] = useState(false);
@@ -1905,14 +1942,16 @@ export function FinancialsWorkspace({
       // TIM-1799: include expected_popularity and recompute via the shared
       // helpers so an in-app refresh matches the server load exactly (shared-read,
       // no stale snapshot) and surfaces every priced item incl. Beverages.
+      // TIM-3733: also select id, category_id, category_name for the COGS sync section.
       const { data } = await supabase
         .from("menu_items_with_cogs")
-        .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")
+        .select("id, name, category_id, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")
         .eq("plan_id", planId)
         .eq("archived", false);
       if (data) {
         setLiveMenuBlendedCogsPct(computeMenuBlendedCogsPct(data));
         setLiveMenuCogsItems(buildMenuCogsBreakdown(data));
+        setLiveMenuCogsByCategory(groupMenuItemsByCategory(data));
       }
     } catch {
       // silently ignore — stale data is better than an error state
@@ -2142,9 +2181,7 @@ export function FinancialsWorkspace({
           return;
         }
         if (!res.ok) throw new Error(`save failed (${res.status})`);
-        if (controller.signal.aborted) return;
         const data = (await res.json()) as { updated_at?: string };
-        if (controller.signal.aborted) return;
         setSaveState({ kind: "saved", at: data?.updated_at ?? new Date().toISOString() });
       } catch (err) {
         if (controller.signal.aborted) return;
@@ -2362,11 +2399,6 @@ export function FinancialsWorkspace({
         paywallOpen={paywallOpen}
         onPaywallClose={() => setPaywallOpen(false)}
         onOpenWizard={openWizard}
-        tourOpen={tourOpen}
-        tourSeq={tourSeq}
-        onTourFinish={handleTourFinish}
-        onTourSkip={handleTourSkip}
-        onTourClose={handleTourClose}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
       </div>
@@ -2508,6 +2540,7 @@ export function FinancialsWorkspace({
             onUpdateMp={handleMpUpdate}
             menuBlendedCogsPct={liveMenuBlendedCogsPct}
             menuCogsItems={liveMenuCogsItems}
+            menuCogsByCategory={liveMenuCogsByCategory}
             onStartWizard={openWizard}
             onGoToStartup={() => setActiveTab("startup")}
             manualLines={mp.manual_lines ?? []}
