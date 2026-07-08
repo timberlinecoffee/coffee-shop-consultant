@@ -29,8 +29,10 @@ export const UI_REVAMP_V3: boolean =
 export function resolveUiRevampV3(opts: {
   mirrorCookie: string | undefined;
 }): boolean {
+  // Env var is the global gate — if it's false, no per-user cookie can override.
+  if (!UI_REVAMP_V3) return false;
   const { mirrorCookie } = opts;
   if (mirrorCookie === "0") return false;
   if (mirrorCookie === "1") return true;
-  return UI_REVAMP_V3;
+  return true;
 }
