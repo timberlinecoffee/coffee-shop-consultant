@@ -989,6 +989,27 @@ function ItemEditorPanel({
   const [priceDisplay, setPriceDisplay] = useState(
     item.price_cents > 0 ? (item.price_cents / 100).toFixed(2) : ""
   );
+  const panelRootRef = useRef<HTMLDivElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // TIM-3723: when the editor opens for a brand-new (unnamed) item — i.e.
+  // right after the `+ Add` button in the category header — the row and
+  // editor land at the bottom of the category's item list and can render
+  // hundreds of pixels below the button that opened them. Without an
+  // explicit scroll + focus the click looks like a no-op. Scroll the panel
+  // into view and focus the name input so the user can type immediately.
+  useEffect(() => {
+    if (!canEdit) return;
+    if (item.name && item.name.trim().length > 0) return;
+    const raf = requestAnimationFrame(() => {
+      panelRootRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      nameInputRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(raf);
+    // Only fire on mount for a given item id — re-focusing on every keystroke
+    // would fight the user.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id]);
 
   const { currencyCode } = useCurrency();
   const recipeLines = itemIngredients.filter(
@@ -1074,7 +1095,7 @@ function ItemEditorPanel({
     : computeMsrpCents(effectiveCogs, targetGrossMargin);
 
   return (
-    <div className="bg-white rounded-b-xl overflow-hidden flex flex-col">
+    <div ref={panelRootRef} data-item-editor="true" className="bg-white rounded-b-xl overflow-hidden flex flex-col">
       <div className="px-5 py-4 border-b border-[var(--border)] flex items-start gap-3">
         {/* TIM-2949: user-uploaded 4:5 photo replaces the curated illustration. */}
         <ItemPhotoUpload
@@ -1085,6 +1106,8 @@ function ItemEditorPanel({
         />
         <div className="flex-1 min-w-0">
           <input
+            ref={nameInputRef}
+            aria-label="Item name"
             className={
               "w-full text-base font-semibold border-0 border-b border-transparent focus:border-[var(--teal)] focus-visible:outline-none text-[var(--foreground)] bg-transparent py-0.5 transition-colors disabled:text-[var(--dark-grey)]"
             }
