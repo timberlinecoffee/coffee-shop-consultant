@@ -35,6 +35,15 @@ export interface WriteAiApproveExtras {
   consistencyContradictions: ConsistencyContradiction[];
 }
 
+// TIM-3672 follow-up: single trimmed excerpt from another populated BP
+// section, used to seed the current section's draft with cross-section
+// context. Parent computes this list (excludes the target section,
+// placeholders, empty content, archived) so the modal stays presentational.
+export interface BpOtherSectionExcerpt {
+  title: string;
+  excerpt: string;
+}
+
 interface Props {
   sectionKey: string;
   sectionTitle: string;
@@ -47,6 +56,10 @@ interface Props {
   // TIM-2342 export-gate validator would surface stale claims that no longer
   // appear in the draft.
   onApprove: (finalText: string, extras: WriteAiApproveExtras) => Promise<void>;
+  // TIM-3672 follow-up (board comment db265403 on 2026-07-08): "Seed from
+  // other sections" button. Parent passes populated non-placeholder excerpts
+  // from every OTHER BP section (standard + custom). Empty → button hidden.
+  otherSectionsForContext?: BpOtherSectionExcerpt[];
 }
 
 type Step = "input" | "generating" | "preview" | "committing" | "done";
@@ -93,6 +106,7 @@ export function BPWriteWithAIModal({
   initialContent,
   onClose,
   onApprove,
+  otherSectionsForContext,
 }: Props) {
   const [content, setContent] = useState(initialContent);
   const [instructions, setInstructions] = useState("");
@@ -102,6 +116,11 @@ export function BPWriteWithAIModal({
   const [estimatedClaims, setEstimatedClaims] = useState<unknown[]>([]);
   const [contradictions, setContradictions] = useState<ConsistencyContradiction[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // TIM-3672 follow-up: gate the seed button after one click so a user can't
+  // duplicate the excerpt block by clicking twice. Reset when the user pastes
+  // a fresh draft by wiping to empty, or when Reject bounces us back to input.
+  const [hasSeededContext, setHasSeededContext] = useState(false);
+  const contentRef = useRef<HTMLTextAreaElement | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   // TIM-3675 review-fix: cleared on unmount so a rapid remount doesn't fire
@@ -292,6 +311,40 @@ export function BPWriteWithAIModal({
     setStep("input");
   }
 
+  // TIM-3672 follow-up: assemble other-section excerpts into a labeled block
+  // and append to the draft field. Uses a clear divider so the AI treats it
+  // as reference context (and so the user can easily strip it before Generate
+  // if they want a clean draft). Idempotent per modal session via
+  // `hasSeededContext`.
+  function handleSeedFromOtherSections() {
+    if (hasSeededContext) return;
+    const excerpts = otherSectionsForContext ?? [];
+    if (excerpts.length === 0) return;
+    const block = excerpts
+      .map((e) => `**${e.title}:**\n${e.excerpt.trim()}`)
+      .join("\n\n");
+    const header = `Context from other business plan sections (edit or remove any lines you don't want the AI to use):\n\n${block}`;
+    const currentTrimmed = content.trim();
+    const next = currentTrimmed.length > 0 ? `${content}\n\n---\n\n${header}` : header;
+    setContent(next);
+    setHasSeededContext(true);
+    // Focus the textarea so the founder can immediately tweak the seed. Move
+    // the caret to the end of the appended block.
+    requestAnimationFrame(() => {
+      const el = contentRef.current;
+      if (!el) return;
+      el.focus();
+      const pos = el.value.length;
+      try {
+        el.setSelectionRange(pos, pos);
+      } catch {
+        // Some browsers throw on textarea setSelectionRange during focus
+        // transitions; safe to ignore — the append still landed.
+      }
+      el.scrollTop = el.scrollHeight;
+    });
+  }
+
   // TIM-3675 review-fix: Generate is now enabled when EITHER the draft OR
   // the instructions field has content. Empty custom sections seed a
   // first-draft directive server-side, and empty standard sections route
@@ -362,12 +415,31 @@ export function BPWriteWithAIModal({
               )}
 
               <div>
-                <label
-                  htmlFor="bp-wai-content"
-                  className="block text-xs font-semibold text-[var(--foreground)] mb-1.5"
-                >
-                  Current draft
-                </label>
+                <div className="flex items-center justify-between gap-3 mb-1.5">
+                  <label
+                    htmlFor="bp-wai-content"
+                    className="block text-xs font-semibold text-[var(--foreground)]"
+                  >
+                    Current draft
+                  </label>
+                  {/* TIM-3672 follow-up: seed the draft with excerpts pulled
+                      from other populated BP sections. Hidden when there is
+                      nothing to pull. Disabled after one click per session so
+                      the user can't stack duplicate blocks. */}
+                  {otherSectionsForContext && otherSectionsForContext.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleSeedFromOtherSections}
+                      disabled={hasSeededContext}
+                      className="text-[11px] font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
+                    >
+                      <Sparkles size={11} aria-hidden="true" />
+                      {hasSeededContext
+                        ? "Context added"
+                        : `Seed from other sections (${otherSectionsForContext.length})`}
+                    </button>
+                  )}
+                </div>
                 <p className="text-[11px] text-[var(--muted-foreground)] mb-1.5">
                   {initialContent.trim().length > 0
                     ? "This is what the section says now. Edit it here if you want to seed the AI with a different starting point."
@@ -375,6 +447,7 @@ export function BPWriteWithAIModal({
                 </p>
                 <textarea
                   id="bp-wai-content"
+                  ref={contentRef}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Section content..."

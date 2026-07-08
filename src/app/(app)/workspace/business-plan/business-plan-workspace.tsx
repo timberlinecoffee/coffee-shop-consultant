@@ -64,9 +64,29 @@ import type { AuditReport } from "@/lib/business-plan/audit";
 import { stripSourceMarkers } from "@/lib/business-plan/source-markers";
 import {
   BPWriteWithAIModal,
+  type BpOtherSectionExcerpt,
   isBpPlaceholderContent,
   type WriteAiApproveExtras,
 } from "@/components/business-plan/BPWriteWithAIModal";
+
+// TIM-3672 follow-up: cap per-section seed excerpts so the assembled block
+// stays well under the /improve prompt budget even when a founder has
+// populated every section. ~500 chars is roughly a paragraph — enough for
+// context, short enough that 20 sections still fits comfortably.
+const BP_SEED_EXCERPT_MAX_CHARS = 500;
+
+// TIM-3672 follow-up: trim a section body down to a compact excerpt for
+// cross-section seed context. Strip source markers (they carry line-anchor
+// metadata the LLM should not see), truncate at a word boundary near the
+// cap, and append an ellipsis when we cut.
+function bpSeedExcerpt(raw: string): string {
+  const stripped = stripSourceMarkers(raw).trim();
+  if (stripped.length <= BP_SEED_EXCERPT_MAX_CHARS) return stripped;
+  const window = stripped.slice(0, BP_SEED_EXCERPT_MAX_CHARS);
+  const lastSpace = window.lastIndexOf(" ");
+  const cutAt = lastSpace > BP_SEED_EXCERPT_MAX_CHARS * 0.6 ? lastSpace : BP_SEED_EXCERPT_MAX_CHARS;
+  return `${window.slice(0, cutAt).trim()}...`;
+}
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
@@ -921,6 +941,45 @@ export function BusinessPlanWorkspace({
   const visibleCount = sections.filter((s) => s.isVisible).length;
   const allExpanded = sections.every((s) => s.isExpanded);
 
+  // TIM-3672 follow-up (board comment db265403 on 2026-07-08): compute the
+  // cross-section context excerpts fed to the BP Write-with-AI modal's "Seed
+  // from other sections" button. Excludes the target section, archived
+  // sections, empty content, and assembled-content placeholders (feeding
+  // placeholders to /improve would just have the AI rewrite the placeholder
+  // text). Prefers userContent over autoContent — that's what the founder has
+  // actually curated.
+  const bpOtherSectionsForContext = useMemo<BpOtherSectionExcerpt[]>(() => {
+    if (!bpWriteAiTarget) return [];
+    const excerpts: BpOtherSectionExcerpt[] = [];
+    const targetKey =
+      bpWriteAiTarget.kind === "standard" ? (bpWriteAiTarget.sectionKey as string) : null;
+    const targetCustomId =
+      bpWriteAiTarget.kind === "custom" ? bpWriteAiTarget.sectionId : null;
+    for (const s of sections) {
+      if (s.isArchived) continue;
+      if (targetKey && s.key === targetKey) continue;
+      const raw = (s.userContent && s.userContent.trim().length > 0
+        ? s.userContent
+        : s.autoContent) ?? "";
+      if (!raw.trim().length) continue;
+      if (isBpPlaceholderContent(raw)) continue;
+      const excerpt = bpSeedExcerpt(raw);
+      if (!excerpt) continue;
+      excerpts.push({ title: s.title, excerpt });
+    }
+    for (const cs of customSections) {
+      if (cs.isArchived) continue;
+      if (targetCustomId && cs.id === targetCustomId) continue;
+      const raw = cs.userContent ?? "";
+      if (!raw.trim().length) continue;
+      if (isBpPlaceholderContent(raw)) continue;
+      const excerpt = bpSeedExcerpt(raw);
+      if (!excerpt) continue;
+      excerpts.push({ title: cs.title, excerpt });
+    }
+    return excerpts;
+  }, [bpWriteAiTarget, sections, customSections]);
+
   // TIM-3675: Approve handler for the BP Write-with-AI modal — mirrors the
   // onApply body the pre-TIM-3675 AIReviewModal was using inside runStream.
   // Standard-section approve PATCHes /api/business-plan/sections/[key];
@@ -988,6 +1047,7 @@ export function BusinessPlanWorkspace({
         initialContent={bpWriteAiTarget.initialContent}
         onClose={() => setBpWriteAiTarget(null)}
         onApprove={handleBpWriteAiApprove}
+        otherSectionsForContext={bpOtherSectionsForContext}
       />
     )}
     {/* TIM-3576: cover config modal opens before print/export */}
