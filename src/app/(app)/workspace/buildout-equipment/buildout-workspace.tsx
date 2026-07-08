@@ -383,7 +383,7 @@ export function BuildoutEquipmentWorkspace({
 
   return (
     <div className="bg-[var(--background)] min-h-screen">
-      <div className="px-4 sm:px-6 pt-8 pb-16">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1793: canonical chrome — title left, action cluster top-right. */}
         {/* TIM-3242: "Write with AI" replaces "Describe your setup" (TIM-1177/TIM-1894).
             Concept-aware: reads Concept Suite outputs for Source A; falls back to

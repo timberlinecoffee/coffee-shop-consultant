@@ -1,14 +1,20 @@
 // TIM-1059: Suppliers & Vendors workspace — server entrypoint.
 
 import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isSubscriptionActive } from "@/lib/access";
 import type { VendorCandidate, VendorCustomCategory, VendorDecision } from "@/lib/suppliers";
+import { UI_REVAMP_V3_COOKIE, resolveUiRevampV3 } from "@/lib/ui-revamp-v3";
 import { SuppliersWorkspace } from "./suppliers-workspace";
 
 export const dynamic = "force-dynamic";
 
 export default async function SuppliersWorkspacePage() {
+  const cookieStore = await cookies();
+  const uiRevampV3 = resolveUiRevampV3({
+    mirrorCookie: cookieStore.get(UI_REVAMP_V3_COOKIE)?.value,
+  });
   const supabase = await createClient();
   const {
     data: { user },
@@ -67,6 +73,7 @@ export default async function SuppliersWorkspacePage() {
       initialDecisions={(decisionsRes.data ?? []) as VendorDecision[]}
       initialCustomCategories={(customCatsRes.data ?? []) as VendorCustomCategory[]}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
+      uiRevampV3={uiRevampV3}
     />
   );
 }

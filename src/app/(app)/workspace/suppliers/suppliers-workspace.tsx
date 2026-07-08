@@ -51,6 +51,7 @@ interface Props {
   initialDecisions: VendorDecision[];
   initialCustomCategories: VendorCustomCategory[];
   initialTrialMessagesUsed?: number;
+  uiRevampV3?: boolean;
 }
 
 const STATUS_LABELS: Record<VendorStatus, string> = {
@@ -163,6 +164,7 @@ export function SuppliersWorkspace({
   initialDecisions,
   initialCustomCategories,
   initialTrialMessagesUsed,
+  uiRevampV3 = true,
 }: Props) {
   const [candidates, setCandidates] = useState<VendorCandidate[]>(initialCandidates);
   const [decisions, setDecisions] = useState<VendorDecision[]>(initialDecisions);
@@ -585,6 +587,8 @@ export function SuppliersWorkspace({
       <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         {/* TIM-1787 / TIM-1894: canonical WorkspaceHeader — icon+title+description
             on the left, chosen-vendor summary in the top-right actions slot. */}
+        {/* TIM-3695 (P1-1): under v3 the per-category Suggest/Add actions move here
+            so SectionHeader's contract (title+help+onWriteWithAi only) is respected. */}
         <WorkspaceHeader
           Icon={Truck}
           title="Suppliers & Vendors"
@@ -598,6 +602,29 @@ export function SuppliersWorkspace({
                     of {totalCategories} {totalCategories === 1 ? "category" : "categories"} chosen
                   </span>
                 </div>
+              )}
+              {uiRevampV3 && (
+                <>
+                  <WorkspaceActionButton
+                    onClick={() => handleSeed(activeCategory, activeRows.length > 0 ? "append" : "replace")}
+                    disabled={!canEdit || seedingCategory === activeCategory}
+                    title={activeRows.length > 0 ? "Generate more AI-suggested vendors" : "Generate AI suggestions"}
+                  >
+                    <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                    {seedingCategory === activeCategory
+                      ? "Generating..."
+                      : activeRows.length > 0
+                        ? "Suggest more"
+                        : "Suggest vendors"}
+                  </WorkspaceActionButton>
+                  <WorkspaceActionButton
+                    onClick={() => handleAddRow(activeCategory)}
+                    disabled={!canEdit}
+                  >
+                    <Plus size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                    Add vendor
+                  </WorkspaceActionButton>
+                </>
               )}
               {/* TIM-3676: shared Scout entry point, matches Business Plan / Marketing / Hiring / Ops Playbook. */}
               <AskScoutButton
@@ -755,35 +782,44 @@ export function SuppliersWorkspace({
           <section className="min-w-0">
             <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
               <div className="px-5 pt-5 pb-4 border-b border-[var(--border)]">
-                <div className="flex items-start justify-between gap-4">
+                {/* TIM-3695 (P1-1): v3 — SectionHeader standalone (contract: title+help only);
+                    actions live in WorkspaceHeader above. v1 — original flex row kept. */}
+                {uiRevampV3 ? (
                   <SectionHeader
                     title={labelFor(activeCategory)}
                     helpContent={subtitleFor(activeCategory)}
-                    className="mb-0 flex-1"
                   />
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* TIM-1846: canonical WorkspaceActionButton chrome (were hand-rolled). */}
-                    <WorkspaceActionButton
-                      onClick={() => handleSeed(activeCategory, activeRows.length > 0 ? "append" : "replace")}
-                      disabled={!canEdit || seedingCategory === activeCategory}
-                      title={activeRows.length > 0 ? "Generate more AI-suggested vendors" : "Generate AI suggestions"}
-                    >
-                      <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                      {seedingCategory === activeCategory
-                        ? "Generating..."
-                        : activeRows.length > 0
-                          ? "Suggest more"
-                          : "Suggest vendors"}
-                    </WorkspaceActionButton>
-                    <WorkspaceActionButton
-                      onClick={() => handleAddRow(activeCategory)}
-                      disabled={!canEdit}
-                    >
-                      <Plus size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                      Add vendor
-                    </WorkspaceActionButton>
+                ) : (
+                  <div className="flex items-start justify-between gap-4">
+                    <SectionHeader
+                      title={labelFor(activeCategory)}
+                      helpContent={subtitleFor(activeCategory)}
+                      className="mb-0 flex-1"
+                    />
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* TIM-1846: canonical WorkspaceActionButton chrome (were hand-rolled). */}
+                      <WorkspaceActionButton
+                        onClick={() => handleSeed(activeCategory, activeRows.length > 0 ? "append" : "replace")}
+                        disabled={!canEdit || seedingCategory === activeCategory}
+                        title={activeRows.length > 0 ? "Generate more AI-suggested vendors" : "Generate AI suggestions"}
+                      >
+                        <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                        {seedingCategory === activeCategory
+                          ? "Generating..."
+                          : activeRows.length > 0
+                            ? "Suggest more"
+                            : "Suggest vendors"}
+                      </WorkspaceActionButton>
+                      <WorkspaceActionButton
+                        onClick={() => handleAddRow(activeCategory)}
+                        disabled={!canEdit}
+                      >
+                        <Plus size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                        Add vendor
+                      </WorkspaceActionButton>
+                    </div>
                   </div>
-                </div>
+                )}
                 {seedError && (
                   <p className="mt-2 text-xs text-[var(--error)]">{seedError}</p>
                 )}
