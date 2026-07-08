@@ -10,6 +10,7 @@ import { ProFeatureEntries } from "@/components/account/ProFeatureEntries";
 import { AccountDataControls } from "@/components/account/AccountDataControls";
 import { GuidedNoticesCard } from "@/components/account/GuidedNoticesCard";
 import { RevertToggle } from "@/components/account/RevertToggle";
+import { RevertToggleV3 } from "@/components/account/RevertToggleV3";
 import { HiringRevertToggle } from "@/components/account/HiringRevertToggle";
 import { effectivePlanForGating } from "@/lib/access";
 import { SettingsShell } from "@/components/account/settings/SettingsShell";
@@ -20,6 +21,10 @@ import {
   getUiRevampSetting,
   resolveUiRevamp,
 } from "@/lib/ui-revamp";
+import {
+  UI_REVAMP_V3_COOKIE,
+  resolveUiRevampV3,
+} from "@/lib/ui-revamp-v3";
 import {
   HIRING_REVAMP_COOKIE,
   HIRING_REVAMP_OVERRIDE_COOKIE,
@@ -65,6 +70,9 @@ export default async function AccountPage() {
     dbValue: dbUiRevamp,
     overrideCookie: cookieStore.get(UI_REVAMP_OVERRIDE_COOKIE)?.value,
     mirrorCookie: cookieStore.get(UI_REVAMP_COOKIE)?.value,
+  });
+  const uiRevampV3Enabled = resolveUiRevampV3({
+    mirrorCookie: cookieStore.get(UI_REVAMP_V3_COOKIE)?.value,
   });
   const hiringRevampEnabled = resolveHiringRevamp({
     dbValue: dbHiringRevamp,
@@ -171,6 +179,10 @@ export default async function AccountPage() {
             Appearance and experience options for your account.
           </p>
           <RevertToggle initialEnabled={uiRevampEnabled} />
+          <div className="border-t border-[var(--border)] mt-3 pt-3">
+            {/* TIM-3694: v3 UI opt-out toggle. Default-on; user can revert per-browser. */}
+            <RevertToggleV3 initialEnabled={uiRevampV3Enabled} />
+          </div>
           <div className="border-t border-[var(--border)] mt-3 pt-3">
             {/* TIM-3369: per-workspace Hiring revamp toggle, parallel to RevertToggle. */}
             <HiringRevertToggle initialEnabled={hiringRevampEnabled} />
