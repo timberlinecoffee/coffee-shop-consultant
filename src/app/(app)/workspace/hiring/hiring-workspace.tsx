@@ -6,6 +6,8 @@
 // TIM-2968: OrgTab upgraded with drag-and-drop hierarchy list.
 
 import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
+import { UI_REVAMP_V3 } from "@/lib/ui-revamp-v3";
+import { SectionHeader } from "@/components/section-header/SectionHeader";
 import { CollapseButton } from "@/components/ui/CollapseButton";
 import {
   Users,
@@ -294,8 +296,10 @@ function CandidatePill({
 
 // ── Shared input styles ───────────────────────────────────────────────────────
 
-const inputCls =
-  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+// TIM-3699 P2-4: update border/radius tokens to match Concept/BP inputs.
+const inputCls = UI_REVAMP_V3
+  ? "w-full text-sm border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors"
+  : "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 // TIM-1353 v2: 14px / bold / wider tracking — read as section headers.
 const sectionLabelCls =
@@ -592,10 +596,14 @@ function RoleDetailPanel({
     <div className="border-t border-[var(--neutral-cool-150)] bg-[var(--background)] divide-y divide-[var(--neutral-cool-100)]">
       {/* 1) Details */}
       <section className="px-4 py-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Users size={14} className="text-[var(--teal)]" />
-          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Details</p>
-        </div>
+        {UI_REVAMP_V3 ? (
+          <SectionHeader title="Details" className="mb-3" />
+        ) : (
+          <div className="flex items-center gap-2 mb-3">
+            <Users size={14} className="text-[var(--teal)]" />
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Details</p>
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>Role title</label>
@@ -664,10 +672,14 @@ function RoleDetailPanel({
       {/* 2) Compensation */}
       <section className="px-4 py-4">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Award size={14} className="text-[var(--teal)]" />
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Compensation</p>
-          </div>
+          {UI_REVAMP_V3 ? (
+            <SectionHeader title="Compensation" className="" />
+          ) : (
+            <div className="flex items-center gap-2">
+              <Award size={14} className="text-[var(--teal)]" />
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Compensation</p>
+            </div>
+          )}
           {compLoading && (
             <span className="text-[10px] text-[var(--dark-grey)]">Loading…</span>
           )}
@@ -783,10 +795,14 @@ function RoleDetailPanel({
 
       {/* 3) Job Description */}
       <section className="px-4 py-4">
-        <div className="flex items-center gap-2 mb-3">
-          <FileText size={14} className="text-[var(--teal)]" />
-          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Job Description</p>
-        </div>
+        {UI_REVAMP_V3 ? (
+          <SectionHeader title="Job Description" className="mb-3" />
+        ) : (
+          <div className="flex items-center gap-2 mb-3">
+            <FileText size={14} className="text-[var(--teal)]" />
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Job Description</p>
+          </div>
+        )}
         {jdLoading ? (
           <p className="text-sm text-[var(--dark-grey)]" role="status">Loading…</p>
         ) : (
@@ -870,10 +886,14 @@ function RoleDetailPanel({
       {/* 4) Scorecards */}
       <section className="px-4 py-4">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <ClipboardCheck size={14} className="text-[var(--teal)]" />
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Scorecards</p>
-          </div>
+          {UI_REVAMP_V3 ? (
+            <SectionHeader title="Scorecards" className="" />
+          ) : (
+            <div className="flex items-center gap-2">
+              <ClipboardCheck size={14} className="text-[var(--teal)]" />
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Scorecards</p>
+            </div>
+          )}
           {canEdit && (
             <button
               type="button"
@@ -962,10 +982,14 @@ function RoleDetailPanel({
       {/* 5) Competency Forms */}
       <section className="px-4 py-4">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <BookOpen size={14} className="text-[var(--teal)]" />
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Competency Forms</p>
-          </div>
+          {UI_REVAMP_V3 ? (
+            <SectionHeader title="Competency Forms" className="" />
+          ) : (
+            <div className="flex items-center gap-2">
+              <BookOpen size={14} className="text-[var(--teal)]" />
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">Competency Forms</p>
+            </div>
+          )}
           {canEdit && (
             <button
               type="button"
@@ -1129,12 +1153,20 @@ function OrgTab({
     <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1">
-          <p className="text-sm font-semibold text-[var(--foreground)]">Planned Roles</p>
-          <SectionHelp title="Planned Roles">
-            Drag rows to reorder hierarchy. Drag right to nest a role under a parent. Click any role to expand its details — job description, scorecard, and compensation.
-          </SectionHelp>
-        </div>
+        {UI_REVAMP_V3 ? (
+          <SectionHeader
+            title="Planned Roles"
+            helpContent="Drag rows to reorder hierarchy. Drag right to nest a role under a parent. Click any role to expand its details — job description, scorecard, and compensation."
+            className=""
+          />
+        ) : (
+          <div className="flex items-center gap-1">
+            <p className="text-sm font-semibold text-[var(--foreground)]">Planned Roles</p>
+            <SectionHelp title="Planned Roles">
+              Drag rows to reorder hierarchy. Drag right to nest a role under a parent. Click any role to expand its details — job description, scorecard, and compensation.
+            </SectionHelp>
+          </div>
+        )}
         {canEdit && (
           <WorkspaceActionButton variant="primary" onClick={addRole}>
             <Plus size={WORKSPACE_ACTION_ICON_SIZE} />
@@ -1332,12 +1364,20 @@ function InterviewTab({
       {selectedRoleId && (
         <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
           <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-1">
-                <p className="text-sm font-semibold text-[var(--foreground)]">Interview Questions</p>
-                <SectionHelp title="Interview Questions">Template questions and weights for this scorecard.</SectionHelp>
+            {UI_REVAMP_V3 ? (
+              <SectionHeader
+                title="Interview Questions"
+                helpContent="Template questions and weights for this scorecard."
+                className=""
+              />
+            ) : (
+              <div>
+                <div className="flex items-center gap-1">
+                  <p className="text-sm font-semibold text-[var(--foreground)]">Interview Questions</p>
+                  <SectionHelp title="Interview Questions">Template questions and weights for this scorecard.</SectionHelp>
+                </div>
               </div>
-            </div>
+            )}
             {canEdit && (
               <button
                 type="button"
@@ -1410,13 +1450,21 @@ function InterviewTab({
       {selectedScorecardId && (
         <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
           <div className="px-5 py-4 border-b border-[var(--border)]">
-            <div className="flex items-center gap-1">
-              <p className="text-sm font-semibold text-[var(--foreground)]">Scorecard Grid</p>
-              <SectionHelp title="Scorecard Grid">
-                Rate each candidate (rows) on each competency (columns) on a 1–5 scale.
-                Weighted totals appear automatically. Use multipliers to weight competencies differently.
-              </SectionHelp>
-            </div>
+            {UI_REVAMP_V3 ? (
+              <SectionHeader
+                title="Scorecard Grid"
+                helpContent="Rate each candidate (rows) on each competency (columns) on a 1–5 scale. Weighted totals appear automatically. Use multipliers to weight competencies differently."
+                className=""
+              />
+            ) : (
+              <div className="flex items-center gap-1">
+                <p className="text-sm font-semibold text-[var(--foreground)]">Scorecard Grid</p>
+                <SectionHelp title="Scorecard Grid">
+                  Rate each candidate (rows) on each competency (columns) on a 1–5 scale.
+                  Weighted totals appear automatically. Use multipliers to weight competencies differently.
+                </SectionHelp>
+              </div>
+            )}
           </div>
           <div className="px-5 py-4">
             <ScorecardGridPanel
