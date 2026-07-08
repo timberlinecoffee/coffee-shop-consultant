@@ -2,12 +2,15 @@
 
 // TIM-3688 (D.2): Shared AccordionSection extracted from three identical
 // inline copies in Marketing / Operations Playbook / Opening Month workspaces.
+// TIM-3694 (C.0): retains bg-[var(--card)] — dark-mode-safe; light-mode
+// equivalent of bg-white per QA Round 1 direction. Resolves audit findings
+// P1-2, P1-4, P1-6 once C.x consumers migrate.
 // Contract per style guide [TIM-1537 §AccordionSection with status]:
 //
 //   - status?: "complete" | "in_progress" | "empty" — chip omitted entirely
 //     when undefined so non-playbook consumers get a bare accordion.
 //   - Token-only styling; no hex or px literals.
-//   - Consumer migration is Child C (TIM-3689 P1-3/5/7 slice), NOT this issue.
+//   - Consumer migration is C.x children (TIM-3689 fan-out), NOT this issue.
 
 import { useState, type ReactNode } from 'react'
 import { CheckCircle, ChevronDown, Circle, Minus } from 'lucide-react'
