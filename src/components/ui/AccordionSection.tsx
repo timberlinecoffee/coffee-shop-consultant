@@ -2,8 +2,9 @@
 
 // TIM-3688 (D.2): Shared AccordionSection extracted from three identical
 // inline copies in Marketing / Operations Playbook / Opening Month workspaces.
-// TIM-3694 (C.0): bg-[var(--card)] → bg-white per TIM-1537 §Cards + Concept/BP
-// reference. Resolves audit findings P1-2, P1-4, P1-6 once C.x consumers migrate.
+// TIM-3694 (C.0): retains bg-[var(--card)] — dark-mode-safe; light-mode
+// equivalent of bg-white per QA Round 1 direction. Resolves audit findings
+// P1-2, P1-4, P1-6 once C.x consumers migrate.
 // Contract per style guide [TIM-1537 §AccordionSection with status]:
 //
 //   - status?: "complete" | "in_progress" | "empty" — chip omitted entirely
