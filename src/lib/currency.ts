@@ -196,53 +196,21 @@ export function normalizeCurrencyCode(code: unknown): string {
   return BY_CODE.has(upper) ? upper : DEFAULT_CURRENCY_CODE;
 }
 
-// Format a whole-unit amount in the selected currency. Mirrors the old
-// formatCurrency(n) signature but takes the currency code as a second
-// argument.
-//
-// TIM-1309: `compact` (K/M bucketing) is opt-in. Chart axes stay readable
-// with it on, but the financial statements show full exact figures so a
-// small change in the entered value is never rounded into a misleading "K".
+// Format a whole-unit amount in the selected currency. Always renders the
+// currency's native fraction digits with locale-aware thousands separators
+// (`$37,700.00`, `¥550`, `€1.234,56`). No K/M bucketing — TIM-3734 (board
+// directive TIM-3732) ripped compact shorthand out of every financial
+// surface. Chart axes get full precision too; readability yields to accuracy.
 export function formatCurrencyAmount(
   n: number,
-  code: string = DEFAULT_CURRENCY_CODE,
-  opts: { compact?: boolean } = {}
+  code: string = DEFAULT_CURRENCY_CODE
 ): string {
   const meta = getCurrencyMeta(code);
-  // Default to compact so existing callers (chart axes, buildout/equipment
-  // prices, summary banners) keep their K/M behavior. The statement tables
-  // opt out via fmt() to show full exact figures.
-  const compact = opts.compact ?? true;
-
-  if (compact) {
-    const abs = Math.abs(n);
-    const sign = n < 0 ? "-" : "";
-    // Compact short-forms (no fraction digits, currency symbol from formatter)
-    if (abs >= 1_000_000) {
-      return `${sign}${shortFormatWithSymbol(abs / 1_000_000, meta)}M`;
-    }
-    if (abs >= 1_000) {
-      const rounded = Math.round(abs / 100) / 10;
-      return `${sign}${shortFormatWithSymbol(rounded, meta)}K`;
-    }
-  }
-
   return new Intl.NumberFormat(meta.locale, {
     style: "currency",
     currency: meta.code,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(n);
-}
-
-// Render a numeric value with the currency symbol (no fraction digits).
-// Used to build the K / M compact strings.
-function shortFormatWithSymbol(n: number, meta: CurrencyMeta): string {
-  return new Intl.NumberFormat(meta.locale, {
-    style: "currency",
-    currency: meta.code,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
+    minimumFractionDigits: meta.fractionDigits,
+    maximumFractionDigits: meta.fractionDigits,
   }).format(n);
 }
 

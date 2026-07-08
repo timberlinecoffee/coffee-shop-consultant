@@ -22,7 +22,7 @@ import {
   computeMonthlySlices,
   fiscalYearMonthLabels,
 } from "@/lib/financial-projection";
-import { formatMinorUnits, getCurrencyMeta } from "@/lib/currency";
+import { formatCurrencyAmount, formatMinorUnits, getCurrencyMeta } from "@/lib/currency";
 
 registerFonts();
 
@@ -457,17 +457,8 @@ function Footer({ generatedDate, brand }: { generatedDate: string; brand: BrandT
 // ── chart configs (currency-aware axis ticks via prefix on labels) ───────────
 
 function fmtAxis(value: number, code: string): string {
-  // Compact for chart axes; uses currency symbol via formatMinorUnits.
-  const meta = getCurrencyMeta(code);
-  const divisor = Math.pow(10, meta.fractionDigits);
-  const v = value / divisor;
-  return new Intl.NumberFormat(meta.locale, {
-    style: "currency",
-    currency: meta.code,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-    notation: Math.abs(v) >= 1000 ? "compact" : "standard",
-  }).format(v);
+  // TIM-3734: full-precision axis ticks — compact K/M shorthand ripped out.
+  return formatMinorUnits(value, code);
 }
 
 function revenueChartConfig(
@@ -679,15 +670,7 @@ function breakEvenChartConfig(
   return {
     type: "line",
     data: {
-      labels: labels.map((v) =>
-        new Intl.NumberFormat(meta.locale, {
-          style: "currency",
-          currency: meta.code,
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-          notation: "compact",
-        }).format(v)
-      ),
+      labels: labels.map((v) => formatCurrencyAmount(v, meta.code)),
       datasets: [
         {
           label: "Total costs",
@@ -718,14 +701,7 @@ function breakEvenChartConfig(
         y: {
           title: { display: true, text: meta.code },
           ticks: {
-            callback: (v) =>
-              new Intl.NumberFormat(meta.locale, {
-                style: "currency",
-                currency: meta.code,
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-                notation: "compact",
-              }).format(Number(v)),
+            callback: (v) => formatCurrencyAmount(Number(v), meta.code),
           },
         },
       },

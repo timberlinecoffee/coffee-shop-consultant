@@ -153,7 +153,7 @@ function breakEvenChartConfig(pnl: MonthlyPnl, brand: BrandTokens, currencyCode 
   return {
     type: "line",
     data: {
-      labels: labels.map((v) => formatCurrencyAmount(v, currencyCode, { compact: false })),
+      labels: labels.map((v) => formatCurrencyAmount(v, currencyCode)),
       datasets: [
         {
           label: "Total costs",
@@ -187,7 +187,7 @@ function breakEvenChartConfig(pnl: MonthlyPnl, brand: BrandTokens, currencyCode 
         y: {
           title: { display: true, text: "Dollars" },
           ticks: {
-            callback: (v) => formatCurrencyAmount(Number(v), currencyCode, { compact: false }),
+            callback: (v) => formatCurrencyAmount(Number(v), currencyCode),
           },
         },
       },
@@ -223,7 +223,7 @@ function monthlyBurnChartConfig(pnl: MonthlyPnl, brand: BrandTokens, currencyCod
         y: {
           title: { display: true, text: "Dollars per month" },
           ticks: {
-            callback: (v) => formatCurrencyAmount(Number(v), currencyCode, { compact: false }),
+            callback: (v) => formatCurrencyAmount(Number(v), currencyCode),
           },
         },
       },

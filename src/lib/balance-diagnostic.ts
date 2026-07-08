@@ -78,7 +78,7 @@ export interface BalanceDiagnostic {
 }
 
 function formatCentsRough(cents: number, currencyCode: string): string {
-  return formatCurrencyAmount(Math.round(Math.abs(cents)) / 100, currencyCode, { compact: false });
+  return formatCurrencyAmount(Math.round(Math.abs(cents)) / 100, currencyCode);
 }
 
 interface DiagnoseArgs {

@@ -60,24 +60,32 @@ test("normalizeCurrencyCode upper-cases known codes and falls back otherwise", (
   assert.equal(normalizeCurrencyCode(undefined), "USD");
 });
 
-test("formatCurrencyAmount compact bucketing pins K / M output", () => {
-  // Default: compact=true → K/M short-form for large values.
-  assert.match(formatCurrencyAmount(1_500_000, "USD"), /\$1.5M/);
-  assert.match(formatCurrencyAmount(45_000, "USD"), /\$45K/);
-  // Sub-thousand values render without K/M.
-  assert.match(formatCurrencyAmount(250, "USD"), /\$250/);
+// TIM-3734 (board directive TIM-3732): every financial figure renders at the
+// currency's native fraction digits (`$XX,XXX.XX`). Compact K/M shorthand was
+// ripped out — under any circumstances.
+test("formatCurrencyAmount always renders full precision with the native fraction digits", () => {
+  assert.equal(formatCurrencyAmount(1_500_000, "USD"), "$1,500,000.00");
+  assert.equal(formatCurrencyAmount(45_000, "USD"), "$45,000.00");
+  assert.equal(formatCurrencyAmount(37_700, "USD"), "$37,700.00");
+  assert.equal(formatCurrencyAmount(1_249.95, "USD"), "$1,249.95");
+  assert.equal(formatCurrencyAmount(250, "USD"), "$250.00");
 });
 
-test("formatCurrencyAmount compact=false renders the exact figure", () => {
-  const out = formatCurrencyAmount(45_000, "USD", { compact: false });
-  assert.match(out, /\$45,000/);
+test("formatCurrencyAmount never emits a K or M shorthand suffix", () => {
+  for (const value of [1_500, 45_000, 1_500_000, 37_700_000]) {
+    const out = formatCurrencyAmount(value, "USD");
+    assert.doesNotMatch(out, /K\b/, `expected no K suffix for ${value}: ${out}`);
+    assert.doesNotMatch(out, /M\b/, `expected no M suffix for ${value}: ${out}`);
+  }
 });
 
-test("formatMinorUnits divides by the currency's fraction-digit exponent", () => {
-  // USD: 2dp → 12_345 cents = $123.45 → compact "$123" (sub-1000)
-  assert.match(formatMinorUnits(12_345, "USD"), /\$123/);
-  // JPY: 0dp → 12_345 minor units = ¥12,345 → compact "¥12.3K"
-  assert.match(formatMinorUnits(12_345, "JPY"), /[¥￥]12(\.\d)?K/);
+test("formatMinorUnits divides by the currency's fraction-digit exponent, full precision", () => {
+  // USD: 2dp → 12_345 cents = $123.45
+  assert.equal(formatMinorUnits(12_345, "USD"), "$123.45");
+  // 37,700 dollars entered = 3,770,000 cents → "$37,700.00"
+  assert.equal(formatMinorUnits(3_770_000, "USD"), "$37,700.00");
+  // JPY: 0dp → 12_345 minor units = ¥12,345 (locale-specific ¥/￥ tolerated).
+  assert.match(formatMinorUnits(12_345, "JPY"), /^[¥￥]12,345$/);
 });
 
 test("formatMinorExact always shows the currency's natural precision", () => {

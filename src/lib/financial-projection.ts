@@ -2523,7 +2523,7 @@ export function computeBreakEvenModel(
 // value always matches the user's entry. Chart axes use their own compact
 // formatter and are unaffected.
 export function fmt(cents: number, currencyCode: string = "USD"): string {
-  return formatCurrencyAmount(cents / 100, currencyCode, { compact: false });
+  return formatCurrencyAmount(cents / 100, currencyCode);
 }
 
 // pct: express numerator / denominator as a percentage string with one decimal.

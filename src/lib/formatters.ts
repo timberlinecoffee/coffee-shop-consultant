@@ -14,10 +14,9 @@ import { formatMinorUnits, getCurrencyMeta } from "./currency.ts";
 // scale inputs (e.g. 65 for 65%), divide by 100 first.
 export { fmtPctRatio as fmtPct };
 
-// `formatMinor(cents, code?)` — currency-aware compact format (K / M for
-// large totals; 0dp). Use for headline / summary totals where the existing
-// `useCurrency().formatMinor` already lives. For exact 2dp prices (menu,
-// ticket, sub-$1000 amounts) reach for `formatMinorExact`.
+// `formatMinor(cents, code?)` — currency-aware money formatter. Always
+// renders full precision with the currency's native fraction digits
+// (`$37,700.00`, `¥550`). TIM-3734 removed compact K/M shorthand.
 export { formatMinorUnits as formatMinor };
 
 // `fmtIntegerPct(ratio)` — 0dp from a 0..1 ratio. The compact variant used in
@@ -26,10 +25,8 @@ export function fmtIntegerPct(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
 }
 
-// `formatMinorExact(cents, code?)` — currency formatter that always shows the
-// currency's natural fraction digits (2 for USD/EUR, 0 for JPY) and never
-// rounds into compact K/M form. Use for menu prices, ticket prices, COGS at
-// the per-item level — anywhere the cents matter visually.
+// `formatMinorExact(cents, code?)` — historical alias kept so existing
+// call-sites keep compiling. Identical to `formatMinor` after TIM-3734.
 export function formatMinorExact(cents: number, code: string = "USD"): string {
   const meta = getCurrencyMeta(code);
   const divisor = Math.pow(10, meta.fractionDigits);

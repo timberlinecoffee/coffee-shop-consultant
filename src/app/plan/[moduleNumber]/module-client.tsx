@@ -757,7 +757,7 @@ function SectionStartupCosts({ data, onChange }: { data: Record<string, unknown>
       {total > 0 && (
         <div className="bg-teal/5 border border-teal/20 rounded-xl p-4 flex items-center justify-between">
           <span className="text-sm font-medium text-teal">Estimated Total Startup Cost</span>
-          <span className="text-lg font-bold text-teal">{format(total, { compact: false })}</span>
+          <span className="text-lg font-bold text-teal">{format(total)}</span>
         </div>
       )}
     </div>
@@ -831,7 +831,7 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
       {monthlyRevenue > 0 && (
         <div className="bg-teal/5 border border-teal/20 rounded-xl p-4 flex items-center justify-between">
           <span className="text-sm font-medium text-teal">Estimated Monthly Revenue</span>
-          <span className="text-lg font-bold text-teal">{format(Math.round(monthlyRevenue), { compact: false })}</span>
+          <span className="text-lg font-bold text-teal">{format(Math.round(monthlyRevenue))}</span>
         </div>
       )}
     </div>
@@ -896,7 +896,7 @@ function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unkno
         <div className="bg-teal/5 border border-teal/20 rounded-xl p-4 space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-teal">Fixed Monthly Costs</span>
-            <span className="text-lg font-bold text-teal">{format(otherFixed, { compact: false })}</span>
+            <span className="text-lg font-bold text-teal">{format(otherFixed)}</span>
           </div>
           {cogsPercent > 0 && (
             <p className="text-xs text-teal/70">Plus {cogsPercent}% of revenue in COGS (variable)</p>
@@ -982,7 +982,7 @@ function SectionFinancialSummary({
   const totalMonthlyExpenses = cogs + fixedExpenses;
   const monthlyProfit = monthlyRevenue - totalMonthlyExpenses;
 
-  const generated = `# Financial Summary\n\n## Startup Investment\nTotal estimated startup cost: ${format(startupTotal, { compact: false })}\n\n## Monthly P&L Projection\n- Revenue: ${format(Math.round(monthlyRevenue), { compact: false })}\n- COGS: ${format(Math.round(cogs), { compact: false })}\n- Fixed costs: ${format(Math.round(fixedExpenses), { compact: false })}\n- **Net operating income: ${format(Math.round(monthlyProfit), { compact: false })}**\n\n## Notes\n[Add your notes on assumptions, risks, and funding plan here.]`;
+  const generated = `# Financial Summary\n\n## Startup Investment\nTotal estimated startup cost: ${format(startupTotal)}\n\n## Monthly P&L Projection\n- Revenue: ${format(Math.round(monthlyRevenue))}\n- COGS: ${format(Math.round(cogs))}\n- Fixed costs: ${format(Math.round(fixedExpenses))}\n- **Net operating income: ${format(Math.round(monthlyProfit))}**\n\n## Notes\n[Add your notes on assumptions, risks, and funding plan here.]`;
 
   const content = (data.summary_notes as string) ?? generated;
 
@@ -997,9 +997,9 @@ function SectionFinancialSummary({
       {monthlyRevenue > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
-            { label: "Startup Cost", value: format(startupTotal, { compact: false }) },
-            { label: "Monthly Revenue", value: format(Math.round(monthlyRevenue), { compact: false }) },
-            { label: "Monthly Profit", value: format(Math.round(monthlyProfit), { compact: false }), highlight: monthlyProfit > 0 },
+            { label: "Startup Cost", value: format(startupTotal) },
+            { label: "Monthly Revenue", value: format(Math.round(monthlyRevenue)) },
+            { label: "Monthly Profit", value: format(Math.round(monthlyProfit)), highlight: monthlyProfit > 0 },
           ].map((stat) => (
             <div key={stat.label} className={`rounded-xl border p-4 ${stat.highlight ? "bg-teal/5 border-teal/20" : "bg-neutral-100 border-grey-light"}`}>
               <div className="text-xs text-neutral-500 mb-1">{stat.label}</div>
