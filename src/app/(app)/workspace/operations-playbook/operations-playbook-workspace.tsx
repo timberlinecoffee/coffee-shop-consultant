@@ -17,11 +17,9 @@ import {
   Sparkles,
   ExternalLink,
   Printer,
-  ChevronDown,
-  CheckCircle,
-  Circle,
-  Minus,
 } from "lucide-react";
+import { AccordionSection, type SectionStatus } from "@/components/ui/AccordionSection";
+import { UI_REVAMP_V3 } from "@/lib/ui-revamp-v3";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
@@ -64,75 +62,6 @@ const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1"
 
 function localId() {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-// ── Accordion types & components ─────────────────────────────────────────────
-// TIM-2776: pattern lifted from FinancialsV2 (financials-v2.tsx).
-
-type SectionStatus = "complete" | "in_progress" | "empty";
-
-function StatusBadge({ status }: { status: SectionStatus }) {
-  if (status === "complete") {
-    return (
-      <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--teal)] bg-[var(--teal-tint-100)] border border-[var(--teal-tint)] px-2 py-0.5 rounded-full shrink-0">
-        <CheckCircle size={10} aria-hidden="true" />
-        Complete
-      </span>
-    );
-  }
-  if (status === "in_progress") {
-    return (
-      <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">
-        <Circle size={10} aria-hidden="true" />
-        In progress
-      </span>
-    );
-  }
-  return (
-    <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--muted-foreground)] bg-[var(--background)] border border-[var(--border)] px-2 py-0.5 rounded-full shrink-0">
-      <Minus size={10} aria-hidden="true" />
-      Empty
-    </span>
-  );
-}
-
-function AccordionSection({
-  title,
-  status,
-  defaultOpen = false,
-  children,
-}: {
-  title: string;
-  status: SectionStatus;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--background)] transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <ChevronDown
-            size={16}
-            className={`text-[var(--muted-foreground)] transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
-            aria-hidden="true"
-          />
-          <span className="text-sm font-semibold text-[var(--foreground)]">{title}</span>
-        </div>
-        <StatusBadge status={status} />
-      </button>
-      {open && (
-        <div className="px-5 pb-5 pt-1 border-t border-[var(--border)] space-y-5">
-          {children}
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
@@ -362,7 +291,7 @@ export function OperationsPlaybookWorkspace({
         {/* TIM-2776: accordion layout — replaces sidebar + single-section pattern */}
         {activeView === "playbook" && (
           <div>
-            <PlaybookProgressBar statuses={statuses} />
+            {UI_REVAMP_V3 && <PlaybookProgressBar statuses={statuses} />}
             <div className="space-y-3">
               {OPERATIONS_SECTION_KEYS.map((key, i) => {
                 const status = statuses[i];
