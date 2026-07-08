@@ -788,6 +788,7 @@ export function SuppliersWorkspace({
                   <SectionHeader
                     title={labelFor(activeCategory)}
                     helpContent={subtitleFor(activeCategory)}
+                    className="mb-0"
                   />
                 ) : (
                   <div className="flex items-start justify-between gap-4">
