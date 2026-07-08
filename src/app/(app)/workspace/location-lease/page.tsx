@@ -58,8 +58,8 @@ export default async function LocationLeaseWorkspacePage() {
   }));
 
   return (
-    <div className="bg-[var(--background)]">
-      <div className="w-full px-4 sm:px-6 pt-8 pb-12">
+    <div className="bg-[var(--background)] min-h-screen">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-16">
         <LocationLeaseWorkspaceClient
           initialCandidates={initialCandidates}
           planId={planId}

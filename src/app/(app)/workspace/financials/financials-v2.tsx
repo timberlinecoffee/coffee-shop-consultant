@@ -507,7 +507,7 @@ function DailyTrafficContent({
                           value={sched.open_time}
                           onChange={(e) => updateScheduleDay(day, { open_time: e.target.value })}
                           disabled={!canEdit}
-                          className="text-xs border border-[var(--border-medium)] rounded-lg px-2 py-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] w-28"
+                          className="text-xs border border-[var(--border)] rounded-xl px-2 py-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] w-28"
                         />
                       ) : (
                         <span className="text-xs text-[var(--neutral-cool-400)]">Closed</span>
@@ -520,7 +520,7 @@ function DailyTrafficContent({
                           value={sched.close_time}
                           onChange={(e) => updateScheduleDay(day, { close_time: e.target.value })}
                           disabled={!canEdit}
-                          className="text-xs border border-[var(--border-medium)] rounded-lg px-2 py-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] w-28"
+                          className="text-xs border border-[var(--border)] rounded-xl px-2 py-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] w-28"
                         />
                       ) : null}
                     </td>
@@ -578,7 +578,7 @@ function RevenueStreamsContent({
   isRefreshingMenu: boolean;
 }) {
   const inputCls =
-    "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+    "w-full text-sm border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
   const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
   const currencyCode = mp.currency_code ?? "USD";
 
@@ -820,7 +820,7 @@ function CostsOverheadContent({
   minimumWage: MinWageInfo | null;
 }) {
   const inputCls =
-    "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+    "w-full text-sm border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
   const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
   const currencyCode = mp.currency_code ?? "USD";
 
@@ -984,7 +984,7 @@ function GrowthRampContent({
   onUpdate: (next: MonthlyProjections) => void;
 }) {
   const inputCls =
-    "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+    "w-full text-sm border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
   const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 
   return (
@@ -1064,7 +1064,7 @@ function GrowthRampContent({
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
           Monthly Growth Rate
         </p>
-        <div className="flex items-center gap-1 mb-3 bg-[var(--background)] border border-[var(--border-medium)] rounded-lg p-1 w-fit">
+        <div className="flex items-center gap-1 mb-3 bg-[var(--background)] border border-[var(--border)] rounded-xl p-1 w-fit">
           {(["simple", "custom"] as const).map((mode) => (
             <button
               key={mode}

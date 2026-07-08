@@ -330,7 +330,7 @@ function OwnerContributionsEditor({
   onChange: (next: { month_index: number; amount_cents: number }[]) => void;
 }) {
   const rowCls =
-    "text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]";
+    "text-sm border border-[var(--border)] rounded-xl px-2 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)]";
   function update(idx: number, patch: Partial<{ month_index: number; amount_cents: number }>) {
     const next = contributions.map((c, i) => (i === idx ? { ...c, ...patch } : c));
     onChange(next);
@@ -644,7 +644,7 @@ function ForecastTab({
   }
 
   const inputCls =
-    "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+    "w-full text-sm border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
   const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 
   // TIM-1352: the per-line "customized" pill is the single canonical indicator
@@ -774,7 +774,7 @@ function ForecastTab({
                             value={sched.open_time}
                             onChange={(e) => updateScheduleDay(day, { open_time: e.target.value })}
                             disabled={!canEdit}
-                            className="text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors w-32 sm:w-36"
+                            className="text-sm border border-[var(--border)] rounded-xl px-2 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors w-32 sm:w-36"
                           />
                         ) : (
                           <span className="text-xs text-[var(--neutral-cool-400)]">Closed</span>
@@ -787,7 +787,7 @@ function ForecastTab({
                             value={sched.close_time}
                             onChange={(e) => updateScheduleDay(day, { close_time: e.target.value })}
                             disabled={!canEdit}
-                            className="text-sm border border-[var(--border-medium)] rounded-lg px-2 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors w-32 sm:w-36"
+                            className="text-sm border border-[var(--border)] rounded-xl px-2 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors w-32 sm:w-36"
                           />
                         ) : (
                           <span className="text-sm text-[var(--neutral-cool-400)]"></span>
@@ -1420,7 +1420,7 @@ function ForecastTab({
         onOpenChange={(n) => sections.setOpen("monthly-growth", n)}
       >
         <div className="rounded-xl border border-[var(--border)] bg-white p-4">
-          <div className="flex items-center gap-1 mb-4 bg-[var(--background)] border border-[var(--border-medium)] rounded-lg p-1 w-fit">
+          <div className="flex items-center gap-1 mb-4 bg-[var(--background)] border border-[var(--border)] rounded-xl p-1 w-fit">
             {(["simple", "custom"] as const).map((mode) => (
               <button
                 key={mode}

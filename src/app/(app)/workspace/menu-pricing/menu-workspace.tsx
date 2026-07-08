@@ -192,7 +192,7 @@ function parseFirstAmountToCents(text: string): number | null {
 }
 
 const inputCls =
-  "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
+  "w-full text-sm border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 // TIM-1353 v2: 14px / bold / wider tracking — read as section headers.
 const sectionLabelCls =
