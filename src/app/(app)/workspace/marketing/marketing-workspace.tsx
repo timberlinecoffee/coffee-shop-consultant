@@ -19,6 +19,8 @@ import {
   Circle,
   Minus,
 } from "lucide-react";
+import { AccordionSection, type SectionStatus } from "@/components/ui/AccordionSection";
+import { UI_REVAMP_V3 } from "@/lib/ui-revamp-v3";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { SectionHeader } from "@/components/section-header";
@@ -53,10 +55,10 @@ function localId(): string {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-// ── Accordion types & components ─────────────────────────────────────────────
+// ── Accordion legacy components (!UI_REVAMP_V3 branch) ───────────────────────
 // TIM-2777: pattern lifted from OperationsPlaybookWorkspace (TIM-2776).
-
-type SectionStatus = "complete" | "in_progress" | "empty";
+// TIM-3700: kept as fallback for !UI_REVAMP_V3; shared AccordionSection used
+// when UI_REVAMP_V3 is true. Delete after SA-2 flag flip.
 
 function StatusBadge({ status }: { status: SectionStatus }) {
   if (status === "complete") {
@@ -83,7 +85,7 @@ function StatusBadge({ status }: { status: SectionStatus }) {
   );
 }
 
-function AccordionSection({
+function AccordionSectionLegacy({
   title,
   status,
   defaultOpen = false,
@@ -370,28 +372,41 @@ export function MarketingWorkspace({
           />
 
           {/* TIM-2777: accordion layout — replaces max-w-3xl tab-based pattern */}
+          {/* TIM-3700: gated behind UI_REVAMP_V3; !V3 path keeps legacy component */}
           <div className="space-y-3">
             {MARKETING_SECTION_KEYS.map((key, i) => {
               const label = MARKETING_SECTION_LABELS[key];
               const status = getMarketingSectionStatus(doc, key);
-              return (
+              const body = (
+                <SectionBody
+                  sectionKey={key}
+                  label={label}
+                  tagline={MARKETING_SECTION_TAGLINES[key]}
+                  canEdit={canEdit}
+                  doc={doc}
+                  updateDoc={updateDoc}
+                  onGenerate={() => handleGenerate(key)}
+                  generating={generating === key}
+                />
+              );
+              return UI_REVAMP_V3 ? (
                 <AccordionSection
                   key={key}
                   title={label}
                   status={status}
                   defaultOpen={i === 0}
                 >
-                  <SectionBody
-                    sectionKey={key}
-                    label={label}
-                    tagline={MARKETING_SECTION_TAGLINES[key]}
-                    canEdit={canEdit}
-                    doc={doc}
-                    updateDoc={updateDoc}
-                    onGenerate={() => handleGenerate(key)}
-                    generating={generating === key}
-                  />
+                  {body}
                 </AccordionSection>
+              ) : (
+                <AccordionSectionLegacy
+                  key={key}
+                  title={label}
+                  status={status}
+                  defaultOpen={i === 0}
+                >
+                  {body}
+                </AccordionSectionLegacy>
               );
             })}
           </div>
