@@ -20,6 +20,8 @@ import {
   CheckCircle, Circle, Minus,
 } from "lucide-react";
 import { CollapseButton } from "@/components/ui/CollapseButton";
+import { AccordionSection as _SharedAccordionSection } from "@/components/ui/AccordionSection";
+import { UI_REVAMP_V3 } from "@/lib/ui-revamp-v3";
 import { LaunchPlanSubNav } from "@/components/launch-plan/LaunchPlanSubNav";
 import {
   WorkspaceSubNav,
@@ -194,6 +196,8 @@ function Toast({
 }
 
 // ── AccordionSection (TIM-2778: v2 pattern, mirrors FinancialsV2) ─────────────
+// TIM-3698 P0-5: under UI_REVAMP_V3, delegates to shared AccordionSection.
+// Legacy local copy kept for flag-off path.
 
 type SectionStatus = "complete" | "in_progress" | "empty";
 
@@ -222,7 +226,7 @@ function SectionStatusBadge({ status }: { status: SectionStatus }) {
   );
 }
 
-function AccordionSection({
+function _AccordionSectionLocal({
   title,
   status,
   defaultOpen = false,
@@ -260,6 +264,9 @@ function AccordionSection({
     </div>
   );
 }
+// TIM-3698 P0-5/P1-7: gate to shared component under UI_REVAMP_V3; chips
+// preserved via shared AccordionSection's status prop (identical StatusBadge).
+const AccordionSection = UI_REVAMP_V3 ? _SharedAccordionSection : _AccordionSectionLocal;
 
 function getMilestoneTrackStatus(items: Milestone[]): SectionStatus {
   if (items.length === 0) return "empty";
@@ -605,7 +612,10 @@ interface EditModalProps {
   isNew: boolean;
 }
 
-const inputCls = "w-full rounded-lg border border-[var(--border-medium)] px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors";
+// TIM-3698 P2-8: updated border/radius tokens under UI_REVAMP_V3 to match style guide inputs.
+const inputCls = UI_REVAMP_V3
+  ? "w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors"
+  : "w-full rounded-lg border border-[var(--border-medium)] px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
 
 function EditModal({ milestone, onSave, onClose, isNew }: EditModalProps) {
