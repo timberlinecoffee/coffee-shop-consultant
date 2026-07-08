@@ -33,6 +33,5 @@ export function resolveUiRevampV3(opts: {
   if (!UI_REVAMP_V3) return false;
   const { mirrorCookie } = opts;
   if (mirrorCookie === "0") return false;
-  if (mirrorCookie === "1") return true;
   return true;
 }

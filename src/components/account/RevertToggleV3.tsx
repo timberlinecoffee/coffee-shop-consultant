@@ -43,38 +43,39 @@ export function RevertToggleV3({ initialEnabled }: { initialEnabled: boolean }) 
   const switchId = "pref-use-new-ui-v3";
 
   return (
-    <div className="flex items-start justify-between gap-4 py-1">
-      <label htmlFor={switchId} className="cursor-pointer select-none">
-        <span className="block text-sm font-medium text-[var(--foreground)]">
-          Use new UI (v3)
-        </span>
-        <span className="block text-xs text-[var(--muted-foreground)] mt-0.5">
-          Toggle the latest Groundwork experience. Off uses the previous UI.
-        </span>
-      </label>
+    <div>
+      <div className="flex items-start justify-between gap-4 py-1">
+        <label htmlFor={switchId} className="cursor-pointer select-none">
+          <span className="block text-sm font-medium text-[var(--foreground)]">
+            Use new UI (v3)
+          </span>
+          <span className="block text-xs text-[var(--muted-foreground)] mt-0.5">
+            Toggle the latest Groundwork experience. Off uses the previous UI.
+          </span>
+        </label>
 
-      <button
-        id={switchId}
-        type="button"
-        role="switch"
-        aria-checked={enabled}
-        disabled={saving}
-        onClick={toggle}
-        aria-label={enabled ? "Disable new UI v3" : "Enable new UI v3"}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
-          enabled ? "bg-[var(--teal)]" : "bg-[var(--border)]"
-        }`}
-      >
-        <span
-          aria-hidden="true"
-          className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform duration-200 ${
-            enabled ? "translate-x-5" : "translate-x-0"
+        <button
+          id={switchId}
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          disabled={saving}
+          onClick={toggle}
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
+            enabled ? "bg-[var(--teal)]" : "bg-[var(--border)]"
           }`}
-        />
-      </button>
+        >
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform duration-200 ${
+              enabled ? "translate-x-5" : "translate-x-0"
+            }`}
+          />
+        </button>
+      </div>
 
       {error ? (
-        <span className="text-xs text-red-600 self-center">Could not save.</span>
+        <p className="text-xs text-[var(--destructive)] mt-1">Could not save.</p>
       ) : null}
     </div>
   );
