@@ -483,11 +483,13 @@ export function KeyAssumptionsPage({
   shopName,
   date,
   brand = BRAND,
+  cogsGrandTotalMonthlyCents,
 }: {
   mp: MonthlyProjections;
   shopName: string;
   date: string;
   brand?: BrandTokens;
+  cogsGrandTotalMonthlyCents?: number | null;
 }) {
   const SP = makeSharedStyles(brand);
   const openDays = Object.entries(mp.weekly_schedule).filter(([, d]) => d.open);
@@ -538,7 +540,9 @@ export function KeyAssumptionsPage({
     totalFunding > 0
       ? `Total funding: ${fmt(totalFunding, code)}`
       : "Funding sources not yet entered",
-    `COGS rate: ${mp.cogs_pct.toFixed(1)}% of revenue (base assumption)`,
+    typeof cogsGrandTotalMonthlyCents === "number" && cogsGrandTotalMonthlyCents > 0
+      ? `COGS: from menu costing and additional items (centralized Grand Total)`
+      : `COGS rate: ${mp.cogs_pct.toFixed(1)}% of revenue (base assumption)`,
     mp.income_tax_pct > 0
       ? `Income tax rate: ${mp.income_tax_pct.toFixed(1)}%`
       : "Income tax not modeled",
@@ -1286,6 +1290,7 @@ export function FinancialPlanPages({
   date,
   visibility,
   brand = BRAND,
+  cogsGrandTotalMonthlyCents,
 }: {
   mp: MonthlyProjections;
   equipment: EquipmentSummary;
@@ -1293,13 +1298,18 @@ export function FinancialPlanPages({
   date: string;
   visibility: FinancialDocumentVisibility;
   brand?: BrandTokens;
+  cogsGrandTotalMonthlyCents?: number | null;
 }) {
   const SP = makeSharedStyles(brand);
   const code = mp.currency_code ?? "USD";
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
   const months = fiscalYearMonthLabels(fiscalStart);
 
-  const slices = computeMonthlySlices(mp, equipment, {});
+  // TIM-3735: pass Grand Total so computeMonthlyProjections uses the
+  // centralized COGS (menu + additional) instead of legacy cogs_pct × revenue.
+  const slices = computeMonthlySlices(mp, equipment, {}, {
+    cogs_grand_total_monthly_cents: cogsGrandTotalMonthlyCents ?? null,
+  });
   if (slices.length === 0) return null;
 
   // Build monthly appendix rows (for the appendix section)
@@ -1358,7 +1368,7 @@ export function FinancialPlanPages({
     <>
       {/* Forecast */}
       {visibility.key_assumptions !== false && (
-        <KeyAssumptionsPage mp={mp} shopName={shopName} date={date} brand={brand} />
+        <KeyAssumptionsPage mp={mp} shopName={shopName} date={date} brand={brand} cogsGrandTotalMonthlyCents={cogsGrandTotalMonthlyCents} />
       )}
       {visibility.revenue_by_month !== false && (
         <RevenueByMonthPage slices={slices} mp={mp} shopName={shopName} date={date} brand={brand} />
