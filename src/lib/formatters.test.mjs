@@ -39,11 +39,16 @@ test("fmtIntegerPct(ratio) is 0dp from a 0..1 ratio, rounds at .5", () => {
   assert.equal(fmtIntegerPct(1), "100%");
 });
 
-test("formatMinor compact / 0dp matches the existing useCurrency().formatMinor contract", () => {
-  // < $1000 → integer dollars (compact branch bypassed; 0dp Intl)
-  assert.equal(formatMinor(4600, "USD"), "$46");
-  // >= $1000 → K bucket
-  assert.equal(formatMinor(460000, "USD"), "$4.6K");
+// TIM-3734 (board directive TIM-3732): formatMinor renders full precision
+// with the currency's native fraction digits. Compact K/M shorthand ripped
+// out — a coffee-shop operator budgeting a buildout needs to see the cents.
+test("formatMinor renders full precision — no K/M shorthand", () => {
+  assert.equal(formatMinor(4600, "USD"), "$46.00");
+  assert.equal(formatMinor(460000, "USD"), "$4,600.00");
+  assert.equal(formatMinor(3770000, "USD"), "$37,700.00");
+  assert.equal(formatMinor(124995, "USD"), "$1,249.95");
+  // JPY has 0 fraction digits — passthrough (locale-specific ¥/￥ tolerated)
+  assert.match(formatMinor(550, "JPY"), /^[¥￥]550$/);
 });
 
 test("formatMinorExact preserves the currency's natural fraction digits and never compacts", () => {

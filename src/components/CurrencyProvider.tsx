@@ -17,8 +17,8 @@ import {
 export interface CurrencyContextValue {
   /** Normalized ISO 4217 code currently in effect. */
   currencyCode: string;
-  /** Format a whole-unit amount (compact K/M by default — see currency.ts). */
-  format: (n: number, opts?: { compact?: boolean }) => string;
+  /** Format a whole-unit amount at full precision (`$37,700.00`). */
+  format: (n: number) => string;
   /** Format a minor-unit (cents) amount. */
   formatMinor: (minorUnits: number) => string;
   /** Bare currency symbol (e.g. "$", "€") for input prefixes. */
@@ -29,7 +29,7 @@ function buildValue(code: string): CurrencyContextValue {
   const normalized = normalizeCurrencyCode(code);
   return {
     currencyCode: normalized,
-    format: (n, opts) => formatCurrencyAmount(n, normalized, opts),
+    format: (n) => formatCurrencyAmount(n, normalized),
     formatMinor: (minorUnits) => formatMinorUnits(minorUnits, normalized),
     symbol: currencySymbol(normalized),
   };

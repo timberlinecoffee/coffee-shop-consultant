@@ -25,31 +25,31 @@ import { formatEntitiesForPrompt } from "./business-plan/entities.ts";
 // so this primitive's job is solely to scrub the literal three-letter "USD".
 
 test("formatCurrencyAmount — CAD never emits literal 'USD'", () => {
-  const out = formatCurrencyAmount(18500, "CAD", { compact: false });
+  const out = formatCurrencyAmount(18500, "CAD");
   assert.doesNotMatch(out, /\bUSD\b/, "no literal 'USD' on CAD");
   assert.match(out, /18,?500/);
 });
 
 test("formatCurrencyAmount — AUD never emits literal 'USD'", () => {
-  const out = formatCurrencyAmount(18500, "AUD", { compact: false });
+  const out = formatCurrencyAmount(18500, "AUD");
   assert.doesNotMatch(out, /\bUSD\b/, "no literal 'USD' on AUD");
   assert.match(out, /18,?500/);
 });
 
 test("formatCurrencyAmount — GBP never emits literal 'USD' and uses £", () => {
-  const out = formatCurrencyAmount(18500, "GBP", { compact: false });
+  const out = formatCurrencyAmount(18500, "GBP");
   assert.doesNotMatch(out, /\bUSD\b/);
   assert.match(out, /£/);
 });
 
 test("formatCurrencyAmount — EUR never emits literal 'USD' and uses €", () => {
-  const out = formatCurrencyAmount(18500, "EUR", { compact: false });
+  const out = formatCurrencyAmount(18500, "EUR");
   assert.doesNotMatch(out, /\bUSD\b/);
   assert.match(out, /€/);
 });
 
 test("formatCurrencyAmount — USD does emit '$' (the only case where the symbol is correct)", () => {
-  const out = formatCurrencyAmount(18500, "USD", { compact: false });
+  const out = formatCurrencyAmount(18500, "USD");
   assert.match(out, /\$18,?500/);
 });
 

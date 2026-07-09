@@ -1,4 +1,4 @@
-import { formatCurrencyAmount } from "./currency.ts";
+import { formatMinorUnits } from "./currency.ts";
 
 // TIM-1688: General cross-workspace consistency engine.
 //
@@ -182,7 +182,7 @@ export function formatFactValue(unit: FactUnit, value: FactValue, currencyCode =
     case "currency_cents": {
       const cents = typeof value === "number" ? value : Number(value);
       if (!Number.isFinite(cents)) return String(value);
-      return formatCurrencyAmount(cents / 100, currencyCode, { compact: false });
+      return formatMinorUnits(cents, currencyCode);
     }
     case "integer": {
       const n = typeof value === "number" ? value : Number(value);

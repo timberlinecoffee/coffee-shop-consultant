@@ -10,7 +10,7 @@
 // TIM-1101: multi-currency support — currency_code persists on MonthlyProjections;
 //   formatCurrency / fmt accept an optional code and delegate to src/lib/currency.
 
-import { formatCurrencyAmount, normalizeCurrencyCode } from "./currency.ts";
+import { formatCurrencyAmount, formatMinorUnits, normalizeCurrencyCode } from "./currency.ts";
 import type { ExpectedPopularity } from "./menu-engineering.ts";
 import { defaultBaristaWageMinorUnits, type MinWageInfo } from "./wages/minimum-wage.ts";
 
@@ -2516,14 +2516,12 @@ export function computeBreakEvenModel(
 // TIM-1101: accepts optional ISO 4217 code; defaults to USD for legacy
 // single-arg callers.
 //
-// TIM-1309: the financial statements (P&L, balance sheet, cash flow, …) render
-// cell values through fmt, and the board flagged that the compact "K" form hid
-// real precision — a few-hundred-dollar change rounded into the same "$12K".
-// fmt now shows the full exact figure (no K/M abbreviation) so the displayed
-// value always matches the user's entry. Chart axes use their own compact
-// formatter and are unaffected.
+// TIM-1309 + TIM-3734: financial statements render cell values through fmt.
+// Uses formatMinorUnits so the divisor is 10^fractionDigits — correct for USD
+// (÷100), JPY (÷1), and all other currencies. Chart axes also route through
+// formatMinorUnits via axisCurrency; compact shorthand was removed entirely.
 export function fmt(cents: number, currencyCode: string = "USD"): string {
-  return formatCurrencyAmount(cents / 100, currencyCode, { compact: false });
+  return formatMinorUnits(cents, currencyCode);
 }
 
 // pct: express numerator / denominator as a percentage string with one decimal.
