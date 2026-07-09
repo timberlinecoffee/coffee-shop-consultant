@@ -1,8 +1,6 @@
 // TIM-964: Financial Suite — data types, defaults, and projection calculations.
 // Stored in workspace_documents.content as jsonb where workspace_key='financials'.
 
-import { formatCurrencyAmount } from "@/lib/currency";
-
 // ── Equipment ────────────────────────────────────────────────────────────────
 
 export type FinancingMethod = "cash" | "in_house_financing" | "loan" | "other";
@@ -224,12 +222,6 @@ export function computeProjections(doc: FinancialsDocument): FinancialProjection
     startup_equipment_total,
     financed_total,
   };
-}
-
-export function formatCurrency(n: number, currencyCode = "USD"): string {
-  // TIM-3734: delegate to the platform primitive so no financial figure
-  // ever regresses to the pre-3734 0dp rounding.
-  return formatCurrencyAmount(n, currencyCode);
 }
 
 export const FINANCING_LABELS: Record<FinancingMethod, string> = {

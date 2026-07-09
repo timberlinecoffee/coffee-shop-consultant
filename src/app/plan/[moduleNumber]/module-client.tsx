@@ -89,13 +89,13 @@ function getSectionsForModule(moduleNumber: number) {
 }
 
 const SHOP_MODELS = [
-  { id: "full_cafe", label: "Full Café", desc: "Espresso, food, seating (the full experience)", costRange: "$150K–$400K", example: "Blue Bottle, local neighborhood café" },
-  { id: "espresso_bar", label: "Espresso Bar", desc: "Drinks only, fast, minimal footprint", costRange: "$80K–$200K", example: "% Arabica, Onyx Coffee Lab" },
-  { id: "roastery_cafe", label: "Roastery Café", desc: "Roasting on-site, premium experience, wholesale revenue", costRange: "$200K–$600K", example: "Stumptown, Heart Coffee" },
-  { id: "drive_through", label: "Drive-Through / Kiosk", desc: "High volume, low overhead, location-dependent", costRange: "$50K–$150K", example: "Dutch Bros model, airport kiosks" },
-  { id: "mobile_popup", label: "Mobile / Pop-Up", desc: "Lowest barrier to entry, builds community", costRange: "$20K–$80K", example: "Farmers market cart, office pop-ups" },
-  { id: "specialty_bar", label: "Specialty Bar", desc: "Single origin focus, pour-over, education-forward", costRange: "$100K–$250K", example: "Intelligentsia, George Howell" },
-  { id: "coworking_hybrid", label: "Co-working / Hybrid", desc: "Coffee + desk space, memberships, event bookings, community focus", costRange: "$150K–$350K", example: "Workbar, Canopy co-working cafes" },
+  { id: "full_cafe", label: "Full Café", desc: "Espresso, food, seating (the full experience)", costRange: "$150,000–$400,000", example: "Blue Bottle, local neighborhood café" },
+  { id: "espresso_bar", label: "Espresso Bar", desc: "Drinks only, fast, minimal footprint", costRange: "$80,000–$200,000", example: "% Arabica, Onyx Coffee Lab" },
+  { id: "roastery_cafe", label: "Roastery Café", desc: "Roasting on-site, premium experience, wholesale revenue", costRange: "$200,000–$600,000", example: "Stumptown, Heart Coffee" },
+  { id: "drive_through", label: "Drive-Through / Kiosk", desc: "High volume, low overhead, location-dependent", costRange: "$50,000–$150,000", example: "Dutch Bros model, airport kiosks" },
+  { id: "mobile_popup", label: "Mobile / Pop-Up", desc: "Lowest barrier to entry, builds community", costRange: "$20,000–$80,000", example: "Farmers market cart, office pop-ups" },
+  { id: "specialty_bar", label: "Specialty Bar", desc: "Single origin focus, pour-over, education-forward", costRange: "$100,000–$250,000", example: "Intelligentsia, George Howell" },
+  { id: "coworking_hybrid", label: "Co-working / Hybrid", desc: "Coffee + desk space, memberships, event bookings, community focus", costRange: "$150,000–$350,000", example: "Workbar, Canopy co-working cafes" },
 ];
 
 // ── Auto-save hook ────────────────────────────────────────────────────────

@@ -8,7 +8,7 @@
 // here. New formatters live in this file so importers have one stop.
 
 import { fmtPct as fmtPctRatio } from "./format.ts";
-import { formatMinorUnits, getCurrencyMeta } from "./currency.ts";
+import { formatMinorUnits } from "./currency.ts";
 
 // `fmtPct(ratio)` — one decimal place. Input is a ratio (0..1). For percent-
 // scale inputs (e.g. 65 for 65%), divide by 100 first.
@@ -26,16 +26,9 @@ export function fmtIntegerPct(ratio: number): string {
 }
 
 // `formatMinorExact(cents, code?)` — historical alias kept so existing
-// call-sites keep compiling. Identical to `formatMinor` after TIM-3734.
+// call-sites keep compiling. Delegates to formatMinorUnits after TIM-3734.
 export function formatMinorExact(cents: number, code: string = "USD"): string {
-  const meta = getCurrencyMeta(code);
-  const divisor = Math.pow(10, meta.fractionDigits);
-  return new Intl.NumberFormat(meta.locale, {
-    style: "currency",
-    currency: meta.code,
-    minimumFractionDigits: meta.fractionDigits,
-    maximumFractionDigits: meta.fractionDigits,
-  }).format(cents / divisor);
+  return formatMinorUnits(cents, code);
 }
 
 // "1.5:1" — one decimal place, used for ratios like debt-to-equity. Avoid

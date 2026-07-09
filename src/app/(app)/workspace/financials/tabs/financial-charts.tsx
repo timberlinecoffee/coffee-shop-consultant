@@ -143,7 +143,7 @@ export function FinancialLineChart({
           tickLine={TICK_LINE}
           axisLine={TICK_LINE}
           tickFormatter={(v) => axisCurrency(Number(v), currencyCode)}
-          width={70}
+          width={120}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} />
         {series.length > 1 && (
@@ -199,7 +199,7 @@ export function FinancialBarChart({
           tickLine={TICK_LINE}
           axisLine={TICK_LINE}
           tickFormatter={(v) => axisCurrency(Number(v), currencyCode)}
-          width={70}
+          width={120}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} cursor={{ fill: CHART_COLORS.highlight }} />
         {series.length > 1 && (
@@ -253,7 +253,7 @@ export function FinancialAreaChart({
           tickLine={TICK_LINE}
           axisLine={TICK_LINE}
           tickFormatter={(v) => axisCurrency(Number(v), currencyCode)}
-          width={70}
+          width={120}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} />
         {series.length > 1 && (
@@ -314,7 +314,7 @@ export function FinancialComboChart({
           tickLine={TICK_LINE}
           axisLine={TICK_LINE}
           tickFormatter={(v) => axisCurrency(Number(v), currencyCode)}
-          width={70}
+          width={120}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} cursor={{ fill: CHART_COLORS.highlight }} />
         <Legend

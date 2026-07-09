@@ -16,7 +16,7 @@
 // not used in math/exports.
 
 import type { MonthlySlice, FinancialInputs } from "./financial-projection.ts";
-import { formatCurrencyAmount } from "./currency.ts";
+import { formatMinorUnits } from "./currency.ts";
 
 export const BALANCE_TOLERANCE_CENTS = 2;
 
@@ -78,7 +78,7 @@ export interface BalanceDiagnostic {
 }
 
 function formatCentsRough(cents: number, currencyCode: string): string {
-  return formatCurrencyAmount(Math.round(Math.abs(cents)) / 100, currencyCode);
+  return formatMinorUnits(Math.round(Math.abs(cents)), currencyCode);
 }
 
 interface DiagnoseArgs {
