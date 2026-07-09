@@ -400,6 +400,14 @@ export interface MonthlyProjections {
   supplies_monthly_cents?: number;
   other_monthly_cents?: number;
   interest_monthly_cents?: number;
+
+  // TIM-3733: Finance workspace COGS extensions — persisted alongside mp in financial_models.
+  // additional_cogs_items: user-defined non-menu COGS lines (e.g. packaging, cleaning supplies).
+  // menu_cogs_synced_at: ISO timestamp of last "Sync from Menu" action.
+  // menu_cogs_category_units: per-category monthly units sold (category_id → count).
+  additional_cogs_items?: AdditionalCogsItem[];
+  menu_cogs_synced_at?: string | null;
+  menu_cogs_category_units?: Record<string, number>;
 }
 
 const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -1201,6 +1209,18 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     // TIM-2338: passthrough — the vertical model owns interpretation.
     coffee_shop_vertical_config:
       r.coffee_shop_vertical_config !== undefined ? r.coffee_shop_vertical_config : undefined,
+    // TIM-3733: COGS sections — passthrough so they survive normalize round-trips.
+    additional_cogs_items: Array.isArray(r.additional_cogs_items)
+      ? r.additional_cogs_items
+      : undefined,
+    menu_cogs_synced_at:
+      typeof r.menu_cogs_synced_at === "string" ? r.menu_cogs_synced_at : undefined,
+    menu_cogs_category_units:
+      r.menu_cogs_category_units !== null &&
+      r.menu_cogs_category_units !== undefined &&
+      typeof r.menu_cogs_category_units === "object"
+        ? (r.menu_cogs_category_units as Record<string, number>)
+        : undefined,
   };
 }
 
@@ -2125,7 +2145,11 @@ export function computeProjections(
 // has no valid items (no positive priced item), so the caller can render
 // "Menu not available" rather than apply a zero rate.
 export interface MenuItemForCogs {
+  id?: string;
   name?: string | null;
+  // TIM-3733: category grouping fields from menu_items_with_cogs view join
+  category_id?: string | null;
+  category_name?: string | null;
   price_cents: number;
   computed_cogs_cents?: number | null;
   cogs_cents?: number | null;
@@ -2137,6 +2161,27 @@ export interface MenuItemForCogs {
   // selected on this interface.
   expected_popularity?: ExpectedPopularity | null;
   archived?: boolean | null;
+}
+
+// TIM-3733: Additional COGS line item stored in Finance workspace state.
+export interface AdditionalCogsItem {
+  id: string;
+  name: string;
+  monthly_cost_cents: number;
+  notes?: string | null;
+}
+
+// TIM-3733: Menu items grouped by category for the Finance COGS sync section.
+export interface MenuCogsCategoryGroup {
+  category_id: string | null;
+  category_name: string;
+  items: Array<{
+    id: string;
+    name: string;
+    computed_cogs_cents: number;
+    price_cents: number;
+    expected_popularity: ExpectedPopularity | null;
+  }>;
 }
 
 // TIM-1799 / TIM-2491: relative sales-mix weight for a menu item in the
@@ -2216,6 +2261,38 @@ export function buildMenuCogsBreakdown(
       cogs_pct: price ? (effectiveCogs / price) * 100 : 0,
     };
   });
+}
+
+// TIM-3733: Group menu items (from menu_items_with_cogs) by category for the
+// Finance COGS sync section. Items without a category land in "Uncategorized".
+export function groupMenuItemsByCategory(
+  items: ReadonlyArray<MenuItemForCogs> | null | undefined
+): MenuCogsCategoryGroup[] {
+  if (!items || items.length === 0) return [];
+  const map = new Map<string, MenuCogsCategoryGroup>();
+  for (const item of items) {
+    if (item.archived) continue;
+    const catId = item.category_id ?? null;
+    const catName = item.category_name ?? "Uncategorized";
+    const key = catId ?? "__uncategorized__";
+    if (!map.has(key)) {
+      map.set(key, { category_id: catId, category_name: catName, items: [] });
+    }
+    const effectiveCogs =
+      typeof item.computed_cogs_cents === "number"
+        ? item.computed_cogs_cents
+        : typeof item.cogs_cents === "number"
+          ? item.cogs_cents
+          : 0;
+    map.get(key)!.items.push({
+      id: item.id ?? "",
+      name: item.name ?? "",
+      computed_cogs_cents: effectiveCogs,
+      price_cents: item.price_cents ?? 0,
+      expected_popularity: item.expected_popularity ?? null,
+    });
+  }
+  return Array.from(map.values()).filter((g) => g.items.length > 0);
 }
 
 // TIM-1101: formatCurrency now takes an optional ISO 4217 currency code so the
