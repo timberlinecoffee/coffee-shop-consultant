@@ -7,8 +7,12 @@ import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import {
   defaultMonthlyProjections,
   mergeEquipmentItemsIntoMp,
+  normalizeMonthlyProjections,
+  groupMenuItemsByCategory,
+  computeCogsGrandTotalMonthlyCents,
   type MonthlyProjections,
   type EquipmentSummary,
+  type MenuItemForCogs,
 } from "@/lib/financial-projection";
 import {
   FinancialPlannerPdf,
@@ -66,15 +70,30 @@ export async function GET() {
     return Response.json({ error: "No plan found" }, { status: 404 });
   }
 
-  const { data: model } = await supabase
-    .from("financial_models")
-    .select("forecast_inputs")
-    .eq("plan_id", plan.id)
-    .maybeSingle();
+  const [{ data: model }, { data: menuRows }] = await Promise.all([
+    supabase
+      .from("financial_models")
+      .select("forecast_inputs, monthly_projections")
+      .eq("plan_id", plan.id)
+      .maybeSingle(),
+    // TIM-3735: fetch menu items so the COGS Grand Total can be computed.
+    supabase
+      .from("menu_items_with_cogs")
+      .select("id, name, category_id, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")
+      .eq("plan_id", plan.id)
+      .order("position"),
+  ]);
 
   const mp: MonthlyProjections =
     (model?.forecast_inputs as MonthlyProjections | null) ??
     defaultMonthlyProjections();
+
+  // TIM-3735: compute centralized COGS Grand Total so the PDF uses the same
+  // numbers as the Financials workspace instead of the legacy cogs_pct × revenue path.
+  const menuCogsByCategory = groupMenuItemsByCategory((menuRows ?? []) as MenuItemForCogs[]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mpForCogs = normalizeMonthlyProjections((model as any)?.monthly_projections);
+  const cogsGrandTotalMonthlyCents = computeCogsGrandTotalMonthlyCents(mpForCogs, menuCogsByCategory) || null;
 
   // Pull equipment totals (matches the workspace's behavior — financed totals
   // feed depreciation and the loan schedule on MonthlySlice math).
@@ -112,7 +131,7 @@ export async function GET() {
     { total_cost_cents: 0, financed_cost_cents: 0 }
   );
 
-  const charts = await renderPlannerCharts(mpFinal, equipment);
+  const charts = await renderPlannerCharts(mpFinal, equipment, undefined, cogsGrandTotalMonthlyCents);
   const generatedDate = fmtDateLong(new Date());
 
   const element = FinancialPlannerPdf({
@@ -121,6 +140,7 @@ export async function GET() {
     shopName: plan.plan_name,
     generatedDate,
     charts,
+    cogsGrandTotalMonthlyCents,
   });
 
   const { renderToStream } = await import("@react-pdf/renderer");

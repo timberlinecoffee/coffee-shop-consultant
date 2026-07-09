@@ -57,6 +57,7 @@ import {
   computeMenuBlendedCogsPct,
   buildMenuCogsBreakdown,
   groupMenuItemsByCategory,
+  computeCategoryMonthlyCogsCents,
   type MenuCogsCategoryGroup,
   type ApplyForwardRange,
 } from "@/lib/financial-projection";
@@ -64,7 +65,6 @@ import {
   MenuCogsSyncSection,
   AdditionalCogsSection,
   CogsSectionsGrandTotal,
-  computeCategoryMonthlyCogsCents,
 } from "./cogs-sections";
 import { createClient } from "@/lib/supabase/client";
 import { CURRENCIES } from "@/lib/currency";
@@ -2092,12 +2092,25 @@ export function FinancialsWorkspace({
     [liveEquipmentItems]
   );
 
-  // TIM-1117: feed the blended menu COGS pct into the projection so menu-linked
-  // COGS lines compute against menu costing rather than the user-entered %.
-  const projectionCtx = useMemo(
-    () => ({ menu_blended_cogs_pct: liveMenuBlendedCogsPct }),
-    [liveMenuBlendedCogsPct]
-  );
+  // TIM-1117 / TIM-3735: feed blended menu COGS pct AND the centralized COGS
+  // Grand Total (menu + additional) into the projection context. The Grand Total
+  // drives baseCogs when available; the blended pct is the fallback for any
+  // menu-linked COGS forecast lines.
+  const projectionCtx = useMemo(() => {
+    const menuGrandTotal = liveMenuCogsByCategory.reduce((sum, g) => {
+      const units = (mpForProjection.menu_cogs_category_units ?? {})[g.category_id ?? "__uncategorized__"] ?? 0;
+      return sum + computeCategoryMonthlyCogsCents(g, units);
+    }, 0);
+    const additionalGrandTotal = (mpForProjection.additional_cogs_items ?? []).reduce(
+      (s, it) => s + (it.monthly_cost_cents || 0),
+      0
+    );
+    const grandTotal = menuGrandTotal + additionalGrandTotal;
+    return {
+      menu_blended_cogs_pct: liveMenuBlendedCogsPct,
+      cogs_grand_total_monthly_cents: grandTotal > 0 ? grandTotal : null,
+    };
+  }, [liveMenuBlendedCogsPct, liveMenuCogsByCategory, mpForProjection.menu_cogs_category_units, mpForProjection.additional_cogs_items]);
 
   const projections = useMemo(
     () => computeProjections(mpForProjection, equipment, projectionCtx),

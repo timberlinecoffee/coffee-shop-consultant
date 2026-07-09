@@ -21,7 +21,13 @@ import {
   type BpLaunchItem,
   type BpHiringRole,
 } from "@/lib/business-plan"
-import { computeMenuBlendedCogsPct } from "@/lib/financial-projection"
+import {
+  computeMenuBlendedCogsPct,
+  groupMenuItemsByCategory,
+  computeCogsGrandTotalMonthlyCents,
+  normalizeMonthlyProjections,
+  type MenuItemForCogs,
+} from "@/lib/financial-projection"
 import { buildPlanState } from "@/lib/business-plan/plan-state"
 import { runReconciliation } from "@/lib/business-plan/validate"
 import type { NextRequest } from "next/server"
@@ -166,7 +172,7 @@ async function runBusinessPlanExportGate(supabase: any, planId: string, shopName
   ] = await Promise.all([
     supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes").eq("plan_id", planId).eq("archived", false).order("position"),
     supabase.from("buildout_equipment_items").select("id, name, cost_local, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
-    supabase.from("menu_items_with_cogs").select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
+    supabase.from("menu_items_with_cogs").select("id, name, category_id, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
     supabase.from("hiring_plan_roles").select("id, role_title, headcount, start_date, monthly_cost_cents").eq("plan_id", planId).order("created_at"),
     supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "marketing").maybeSingle(),
     supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
@@ -177,6 +183,10 @@ async function runBusinessPlanExportGate(supabase: any, planId: string, shopName
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const menuBlendedCogsPct = computeMenuBlendedCogsPct((menuRows ?? []) as any[])
+  const menuCogsByCategory = groupMenuItemsByCategory((menuRows ?? []) as MenuItemForCogs[])
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mpForCogs = normalizeMonthlyProjections((financialModel as any)?.monthly_projections)
+  const cogsGrandTotalMonthlyCents = computeCogsGrandTotalMonthlyCents(mpForCogs, menuCogsByCategory) || null
   const planState = buildPlanState({
     shopName,
     financialModel,
@@ -184,6 +194,7 @@ async function runBusinessPlanExportGate(supabase: any, planId: string, shopName
     equipment: (equipmentRows ?? []) as BpEquipmentItem[],
     hiringRoles: (hiringRows ?? []) as BpHiringRole[],
     menuBlendedCogsPct,
+    cogsGrandTotalMonthlyCents,
   })
 
   const savedMap = new Map(
@@ -210,9 +221,9 @@ async function runBusinessPlanExportGate(supabase: any, planId: string, shopName
     ),
     "company-overview": assembleCompanyConcept(conceptDoc?.content),
     "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[], planState.meta.currency_code),
-    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, planState.meta.currency_code),
+    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, planState.meta.currency_code, cogsGrandTotalMonthlyCents),
     "financial-plan-financing": "",
-    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, planState.meta.currency_code),
+    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, planState.meta.currency_code, cogsGrandTotalMonthlyCents),
     "appendix-monthly-statements": "",
   }
 

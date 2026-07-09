@@ -550,6 +550,8 @@ export function assembleFinancialPlan(
   // because menu-linked lines had no rate to compute against (the ctx was {}).
   menuBlendedCogsPct?: number | null,
   currencyCode = "USD",
+  // TIM-3735: pre-computed COGS Grand Total (menu + additional) in cents.
+  cogsGrandTotalMonthlyCents?: number | null,
 ): string {
   if (!financialModel) {
     return "Complete the Financials workspace to populate this section.";
@@ -573,6 +575,7 @@ export function assembleFinancialPlan(
   const slices = computeMonthlySlices(projections, equipSummary, {}, {
     menu_blended_cogs_pct:
       typeof menuBlendedCogsPct === "number" ? menuBlendedCogsPct : null,
+    cogs_grand_total_monthly_cents: cogsGrandTotalMonthlyCents ?? null,
   });
   const lines: string[] = [];
 

@@ -41,7 +41,13 @@ import {
   type BpEquipmentItem,
   type BpHiringRole,
 } from "@/lib/business-plan";
-import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
+import {
+  computeMenuBlendedCogsPct,
+  groupMenuItemsByCategory,
+  computeCogsGrandTotalMonthlyCents,
+  normalizeMonthlyProjections,
+  type MenuItemForCogs,
+} from "@/lib/financial-projection";
 import { buildPlanState } from "@/lib/business-plan/plan-state";
 import { normalizeConceptV2 } from "@/lib/concept";
 import {
@@ -173,7 +179,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   ] = await Promise.all([
     supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes, city, country").eq("plan_id", planId).eq("archived", false).order("position"),
     supabase.from("buildout_equipment_items").select("id, name, cost_local, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
-    supabase.from("menu_items_with_cogs").select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
+    supabase.from("menu_items_with_cogs").select("id, name, category_id, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
     supabase.from("hiring_plan_roles").select("id, role_title, headcount, start_date, monthly_cost_cents").eq("plan_id", planId).order("created_at"),
     supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
     supabase.from("launch_timeline_items").select("id, milestone, target_date, status").eq("plan_id", planId).order("order_index"),
@@ -183,6 +189,10 @@ export async function POST(request: NextRequest): Promise<Response> {
   const shopName = plan.plan_name ?? "this coffee shop";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const menuBlendedCogsPct = computeMenuBlendedCogsPct((menuRows ?? []) as any[]);
+  const menuCogsByCategory = groupMenuItemsByCategory((menuRows ?? []) as MenuItemForCogs[]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mpForCogs = normalizeMonthlyProjections((financialModel as any)?.monthly_projections);
+  const cogsGrandTotalMonthlyCents = computeCogsGrandTotalMonthlyCents(mpForCogs, menuCogsByCategory) || null;
   const concept = normalizeConceptV2(conceptDoc?.content);
   const competitors = (concept.competitors ?? []).map((c) => ({
     id: c.id,
@@ -202,6 +212,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     equipment: (equipmentRows ?? []) as BpEquipmentItem[],
     hiringRoles: (hiringRows ?? []) as BpHiringRole[],
     menuBlendedCogsPct,
+    cogsGrandTotalMonthlyCents,
     competitors,
     noDirectCompetitorsIdentified,
     cityLabel,

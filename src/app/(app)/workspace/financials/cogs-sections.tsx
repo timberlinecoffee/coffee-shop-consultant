@@ -30,26 +30,14 @@ import {
 import {
   type AdditionalCogsItem,
   type MenuCogsCategoryGroup,
-  menuItemMixWeight,
   formatCurrency,
+  computeCategoryMonthlyCogsCents,
+  menuItemMixWeight,
 } from "@/lib/financial-projection";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-export function computeCategoryMonthlyCogsCents(
-  group: MenuCogsCategoryGroup,
-  monthlyUnits: number
-): number {
-  const totalWeight = group.items.reduce((s, it) => s + menuItemMixWeight(it), 0);
-  if (totalWeight === 0 || monthlyUnits <= 0) return 0;
-  return Math.round(
-    group.items.reduce((sum, it) => {
-      const weight = menuItemMixWeight(it);
-      const itemUnits = (monthlyUnits * weight) / totalWeight;
-      return sum + itemUnits * it.computed_cogs_cents;
-    }, 0)
-  );
-}
+export { computeCategoryMonthlyCogsCents };
 
 function newAdditionalCogsItem(): AdditionalCogsItem {
   return {

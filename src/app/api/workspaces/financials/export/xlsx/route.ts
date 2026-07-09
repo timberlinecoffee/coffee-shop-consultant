@@ -5,8 +5,12 @@ import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
 import {
   defaultMonthlyProjections,
   mergeEquipmentItemsIntoMp,
+  normalizeMonthlyProjections,
+  groupMenuItemsByCategory,
+  computeCogsGrandTotalMonthlyCents,
   type MonthlyProjections,
   type EquipmentSummary,
+  type MenuItemForCogs,
 } from "@/lib/financial-projection";
 import { buildFinancialPlannerWorkbook } from "@/lib/financial-planner/xlsx-export";
 import { slugify, fmtYyyymmdd } from "@/lib/pdf/financial-planner/render";
@@ -60,15 +64,28 @@ export async function GET() {
     return Response.json({ error: "No plan found" }, { status: 404 });
   }
 
-  const { data: model } = await supabase
-    .from("financial_models")
-    .select("forecast_inputs")
-    .eq("plan_id", plan.id)
-    .maybeSingle();
+  const [{ data: model }, { data: menuRows }] = await Promise.all([
+    supabase
+      .from("financial_models")
+      .select("forecast_inputs, monthly_projections")
+      .eq("plan_id", plan.id)
+      .maybeSingle(),
+    // TIM-3735: fetch menu items so the COGS Grand Total can be computed.
+    supabase
+      .from("menu_items_with_cogs")
+      .select("id, name, category_id, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")
+      .eq("plan_id", plan.id)
+      .order("position"),
+  ]);
 
   const mp: MonthlyProjections =
     (model?.forecast_inputs as MonthlyProjections | null) ??
     defaultMonthlyProjections();
+
+  // TIM-3735: compute centralized COGS Grand Total for the export workbook.
+  const menuCogsByCategory = groupMenuItemsByCategory((menuRows ?? []) as MenuItemForCogs[]);
+  const mpForCogs = normalizeMonthlyProjections((model as { monthly_projections?: unknown } | null)?.monthly_projections);
+  const cogsGrandTotalMonthlyCents = computeCogsGrandTotalMonthlyCents(mpForCogs, menuCogsByCategory) || null;
 
   // TIM-1255: query full item details so we can inject per-item capex lines.
   const { data: equipmentRows } = await supabase
@@ -109,6 +126,7 @@ export async function GET() {
     equipment,
     shopName: plan.plan_name,
     generatedDate: fmtDateLong(new Date()),
+    cogsGrandTotalMonthlyCents,
   });
 
   const buffer = await wb.xlsx.writeBuffer();

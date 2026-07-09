@@ -1459,6 +1459,11 @@ export interface ProjectionContext {
   // Computed as Σ(item.cogs_cents × mix) / Σ(item.price_cents × mix) × 100 by
   // the caller; we just consume the number here so the projection stays pure.
   menu_blended_cogs_pct?: number | null;
+  // TIM-3735: pre-computed COGS Grand Total (menu + additional items) in cents
+  // for Month 1 (before ramp/growth). When provided and > 0, replaces the legacy
+  // cogs_pct × revenue as the base COGS. Applied with revFactor so it scales
+  // proportionally with business growth, the same way revenue does.
+  cogs_grand_total_monthly_cents?: number | null;
 }
 
 // TIM-1118: pct-mode COGS and Overhead lines may target a revenue stream rather
@@ -1916,8 +1921,12 @@ export function computeMonthlyProjections(
         else labor_overhead_cents += amt;
       }
 
-      // Default COGS (legacy cogs_pct) applies to total revenue
-      const baseCogs = Math.round(revenue_cents * (mp.cogs_pct / 100));
+      // TIM-3735: use COGS Grand Total (menu + additional) when available; fall
+      // back to legacy percentage-of-revenue for empty-menu / pre-sync plans.
+      const baseCogs =
+        typeof ctx.cogs_grand_total_monthly_cents === "number" && ctx.cogs_grand_total_monthly_cents > 0
+          ? Math.round(ctx.cogs_grand_total_monthly_cents * revFactor)
+          : Math.round(revenue_cents * (mp.cogs_pct / 100));
       let extraCogs = 0;
       const cogsLineResults: LineMonthlyAmount[] = [];
       for (const l of cogsLines) {
@@ -2293,6 +2302,44 @@ export function groupMenuItemsByCategory(
     });
   }
   return Array.from(map.values()).filter((g) => g.items.length > 0);
+}
+
+// TIM-3735: monthly COGS cents for one category group given how many units are
+// sold in that category per month. Mirrors the identically-named helper in
+// cogs-sections.tsx so server-side callers (plan-state, BP routes) don't need
+// to import a client component.
+export function computeCategoryMonthlyCogsCents(
+  group: MenuCogsCategoryGroup,
+  monthlyUnits: number
+): number {
+  const totalWeight = group.items.reduce((s, it) => s + menuItemMixWeight(it), 0);
+  if (totalWeight === 0 || monthlyUnits <= 0) return 0;
+  return Math.round(
+    group.items.reduce((sum, it) => {
+      const weight = menuItemMixWeight(it);
+      const itemUnits = (monthlyUnits * weight) / totalWeight;
+      return sum + itemUnits * it.computed_cogs_cents;
+    }, 0)
+  );
+}
+
+// TIM-3735: compute the COGS Grand Total for Month 1 (menu COGS + additional
+// COGS line items). Returns 0 when neither source has data, which signals the
+// fallback path (cogs_pct × revenue) inside computeMonthlyProjections.
+export function computeCogsGrandTotalMonthlyCents(
+  mp: Pick<MonthlyProjections, "menu_cogs_category_units" | "additional_cogs_items">,
+  categoryGroups: MenuCogsCategoryGroup[]
+): number {
+  const menuTotal = categoryGroups.reduce((sum, g) => {
+    const key = g.category_id ?? "__uncategorized__";
+    const units = (mp.menu_cogs_category_units ?? {})[key] ?? 0;
+    return sum + computeCategoryMonthlyCogsCents(g, units);
+  }, 0);
+  const additionalTotal = (mp.additional_cogs_items ?? []).reduce(
+    (s, it) => s + (it.monthly_cost_cents || 0),
+    0
+  );
+  return menuTotal + additionalTotal;
 }
 
 // TIM-1101: formatCurrency now takes an optional ISO 4217 currency code so the

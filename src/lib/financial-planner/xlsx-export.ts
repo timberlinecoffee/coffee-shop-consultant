@@ -79,19 +79,24 @@ interface PlannerWorkbookOpts {
   equipment: EquipmentSummary;
   shopName: string | null;
   generatedDate: string;
+  // TIM-3735: centralized COGS Grand Total so the exported workbook uses the
+  // same numbers as the Financials workspace instead of legacy cogs_pct × rev.
+  cogsGrandTotalMonthlyCents?: number | null;
 }
 
 export function buildFinancialPlannerWorkbook(
   opts: PlannerWorkbookOpts
 ): ExcelJS.Workbook {
-  const { mp, equipment, shopName, generatedDate } = opts;
+  const { mp, equipment, shopName, generatedDate, cogsGrandTotalMonthlyCents } = opts;
   const code = mp.currency_code ?? "USD";
   const meta = getCurrencyMeta(code);
   const moneyFormat = excelCurrencyFormat(code);
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
   const months = fiscalYearMonthLabels(fiscalStart);
 
-  const allSlices: MonthlySlice[] = computeMonthlySlices(mp, equipment, {});
+  const allSlices: MonthlySlice[] = computeMonthlySlices(mp, equipment, {}, {
+    cogs_grand_total_monthly_cents: cogsGrandTotalMonthlyCents ?? null,
+  });
   const y1 = allSlices.filter((s) => s.year === 1);
   const y1Ordered = fiscalReorder(y1, fiscalStart);
 
@@ -144,7 +149,7 @@ export function buildFinancialPlannerWorkbook(
 
   // ── Assumptions sheet ────────────────────────────────────────────────────
   const asm = wb.addWorksheet("Assumptions");
-  buildAssumptions(asm, { mp, moneyFormat, shopName, generatedDate, meta, code });
+  buildAssumptions(asm, { mp, moneyFormat, shopName, generatedDate, meta, code, cogsGrandTotalMonthlyCents });
 
   return wb;
 }
@@ -706,9 +711,10 @@ function buildAssumptions(
     generatedDate: string;
     meta: ReturnType<typeof getCurrencyMeta>;
     code: string;
+    cogsGrandTotalMonthlyCents?: number | null;
   }
 ) {
-  const { mp, moneyFormat, shopName, generatedDate, meta, code } = opts;
+  const { mp, moneyFormat, shopName, generatedDate, meta, code, cogsGrandTotalMonthlyCents } = opts;
   ws.getCell("A1").value = `${shopName ?? "Your coffee shop"}: Financial Planner`;
   ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1A6E3B" } };
   ws.getCell("A2").value = `${shopName ?? "Your coffee shop"} · Assumptions`;
@@ -730,7 +736,10 @@ function buildAssumptions(
     { label: "Currency", value: `${meta.code}: ${meta.name}` },
     { label: "Fiscal year starts", value: months[0] },
     { label: "Average ticket", value: mp.avg_ticket_cents / Math.pow(10, meta.fractionDigits), money: true },
-    { label: "Base COGS rate (%)", value: mp.cogs_pct, pct: true },
+    // TIM-3735: when Grand Total is active it drives COGS; show fallback rate otherwise.
+    typeof cogsGrandTotalMonthlyCents === "number" && cogsGrandTotalMonthlyCents > 0
+      ? { label: "COGS method", value: "Centralized (menu costing + additional items)" }
+      : { label: "Base COGS rate (%)", value: mp.cogs_pct, pct: true },
     { label: "Income tax rate (%)", value: mp.income_tax_pct, pct: true },
     { label: "Sales tax rate: pass-through (%)", value: mp.sales_tax_pct, pct: true },
     { label: "Revenue ramp (months)", value: mp.ramp_months },

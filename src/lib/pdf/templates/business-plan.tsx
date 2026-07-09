@@ -46,8 +46,11 @@ import {
 import {
   normalizeMonthlyProjections,
   computeMenuBlendedCogsPct,
+  groupMenuItemsByCategory,
+  computeCogsGrandTotalMonthlyCents,
   type MonthlyProjections,
   type EquipmentSummary,
+  type MenuItemForCogs,
 } from "@/lib/financial-projection";
 // TIM-2341: PDF dataLoader builds plan_state so the lender-ready sections
 // in the exported PDF read the same numbers the workspace UI shows.
@@ -74,6 +77,8 @@ export interface BusinessPlanPdfContent {
   cover: BusinessPlanCoverData;
   financialData?: { mp: MonthlyProjections; equipment: EquipmentSummary };
   financialDocVisibility?: FinancialDocumentVisibility;
+  // TIM-3735: centralized COGS Grand Total (menu + additional) for FinancialPlanPages.
+  cogsGrandTotalMonthlyCents?: number | null;
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -363,7 +368,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
   render(ctx) {
     const { content } = ctx;
     const brand = ctx.brand;
-    const { shopName, sections, customSections, cover, financialData, financialDocVisibility } = content;
+    const { shopName, sections, customSections, cover, financialData, financialDocVisibility, cogsGrandTotalMonthlyCents } = content;
     const displayName = shopName ?? "Coffee Shop Business Plan";
     const date = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     const visible = sections.filter((s) => s.isVisible);
@@ -423,6 +428,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
               projected_pl: true, projected_balance_sheet: true, projected_cash_flow: true,
               monthly_pl: true, monthly_balance_sheet: true, monthly_cash_flow: true,
             }}
+            cogsGrandTotalMonthlyCents={cogsGrandTotalMonthlyCents}
           />
         )}
       </PdfDocument>
@@ -456,9 +462,9 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       // the region-aware tax + lender posture in the exported PDF.
       supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes, city, country").eq("plan_id", planId).eq("archived", false).order("position"),
       supabase.from("buildout_equipment_items").select("id, name, cost_local, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
-      // TIM-2341: include cogs columns so menuBlendedCogsPct is computed for
-      // the lender-metrics block (mirrors the regenerate-all path).
-      supabase.from("menu_items_with_cogs").select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
+      // TIM-2341/TIM-3735: include cogs + category columns so menuBlendedCogsPct
+      // and the COGS Grand Total are computed (mirrors the regenerate-all path).
+      supabase.from("menu_items_with_cogs").select("id, name, category_id, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
       supabase.from("launch_timeline_items").select("id, milestone, target_date, status").eq("plan_id", planId).order("order_index"),
       supabase.from("hiring_plan_roles").select("id, role_title, headcount, start_date, monthly_cost_cents").eq("plan_id", planId).order("created_at"),
       supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "marketing").maybeSingle(),
@@ -479,6 +485,10 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
     // regenerate-all path. Country is read off the chosen location candidate
     // (plan_state's own resolveRegion handles the absent-country case).
     const menuBlendedCogsPctPdf = computeMenuBlendedCogsPct((menuRows ?? []) as { name?: string; price_cents: number; cogs_cents?: number | null; computed_cogs_cents?: number | null; expected_mix_pct?: number | null; expected_popularity?: "low" | "medium" | "high" | null; archived?: boolean | null }[]);
+    // TIM-3735: compute centralized COGS Grand Total for the PDF (same as BP routes).
+    const menuCogsByCategoryPdf = groupMenuItemsByCategory((menuRows ?? []) as MenuItemForCogs[]);
+    const mpForCogsPdf = normalizeMonthlyProjections((financialModel as { monthly_projections?: unknown } | null)?.monthly_projections);
+    const cogsGrandTotalMonthlyCentsPdf = computeCogsGrandTotalMonthlyCents(mpForCogsPdf, menuCogsByCategoryPdf) || null;
     const chosenLoc = (locationRows ?? []).find((c: { status?: string }) => c.status === "chosen") ?? (locationRows ?? [])[0];
     const planState = buildPlanState({
       shopName: plan?.plan_name ?? "this coffee shop",
@@ -487,6 +497,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       equipment: (equipmentRows ?? []) as BpEquipmentItem[],
       hiringRoles: (hiringRows ?? []) as BpHiringRole[],
       menuBlendedCogsPct: menuBlendedCogsPctPdf,
+      cogsGrandTotalMonthlyCents: cogsGrandTotalMonthlyCentsPdf,
       locationCountry: (chosenLoc as { country?: string | null })?.country ?? null,
     });
     const currencyCodePdf = planState.meta.currency_code;
@@ -518,7 +529,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       ),
       "company-overview": assembleCompanyConcept(conceptDoc?.content),
       "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[], currencyCodePdf),
-      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPctPdf, currencyCodePdf),
+      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPctPdf, currencyCodePdf, cogsGrandTotalMonthlyCentsPdf),
       "financial-plan-unit-economics": assembleUnitEconomicsSection(lenderMetricsPdf, currencyCodePdf),
       "financial-plan-break-even": assembleBreakEvenSection(lenderMetricsPdf, currencyCodePdf),
       "financial-plan-sensitivity": assembleSensitivitySection(lenderMetricsPdf, currencyCodePdf),
@@ -527,7 +538,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       "financial-plan-capex-schedule": assembleCapexScheduleSection(lenderMetricsPdf, currencyCodePdf),
       "financial-plan-depreciation": assembleDepreciationScheduleSection(lenderMetricsPdf, currencyCodePdf),
       "financial-plan-working-capital": assembleWorkingCapitalSection(lenderMetricsPdf, currencyCodePdf),
-      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPctPdf, currencyCodePdf),
+      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPctPdf, currencyCodePdf, cogsGrandTotalMonthlyCentsPdf),
       "appendix-monthly-statements": "Monthly P&L, cash flow, and balance sheet statements appear in the Financial Appendix pages that follow.",
     };
 
@@ -646,6 +657,7 @@ export const businessPlanTemplate: PdfTemplate<BusinessPlanPdfContent> = {
       cover,
       financialData,
       financialDocVisibility,
+      cogsGrandTotalMonthlyCents: cogsGrandTotalMonthlyCentsPdf,
     };
   },
 };

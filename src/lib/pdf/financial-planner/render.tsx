@@ -879,17 +879,22 @@ export interface FinancialPlannerPdfProps {
     breakEvenPng: Buffer | null;
   };
   brand?: BrandTokens;
+  // TIM-3735: centralized COGS Grand Total so the PDF uses the same numbers
+  // as the Financials workspace instead of the legacy cogs_pct × revenue path.
+  cogsGrandTotalMonthlyCents?: number | null;
 }
 
 export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
-  const { mp, equipment, shopName, generatedDate, charts, brand = BRAND } = props;
+  const { mp, equipment, shopName, generatedDate, charts, brand = BRAND, cogsGrandTotalMonthlyCents } = props;
   const styles = makeStyles(brand);
   const code = mp.currency_code ?? "USD";
   const meta = getCurrencyMeta(code);
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
   const months = fiscalYearMonthLabels(fiscalStart);
 
-  const slices = computeMonthlySlices(mp, equipment, {});
+  const slices = computeMonthlySlices(mp, equipment, {}, {
+    cogs_grand_total_monthly_cents: cogsGrandTotalMonthlyCents ?? null,
+  });
   const year1 = sliceMonths(slices, 1);
 
   const annualY1 = year1.reduce(
@@ -1132,8 +1137,16 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
           </Text>
         </View>
         <View style={styles.assumptionRow}>
-          <Text style={styles.assumptionLabel}>Base COGS rate</Text>
-          <Text style={styles.assumptionValue}>{mp.cogs_pct}%</Text>
+          <Text style={styles.assumptionLabel}>
+            {typeof cogsGrandTotalMonthlyCents === "number" && cogsGrandTotalMonthlyCents > 0
+              ? "COGS method"
+              : "Base COGS rate"}
+          </Text>
+          <Text style={styles.assumptionValue}>
+            {typeof cogsGrandTotalMonthlyCents === "number" && cogsGrandTotalMonthlyCents > 0
+              ? "Centralized (menu + additional)"
+              : `${mp.cogs_pct}%`}
+          </Text>
         </View>
         <View style={styles.assumptionRow}>
           <Text style={styles.assumptionLabel}>Income tax rate</Text>
@@ -1241,13 +1254,16 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
 export async function renderPlannerCharts(
   mp: MonthlyProjections,
   equipment: EquipmentSummary,
-  brand: BrandTokens = BRAND
+  brand: BrandTokens = BRAND,
+  cogsGrandTotalMonthlyCents?: number | null
 ): Promise<FinancialPlannerPdfProps["charts"]> {
   const code = mp.currency_code ?? "USD";
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
   const months = fiscalYearMonthLabels(fiscalStart);
 
-  const slices = computeMonthlySlices(mp, equipment, {});
+  const slices = computeMonthlySlices(mp, equipment, {}, {
+    cogs_grand_total_monthly_cents: cogsGrandTotalMonthlyCents ?? null,
+  });
   const year1 = sliceMonths(slices, 1);
   if (year1.length === 0) {
     return {
