@@ -7,7 +7,7 @@
 //   - workspace-table-rows.tsx SectionSubtotalRow / GrandTotalRow
 //   - EquipmentGrid.tsx / SuppliesDesktopTable.tsx (inline add/edit/delete table)
 
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -36,7 +36,7 @@ import {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function computeCategoryMonthlyCogsCents(
+export function computeCategoryMonthlyCogsCents(
   group: MenuCogsCategoryGroup,
   monthlyUnits: number
 ): number {
@@ -173,10 +173,9 @@ export function MenuCogsSyncSection({
                 );
 
                 return (
-                  <>
+                  <React.Fragment key={catKey}>
                     {/* Category header row */}
                     <tr
-                      key={catKey}
                       className="border-b border-[var(--neutral-cool-150)] hover:bg-[var(--background)] transition-colors"
                     >
                       <td className="px-3 py-2">
@@ -250,7 +249,7 @@ export function MenuCogsSyncSection({
                         </tr>
                       );
                     })}
-                  </>
+                  </React.Fragment>
                 );
               })}
               <SectionSubtotalRow
@@ -418,7 +417,12 @@ export function AdditionalCogsSection({
 
             {/* Quick-add draft row */}
             {draft && (
-              <tr className={TABLE_QUICK_ADD_ROW_CLS}>
+              <tr
+                className={TABLE_QUICK_ADD_ROW_CLS}
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) commitDraft();
+                }}
+              >
                 <td className="px-3 py-2">
                   <input
                     ref={nameInputRef}
@@ -429,7 +433,6 @@ export function AdditionalCogsSection({
                       if (e.key === "Enter") commitDraft();
                       if (e.key === "Escape") setDraft(null);
                     }}
-                    onBlur={commitDraft}
                     placeholder="Item name"
                     className={TABLE_QUICK_ADD_INPUT_CLS}
                   />

@@ -1209,6 +1209,18 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     // TIM-2338: passthrough — the vertical model owns interpretation.
     coffee_shop_vertical_config:
       r.coffee_shop_vertical_config !== undefined ? r.coffee_shop_vertical_config : undefined,
+    // TIM-3733: COGS sections — passthrough so they survive normalize round-trips.
+    additional_cogs_items: Array.isArray(r.additional_cogs_items)
+      ? r.additional_cogs_items
+      : undefined,
+    menu_cogs_synced_at:
+      typeof r.menu_cogs_synced_at === "string" ? r.menu_cogs_synced_at : undefined,
+    menu_cogs_category_units:
+      r.menu_cogs_category_units !== null &&
+      r.menu_cogs_category_units !== undefined &&
+      typeof r.menu_cogs_category_units === "object"
+        ? (r.menu_cogs_category_units as Record<string, number>)
+        : undefined,
   };
 }
 

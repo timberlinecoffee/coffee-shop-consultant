@@ -64,6 +64,7 @@ import {
   MenuCogsSyncSection,
   AdditionalCogsSection,
   CogsSectionsGrandTotal,
+  computeCategoryMonthlyCogsCents,
 } from "./cogs-sections";
 import { createClient } from "@/lib/supabase/client";
 import { CURRENCIES } from "@/lib/currency";
@@ -957,22 +958,10 @@ function ForecastTab({
                 currencyCode={mp.currency_code ?? "USD"}
               />
               <CogsSectionsGrandTotal
-                menuSubtotalCents={
-                  menuCogsByCategory.reduce((sum, g) => {
-                    const units = (mp.menu_cogs_category_units ?? {})[g.category_id ?? "__uncategorized__"] ?? 0;
-                    const totalWeight = g.items.reduce(
-                      (s, it) => s + (it.expected_popularity === "high" ? 3 : it.expected_popularity === "medium" ? 2 : 1),
-                      0
-                    );
-                    if (totalWeight === 0 || units <= 0) return sum;
-                    return sum + Math.round(
-                      g.items.reduce((s, it) => {
-                        const w = it.expected_popularity === "high" ? 3 : it.expected_popularity === "medium" ? 2 : 1;
-                        return s + (units * w / totalWeight) * it.computed_cogs_cents;
-                      }, 0)
-                    );
-                  }, 0)
-                }
+                menuSubtotalCents={menuCogsByCategory.reduce((sum, g) => {
+                  const units = (mp.menu_cogs_category_units ?? {})[g.category_id ?? "__uncategorized__"] ?? 0;
+                  return sum + computeCategoryMonthlyCogsCents(g, units);
+                }, 0)}
                 additionalSubtotalCents={
                   (mp.additional_cogs_items ?? []).reduce((s, it) => s + (it.monthly_cost_cents || 0), 0)
                 }
@@ -2399,6 +2388,11 @@ export function FinancialsWorkspace({
         paywallOpen={paywallOpen}
         onPaywallClose={() => setPaywallOpen(false)}
         onOpenWizard={openWizard}
+        tourOpen={tourOpen}
+        tourSeq={tourSeq}
+        onTourFinish={handleTourFinish}
+        onTourSkip={handleTourSkip}
+        onTourClose={handleTourClose}
         initialTrialMessagesUsed={initialTrialMessagesUsed}
       />
       </div>
