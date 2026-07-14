@@ -29,9 +29,9 @@ const PatchBodySchema = z.discriminatedUnion("applyToExisting", [
     applyToExisting: z.literal(true),
     category_id: z.string().uuid(),
   }),
-  // row-update path
+  // row-update path (normalization at PATCH handler always injects applyToExisting:false)
   z.object({
-    applyToExisting: z.literal(false).optional(),
+    applyToExisting: z.literal(false),
     id: z.string().uuid(),
     amount: z.number().positive().optional(),
     unit: z.enum(UNIT_VALUES).optional(),
@@ -210,6 +210,10 @@ export async function PATCH(request: NextRequest) {
   if (amount !== undefined) allowed.amount = amount
   if (unit !== undefined) allowed.unit = unit
   if (position !== undefined) allowed.position = position
+
+  if (Object.keys(allowed).length === 0) {
+    return Response.json({ error: "No updatable fields provided" }, { status: 400 })
+  }
 
   // Rule 2: explicit ownership check — verify the row's category is on this plan.
   const { data: existing } = await supabase

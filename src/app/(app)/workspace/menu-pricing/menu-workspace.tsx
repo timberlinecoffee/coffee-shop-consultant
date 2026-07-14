@@ -2224,14 +2224,16 @@ function CategoryDefaultsEditor({
   onApplyToExisting: () => Promise<void>;
 }) {
   const used = new Set(defaults.map((d) => d.ingredient_id));
+  // Build a lookup map once to avoid O(defaults × ingredients) scans per pass.
+  const ingMap = new Map(ingredients.map((i) => [i.id, i]));
 
   // Split defaults into supply vs ingredient groups using the same role
   // inference as the recipe display (TIM-3861).
   const supplyDefaults = defaults.filter((d) =>
-    inferIngredientRole(ingredients.find((i) => i.id === d.ingredient_id) ?? null) === 'supply'
+    inferIngredientRole(ingMap.get(d.ingredient_id) ?? null) === 'supply'
   );
   const ingredientDefaults = defaults.filter((d) =>
-    inferIngredientRole(ingredients.find((i) => i.id === d.ingredient_id) ?? null) === 'ingredient'
+    inferIngredientRole(ingMap.get(d.ingredient_id) ?? null) === 'ingredient'
   );
 
   const availableSupplies = ingredients.filter(
@@ -2272,7 +2274,7 @@ function CategoryDefaultsEditor({
         {supplyDefaults.length > 0 ? (
           <div className="space-y-1.5">
             {supplyDefaults.map((d) => {
-              const ing = ingredients.find((i) => i.id === d.ingredient_id);
+              const ing = ingMap.get(d.ingredient_id);
               return (
                 <DefaultLineRow
                   key={d.id}
@@ -2306,7 +2308,7 @@ function CategoryDefaultsEditor({
         {ingredientDefaults.length > 0 ? (
           <div className="space-y-1.5">
             {ingredientDefaults.map((d) => {
-              const ing = ingredients.find((i) => i.id === d.ingredient_id);
+              const ing = ingMap.get(d.ingredient_id);
               return (
                 <DefaultLineRow
                   key={d.id}
