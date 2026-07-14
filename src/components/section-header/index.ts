@@ -1,2 +1,2 @@
-export { SectionHeader } from './SectionHeader'
-export type { SectionHeaderProps } from './SectionHeader'
+export { SectionHeader, resolveAiActions, validateAiActionsOrder, getAiActionLabel, assertAiActionsOrder } from './SectionHeader'
+export type { SectionHeaderProps, AiAction, AiActionKind } from './SectionHeader'

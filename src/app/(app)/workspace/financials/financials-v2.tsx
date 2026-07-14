@@ -100,6 +100,10 @@ function StatusBadge({ status }: { status: SectionStatus }) {
 }
 
 // ── AccordionSection ──────────────────────────────────────────────────────────
+// TIM-3869: Header row uses a flex container (not a single button) so that
+// StatusBadge and future AI action buttons are NOT nested inside the toggle
+// button. Only the chevron+title zone triggers the accordion. This prevents
+// nested-button HTML and ensures an Analyse click won't collapse the section.
 
 function AccordionSection({
   title,
@@ -115,22 +119,22 @@ function AccordionSection({
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--background)] transition-colors"
-      >
-        <div className="flex items-center gap-3">
+      <div className="w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--background)] transition-colors">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="flex items-center gap-3 flex-1 min-w-0 text-left"
+        >
           <ChevronDown
             size={16}
             className={`text-[var(--muted-foreground)] transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
           <span className="text-sm font-semibold text-[var(--foreground)]">{title}</span>
-        </div>
+        </button>
         <StatusBadge status={status} />
-      </button>
+      </div>
       {open && (
         <div className="px-5 pb-5 pt-1 border-t border-[var(--border)] space-y-5">
           {children}
