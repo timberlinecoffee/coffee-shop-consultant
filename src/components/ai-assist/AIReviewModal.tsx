@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, X, Pencil, Sparkles, AlertCircle, Link2 } from "lucide-react";
+import { Check, X, Pencil, Sparkles, AlertCircle, Link2, Plus } from "lucide-react";
 import { CollapseButton } from "@/components/ui/CollapseButton";
 import { COPILOT_NAME } from "@/lib/copilot/branding";
 import {
@@ -151,60 +151,268 @@ function DiffText({ original, proposed }: { original: string; proposed: string }
   );
 }
 
-// ── Structured (table) diff ─────────────────────────────────────────────────
+// ── Recipe ingredient helpers (structured recipe diff & form editor) ─────────
 
-function StructuredDiff({ original, proposed }: { original: string; proposed: string }) {
-  let origRows: string[] = [];
-  let propRows: string[] = [];
-  try { origRows = (JSON.parse(original) as unknown[]).map((r) => JSON.stringify(r)); } catch { origRows = original.split("\n").filter(Boolean); }
-  try { propRows = (JSON.parse(proposed) as unknown[]).map((r) => JSON.stringify(r)); } catch { propRows = proposed.split("\n").filter(Boolean); }
+type RecipeLine = {
+  name: string;
+  amount: number;
+  unit: string;
+  inventory_item_id?: string;
+};
 
-  const origSet = new Set(origRows);
-  const propSet = new Set(propRows);
+function parseRecipeLines(value: string): RecipeLine[] {
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed as RecipeLine[];
+  } catch { /* empty */ }
+  return [];
+}
 
-  const allRows = [
-    ...propRows.filter((r) => !origSet.has(r)).map((r) => ({ row: r, kind: "added" as const })),
-    ...origRows.filter((r) => !propSet.has(r)).map((r) => ({ row: r, kind: "removed" as const })),
-    ...propRows.filter((r) => origSet.has(r)).map((r) => ({ row: r, kind: "unchanged" as const })),
-  ];
+function normalizeIngredientName(name: string): string {
+  return name.toLowerCase().trim().replace(/\s+/g, " ");
+}
 
-  function parseRow(raw: string): Record<string, string> {
-    try { return JSON.parse(raw) as Record<string, string>; } catch { return { value: raw }; }
+// Clean ingredient table — identical layout to the diff table, used for the
+// Current column so both columns share the same visual structure.
+function IngredientTable({ value }: { value: string }) {
+  const lines = parseRecipeLines(value);
+  if (lines.length === 0) {
+    return <p className="text-xs italic text-[var(--dark-grey)]">Empty</p>;
+  }
+  return (
+    <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-[var(--border)] bg-[var(--muted)]">
+            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Ingredient</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Amount</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Unit</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[var(--border)]">
+          {lines.map((line, i) => (
+            <tr key={i} className="bg-white">
+              <td className="px-3 py-2 text-neutral-950">{line.name}</td>
+              <td className="px-3 py-2 text-neutral-950">{line.amount}</td>
+              <td className="px-3 py-2 text-neutral-950">{line.unit}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+type DiffRowKind = "unchanged" | "added" | "removed" | "changed";
+
+type IngredientDiffRow = {
+  kind: DiffRowKind;
+  name: string;
+  origAmount?: number;
+  origUnit?: string;
+  propAmount?: number;
+  propUnit?: string;
+};
+
+function computeIngredientDiff(
+  origLines: RecipeLine[],
+  propLines: RecipeLine[],
+): IngredientDiffRow[] {
+  // Match by inventory_item_id first (stable link), then normalized name.
+  const origByKey = new Map<string, RecipeLine>();
+  for (const line of origLines) {
+    origByKey.set(line.inventory_item_id ?? normalizeIngredientName(line.name), line);
+  }
+
+  const rows: IngredientDiffRow[] = [];
+  const handledKeys = new Set<string>();
+
+  for (const prop of propLines) {
+    const key = prop.inventory_item_id ?? normalizeIngredientName(prop.name);
+    const orig = origByKey.get(key);
+    if (!orig) {
+      rows.push({ kind: "added", name: prop.name, propAmount: prop.amount, propUnit: prop.unit });
+    } else {
+      handledKeys.add(key);
+      if (orig.amount === prop.amount && orig.unit === prop.unit) {
+        rows.push({ kind: "unchanged", name: prop.name, propAmount: prop.amount, propUnit: prop.unit });
+      } else {
+        rows.push({ kind: "changed", name: prop.name, origAmount: orig.amount, origUnit: orig.unit, propAmount: prop.amount, propUnit: prop.unit });
+      }
+    }
+  }
+
+  // Rows in original that were not matched → removed by the AI.
+  for (const orig of origLines) {
+    const key = orig.inventory_item_id ?? normalizeIngredientName(orig.name);
+    if (!handledKeys.has(key)) {
+      rows.push({ kind: "removed", name: orig.name, origAmount: orig.amount, origUnit: orig.unit });
+    }
+  }
+
+  return rows;
+}
+
+// Diff table — used in the Suggested column. Unchanged rows are unstyled;
+// added rows get a green tint; removed rows get a red tint + strikethrough;
+// changed rows show the old amount/unit crossed out beside the new value.
+function IngredientDiff({ original, proposed }: { original: string; proposed: string }) {
+  const rows = computeIngredientDiff(parseRecipeLines(original), parseRecipeLines(proposed));
+
+  if (rows.length === 0) {
+    return <p className="text-xs italic text-[var(--dark-grey)]">Empty</p>;
   }
 
   return (
     <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
       <table className="w-full text-xs">
-        <tbody>
-          {allRows.map(({ row, kind }, i) => {
-            const parsed = parseRow(row);
-            const cells = Object.values(parsed).slice(0, 4);
+        <thead>
+          <tr className="border-b border-[var(--border)] bg-[var(--muted)]">
+            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Ingredient</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Amount</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Unit</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[var(--border)]">
+          {rows.map((row, i) => {
+            const rowCls =
+              row.kind === "added"
+                ? "bg-[var(--teal-tint-500)]"
+                : row.kind === "removed"
+                ? "bg-red-50"
+                : "bg-white";
+
+            if (row.kind === "removed") {
+              return (
+                <tr key={i} className={rowCls}>
+                  <td className="px-3 py-2 line-through text-[var(--dark-grey)]">{row.name}</td>
+                  <td className="px-3 py-2 line-through text-[var(--dark-grey)]">{row.origAmount}</td>
+                  <td className="px-3 py-2 line-through text-[var(--dark-grey)]">{row.origUnit}</td>
+                </tr>
+              );
+            }
+
             return (
-              <tr
-                key={i}
-                className={
-                  kind === "added"
-                    ? "bg-[var(--teal-tint-500)]"
-                    : kind === "removed"
-                    ? "bg-red-50"
-                    : "bg-white"
-                }
-              >
-                {cells.map((cell, j) => (
-                  <td
-                    key={j}
-                    className={`px-3 py-2 border-b border-[var(--border)] ${
-                      kind === "removed" ? "line-through text-[var(--dark-grey)]" : "text-[var(--foreground)]"
-                    }`}
-                  >
-                    {String(cell ?? "")}
-                  </td>
-                ))}
+              <tr key={i} className={rowCls}>
+                <td className="px-3 py-2 text-neutral-950">{row.name}</td>
+                <td className="px-3 py-2">
+                  {row.kind === "changed" && row.origAmount !== row.propAmount ? (
+                    <><span className="line-through text-[var(--dark-grey)] mr-1">{row.origAmount}</span><span className="text-neutral-950">{row.propAmount}</span></>
+                  ) : (
+                    <span className="text-neutral-950">{row.propAmount}</span>
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  {row.kind === "changed" && row.origUnit !== row.propUnit ? (
+                    <><span className="line-through text-[var(--dark-grey)] mr-1">{row.origUnit}</span><span className="text-neutral-950">{row.propUnit}</span></>
+                  ) : (
+                    <span className="text-neutral-950">{row.propUnit}</span>
+                  )}
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// Form-based editor for structured recipe ingredient lists (Rule 3: server
+// validates fields on the apply route; the form just produces valid JSON).
+const RECIPE_UNITS = ["g", "ml", "oz", "each", "piece"] as const;
+
+function IngredientFormEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [rows, setRows] = useState<RecipeLine[]>(() => {
+    const parsed = parseRecipeLines(value);
+    return parsed.length > 0 ? parsed : [{ name: "", amount: 1, unit: "g" }];
+  });
+
+  function updateRows(next: RecipeLine[]) {
+    setRows(next);
+    onChange(JSON.stringify(next));
+  }
+
+  function updateRow(idx: number, patch: Partial<RecipeLine>) {
+    updateRows(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-[var(--border)] bg-[var(--muted)]">
+              <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Ingredient</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide w-20">Amount</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide w-20">Unit</th>
+              <th className="px-2 py-2 w-8" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
+            {rows.map((row, i) => (
+              <tr key={i} className="bg-white">
+                <td className="px-2 py-1.5">
+                  <input
+                    type="text"
+                    aria-label={`Ingredient name for row ${i + 1}`}
+                    placeholder="Ingredient name"
+                    value={row.name}
+                    onChange={(e) => updateRow(i, { name: e.target.value })}
+                    className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-neutral-950 placeholder:text-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
+                  />
+                </td>
+                <td className="px-2 py-1.5">
+                  <input
+                    type="number"
+                    aria-label={`Amount for row ${i + 1}`}
+                    min={0}
+                    step={0.01}
+                    value={row.amount}
+                    onChange={(e) => updateRow(i, { amount: parseFloat(e.target.value) || 0 })}
+                    className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+                  />
+                </td>
+                <td className="px-2 py-1.5">
+                  <select
+                    aria-label={`Unit for row ${i + 1}`}
+                    value={row.unit}
+                    onChange={(e) => updateRow(i, { unit: e.target.value })}
+                    className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+                  >
+                    {RECIPE_UNITS.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-2 py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => updateRows(rows.filter((_, j) => j !== i))}
+                    aria-label={`Remove ${row.name || "this ingredient"}`}
+                    className="w-6 h-6 rounded-lg bg-neutral-200 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-colors text-neutral-500"
+                  >
+                    <X size={12} aria-hidden />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button
+        type="button"
+        onClick={() => updateRows([...rows, { name: "", amount: 1, unit: "g" }])}
+        className="flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:underline transition-colors"
+      >
+        <Plus size={12} aria-hidden /> Add Row
+      </button>
     </div>
   );
 }
@@ -284,25 +492,25 @@ function ChangeCard({
           <div className="space-y-3">
             <div>
               <p className="text-xs font-medium text-[var(--dark-grey)] uppercase tracking-wide mb-1">Current</p>
-              <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2">
-                {sug.isStructured ? (
-                  <p className="text-xs text-[var(--dark-grey)]">{sug.originalValue || <em>Empty</em>}</p>
-                ) : (
+              {sug.isStructured ? (
+                <IngredientTable value={sug.originalValue} />
+              ) : (
+                <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2">
                   <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
                     {sug.originalValue.trim() || <em className="text-[var(--dark-grey)]">Empty</em>}
                   </p>
-                )}
-              </div>
+                </div>
+              )}
             </div>
             <div>
               <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide mb-1">Suggested</p>
-              <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2">
-                {sug.isStructured ? (
-                  <StructuredDiff original={sug.originalValue} proposed={cardState.editedValue} />
-                ) : (
+              {sug.isStructured ? (
+                <IngredientDiff original={sug.originalValue} proposed={cardState.editedValue} />
+              ) : (
+                <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2">
                   <DiffText original={sug.originalValue} proposed={cardState.editedValue} />
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -310,45 +518,51 @@ function ChangeCard({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs font-medium text-[var(--dark-grey)] uppercase tracking-wide mb-1.5">Current</p>
-              <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2.5 min-h-[60px]">
-                {sug.isStructured ? (
-                  <p className="text-xs text-[var(--dark-grey)]">{sug.originalValue || <em>Empty</em>}</p>
-                ) : (
+              {sug.isStructured ? (
+                <IngredientTable value={sug.originalValue} />
+              ) : (
+                <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2.5 min-h-[60px]">
                   <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
                     {sug.originalValue.trim() || <em className="text-[var(--dark-grey)]">Empty</em>}
                   </p>
-                )}
-              </div>
+                </div>
+              )}
             </div>
             <div>
               <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide mb-1.5">Suggested</p>
-              <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2.5 min-h-[60px]">
-                {sug.isStructured ? (
-                  <StructuredDiff original={sug.originalValue} proposed={cardState.editedValue} />
-                ) : (
+              {sug.isStructured ? (
+                <IngredientDiff original={sug.originalValue} proposed={cardState.editedValue} />
+              ) : (
+                <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2.5 min-h-[60px]">
                   <DiffText original={sug.originalValue} proposed={cardState.editedValue} />
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         )
       )}
 
-      {/* Edit textarea */}
+      {/* Edit mode: form editor for structured fields, textarea for plain text */}
       {isEditing && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide">Editing suggested text</p>
-          <textarea
-            ref={textareaRef}
-            value={cardState.editedValue}
-            onChange={(e) => onEditChange(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") onEditSave();
-              if (e.key === "Escape") onEditDiscard();
-            }}
-            aria-label={`Edit suggested text for ${sug.fieldLabel}`}
-            className="w-full min-h-[80px] border border-[var(--teal)] rounded-lg p-3 text-sm resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
-          />
+          <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide">
+            {sug.isStructured ? "Edit Ingredients" : "Editing Suggested Text"}
+          </p>
+          {sug.isStructured ? (
+            <IngredientFormEditor value={cardState.editedValue} onChange={onEditChange} />
+          ) : (
+            <textarea
+              ref={textareaRef}
+              value={cardState.editedValue}
+              onChange={(e) => onEditChange(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") onEditSave();
+                if (e.key === "Escape") onEditDiscard();
+              }}
+              aria-label={`Edit suggested text for ${sug.fieldLabel}`}
+              className="w-full min-h-[80px] border border-[var(--teal)] rounded-lg p-3 text-sm resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
+            />
+          )}
         </div>
       )}
 
