@@ -221,22 +221,31 @@ function computeIngredientDiff(
   origLines: RecipeLine[],
   propLines: RecipeLine[],
 ): IngredientDiffRow[] {
-  // Match by inventory_item_id first (stable link), then normalized name.
-  const origByKey = new Map<string, RecipeLine>();
+  // Two indexes: stable UUID (for linked inventory items) and normalized name
+  // (for free-text or AI-proposed lines that have no inventory_item_id).
+  // AI-proposed lines never carry inventory_item_id, so they always match by
+  // name — the UUID index is purely for future-proofing.
+  const origById = new Map<string, RecipeLine>();
+  const origByName = new Map<string, RecipeLine>();
   for (const line of origLines) {
-    origByKey.set(line.inventory_item_id ?? normalizeIngredientName(line.name), line);
+    if (line.inventory_item_id) origById.set(line.inventory_item_id, line);
+    origByName.set(normalizeIngredientName(line.name), line);
   }
 
   const rows: IngredientDiffRow[] = [];
-  const handledKeys = new Set<string>();
+  // Track by the *original* line's canonical key so removals are detected correctly.
+  const handledOrigKeys = new Set<string>();
 
   for (const prop of propLines) {
-    const key = prop.inventory_item_id ?? normalizeIngredientName(prop.name);
-    const orig = origByKey.get(key);
+    const orig =
+      (prop.inventory_item_id ? origById.get(prop.inventory_item_id) : undefined)
+      ?? origByName.get(normalizeIngredientName(prop.name));
+
     if (!orig) {
       rows.push({ kind: "added", name: prop.name, propAmount: prop.amount, propUnit: prop.unit });
     } else {
-      handledKeys.add(key);
+      const origKey = orig.inventory_item_id ?? normalizeIngredientName(orig.name);
+      handledOrigKeys.add(origKey);
       if (orig.amount === prop.amount && orig.unit === prop.unit) {
         rows.push({ kind: "unchanged", name: prop.name, propAmount: prop.amount, propUnit: prop.unit });
       } else {
@@ -245,10 +254,10 @@ function computeIngredientDiff(
     }
   }
 
-  // Rows in original that were not matched → removed by the AI.
+  // Original lines not matched by any proposed line → removed by the AI.
   for (const orig of origLines) {
-    const key = orig.inventory_item_id ?? normalizeIngredientName(orig.name);
-    if (!handledKeys.has(key)) {
+    const origKey = orig.inventory_item_id ?? normalizeIngredientName(orig.name);
+    if (!handledOrigKeys.has(origKey)) {
       rows.push({ kind: "removed", name: orig.name, origAmount: orig.amount, origUnit: orig.unit });
     }
   }
@@ -437,7 +446,7 @@ function IngredientFormEditor({
                     min={0}
                     step={0.01}
                     value={row.amount}
-                    onChange={(e) => updateRow(i, { amount: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => { const v = e.target.valueAsNumber; updateRow(i, { amount: isNaN(v) ? 0 : Math.max(0, v) }); }}
                     className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
                   />
                 </td>
@@ -448,7 +457,10 @@ function IngredientFormEditor({
                     onChange={(e) => updateRow(i, { unit: e.target.value })}
                     className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
                   >
-                    {RECIPE_UNITS.map((u) => (
+                    {(RECIPE_UNITS.includes(row.unit as typeof RECIPE_UNITS[number])
+                      ? RECIPE_UNITS
+                      : [...RECIPE_UNITS, row.unit]
+                    ).map((u) => (
                       <option key={u} value={u}>{u}</option>
                     ))}
                   </select>
