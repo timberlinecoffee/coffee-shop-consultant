@@ -395,14 +395,23 @@ export function BPWriteWithAIModal({
       }
       const data = (await res.json()) as { blocks: SeedBlockView[] };
       const blocks = data.blocks ?? [];
-      if (blocks.length === 0) {
-        setSeedError("No workspace content yet — fill out your workspaces first.");
+      // If EVERY block is empty, the founder has no workspace content yet.
+      // Populating the textarea with a wall of "No content yet..." hints and
+      // letting Generate fire against them just forces the model to
+      // hallucinate. Bail with a clear message instead.
+      if (blocks.length === 0 || blocks.every((b) => b.isEmpty)) {
+        setSeedError("No workspace content yet. Fill out your Concept, Menu, or Financial workspace first — then come back here.");
         return;
       }
       const seedText = formatBlocksAsSeedText(blocks);
-      const currentTrimmed = content.trim();
-      const next = currentTrimmed.length > 0 ? `${content}\n\n---\n\n${seedText}` : seedText;
-      setContent(next);
+      // TIM-3854 code-review fix: use functional setState so typing that
+      // happened during the async fetch is preserved. Prior `content.trim()`
+      // + `${content}` closure captured the value at seed-click time and
+      // silently discarded any characters the founder typed while waiting.
+      setContent((prev) => {
+        const prevTrimmed = prev.trim();
+        return prevTrimmed.length > 0 ? `${prev}\n\n---\n\n${seedText}` : seedText;
+      });
       setHasSeededContext(true);
       // Focus the textarea so the founder can immediately tweak the seed. Move
       // the caret to the end of the appended block.

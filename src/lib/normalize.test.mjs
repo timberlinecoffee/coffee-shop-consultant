@@ -103,16 +103,23 @@ test("all functions are safe on empty input", () => {
 
 test("stripPlaceholderTokens removes HEREHEREHERE and similar repeats", () => {
   assert.equal(stripPlaceholderTokens("HEREHEREHERE"), "");
+  // Post-strip whitespace collapsed to a single space — the "double space
+  // blemish" was called out in TIM-3854 code review; matched here so a
+  // regression re-introducing it fails this pin.
   assert.equal(stripPlaceholderTokens("HEREHEREHEREHERE more text"), " more text");
-  assert.equal(stripPlaceholderTokens("Prefix TODOTODOTODO suffix"), "Prefix  suffix");
-  assert.equal(stripPlaceholderTokens("Repeat HERE HERE HERE space"), "Repeat  space");
+  assert.equal(stripPlaceholderTokens("Prefix TODOTODOTODO suffix"), "Prefix suffix");
+  assert.equal(stripPlaceholderTokens("Repeat HERE HERE HERE space"), "Repeat space");
 });
 
 test("stripPlaceholderTokens removes bracketed [FILL IN] / {{VAR}} placeholders", () => {
-  assert.equal(stripPlaceholderTokens("Total: [FILL IN] units"), "Total:  units");
+  // Punctuation-adjacent placeholders leave no stranded space before the punct.
+  assert.equal(stripPlaceholderTokens("Total: [FILL IN] units"), "Total: units");
+  // Trailing space at end-of-string is preserved (real prose ends in a period
+  // or newline that trims cleanly). The blemish we care about is double-space
+  // IN the middle of a paragraph.
   assert.equal(stripPlaceholderTokens("Total: [FILL_IN]"), "Total: ");
-  assert.equal(stripPlaceholderTokens("Value {{PLACEHOLDER}} here"), "Value  here");
-  assert.equal(stripPlaceholderTokens("Insert [INSERT SHOP NAME] there"), "Insert  there");
+  assert.equal(stripPlaceholderTokens("Value {{PLACEHOLDER}} here"), "Value here");
+  assert.equal(stripPlaceholderTokens("Insert [INSERT SHOP NAME] there"), "Insert there");
 });
 
 test("stripPlaceholderTokens removes XXXX / ____ visual placeholders", () => {
@@ -136,6 +143,6 @@ test("normalizeAIOutput scrubs HERE placeholder in the pipeline", () => {
   assert.equal(normalizeAIOutput("HEREHEREHEREHERE"), "");
   assert.equal(
     normalizeAIOutput("The Kestrel opens in HEREHEREHERE with a full team."),
-    "The Kestrel opens in  with a full team.",
+    "The Kestrel opens in with a full team.",
   );
 });
