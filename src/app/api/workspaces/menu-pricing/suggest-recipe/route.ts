@@ -33,6 +33,13 @@ const ROUTE_PATH = "/api/workspaces/menu-pricing/suggest-recipe"
 // At ~80 chars/row ≈ 20 tokens, 60 rows ≈ 1 200 prompt tokens — well within budget.
 const MAX_INVENTORY_ROWS = 60
 
+// Strip characters that could inject prompt instructions through user-controlled
+// inventory names. Newlines are the primary injection vector; vertical bar is the
+// field separator we use in the prompt table rows (Fix: TIM-3862 code-review finding 2).
+function sanitizeForPrompt(s: string): string {
+  return s.replace(/[\r\n\t|]/g, " ").slice(0, 120).trim()
+}
+
 interface ConceptContext {
   shop_identity?: string
   location?: string
@@ -101,9 +108,12 @@ export async function POST(request: Request) {
 
   // Load inventory context in parallel: (a) full ingredient library, (b) existing
   // recipe lines, (c) category default supplies, (d) category name for prompt.
+  // Errors are checked individually: a failed existingLines fetch would silently
+  // empty the linked-item guard's Sets, so we surface that as a 500 rather than
+  // letting the guard run blind (Fix: TIM-3862 code-review finding 1).
   const [
-    { data: allIngredients },
-    { data: existingLines },
+    { data: allIngredients, error: ingErr },
+    { data: existingLines, error: recipeErr },
     { data: categoryDefaults },
     { data: categoryRow },
   ] = await Promise.all([
@@ -114,22 +124,38 @@ export async function POST(request: Request) {
       .eq("plan_id", planId)
       .order("name"),
     // (b) Existing recipe lines — treat as canonical inventory-linked items.
+    // Guard depends on this; a fetch failure aborts the request (see below).
     supabase
       .from("menu_item_ingredients")
       .select("ingredient_id, amount, unit, menu_ingredients!inner(id, name, package_unit)")
       .eq("menu_item_id", body.item_id),
-    // (c) Category default supplies — full COGS requires packaging cost.
-    supabase
-      .from("category_default_ingredients")
-      .select("ingredient_id, amount, unit, menu_ingredients!inner(id, name, package_unit)")
-      .eq("category_id", menuItem.category_id),
-    // (d) Category name for prompt context.
-    supabase
-      .from("menu_categories")
-      .select("name")
-      .eq("id", menuItem.category_id)
-      .maybeSingle(),
+    // (c) Category default supplies — only queried when category_id is non-null
+    // to avoid eq(null) matching all NULL-category rows (Fix: finding 4).
+    menuItem.category_id
+      ? supabase
+          .from("category_default_ingredients")
+          .select("ingredient_id, amount, unit, menu_ingredients!inner(id, name, package_unit)")
+          .eq("category_id", menuItem.category_id)
+      : Promise.resolve({ data: [], error: null }),
+    // (d) Category name for prompt context — also guarded on null category_id.
+    menuItem.category_id
+      ? supabase
+          .from("menu_categories")
+          .select("name")
+          .eq("id", menuItem.category_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ])
+
+  if (ingErr) {
+    console.error(`suggest-recipe [${requestId}] ingredient fetch error:`, ingErr.message)
+    return Response.json({ error: "Failed to load inventory" }, { status: 500 })
+  }
+  if (recipeErr) {
+    // Guard depends on this query — fail rather than silently run without protection.
+    console.error(`suggest-recipe [${requestId}] recipe fetch error:`, recipeErr.message)
+    return Response.json({ error: "Failed to load existing recipe" }, { status: 500 })
+  }
 
   type IngRow = { id: string; name: string; package_unit: string }
 
@@ -153,7 +179,7 @@ export async function POST(request: Request) {
   const inventorySection =
     boundedInventory.length > 0
       ? boundedInventory
-          .map((i) => `  - ${i.name} | unit: ${i.package_unit} | id: ${i.id}`)
+          .map((i) => `  - ${sanitizeForPrompt(i.name)} | unit: ${sanitizeForPrompt(i.package_unit)} | id: ${i.id}`)
           .join("\n")
       : "  (no inventory items yet — suggest simple generic names)"
 
@@ -175,7 +201,7 @@ export async function POST(request: Request) {
       ? existingRecipeLines
           .map(
             (l) =>
-              `  - ${l.menu_ingredients.name} | ${l.amount} ${l.unit} | id: ${l.ingredient_id} [CANONICAL — must keep]`,
+              `  - ${sanitizeForPrompt(l.menu_ingredients.name)} | ${l.amount} ${l.unit} | id: ${l.ingredient_id} [CANONICAL — must keep]`,
           )
           .join("\n")
       : "  (none — fresh recipe)"
@@ -193,7 +219,7 @@ export async function POST(request: Request) {
       ? categoryDefaultLines
           .map(
             (d) =>
-              `  - ${d.menu_ingredients.name} | amount: ${d.amount} ${d.unit} | id: ${d.ingredient_id}`,
+              `  - ${sanitizeForPrompt(d.menu_ingredients.name)} | amount: ${d.amount} ${d.unit} | id: ${d.ingredient_id}`,
           )
           .join("\n")
       : "  (none configured)"
@@ -299,6 +325,21 @@ Return ONLY a JSON object — no commentary, no emojis, no preamble:
   // linked line item. Converts to 'keep' (same item) or 'add' (different item).
   // Logged server-side with requestId; never reaches the review panel.
   lines = applyLinkedItemGuard(lines, linkedIngredientIds, linkedIngredientNames, requestId)
+
+  // Validate inventory_item_id values returned by the model: any ID that is not
+  // in the authenticated user's own ingredient library is nulled out. Prevents a
+  // prompt-injection scenario from producing a foreign-plan ID in the response
+  // (Fix: TIM-3862 code-review finding 3).
+  const validInventoryIds = new Set((allIngredients ?? []).map((i) => (i as { id: string }).id))
+  lines = lines.map((line) => {
+    if (line.inventory_item_id != null && !validInventoryIds.has(line.inventory_item_id)) {
+      console.warn(
+        `suggest-recipe [${requestId}]: nulled unrecognized inventory_item_id "${line.inventory_item_id}" for "${line.name}"`,
+      )
+      return { ...line, inventory_item_id: null }
+    }
+    return line
+  })
 
   // TIM-2924 Shape C fix: do not create ingredients or recipe lines here.
   // The review modal is the Accept gate; the /apply sub-route does the DB
