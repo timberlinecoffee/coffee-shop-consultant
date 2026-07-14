@@ -16,6 +16,7 @@ import {
 } from "@/lib/cross-workspace-apply";
 import { parseFactValue } from "@/lib/cross-workspace-sync";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
+import { ALLOWED_UNITS } from "@/lib/recipe-suggest";
 
 // ── Public types ────────────────────────────────────────────────────────────
 
@@ -166,12 +167,30 @@ type RecipeLine = {
 function parseRecipeLines(value: string): RecipeLine[] {
   try {
     const parsed = JSON.parse(value);
-    if (Array.isArray(parsed)) return parsed as RecipeLine[];
+    // Handle bare array or common AI wrapper shapes: {lines:[...]} / {ingredients:[...]}
+    const arr: unknown = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray((parsed as Record<string, unknown>)?.lines)
+      ? (parsed as Record<string, unknown>).lines
+      : Array.isArray((parsed as Record<string, unknown>)?.ingredients)
+      ? (parsed as Record<string, unknown>).ingredients
+      : null;
+    if (!Array.isArray(arr)) return [];
+    // Only keep entries that have a non-empty string name — guards against
+    // AI responses missing the name field (which would crash normalizeIngredientName).
+    return arr.filter(
+      (r): r is RecipeLine =>
+        !!r &&
+        typeof r === "object" &&
+        typeof (r as RecipeLine).name === "string" &&
+        ((r as RecipeLine).name as string).trim().length > 0,
+    );
   } catch { /* empty */ }
   return [];
 }
 
 function normalizeIngredientName(name: string): string {
+  if (!name || typeof name !== "string") return "";
   return name.toLowerCase().trim().replace(/\s+/g, " ");
 }
 
@@ -391,7 +410,6 @@ function StructuredDiff({ original, proposed }: { original: string; proposed: st
 
 // Form-based editor for structured recipe ingredient lists (Rule 3: server
 // validates fields on the apply route; the form just produces valid JSON).
-const RECIPE_UNITS = ["g", "ml", "oz", "each", "piece"] as const;
 
 function IngredientFormEditor({
   value,
@@ -457,9 +475,9 @@ function IngredientFormEditor({
                     onChange={(e) => updateRow(i, { unit: e.target.value })}
                     className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
                   >
-                    {(RECIPE_UNITS.includes(row.unit as typeof RECIPE_UNITS[number])
-                      ? RECIPE_UNITS
-                      : [...RECIPE_UNITS, row.unit]
+                    {(ALLOWED_UNITS.includes(row.unit as typeof ALLOWED_UNITS[number])
+                      ? ALLOWED_UNITS
+                      : [...ALLOWED_UNITS, row.unit]
                     ).map((u) => (
                       <option key={u} value={u}>{u}</option>
                     ))}
@@ -569,9 +587,7 @@ function ChangeCard({
               {sug.isRecipeLines ? (
                 <IngredientTable value={sug.originalValue} />
               ) : sug.isStructured ? (
-                <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2">
-                  <StructuredDiff original={sug.originalValue} proposed={sug.originalValue} />
-                </div>
+                <StructuredDiff original={sug.originalValue} proposed={sug.originalValue} />
               ) : (
                 <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2">
                   <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
@@ -603,9 +619,7 @@ function ChangeCard({
               {sug.isRecipeLines ? (
                 <IngredientTable value={sug.originalValue} />
               ) : sug.isStructured ? (
-                <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2.5 min-h-[60px]">
-                  <StructuredDiff original={sug.originalValue} proposed={sug.originalValue} />
-                </div>
+                <StructuredDiff original={sug.originalValue} proposed={sug.originalValue} />
               ) : (
                 <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2.5 min-h-[60px]">
                   <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
