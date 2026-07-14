@@ -762,6 +762,7 @@ function RevenueStreamsContent({
           overrideCounts={overrideCounts}
           onClearLineOverrides={onClearLineOverrides}
           onGoToProjections={onGoToProjections}
+          hideCategoryHeader
         />
       </div>
     </div>

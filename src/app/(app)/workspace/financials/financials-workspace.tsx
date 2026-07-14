@@ -1047,6 +1047,7 @@ function ForecastTab({
             overrideCounts={overrideCounts}
             onClearLineOverrides={onClearLineOverrides}
             onGoToProjections={onGoToProjections}
+            hideCategoryHeader
           />
         </div>
       </Section>
