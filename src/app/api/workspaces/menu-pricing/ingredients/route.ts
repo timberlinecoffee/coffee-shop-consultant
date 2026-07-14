@@ -90,7 +90,7 @@ export async function PATCH(request: NextRequest) {
   for (const f of fields) {
     if (f in rest) {
       const val = rest[f]
-      if (f === "category" && val !== null && val !== 'ingredient' && val !== 'supply') {
+      if (f === "category" && val !== undefined && val !== null && val !== 'ingredient' && val !== 'supply') {
         return Response.json({ error: "category must be 'ingredient', 'supply', or null" }, { status: 400 })
       }
       allowed[f] = f === "name" && typeof val === "string" ? toTitleCase(val) : val
