@@ -123,18 +123,47 @@ function isLabelShaped(input: string): boolean {
 }
 
 /**
+ * TIM-3854: Strip repeated all-caps placeholder tokens that the model
+ * sometimes emits when it is confused about missing context — the canonical
+ * failure mode is "HEREHEREHEREHERE..." leaking into the Executive Summary
+ * preview. Also catches [FILL IN], {{PLACEHOLDER}}, XXXXXXX-style visual
+ * placeholders, and any all-caps ASCII token repeated 3+ times back-to-back.
+ * The upstream fix is the workspace-first seed (see TIM-3854 seed-context
+ * module) — this is defense-in-depth so a garbage token never reaches the UI.
+ */
+export function stripPlaceholderTokens(input: string): string {
+  if (!input) return input;
+  return input
+    // Repeated ALLCAPS ASCII word 3+ times, optionally with whitespace between
+    // (matches "HEREHEREHERE", "HERE HERE HERE", "TODOTODOTODO").
+    .replace(/\b([A-Z]{2,8})(\s*\1){2,}\b/g, "")
+    // Bracket-style placeholders: [FILL IN], [PLACEHOLDER], [TODO], {{VAR}}.
+    .replace(/\[(?:FILL[ _-]?IN|PLACEHOLDER|TODO|TBD|INSERT[ _-]?[A-Z0-9 _-]*)\]/gi, "")
+    .replace(/\{\{[A-Z0-9_]+\}\}/g, "")
+    // Runs of the same visual placeholder char (X or _) 6+ in a row.
+    .replace(/([Xx_]){6,}/g, "")
+    // Collapse the double-space + stranded punctuation-space blemish that
+    // shows up when a stripped token sat between two words (e.g.
+    // "prose HEREHEREHERE continues" → "prose  continues").
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/[ \t]+([.,;:!?])/g, "$1");
+}
+
+/**
  * Convenience: run all four normalizers in sequence on raw AI output.
  *
- * Order: strip jargon → apply voice rules → strip body emoji → title-case.
- * Title-casing is applied ONLY to label-shaped fragments so paragraph copy is
- * not wrongly capitalized (toTitleCase must never run on full sentences — see
- * text.ts). For a known label field, call `toTitleCase` directly instead.
+ * Order: strip jargon → apply voice rules → strip body emoji → strip
+ * placeholder tokens → title-case. Title-casing is applied ONLY to
+ * label-shaped fragments so paragraph copy is not wrongly capitalized
+ * (toTitleCase must never run on full sentences — see text.ts). For a known
+ * label field, call `toTitleCase` directly instead.
  */
 export function normalizeAIOutput(input: string): string {
   if (!input) return input;
   let out = stripAIJargon(input);
   out = applyVoiceRules(out);
   out = stripEmojiFromBody(out);
+  out = stripPlaceholderTokens(out);
   if (isLabelShaped(out)) {
     out = toTitleCase(out);
   }

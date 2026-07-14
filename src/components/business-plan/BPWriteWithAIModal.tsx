@@ -35,13 +35,44 @@ export interface WriteAiApproveExtras {
   consistencyContradictions: ConsistencyContradiction[];
 }
 
-// TIM-3672 follow-up: single trimmed excerpt from another populated BP
-// section, used to seed the current section's draft with cross-section
-// context. Parent computes this list (excludes the target section,
-// placeholders, empty content, archived) so the modal stays presentational.
+// TIM-3854: Executive Summary is the ONE section that also seeds from other
+// populated BP sections (per board mapping). The parent computes this list
+// from local UI state (userContent vs autoContent, archived filter,
+// placeholder filter) since the server has no cheap way to know which
+// sections the founder has curated. For every other section the seed comes
+// entirely from workspaces via /api/business-plan/seed-context.
 export interface BpOtherSectionExcerpt {
   title: string;
   excerpt: string;
+}
+
+// TIM-3854: shape returned by POST /api/business-plan/seed-context. Kept in
+// sync with SeedBlock in src/lib/business-plan/seed-context.ts — duplicated
+// here (not imported) because this file is a client component and pulling in
+// the server-side module would drag @supabase/supabase-js into the client
+// bundle. The wire format is stable and validated by the endpoint.
+interface SeedBlockView {
+  id: string;
+  label: string;
+  heading?: string;
+  bullets: string[];
+  isEmpty: boolean;
+  emptyHint?: string;
+}
+
+// TIM-3854: mirror of formatSeedBlocksAsText from the server module — again,
+// kept client-local to avoid pulling server code into the client bundle.
+function formatBlocksAsSeedText(blocks: SeedBlockView[]): string {
+  if (blocks.length === 0) return "";
+  const header = "Context from your workspaces (edit or remove any lines you don't want the AI to use):";
+  const rendered = blocks.map((b) => {
+    const heading = b.heading ?? `FROM ${b.label.toUpperCase()} WORKSPACE:`;
+    if (b.isEmpty) {
+      return `${heading}\n${b.emptyHint ?? "No content yet."}`;
+    }
+    return `${heading}\n${b.bullets.join("\n")}`;
+  });
+  return `${header}\n\n${rendered.join("\n\n")}`;
 }
 
 interface Props {
@@ -56,9 +87,10 @@ interface Props {
   // TIM-2342 export-gate validator would surface stale claims that no longer
   // appear in the draft.
   onApprove: (finalText: string, extras: WriteAiApproveExtras) => Promise<void>;
-  // TIM-3672 follow-up (board comment db265403 on 2026-07-08): "Seed from
-  // other sections" button. Parent passes populated non-placeholder excerpts
-  // from every OTHER BP section (standard + custom). Empty → button hidden.
+  // TIM-3854: Executive Summary is the ONE section that also seeds from
+  // other populated BP sections. Parent passes non-placeholder excerpts here
+  // from local UI state; the modal forwards them to the seed-context endpoint
+  // when sectionKey === "executive-summary" and ignores them otherwise.
   otherSectionsForContext?: BpOtherSectionExcerpt[];
 }
 
@@ -130,6 +162,10 @@ export function BPWriteWithAIModal({
   // duplicate the excerpt block by clicking twice. Reset when the user pastes
   // a fresh draft by wiping to empty, or when Reject bounces us back to input.
   const [hasSeededContext, setHasSeededContext] = useState(false);
+  // TIM-3854: track the in-flight seed fetch so the button shows a spinner
+  // instead of appearing broken while the server assembles workspace summaries.
+  const [seedLoading, setSeedLoading] = useState(false);
+  const [seedError, setSeedError] = useState<string | null>(null);
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -324,42 +360,79 @@ export function BPWriteWithAIModal({
     setHasSeededContext(false);
   }
 
-  // TIM-3672 follow-up: assemble other-section excerpts into a labeled block
-  // and append to the draft field. Uses a clear divider so the AI treats it
-  // as reference context (and so the user can easily strip it before Generate
-  // if they want a clean draft). Idempotent within a filled draft via
-  // `hasSeededContext` — cleared on Reject and when the user wipes the draft
-  // to empty.
-  function handleSeedFromOtherSections() {
-    if (hasSeededContext) return;
-    const excerpts = otherSectionsForContext ?? [];
-    if (excerpts.length === 0) return;
-    // Plain-text heading — the textarea does not render Markdown, so
-    // "**Title**" would leak literal asterisks to the user. Uppercase +
-    // colon reads as a section break in a mono/proportional font both.
-    const block = excerpts
-      .map((e) => `${e.title.toUpperCase()}:\n${e.excerpt.trim()}`)
-      .join("\n\n");
-    const header = `Context from other business plan sections (edit or remove any lines you don't want the AI to use):\n\n${block}`;
-    const currentTrimmed = content.trim();
-    const next = currentTrimmed.length > 0 ? `${content}\n\n---\n\n${header}` : header;
-    setContent(next);
-    setHasSeededContext(true);
-    // Focus the textarea so the founder can immediately tweak the seed. Move
-    // the caret to the end of the appended block.
-    requestAnimationFrame(() => {
-      const el = contentRef.current;
-      if (!el) return;
-      el.focus();
-      const pos = el.value.length;
-      try {
-        el.setSelectionRange(pos, pos);
-      } catch {
-        // Some browsers throw on textarea setSelectionRange during focus
-        // transitions; safe to ignore — the append still landed.
+  // TIM-3854: pull per-workspace summarized blocks from the server for the
+  // current section (board mapping: workspaces → BP, exec summary also gets
+  // other populated BP sections). Replaces the prior TIM-3672 client-side
+  // BP-to-BP seed that was circular ("Exec Summary seeds from Business
+  // Overview that hasn't been written yet") and produced LLM garbage.
+  //
+  // The returned blocks render as `FROM <WORKSPACE> WORKSPACE:` headings with
+  // summarized bullets underneath — never raw item lists, never spreadsheet
+  // rows. Empty workspaces render an explicit "No content yet..." hint, never
+  // a blank heading. Founder edits/removes lines directly in the textarea
+  // before hitting Generate.
+  async function handleSeedFromOtherSections() {
+    if (hasSeededContext || seedLoading) return;
+    setSeedLoading(true);
+    setSeedError(null);
+    try {
+      const res = await fetch("/api/business-plan/seed-context", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sectionKey,
+          // Executive Summary is the ONE section that also seeds from other
+          // populated BP sections. Pass them from local UI state so the
+          // server can append them under a "business plan" label.
+          bpSectionExcerpts: sectionKey === "executive-summary"
+            ? (otherSectionsForContext ?? [])
+            : undefined,
+        }),
+      });
+      if (!res.ok) {
+        setSeedError("Couldn't load workspace context. Please try again.");
+        return;
       }
-      el.scrollTop = el.scrollHeight;
-    });
+      const data = (await res.json()) as { blocks: SeedBlockView[] };
+      const blocks = data.blocks ?? [];
+      // If EVERY block is empty, the founder has no workspace content yet.
+      // Populating the textarea with a wall of "No content yet..." hints and
+      // letting Generate fire against them just forces the model to
+      // hallucinate. Bail with a clear message instead.
+      if (blocks.length === 0 || blocks.every((b) => b.isEmpty)) {
+        setSeedError("No workspace content yet. Fill out your Concept, Menu, or Financial workspace first — then come back here.");
+        return;
+      }
+      const seedText = formatBlocksAsSeedText(blocks);
+      // TIM-3854 code-review fix: use functional setState so typing that
+      // happened during the async fetch is preserved. Prior `content.trim()`
+      // + `${content}` closure captured the value at seed-click time and
+      // silently discarded any characters the founder typed while waiting.
+      setContent((prev) => {
+        const prevTrimmed = prev.trim();
+        return prevTrimmed.length > 0 ? `${prev}\n\n---\n\n${seedText}` : seedText;
+      });
+      setHasSeededContext(true);
+      // Focus the textarea so the founder can immediately tweak the seed. Move
+      // the caret to the end of the appended block.
+      requestAnimationFrame(() => {
+        const el = contentRef.current;
+        if (!el) return;
+        el.focus();
+        const pos = el.value.length;
+        try {
+          el.setSelectionRange(pos, pos);
+        } catch {
+          // Some browsers throw on textarea setSelectionRange during focus
+          // transitions; safe to ignore — the append still landed.
+        }
+        el.scrollTop = el.scrollHeight;
+      });
+    } catch {
+      setSeedError("Couldn't load workspace context. Please try again.");
+    } finally {
+      setSeedLoading(false);
+    }
   }
 
   // TIM-3675 review-fix: Generate is now enabled when EITHER the draft OR
@@ -430,6 +503,9 @@ export function BPWriteWithAIModal({
               {error && (
                 <p className="text-sm text-[var(--error)]">{error}</p>
               )}
+              {seedError && (
+                <p className="text-sm text-[var(--error)]">{seedError}</p>
+              )}
 
               <div>
                 <div className="flex items-center justify-between gap-3 mb-1.5">
@@ -439,23 +515,26 @@ export function BPWriteWithAIModal({
                   >
                     Current draft
                   </label>
-                  {/* TIM-3672 follow-up: seed the draft with excerpts pulled
-                      from other populated BP sections. Hidden when there is
-                      nothing to pull. Disabled after one click per session so
-                      the user can't stack duplicate blocks. */}
-                  {otherSectionsForContext && otherSectionsForContext.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleSeedFromOtherSections}
-                      disabled={hasSeededContext}
-                      className="text-[11px] font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
-                    >
-                      <Sparkles size={11} aria-hidden="true" />
-                      {hasSeededContext
-                        ? "Context added"
-                        : `Seed from other sections (${otherSectionsForContext.length})`}
-                    </button>
-                  )}
+                  {/* TIM-3854: seed the draft with per-workspace summarized
+                      context per the board mapping. Server decides whether
+                      any workspace has content; we always show the button
+                      because "workspace is empty" is itself useful signal
+                      (rendered as an explicit empty-hint line in the seed).
+                      Disabled after one click so the user can't stack
+                      duplicate blocks. */}
+                  <button
+                    type="button"
+                    onClick={() => void handleSeedFromOtherSections()}
+                    disabled={hasSeededContext || seedLoading}
+                    className="text-[11px] font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
+                  >
+                    <Sparkles size={11} aria-hidden="true" />
+                    {hasSeededContext
+                      ? "Context added"
+                      : seedLoading
+                      ? "Loading..."
+                      : "Seed from your workspaces"}
+                  </button>
                 </div>
                 <p className="text-[11px] text-[var(--muted-foreground)] mb-1.5">
                   {initialContent.trim().length > 0

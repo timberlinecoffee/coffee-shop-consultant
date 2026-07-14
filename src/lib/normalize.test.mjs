@@ -9,6 +9,7 @@ import {
   stripAIJargon,
   applyVoiceRules,
   stripEmojiFromBody,
+  stripPlaceholderTokens,
   normalizeAIOutput,
 } from "./normalize.ts";
 
@@ -90,7 +91,58 @@ test("normalizeAIOutput leaves multi-line prose in sentence case", () => {
 });
 
 test("all functions are safe on empty input", () => {
-  for (const fn of [toTitleCase, stripAIJargon, applyVoiceRules, stripEmojiFromBody, normalizeAIOutput]) {
+  for (const fn of [toTitleCase, stripAIJargon, applyVoiceRules, stripEmojiFromBody, stripPlaceholderTokens, normalizeAIOutput]) {
     assert.equal(fn(""), "");
   }
+});
+
+// TIM-3854: defense-in-depth against LLM "HEREHEREHERE..." confusion output.
+// Root cause is upstream (circular BP-to-BP seed replaced with workspace
+// seed) — this scrubber makes sure a garbage token from any lane never
+// reaches the founder-facing preview.
+
+test("stripPlaceholderTokens removes HEREHEREHERE and similar repeats", () => {
+  assert.equal(stripPlaceholderTokens("HEREHEREHERE"), "");
+  // Post-strip whitespace collapsed to a single space — the "double space
+  // blemish" was called out in TIM-3854 code review; matched here so a
+  // regression re-introducing it fails this pin.
+  assert.equal(stripPlaceholderTokens("HEREHEREHEREHERE more text"), " more text");
+  assert.equal(stripPlaceholderTokens("Prefix TODOTODOTODO suffix"), "Prefix suffix");
+  assert.equal(stripPlaceholderTokens("Repeat HERE HERE HERE space"), "Repeat space");
+});
+
+test("stripPlaceholderTokens removes bracketed [FILL IN] / {{VAR}} placeholders", () => {
+  // Punctuation-adjacent placeholders leave no stranded space before the punct.
+  assert.equal(stripPlaceholderTokens("Total: [FILL IN] units"), "Total: units");
+  // Trailing space at end-of-string is preserved (real prose ends in a period
+  // or newline that trims cleanly). The blemish we care about is double-space
+  // IN the middle of a paragraph.
+  assert.equal(stripPlaceholderTokens("Total: [FILL_IN]"), "Total: ");
+  assert.equal(stripPlaceholderTokens("Value {{PLACEHOLDER}} here"), "Value here");
+  assert.equal(stripPlaceholderTokens("Insert [INSERT SHOP NAME] there"), "Insert there");
+});
+
+test("stripPlaceholderTokens removes XXXX / ____ visual placeholders", () => {
+  assert.equal(stripPlaceholderTokens("XXXXXX plans"), " plans");
+  assert.equal(stripPlaceholderTokens("Address: ______"), "Address: ");
+});
+
+test("stripPlaceholderTokens leaves legit ALLCAPS acronyms alone", () => {
+  // Single ALLCAPS token — leave untouched.
+  assert.equal(stripPlaceholderTokens("Use the SBA loan program."), "Use the SBA loan program.");
+  assert.equal(stripPlaceholderTokens("NNN lease with CAM."), "NNN lease with CAM.");
+  // Two distinct acronyms in a row — also not the "HEREHERE" pattern.
+  assert.equal(stripPlaceholderTokens("SCA and USA."), "SCA and USA.");
+});
+
+test("normalizeAIOutput scrubs HERE placeholder in the pipeline", () => {
+  // "HEREHEREHERE" was long enough (12 chars, no punctuation, ≤ 8 words) to
+  // slip through isLabelShaped's guard and could have hit the title-case
+  // pass. The scrubber runs BEFORE isLabelShaped so the empty result is
+  // returned as-is.
+  assert.equal(normalizeAIOutput("HEREHEREHEREHERE"), "");
+  assert.equal(
+    normalizeAIOutput("The Kestrel opens in HEREHEREHERE with a full team."),
+    "The Kestrel opens in with a full team.",
+  );
 });
