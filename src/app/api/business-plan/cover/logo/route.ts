@@ -108,7 +108,8 @@ export async function POST(request: NextRequest) {
     .upsert({ plan_id: plan.id, logo_path: storagePath }, { onConflict: "plan_id" });
 
   if (dbError) {
-    return Response.json({ error: dbError.message }, { status: 500 });
+    console.error("[business-plan/cover/logo] DB error:", dbError);
+    return Response.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 
   return Response.json({ logo_path: storagePath });
