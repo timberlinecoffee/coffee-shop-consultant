@@ -6,6 +6,13 @@
 // relative to its ingredient's package unit. We constrain the model to the
 // five supported units, but defensively normalize any stray unit the model
 // returns (with amount conversion where the conversion is well-defined).
+//
+// TIM-3862: Enhanced response shape supports inventory context injection.
+// - group: 'ingredient' | 'supply' — two-group tagging (TIM-3861 follow-up)
+// - action: 'keep' | 'add' | 'replace' — server-side guard rejects 'replace'
+//   on inventory-linked items before results reach the review panel.
+// - inventory_item_id: references an existing menu_ingredient row when the
+//   model matched the item to the user's inventory.
 
 import { toTitleCase } from "./text.ts"
 import { normalizeAIOutput } from "./normalize.ts"
@@ -13,11 +20,17 @@ import type { IngredientUnit } from "./menu"
 
 export const ALLOWED_UNITS: IngredientUnit[] = ["g", "ml", "oz", "each", "piece"]
 
+export type RecipeItemGroup = "ingredient" | "supply"
+export type RecipeItemAction = "keep" | "add" | "replace"
+
 export type SuggestedRecipeLine = {
   name: string
   amount: number
   unit: IngredientUnit
   note?: string
+  group?: RecipeItemGroup
+  action?: RecipeItemAction
+  inventory_item_id?: string | null
 }
 
 // Map a raw unit string to a supported unit plus the multiplier needed to
@@ -163,6 +176,9 @@ function extractLines(candidate: string): SuggestedRecipeLine[] | null {
   const lines: SuggestedRecipeLine[] = []
   const seen = new Set<string>()
 
+  const VALID_GROUPS = new Set<string>(["ingredient", "supply"])
+  const VALID_ACTIONS = new Set<string>(["keep", "add", "replace"])
+
   for (const raw of rawLines) {
     if (!raw || typeof raw !== "object") continue
     const r = raw as Record<string, unknown>
@@ -177,9 +193,59 @@ function extractLines(candidate: string): SuggestedRecipeLine[] | null {
     const { unit, amount } = normalizeUnitAndAmount(r.unit, r.amount)
     const note = typeof r.note === "string" && r.note.trim() ? normalizeAIOutput(r.note.trim()) : undefined
 
-    lines.push({ name, amount, unit, note })
+    const rawGroup = typeof r.group === "string" ? r.group.trim().toLowerCase() : undefined
+    const group = rawGroup && VALID_GROUPS.has(rawGroup) ? (rawGroup as RecipeItemGroup) : undefined
+
+    const rawAction = typeof r.action === "string" ? r.action.trim().toLowerCase() : undefined
+    const action = rawAction && VALID_ACTIONS.has(rawAction) ? (rawAction as RecipeItemAction) : undefined
+
+    const inventory_item_id =
+      typeof r.inventory_item_id === "string" && r.inventory_item_id.trim()
+        ? r.inventory_item_id.trim()
+        : null
+
+    lines.push({ name, amount, unit, note, group, action, inventory_item_id })
     if (lines.length >= MAX_LINES) break
   }
 
   return lines.length > 0 ? lines : null
+}
+
+// TIM-3862: Server-side guard — rejects any AI-suggested 'replace' action
+// that targets an inventory-linked recipe line. Converts to 'keep' when the
+// suggested item maps to the same ingredient (same inventory_item_id or same
+// name as an existing linked item), or 'add' when it is a genuinely different
+// item. Never lets a linked-item replacement reach the review panel.
+//
+// linkedIngredientIds: set of ingredient_id values currently on the item's recipe.
+// linkedIngredientNames: case-insensitive names of those same ingredients.
+// requestId: for server-side audit log.
+export function applyLinkedItemGuard(
+  lines: SuggestedRecipeLine[],
+  linkedIngredientIds: ReadonlySet<string>,
+  linkedIngredientNames: ReadonlySet<string>,
+  requestId: string,
+): SuggestedRecipeLine[] {
+  return lines.map((line) => {
+    if (line.action !== "replace") return line
+
+    const targetsLinkedById =
+      line.inventory_item_id != null && linkedIngredientIds.has(line.inventory_item_id)
+    const targetsLinkedByName = linkedIngredientNames.has(line.name.toLowerCase())
+
+    if (targetsLinkedById || targetsLinkedByName) {
+      console.warn(
+        `suggest-recipe [${requestId}]: rejected linked-item replace for "${line.name}"` +
+          ` (id=${line.inventory_item_id ?? "none"}) — converted to keep`,
+      )
+      return { ...line, action: "keep" as RecipeItemAction }
+    }
+
+    // 'replace' targeting a non-linked item: treat as an add so the review
+    // panel shows it as a new candidate rather than a destructive swap.
+    console.info(
+      `suggest-recipe [${requestId}]: demoted replace→add for non-linked item "${line.name}"`,
+    )
+    return { ...line, action: "add" as RecipeItemAction }
+  })
 }
