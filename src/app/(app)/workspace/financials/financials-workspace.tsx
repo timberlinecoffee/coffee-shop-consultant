@@ -286,6 +286,8 @@ interface Props {
   menuBlendedCogsPct?: number | null;
   // TIM-1168: per-item breakdown for the "How is this calculated?" reveal.
   menuCogsItems?: { name: string; price_cents: number; cogs_cents: number; expected_mix_pct: number; cogs_pct: number }[];
+  // TIM-3733: menu items grouped by category — seeds the Finance COGS sync section on first render.
+  menuCogsByCategory?: MenuCogsCategoryGroup[];
   // TIM-2518: resolved local minimum wage. Threaded to PersonnelEditor so the
   // hourly wage input warns when the entered rate is below the legal floor.
   minimumWage?: MinWageInfo | null;
@@ -1871,6 +1873,7 @@ export function FinancialsWorkspace({
   initialEquipmentItems = [],
   menuBlendedCogsPct = null,
   menuCogsItems = [],
+  menuCogsByCategory = [],
   minimumWage = null,
   initialAccentColor = null,
 }: Props) {
@@ -1919,7 +1922,8 @@ export function FinancialsWorkspace({
   const [liveMenuBlendedCogsPct, setLiveMenuBlendedCogsPct] = useState<number | null>(menuBlendedCogsPct);
   const [liveMenuCogsItems, setLiveMenuCogsItems] = useState(menuCogsItems);
   // TIM-3733: category-grouped menu COGS for the Finance COGS sync section.
-  const [liveMenuCogsByCategory, setLiveMenuCogsByCategory] = useState<MenuCogsCategoryGroup[]>([]);
+  // Seeded from server props so the section is populated on first render.
+  const [liveMenuCogsByCategory, setLiveMenuCogsByCategory] = useState<MenuCogsCategoryGroup[]>(menuCogsByCategory);
   const [liveEquipmentItems, setLiveEquipmentItems] = useState<EquipmentItem[]>(initialEquipmentItems);
   const [isRefreshingMenu, setIsRefreshingMenu] = useState(false);
   const [isRefreshingEquipment, setIsRefreshingEquipment] = useState(false);
@@ -2171,6 +2175,7 @@ export function FinancialsWorkspace({
         }
         if (!res.ok) throw new Error(`save failed (${res.status})`);
         const data = (await res.json()) as { updated_at?: string };
+        if (controller.signal.aborted) return;
         setSaveState({ kind: "saved", at: data?.updated_at ?? new Date().toISOString() });
       } catch (err) {
         if (controller.signal.aborted) return;
