@@ -1355,40 +1355,41 @@ function RecipeTabContent({
             No ingredients yet. Add one below to build the recipe and compute COGS.
           </p>
         ) : (() => {
+          // Build a lookup map so each line resolves its ingredient in O(1)
+          // instead of O(n) per find call.
+          const ingMap = new Map(ingredients.map((i) => [i.id, i]));
+
           // Partition recipe lines into Ingredients vs Supplies & Packaging.
           // Both groups roll into total COGS — the total per item is unchanged.
-          const ingredientLines = recipeLines.filter((line) => {
-            const ing = ingredients.find((i) => i.id === line.ingredient_id);
-            return inferIngredientRole(ing ?? null) === 'ingredient';
-          });
-          const supplyLines = recipeLines.filter((line) => {
-            const ing = ingredients.find((i) => i.id === line.ingredient_id);
-            return inferIngredientRole(ing ?? null) === 'supply';
-          });
-
-          function renderGroup(lines: typeof recipeLines) {
-            return (
-              <ul className="space-y-1 mb-2">
-                {lines.map((line) => {
-                  const ing = ingredients.find((i) => i.id === line.ingredient_id);
-                  const lineCost = ing ? line.amount * costPerUnit(ing) : null;
-                  return (
-                    <li key={line.id}>
-                      <RecipeLineRow
-                        line={line}
-                        ingredient={ing ?? null}
-                        lineCost={lineCost}
-                        canEdit={canEdit}
-                        isFromCategoryDefault={categoryDefaultIngredientIds.has(line.ingredient_id)}
-                        onUpdate={(patch) => onUpdateRecipeLine(line.id, patch)}
-                        onDelete={() => onDeleteRecipeLine(line.id)}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-            );
+          const ingredientLines: typeof recipeLines = [];
+          const supplyLines: typeof recipeLines = [];
+          for (const line of recipeLines) {
+            const ing = ingMap.get(line.ingredient_id);
+            if (inferIngredientRole(ing ?? null) === 'supply') {
+              supplyLines.push(line);
+            } else {
+              ingredientLines.push(line);
+            }
           }
+
+          const groupItems = (lines: typeof recipeLines) =>
+            lines.map((line) => {
+              const ing = ingMap.get(line.ingredient_id);
+              const lineCost = ing ? line.amount * costPerUnit(ing) : null;
+              return (
+                <li key={line.id}>
+                  <RecipeLineRow
+                    line={line}
+                    ingredient={ing ?? null}
+                    lineCost={lineCost}
+                    canEdit={canEdit}
+                    isFromCategoryDefault={categoryDefaultIngredientIds.has(line.ingredient_id)}
+                    onUpdate={(patch) => onUpdateRecipeLine(line.id, patch)}
+                    onDelete={() => onDeleteRecipeLine(line.id)}
+                  />
+                </li>
+              );
+            });
 
           return (
             <div className="space-y-4 mb-4">
@@ -1397,7 +1398,7 @@ function RecipeTabContent({
                   <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-2">
                     Ingredients
                   </p>
-                  {renderGroup(ingredientLines)}
+                  <ul className="space-y-1 mb-2">{groupItems(ingredientLines)}</ul>
                 </div>
               )}
               {supplyLines.length > 0 && (
@@ -1405,7 +1406,7 @@ function RecipeTabContent({
                   <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-2">
                     Supplies and Packaging
                   </p>
-                  {renderGroup(supplyLines)}
+                  <ul className="space-y-1 mb-2">{groupItems(supplyLines)}</ul>
                 </div>
               )}
             </div>
