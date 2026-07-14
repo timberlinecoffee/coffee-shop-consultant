@@ -13,6 +13,7 @@ import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { BP_SECTION_SPECS, BP_MAX_TOKENS_BY_SECTION } from "@/lib/business-plan-prompts";
 import type { NextRequest } from "next/server";
 
 const TTFT_MS = 8_000;
@@ -88,20 +89,37 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "sectionKey and currentContent required" }, { status: 400 });
   }
 
-  const systemPrompt = `You are an expert coffee shop business advisor rewriting a section of a founder's business plan. Write in the founder's direct, plain voice -- confident and operational, not corporate or AI-sounding.
+  // TIM-3854: pull the section spec (length, structure, per-section
+  // voice guidance) into the /improve prompt so the rewrite is section-aware
+  // and shaped like proper business plan prose. Prior /improve only rewrote
+  // whatever was in the textarea "for clarity" — which is why seeded bullet
+  // dumps came back as improved bullet dumps instead of narrative paragraphs.
+  const sectionSpec = BP_SECTION_SPECS[sectionKey] ?? "";
+  const sectionSpecBlock = sectionSpec
+    ? `\n\nSection quality spec (${sectionTitle}):\n${sectionSpec}`
+    : "";
+
+  const systemPrompt = `You are an expert coffee shop business advisor rewriting the "${sectionTitle}" section of a founder's business plan. Write in the founder's direct, plain voice -- confident and operational, not corporate or AI-sounding.
 
 Rules:
 - Return only the improved section text -- no preamble, no labels, no explanation.
+- **Output must be flowing business plan prose in complete sentences and paragraphs, not a bullet-list dump of raw data.** If the input is a bullet list, category count, price range, or workspace summary, transform it into a narrative that a lender/landlord/investor would read.
+- Use subheadings when the section spec calls for them; otherwise write in paragraphs.
+- Weave the founder's actual shop name, location, numbers, personas, and specifics into the prose. Reference them by name, do not restate them as raw data.
+- For Menu & Pricing / Products & Services: write a **strategy narrative** — pricing philosophy, category mix, signature-item logic — NOT a flat SKU list.
+- For Financial sections: cite the headline metrics (revenue, margin, net income) as part of a **story about the business**, NOT a spreadsheet paste.
 - Keep coffee-specific vocabulary (espresso, pour-over, barista, daypart, CAM, neighborhood traffic).
 - Remove filler phrases and make every sentence earn its place.
-- Improve clarity, flow, and persuasiveness without changing the substance or inventing new facts.
-- Match the length of the original unless shorter is clearly better.
+- Improve clarity, flow, and persuasiveness without changing the substance or inventing new facts. Numbers in the input must not be rounded away or invented.
+- If the input contains a "FROM ... WORKSPACE:" seed block, treat those bullets as source data (not the final draft). Extract the specifics, then write the section prose that draws on them.
+- If a seed block says "No content yet. Fill out the X workspace...", DO NOT include that placeholder in the output. Skip it and write from what IS available.
+- Length target: follow the section spec below.
 - No em dashes anywhere. Use a regular dash with spaces ( -- ) if you need a pause.
 - No AI vocabulary: leverage, unlock, embark, elevate, delve, seamlessly, robust, comprehensive, innovative, holistic, synergy, passionate.
 - No filler phrases: "high-quality experience," "welcoming space," "wide variety," "we pride ourselves on," "is committed to."
 - Title case for named items (role titles, equipment names, drink names, persona names). Body prose is sentence case.
-- Where the original has terse data summaries (bullet lists of raw numbers with no prose), rewrite them as complete sentences and paragraphs.
-- If the founder supplies user instructions below, treat them as the primary rewrite directive: prioritize them over your own stylistic instincts, but never break the rules above.`;
+- **Never output template placeholders like "HERE", "[FILL IN]", "TODO", or any repeated capitalized token. If you don't have a specific fact, write around it in plain prose.**
+- If the founder supplies user instructions below, treat them as the primary rewrite directive: prioritize them over your own stylistic instincts, but never break the rules above.${sectionSpecBlock}`;
 
   const instructionsBlock = boundedInstructions.length > 0
     ? `\n\nUser instructions (apply these when rewriting):\n${boundedInstructions}`
@@ -142,11 +160,17 @@ ${currentContent}${instructionsBlock}`;
 
       try {
         const t0 = Date.now();
+        // TIM-3854: honor the per-section max-tokens map so long-form
+        // sections (execution-marketing-sales, financial-plan-statements,
+        // opportunity-target-market) can render their full spec instead of
+        // truncating at 1024. Falls back to 1200 for unmapped keys — same
+        // default as buildBpSectionPrompt.
+        const maxTokens = BP_MAX_TOKENS_BY_SECTION[sectionKey] ?? 1200;
         const response = streamScoutTurn({
           lane: "generate_business_plan_section",
           systemBlocks: [{ text: systemPrompt }],
           messages: [{ role: "user", content: userMessage }],
-          maxTokens: 1024,
+          maxTokens,
           userId: user.id,
           routeTag: "/api/business-plan/improve",
         });
