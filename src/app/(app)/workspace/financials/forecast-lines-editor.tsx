@@ -745,9 +745,13 @@ interface SectionProps {
   isRefreshingMenu?: boolean;
   onRefreshEquipment?: () => void;
   isRefreshingEquipment?: boolean;
+  // TIM-3849: outer section already carries the label; suppress the inline
+  // category header so it does not read redundantly (e.g. "Additional Revenue
+  // Streams" then "REVENUE" directly below).
+  hideHeader?: boolean;
 }
 
-function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, starterLabels, overrideCounts, manualLines, onClearLineOverrides, onGoToProjections, onRefreshMenu, isRefreshingMenu, onRefreshEquipment, isRefreshingEquipment }: SectionProps) {
+function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode, streamOptions, menuBlendedCogsPct, menuCogsItems, starterLabels, overrideCounts, manualLines, onClearLineOverrides, onGoToProjections, onRefreshMenu, isRefreshingMenu, onRefreshEquipment, isRefreshingEquipment, hideHeader }: SectionProps) {
   const meta = CATEGORY_META[category];
   const myLines = lines.filter((l) => l.category === category);
   const hasMenuData = typeof menuBlendedCogsPct === "number";
@@ -800,11 +804,13 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5">
-          <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">{meta.label}</p>
-          <InfoTip label={meta.label}>{meta.hint}</InfoTip>
-        </div>
+      <div className={`flex items-center ${hideHeader ? "justify-end" : "justify-between"} mb-2`}>
+        {!hideHeader && (
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)]">{meta.label}</p>
+            <InfoTip label={meta.label}>{meta.hint}</InfoTip>
+          </div>
+        )}
         {canEdit && (
           <button
             type="button"
@@ -904,6 +910,10 @@ interface Props {
   isRefreshingMenu?: boolean;
   onRefreshEquipment?: () => void;
   isRefreshingEquipment?: boolean;
+  // TIM-3849: hide the inline category header (label + hint icon) when the
+  // outer wrapper already titles the section. Kept opt-in so multi-category
+  // renders (Costs & Expenses) continue to show per-category labels.
+  hideCategoryHeader?: boolean;
 }
 
 // Build the revenue stream picker options from the current forecast lines.
@@ -939,6 +949,7 @@ export function ForecastLinesEditor({
   isRefreshingMenu,
   onRefreshEquipment,
   isRefreshingEquipment,
+  hideCategoryHeader,
 }: Props) {
   const streamOptions = streamOptionsFromLines(lines);
   const shared = {
@@ -957,6 +968,7 @@ export function ForecastLinesEditor({
     isRefreshingMenu,
     onRefreshEquipment,
     isRefreshingEquipment,
+    hideHeader: hideCategoryHeader,
   };
   return (
     <div className="space-y-6">
