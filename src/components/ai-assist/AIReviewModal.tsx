@@ -26,6 +26,9 @@ export interface SuggestionPayload {
   originalValue: string;
   proposedValue: string;
   isStructured?: boolean;
+  // TIM-3860: when true, use the ingredient-specific table/diff/form-editor UI
+  // instead of the generic StructuredDiff. Only set for recipe suggestions.
+  isRecipeLines?: boolean;
   // TIM-1798: cross-workspace coordinated proposals. When present, cards are
   // grouped by workspaceLabel. A `derived` card is a linked figure (e.g. the
   // Financials equipment line + startup-cost total that follow an equipment-cost
@@ -318,6 +321,65 @@ function IngredientDiff({ original, proposed }: { original: string; proposed: st
   );
 }
 
+// Generic structured diff — fallback for isStructured: true suggestions that are
+// NOT recipe lines (prep steps, supplier lists, milestones, cross-suite figures).
+// The ingredient-specific path requires isRecipeLines: true.
+function StructuredDiff({ original, proposed }: { original: string; proposed: string }) {
+  let origRows: string[] = [];
+  let propRows: string[] = [];
+  try { origRows = (JSON.parse(original) as unknown[]).map((r) => JSON.stringify(r)); } catch { origRows = original.split("\n").filter(Boolean); }
+  try { propRows = (JSON.parse(proposed) as unknown[]).map((r) => JSON.stringify(r)); } catch { propRows = proposed.split("\n").filter(Boolean); }
+
+  const origSet = new Set(origRows);
+  const propSet = new Set(propRows);
+
+  const allRows = [
+    ...propRows.filter((r) => !origSet.has(r)).map((r) => ({ row: r, kind: "added" as const })),
+    ...origRows.filter((r) => !propSet.has(r)).map((r) => ({ row: r, kind: "removed" as const })),
+    ...propRows.filter((r) => origSet.has(r)).map((r) => ({ row: r, kind: "unchanged" as const })),
+  ];
+
+  function parseRow(raw: string): Record<string, string> {
+    try { return JSON.parse(raw) as Record<string, string>; } catch { return { value: raw }; }
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+      <table className="w-full text-xs">
+        <tbody>
+          {allRows.map(({ row, kind }, i) => {
+            const parsed = parseRow(row);
+            const cells = Object.values(parsed).slice(0, 4);
+            return (
+              <tr
+                key={i}
+                className={
+                  kind === "added"
+                    ? "bg-[var(--teal-tint-500)]"
+                    : kind === "removed"
+                    ? "bg-red-50"
+                    : "bg-white"
+                }
+              >
+                {cells.map((cell, j) => (
+                  <td
+                    key={j}
+                    className={`px-3 py-2 border-b border-[var(--border)] ${
+                      kind === "removed" ? "line-through text-[var(--dark-grey)]" : "text-[var(--foreground)]"
+                    }`}
+                  >
+                    {String(cell ?? "")}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // Form-based editor for structured recipe ingredient lists (Rule 3: server
 // validates fields on the apply route; the form just produces valid JSON).
 const RECIPE_UNITS = ["g", "ml", "oz", "each", "piece"] as const;
@@ -492,8 +554,12 @@ function ChangeCard({
           <div className="space-y-3">
             <div>
               <p className="text-xs font-medium text-[var(--dark-grey)] uppercase tracking-wide mb-1">Current</p>
-              {sug.isStructured ? (
+              {sug.isRecipeLines ? (
                 <IngredientTable value={sug.originalValue} />
+              ) : sug.isStructured ? (
+                <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2">
+                  <StructuredDiff original={sug.originalValue} proposed={sug.originalValue} />
+                </div>
               ) : (
                 <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2">
                   <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
@@ -504,8 +570,12 @@ function ChangeCard({
             </div>
             <div>
               <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide mb-1">Suggested</p>
-              {sug.isStructured ? (
+              {sug.isRecipeLines ? (
                 <IngredientDiff original={sug.originalValue} proposed={cardState.editedValue} />
+              ) : sug.isStructured ? (
+                <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2">
+                  <StructuredDiff original={sug.originalValue} proposed={cardState.editedValue} />
+                </div>
               ) : (
                 <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2">
                   <DiffText original={sug.originalValue} proposed={cardState.editedValue} />
@@ -518,8 +588,12 @@ function ChangeCard({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs font-medium text-[var(--dark-grey)] uppercase tracking-wide mb-1.5">Current</p>
-              {sug.isStructured ? (
+              {sug.isRecipeLines ? (
                 <IngredientTable value={sug.originalValue} />
+              ) : sug.isStructured ? (
+                <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2.5 min-h-[60px]">
+                  <StructuredDiff original={sug.originalValue} proposed={sug.originalValue} />
+                </div>
               ) : (
                 <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2.5 min-h-[60px]">
                   <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
@@ -530,8 +604,12 @@ function ChangeCard({
             </div>
             <div>
               <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide mb-1.5">Suggested</p>
-              {sug.isStructured ? (
+              {sug.isRecipeLines ? (
                 <IngredientDiff original={sug.originalValue} proposed={cardState.editedValue} />
+              ) : sug.isStructured ? (
+                <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2.5 min-h-[60px]">
+                  <StructuredDiff original={sug.originalValue} proposed={cardState.editedValue} />
+                </div>
               ) : (
                 <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2.5 min-h-[60px]">
                   <DiffText original={sug.originalValue} proposed={cardState.editedValue} />
@@ -546,9 +624,9 @@ function ChangeCard({
       {isEditing && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide">
-            {sug.isStructured ? "Edit Ingredients" : "Editing Suggested Text"}
+            {sug.isRecipeLines ? "Edit Ingredients" : "Editing Suggested Text"}
           </p>
-          {sug.isStructured ? (
+          {sug.isRecipeLines ? (
             <IngredientFormEditor value={cardState.editedValue} onChange={onEditChange} />
           ) : (
             <textarea

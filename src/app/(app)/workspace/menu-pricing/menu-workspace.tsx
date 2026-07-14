@@ -4234,6 +4234,7 @@ export function MenuWorkspace({
             originalValue: JSON.stringify(currentRawLines),
             proposedValue: JSON.stringify(data.lines),
             isStructured: true,
+            isRecipeLines: true,
           },
         ],
         context: { workspace: "Menu & Pricing", section: item.name },
