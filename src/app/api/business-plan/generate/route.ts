@@ -523,8 +523,8 @@ export async function POST(request: NextRequest) {
         controller.close();
       } catch (err) {
         cleanup();
-        const msg = err instanceof Error ? err.message : "Unexpected error";
-        controller.enqueue(enc.encode(sse("error", { message: msg })));
+        console.error("[business-plan/generate] stream error:", err);
+        controller.enqueue(enc.encode(sse("error", { message: "Something went wrong. Please try again." })));
         controller.close();
       }
     },

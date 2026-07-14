@@ -341,7 +341,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error("spreadsheet parse error:", err);
     return Response.json(
-      { error: err instanceof Error ? err.message : "Could not parse spreadsheet" },
+      { error: "Could not parse spreadsheet. Please check the file format and try again." },
       { status: 422 }
     );
   }
@@ -356,7 +356,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error("AI normalise error:", err);
     return Response.json(
-      { error: err instanceof Error ? err.message : "AI parse failed" },
+      { error: "Failed to process spreadsheet with AI. Please try again." },
       { status: 500 }
     );
   }

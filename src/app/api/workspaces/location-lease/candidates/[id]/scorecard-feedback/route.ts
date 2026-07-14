@@ -155,8 +155,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
         controller.enqueue(encoder.encode(sse("done", { threadId: crypto.randomUUID(), text: normalizeAIOutput(fullText) })))
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "AI feedback failed."
-        controller.enqueue(encoder.encode(sse("error", { code: "error", message: msg })))
+        console.error("[scorecard-feedback] stream error:", err)
+        controller.enqueue(encoder.encode(sse("error", { code: "error", message: "Something went wrong. Please try again." })))
       } finally {
         controller.close()
       }

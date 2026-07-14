@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
     );
 
   if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error("[renewal-reminder] DB error:", error);
+    return Response.json({ error: "Failed to save preference." }, { status: 500 });
   }
 
   return Response.json({ ok: true });

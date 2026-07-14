@@ -264,7 +264,7 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     const nearbyCount = Object.values(counts).reduce((a, b) => a + b, 0)
     return Response.json({ text: normalizedText, nearbyCount, generatedAt: new Date().toISOString() })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Area analysis failed."
-    return Response.json({ error: msg }, { status: 502 })
+    console.error("[area-analysis] error:", err)
+    return Response.json({ error: "Area analysis failed. Please try again." }, { status: 502 })
   }
 }

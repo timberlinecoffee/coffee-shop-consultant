@@ -134,7 +134,7 @@ export async function DELETE() {
     .from("business_plan_cover")
     .upsert({ plan_id: plan.id, logo_path: null }, { onConflict: "plan_id" });
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) { console.error("[route] DB error:", error); return Response.json({ error: "Something went wrong. Please try again." }, { status: 500 }); }
 
   return Response.json({ ok: true });
 }

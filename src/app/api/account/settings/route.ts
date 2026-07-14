@@ -63,7 +63,7 @@ export async function PATCH(request: NextRequest) {
     .update({ ...update, updated_at: new Date().toISOString() })
     .eq("id", user.id);
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) { console.error("[route] DB error:", error); return Response.json({ error: "Something went wrong. Please try again." }, { status: 500 }); }
 
   const settings = await getAccountSettings(supabase, user.id);
   return Response.json({ data: settings });

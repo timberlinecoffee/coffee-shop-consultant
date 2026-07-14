@@ -415,11 +415,8 @@ export async function POST(request: NextRequest) {
           controller.close()
         }
       } catch (err: unknown) {
-        const message =
-          err && typeof err === "object" && "message" in err
-            ? String((err as { message: string }).message)
-            : "AI service temporarily unavailable."
-        await closeWithError("upstream_error", message)
+        console.error("[launch-readiness] stream error:", err)
+        await closeWithError("upstream_error", "AI service temporarily unavailable.")
       }
     },
   })

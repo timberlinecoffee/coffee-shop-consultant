@@ -155,8 +155,8 @@ export async function POST(request: Request) {
       localCitations = local.citations
     }
   } catch (err) {
-    localUnavailable = err instanceof Error ? err.message : "Local research unavailable"
-    console.warn("suggest-price: local range fetch failed:", localUnavailable)
+    console.warn("suggest-price: local range fetch failed:", err)
+    localUnavailable = "Local research unavailable"
   }
 
   const conceptLines: string[] = []

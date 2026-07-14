@@ -55,7 +55,7 @@ export async function GET(
     .eq("thread_id", threadId)
     .maybeSingle<ThreadDetailRow>()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error("[copilot/threads/GET] DB error:", error); return NextResponse.json({ error: "Failed to load thread." }, { status: 500 }) }
   if (!data) return NextResponse.json({ error: "Thread not found" }, { status: 404 })
 
   const raw = Array.isArray(data.messages) ? (data.messages as unknown[]) : []
@@ -123,7 +123,7 @@ export async function PATCH(
     .eq("plan_id", planId)
     .eq("thread_id", threadId)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error("[copilot/threads/PATCH] DB error:", error); return NextResponse.json({ error: "Failed to update thread." }, { status: 500 }) }
 
   return NextResponse.json({ id: threadId, title: cleanTitle })
 }
@@ -159,7 +159,7 @@ export async function DELETE(
     .eq("plan_id", planId)
     .eq("thread_id", threadId)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error("[copilot/threads/DELETE] DB error:", error); return NextResponse.json({ error: "Failed to delete thread." }, { status: 500 }) }
 
   return new NextResponse(null, { status: 204 })
 }
