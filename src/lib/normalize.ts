@@ -169,18 +169,32 @@ export function stripPlaceholderTokens(input: string): string {
 /**
  * Convenience: run all four normalizers in sequence on raw AI output.
  *
- * Order: strip jargon → apply voice rules → strip body emoji → strip
- * placeholder tokens → title-case. Title-casing is applied ONLY to
+ * Order: strip jargon → apply voice rules → strip body emoji → (opt-in)
+ * strip placeholder tokens → title-case. Title-casing is applied ONLY to
  * label-shaped fragments so paragraph copy is not wrongly capitalized
  * (toTitleCase must never run on full sentences — see text.ts). For a known
  * label field, call `toTitleCase` directly instead.
+ *
+ * `stripPlaceholders` defaults to FALSE. It is BP-specific defense-in-depth
+ * for the TIM-3854 "HEREHEREHERE..." confusion output and MUST be scoped to
+ * BP generation surfaces — enabling it globally would silently delete
+ * intentional JD template markers like `[Insert manager name]` in the
+ * hiring workspace, `XXXXXXXXX` redactions in location/buildout notes, and
+ * signature-line underscores in lease copy across ~20 non-BP AI routes.
+ * Only /api/business-plan/{improve,generate,regenerate-all} should pass true.
  */
-export function normalizeAIOutput(input: string): string {
+export interface NormalizeOptions {
+  stripPlaceholders?: boolean;
+}
+
+export function normalizeAIOutput(input: string, opts?: NormalizeOptions): string {
   if (!input) return input;
   let out = stripAIJargon(input);
   out = applyVoiceRules(out);
   out = stripEmojiFromBody(out);
-  out = stripPlaceholderTokens(out);
+  if (opts?.stripPlaceholders) {
+    out = stripPlaceholderTokens(out);
+  }
   if (isLabelShaped(out)) {
     out = toTitleCase(out);
   }

@@ -77,13 +77,25 @@ export async function POST(request: NextRequest) {
     instructions?: string;
   };
 
-  const { sectionKey, sectionTitle, currentContent, shopName } = body;
+  const { sectionKey, currentContent, shopName } = body;
   const instructions = typeof body.instructions === "string" ? body.instructions.trim() : "";
   // Rule 3 — bound user-controlled input; the rest of the prompt is fixed.
   // 2000 chars is roomy enough for a multi-sentence directive without
   // meaningfully impacting cost or letting a malicious client blow up the
   // context window.
   const boundedInstructions = instructions.slice(0, 2000);
+
+  // Rule 3 — sectionTitle is founder-authored (custom sections POST accepts
+  // any string ≤200 chars with only trim). It's interpolated into a
+  // double-quoted phrase in the system prompt, so a raw `"` or newline
+  // would escape the quoted region and inject arbitrary prompt rules. Strip
+  // newlines/quotes/backticks and hard-cap length before use.
+  const rawTitle = typeof body.sectionTitle === "string" ? body.sectionTitle : "";
+  const sectionTitle = rawTitle
+    .replace(/[\r\n\t"'`\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120) || "Untitled section";
 
   if (!sectionKey || !currentContent) {
     return Response.json({ error: "sectionKey and currentContent required" }, { status: 400 });
@@ -94,7 +106,13 @@ export async function POST(request: NextRequest) {
   // and shaped like proper business plan prose. Prior /improve only rewrote
   // whatever was in the textarea "for clarity" — which is why seeded bullet
   // dumps came back as improved bullet dumps instead of narrative paragraphs.
-  const sectionSpec = BP_SECTION_SPECS[sectionKey] ?? "";
+  //
+  // hasOwnProperty guard so prototype keys ("toString", "constructor",
+  // "__proto__") can't resolve to inherited Function values that then get
+  // interpolated into the prompt or passed as maxTokens.
+  const sectionSpec = Object.prototype.hasOwnProperty.call(BP_SECTION_SPECS, sectionKey)
+    ? (BP_SECTION_SPECS[sectionKey] ?? "")
+    : "";
   const sectionSpecBlock = sectionSpec
     ? `\n\nSection quality spec (${sectionTitle}):\n${sectionSpec}`
     : "";
@@ -165,7 +183,9 @@ ${currentContent}${instructionsBlock}`;
         // opportunity-target-market) can render their full spec instead of
         // truncating at 1024. Falls back to 1200 for unmapped keys — same
         // default as buildBpSectionPrompt.
-        const maxTokens = BP_MAX_TOKENS_BY_SECTION[sectionKey] ?? 1200;
+        const maxTokens = Object.prototype.hasOwnProperty.call(BP_MAX_TOKENS_BY_SECTION, sectionKey)
+          ? (BP_MAX_TOKENS_BY_SECTION[sectionKey] ?? 1200)
+          : 1200;
         const response = streamScoutTurn({
           lane: "generate_business_plan_section",
           systemBlocks: [{ text: systemPrompt }],
@@ -262,7 +282,7 @@ ${currentContent}${instructionsBlock}`;
         );
         void isActive; // referenced for future per-status billing; keeps lint happy.
 
-        controller.enqueue(enc.encode(sse("done", { text: normalizeAIOutput(fullText) })));
+        controller.enqueue(enc.encode(sse("done", { text: normalizeAIOutput(fullText, { stripPlaceholders: true }) })));
         controller.close();
       } catch (err) {
         cleanup();

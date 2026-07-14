@@ -74,6 +74,17 @@ function isPlaceholderExcerpt(content: string): boolean {
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
+  try {
+    return await handleSeedContext(request);
+  } catch (err) {
+    // Rule 5 — sanitized error, no raw stack to the browser. Server-side
+    // console-log is fine (Vercel captures it into the function logs).
+    console.error("[business-plan/seed-context] uncaught", err);
+    return Response.json({ error: "Failed to build seed context. Please try again." }, { status: 500 });
+  }
+}
+
+async function handleSeedContext(request: NextRequest): Promise<Response> {
   const supabase = await createClient();
 
   const { data: { user }, error: userErr } = await supabase.auth.getUser();
@@ -181,12 +192,22 @@ export async function POST(request: NextRequest): Promise<Response> {
   // Concept/Financial anchor the seed and the BP sections layer on top.
   // `heading` is set so the block reads as "FROM YOUR <SECTION> DRAFT:"
   // instead of the ugly workspace-shaped default.
+  //
+  // BP excerpts are paragraph-shaped prose (multi-line, may start with `- `
+  // if the founder wrote a list). We render each non-empty line as its own
+  // "- <line>" bullet so the formatter's `\n`-join lays it out cleanly. If
+  // the founder-authored line already starts with `- ` or `* `, strip the
+  // marker first — otherwise we double-dash it to "- - Foo".
   const bpSectionBlocks: SeedBlock[] = sectionKey === "executive-summary"
     ? bpExcerpts.map((e, idx) => ({
         id: `bp-section:${idx}`,
         label: e.title,
         heading: `FROM YOUR ${e.title.toUpperCase()} DRAFT:`,
-        bullets: [`- ${e.excerpt}`],
+        bullets: e.excerpt
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0)
+          .map((line) => `- ${line.replace(/^[-*]\s+/, "")}`),
         isEmpty: false,
       }))
     : [];

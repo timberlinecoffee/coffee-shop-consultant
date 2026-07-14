@@ -27,7 +27,7 @@ import {
   PERSONA_SPEND_LABELS,
   PERSONA_VISIT_FREQUENCY_LABELS,
 } from "../concept.ts";
-import { formatCurrencyAmount } from "../currency.ts";
+import { formatCurrencyAmount, formatMinorUnits } from "../currency.ts";
 
 // Structural mirrors of the Bp* interfaces from src/lib/business-plan.ts.
 // Duplicated (not imported) so this module has no transitive dependency on
@@ -176,9 +176,17 @@ const SECTION_WORKSPACE_MAP: Partial<Record<string, SeedWorkspaceKey[]>> = {
 };
 
 /** Return the ordered source workspaces for a BP section, or ["concept"] as
- *  a defensive fallback for any unmapped custom/new key. */
+ *  a defensive fallback for any unmapped custom/new key.
+ *
+ *  Uses hasOwnProperty so prototype keys like "toString"/"constructor"/
+ *  "__proto__" cannot resolve to inherited Function/Object values (which
+ *  would silently escape the ?? and crash the downstream .map()). */
 export function getSectionSourceWorkspaces(sectionKey: string): SeedWorkspaceKey[] {
-  return SECTION_WORKSPACE_MAP[sectionKey] ?? ["concept"];
+  if (Object.prototype.hasOwnProperty.call(SECTION_WORKSPACE_MAP, sectionKey)) {
+    const mapped = SECTION_WORKSPACE_MAP[sectionKey];
+    if (mapped) return mapped;
+  }
+  return ["concept"];
 }
 
 // ── Data shapes coming out of Supabase ─────────────────────────────────────────
@@ -256,7 +264,7 @@ export function summarizeMenu(
     byCategory.get(cat)!.push(item);
   }
 
-  out.push(`- Menu size: ${menuRows.length} items across ${byCategory.size} ${byCategory.size === 1 ? "category" : "categories"}`);
+  out.push(`- Menu size: ${menuRows.length} ${menuRows.length === 1 ? "item" : "items"} across ${byCategory.size} ${byCategory.size === 1 ? "category" : "categories"}`);
 
   // Per-category summary — count + price range. Six is a soft cap so a
   // ridiculously-broad menu (rare, but possible) doesn't blow the block.
@@ -270,8 +278,8 @@ export function summarizeMenu(
     const min = Math.min(...priced.map((i) => i.price_cents as number));
     const max = Math.max(...priced.map((i) => i.price_cents as number));
     const range = min === max
-      ? formatCurrencyAmount(min / 100, currencyCode)
-      : `${formatCurrencyAmount(min / 100, currencyCode)}-${formatCurrencyAmount(max / 100, currencyCode)}`;
+      ? formatMinorUnits(min, currencyCode)
+      : `${formatMinorUnits(min, currencyCode)}-${formatMinorUnits(max, currencyCode)}`;
     out.push(`- ${cat}: ${items.length} ${items.length === 1 ? "item" : "items"}, ${range}`);
   }
 
@@ -309,7 +317,7 @@ export function summarizeFinancial(
     const equipment = typeof sc.equipment_cents === "number" ? sc.equipment_cents : 0;
     const total = buildOut + licenses + deposits + equipment;
     if (total > 0) {
-      out.push(`- Startup capital: ${formatCurrencyAmount(total / 100, currencyCode)} total`);
+      out.push(`- Startup capital: ${formatMinorUnits(total, currencyCode)} total`);
     }
   }
 
@@ -332,7 +340,7 @@ export function summarizeFinancial(
     const capexLines = mp.forecast_lines.filter((l) => l && l.category === "capex" && (l.value ?? 0) > 0);
     if (capexLines.length > 0) {
       const total = capexLines.reduce((s, l) => s + (l.value ?? 0), 0);
-      out.push(`- CapEx planned: ${formatCurrencyAmount(total / 100, currencyCode)} across ${capexLines.length} line${capexLines.length === 1 ? "" : "s"}`);
+      out.push(`- CapEx planned: ${formatMinorUnits(total, currencyCode)} across ${capexLines.length} line${capexLines.length === 1 ? "" : "s"}`);
     }
   }
 
@@ -350,13 +358,18 @@ export function summarizeLocation(
   if (!candidates || candidates.length === 0) return [];
   const out: string[] = [];
 
-  const chosen = candidates.find((c) => c.status === "chosen") ?? candidates[0];
+  // location_candidates.status enum: 'shortlisted'|'viewing_scheduled'|
+  // 'lease_review'|'passed'|'signed'. "signed" is the terminal "we picked
+  // this site" signal — matches plan-context.ts:101, audit/route.ts:206,
+  // resolve-plan-geo.ts:29. There is NO "chosen" value in the schema.
+  const chosen = candidates.find((c) => c.status === "signed") ?? candidates[0];
   if (chosen) {
-    out.push(`- Chosen site: ${chosen.name}${chosen.neighborhood ? `, ${chosen.neighborhood}` : ""}`);
+    const label = chosen.status === "signed" ? "Chosen site (signed)" : "Site under evaluation";
+    out.push(`- ${label}: ${chosen.name}${chosen.neighborhood ? `, ${chosen.neighborhood}` : ""}`);
     if (chosen.address) out.push(`- Address: ${chosen.address}`);
     if (chosen.sq_ft) out.push(`- Size: ${chosen.sq_ft.toLocaleString()} sq ft`);
     if (chosen.asking_rent_cents) {
-      out.push(`- Rent: ${formatCurrencyAmount(chosen.asking_rent_cents / 100, currencyCode)}/month`);
+      out.push(`- Rent: ${formatMinorUnits(chosen.asking_rent_cents, currencyCode)}/month`);
     }
   }
 
@@ -368,8 +381,17 @@ export function summarizeLocation(
   return out;
 }
 
-/** Summarize Equipment & Supplies — total spend + category counts (major/minor).
- *  NOT a full item list — that's what the board rejected. */
+/** Summarize Equipment & Supplies — total spend, signature big-ticket items
+ *  (top 3 by cost, which is the "La Marzocco / Mahlkonig / undercounter fridge"
+ *  headline shape a lender wants), and long-tail count. NOT a full item list
+ *  — that's what the board rejected.
+ *
+ *  Prior version filtered `category === "major"` / `"minor"`, but the
+ *  buildout_equipment_items.category CHECK constraint only allows the real
+ *  DB categories (espresso_station, brew_platform, refrigeration, …) — so
+ *  the filter always returned empty in production and the bullets never
+ *  rendered. cost_local is stored in whole local-currency units per the
+ *  buildout workspace convention (TIM-2488), so we do NOT divide by 100. */
 export function summarizeEquipment(
   equipment: BpEquipmentItem[] | null | undefined,
   currencyCode = "USD",
@@ -377,16 +399,25 @@ export function summarizeEquipment(
   if (!equipment || equipment.length === 0) return [];
   const out: string[] = [];
 
+  // cost_local is whole local-currency units per the buildout workspace
+  // convention (TIM-2488); pass to formatCurrencyAmount directly, not
+  // formatMinorUnits (which divides by the currency's minor-unit exponent).
   const totalCost = equipment.reduce((sum, e) => sum + (e.cost_local ?? 0), 0);
-  const major = equipment.filter((e) => e.category === "major");
-  const minor = equipment.filter((e) => e.category === "minor");
-
   out.push(`- ${equipment.length} items, total ${formatCurrencyAmount(totalCost, currencyCode)}`);
-  if (major.length > 0) {
-    out.push(`- Major equipment: ${major.length} items (${major.slice(0, 3).map((e) => e.name).join(", ")}${major.length > 3 ? "..." : ""})`);
+
+  const byCostDesc = [...equipment]
+    .filter((e) => (e.cost_local ?? 0) > 0)
+    .sort((a, b) => (b.cost_local ?? 0) - (a.cost_local ?? 0));
+  const signature = byCostDesc.slice(0, 3);
+  if (signature.length > 0) {
+    const parts = signature.map(
+      (e) => `${e.name} (${formatCurrencyAmount(e.cost_local ?? 0, currencyCode)})`,
+    );
+    out.push(`- Signature big-ticket: ${parts.join(", ")}`);
   }
-  if (minor.length > 0) {
-    out.push(`- Minor equipment: ${minor.length} items`);
+  const rest = equipment.length - signature.length;
+  if (rest > 0) {
+    out.push(`- Plus ${rest} other item${rest === 1 ? "" : "s"} across smallwares, furniture, and fixtures`);
   }
 
   return out;
@@ -405,7 +436,7 @@ export function summarizeHiring(
 
   out.push(`- Team size: ${totalHeadcount} headcount across ${roles.length} role${roles.length === 1 ? "" : "s"}`);
   if (totalMonthly > 0) {
-    out.push(`- Monthly payroll: ${formatCurrencyAmount(totalMonthly / 100, currencyCode)} (est.)`);
+    out.push(`- Monthly payroll: ${formatMinorUnits(totalMonthly, currencyCode)} (est.)`);
   }
   const roleNames = roles.slice(0, 6).map((r) => `${r.role_title}${r.headcount > 1 ? ` ×${r.headcount}` : ""}`);
   out.push(`- Roles: ${roleNames.join(", ")}${roles.length > 6 ? "..." : ""}`);

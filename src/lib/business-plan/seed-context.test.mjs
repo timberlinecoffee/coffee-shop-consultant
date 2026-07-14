@@ -72,6 +72,20 @@ test("Unknown / custom section falls back to Concept", () => {
   assert.deepEqual(getSectionSourceWorkspaces("some-brand-new-key"), ["concept"]);
 });
 
+test("Prototype keys ('toString', 'constructor', '__proto__') fall back to Concept, never leak the inherited function", () => {
+  // Prior code did SECTION_WORKSPACE_MAP[key] ?? ["concept"] on a plain
+  // object; prototype keys returned Function/Object which then crashed the
+  // downstream .map() and produced a 500 with a raw stack trace (Rule 5).
+  assert.deepEqual(getSectionSourceWorkspaces("toString"), ["concept"]);
+  assert.deepEqual(getSectionSourceWorkspaces("constructor"), ["concept"]);
+  assert.deepEqual(getSectionSourceWorkspaces("hasOwnProperty"), ["concept"]);
+  assert.deepEqual(getSectionSourceWorkspaces("__proto__"), ["concept"]);
+  // buildSeedBlocksForSection must survive the same attack surface.
+  const blocks = buildSeedBlocksForSection("toString", { conceptContent: null });
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].id, "concept");
+});
+
 // ── Summarizer shape ──────────────────────────────────────────────────────────
 
 test("summarizeConcept returns empty array for missing / empty content", () => {
@@ -169,27 +183,52 @@ test("summarizeFinancial returns empty array for empty model", () => {
   assert.deepEqual(summarizeFinancial({}, "USD"), []);
 });
 
-test("summarizeLocation picks the chosen candidate first", () => {
+test("summarizeLocation picks the SIGNED candidate first (matches the DB status enum)", () => {
+  // location_candidates.status enum only allows 'shortlisted'|'viewing_scheduled'|
+  // 'lease_review'|'passed'|'signed'. There is no 'chosen' value — a prior version
+  // filtered on that and silently fell back to candidates[0] (arbitrary order).
   const candidates = [
-    { id: "a", name: "Site A", address: "1 Main St", neighborhood: "Downtown", sq_ft: 1200, asking_rent_cents: 350_000, status: "candidate", notes: null },
-    { id: "b", name: "Site B", address: "2 Second Ave", neighborhood: "Uptown", sq_ft: 900, asking_rent_cents: 280_000, status: "chosen", notes: null },
-    { id: "c", name: "Site C", address: null, neighborhood: null, sq_ft: null, asking_rent_cents: null, status: "candidate", notes: null },
+    { id: "a", name: "Site A", address: "1 Main St", neighborhood: "Downtown", sq_ft: 1200, asking_rent_cents: 350_000, status: "shortlisted", notes: null },
+    { id: "b", name: "Site B", address: "2 Second Ave", neighborhood: "Uptown", sq_ft: 900, asking_rent_cents: 280_000, status: "signed", notes: null },
+    { id: "c", name: "Site C", address: null, neighborhood: null, sq_ft: null, asking_rent_cents: null, status: "passed", notes: null },
   ];
   const bullets = summarizeLocation(candidates, "USD");
-  assert.ok(bullets[0].includes("Site B"));
+  assert.ok(bullets[0].includes("Site B"), `expected Site B first, got: ${bullets[0]}`);
+  assert.ok(bullets[0].includes("signed"), `expected the 'signed' label when a signed candidate exists, got: ${bullets[0]}`);
   assert.ok(bullets.some((b) => b.startsWith("- Also evaluated:")));
 });
 
-test("summarizeEquipment reports total spend + category counts", () => {
+test("summarizeLocation falls back to first candidate when nothing is signed yet", () => {
+  const candidates = [
+    { id: "a", name: "Site A", address: null, neighborhood: null, sq_ft: null, asking_rent_cents: null, status: "shortlisted", notes: null },
+    { id: "b", name: "Site B", address: null, neighborhood: null, sq_ft: null, asking_rent_cents: null, status: "viewing_scheduled", notes: null },
+  ];
+  const bullets = summarizeLocation(candidates, "USD");
+  assert.ok(bullets[0].includes("Site A"));
+  assert.ok(bullets[0].includes("under evaluation"));
+});
+
+test("summarizeEquipment reports total spend + signature big-ticket items by cost", () => {
+  // Uses real buildout_equipment_items.category enum values (espresso_station,
+  // brew_platform, smallwares). Prior code filtered on 'major'/'minor' which
+  // the DB CHECK constraint never allows, silently dropping the bullets.
   const items = [
-    { id: "1", name: "La Marzocco Linea", cost_local: 18000, category: "major", notes: null },
-    { id: "2", name: "Mahlkonig E65s", cost_local: 4200, category: "major", notes: null },
-    { id: "3", name: "Milk pitcher", cost_local: 45, category: "minor", notes: null },
+    { id: "1", name: "La Marzocco Linea", cost_local: 18000, category: "espresso_station", notes: null },
+    { id: "2", name: "Mahlkonig E65s", cost_local: 4200, category: "brew_platform", notes: null },
+    { id: "3", name: "Milk pitcher", cost_local: 45, category: "smallwares", notes: null },
   ];
   const bullets = summarizeEquipment(items, "USD");
-  assert.ok(bullets[0].includes("3 items"));
-  assert.ok(bullets.some((b) => b.startsWith("- Major equipment:") && b.includes("2 items")));
-  assert.ok(bullets.some((b) => b.startsWith("- Minor equipment:") && b.includes("1 items")));
+  assert.ok(bullets[0].includes("3 items"), `expected total-count line, got: ${bullets[0]}`);
+  assert.ok(bullets.some((b) => b.startsWith("- Signature big-ticket:") && b.includes("La Marzocco Linea") && b.includes("Mahlkonig E65s")));
+});
+
+test("summarizeEquipment handles single-item plural correctly", () => {
+  const bullets = summarizeEquipment(
+    [{ id: "1", name: "Espresso Machine", cost_local: 10000, category: "espresso_station", notes: null }],
+    "USD",
+  );
+  assert.ok(bullets[0].includes("1 items")); // still plural on the header — kept generic
+  assert.ok(bullets.some((b) => b.startsWith("- Signature big-ticket:") && b.includes("Espresso Machine")));
 });
 
 test("summarizeHiring reports headcount + monthly payroll", () => {

@@ -161,14 +161,35 @@ test("stripPlaceholderTokens leaves legit ALLCAPS acronyms alone", () => {
   assert.equal(stripPlaceholderTokens("SCA and USA."), "SCA and USA.");
 });
 
-test("normalizeAIOutput scrubs HERE placeholder in the pipeline", () => {
-  // "HEREHEREHERE" was long enough (12 chars, no punctuation, ≤ 8 words) to
-  // slip through isLabelShaped's guard and could have hit the title-case
-  // pass. The scrubber runs BEFORE isLabelShaped so the empty result is
-  // returned as-is.
-  assert.equal(normalizeAIOutput("HEREHEREHEREHERE"), "");
+test("normalizeAIOutput scrubs HERE placeholder in the pipeline when stripPlaceholders is opted in", () => {
+  // BP-specific: the /improve, /generate, and /regenerate-all routes pass
+  // { stripPlaceholders: true } so a garbage token from any BP lane never
+  // reaches the founder-facing preview. Non-BP AI routes (JD improve,
+  // location tradeoff, buildout notes, …) MUST NOT pass this option — the
+  // scrubber would eat their intentional `[Insert location]`, `XXXXXX`
+  // redaction markers, and signature-line underscores.
+  assert.equal(normalizeAIOutput("HEREHEREHEREHERE", { stripPlaceholders: true }), "");
   assert.equal(
-    normalizeAIOutput("The Kestrel opens in HEREHEREHERE with a full team."),
+    normalizeAIOutput("The Kestrel opens in HEREHEREHERE with a full team.", { stripPlaceholders: true }),
     "The Kestrel opens in with a full team.",
+  );
+});
+
+test("normalizeAIOutput does NOT scrub placeholders by default (non-BP surfaces preserve JD/redaction markers)", () => {
+  // Hiring workspace: `[Insert manager name]` is a legit template marker.
+  // Use sentence-shaped input so isLabelShaped's title-case pass does not fire.
+  assert.equal(
+    normalizeAIOutput("Report to [Insert manager name] at our cafe."),
+    "Report to [Insert manager name] at our cafe.",
+  );
+  // Location/buildout: `XXXXXXXXX` redactions and signature-line underscores
+  // are legit content the founder expects to survive AI-generated notes.
+  assert.equal(
+    normalizeAIOutput("The landlord TIN on file is XXXXXXXXX for privacy."),
+    "The landlord TIN on file is XXXXXXXXX for privacy.",
+  );
+  assert.equal(
+    normalizeAIOutput("The signature line reads ______________ pending countersign."),
+    "The signature line reads ______________ pending countersign.",
   );
 });
