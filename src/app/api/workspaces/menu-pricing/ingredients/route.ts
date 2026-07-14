@@ -46,6 +46,12 @@ export async function POST(request: NextRequest) {
   }
 
   // TIM-1002: ingredient name is label-shaped — enforce Title Case.
+  // TIM-3861: validate category when provided
+  const rawCategory = body.category as string | undefined | null
+  if (rawCategory !== undefined && rawCategory !== null && rawCategory !== 'ingredient' && rawCategory !== 'supply') {
+    return Response.json({ error: "category must be 'ingredient' or 'supply'" }, { status: 400 })
+  }
+
   const { data, error } = await supabase
     .from("menu_ingredients")
     .insert({
@@ -56,6 +62,7 @@ export async function POST(request: NextRequest) {
       package_cost_cents: (body.package_cost_cents as number | undefined) ?? 0,
       vendor_id: (body.vendor_id as string | undefined) ?? null,
       notes: (body.notes as string | undefined) ?? null,
+      category: (rawCategory as 'ingredient' | 'supply' | null | undefined) ?? null,
     })
     .select()
     .single()
@@ -79,10 +86,13 @@ export async function PATCH(request: NextRequest) {
   if (!id) return Response.json({ error: "Missing id" }, { status: 400 })
 
   const allowed: Record<string, unknown> = {}
-  const fields = ["name", "package_size", "package_unit", "package_cost_cents", "vendor_id", "notes"]
+  const fields = ["name", "package_size", "package_unit", "package_cost_cents", "vendor_id", "notes", "category"]
   for (const f of fields) {
     if (f in rest) {
       const val = rest[f]
+      if (f === "category" && val !== null && val !== 'ingredient' && val !== 'supply') {
+        return Response.json({ error: "category must be 'ingredient', 'supply', or null" }, { status: 400 })
+      }
       allowed[f] = f === "name" && typeof val === "string" ? toTitleCase(val) : val
     }
   }
