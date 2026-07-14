@@ -86,6 +86,11 @@ export async function POST(request: NextRequest): Promise<Response> {
   const rawExcerpts = Array.isArray(body.bpSectionExcerpts) ? body.bpSectionExcerpts : [];
   const bpExcerpts = rawExcerpts
     .slice(0, MAX_BP_EXCERPTS)
+    // Rule 3 — each element must be an object before we deref .title/.excerpt.
+    // Prior version deref'd unconditionally, so a client sending
+    // `bpSectionExcerpts: [null, 42, "oops"]` triggered a 500 with a raw
+    // TypeError. Filter to objects first, then narrow field types.
+    .filter((e): e is Record<string, unknown> => e !== null && typeof e === "object")
     .map((e) => ({
       title: typeof e.title === "string" ? e.title.trim() : "",
       excerpt: typeof e.excerpt === "string" ? e.excerpt.trim().slice(0, MAX_BP_EXCERPT_CHARS) : "",

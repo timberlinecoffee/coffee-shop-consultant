@@ -141,7 +141,12 @@ export function stripPlaceholderTokens(input: string): string {
     .replace(/\[(?:FILL[ _-]?IN|PLACEHOLDER|TODO|TBD|INSERT[ _-]?[A-Z0-9 _-]*)\]/gi, "")
     .replace(/\{\{[A-Z0-9_]+\}\}/g, "")
     // Runs of the same visual placeholder char (X or _) 6+ in a row.
-    .replace(/([Xx_]){6,}/g, "");
+    .replace(/([Xx_]){6,}/g, "")
+    // Collapse the double-space + stranded punctuation-space blemish that
+    // shows up when a stripped token sat between two words (e.g.
+    // "prose HEREHEREHERE continues" → "prose  continues").
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/[ \t]+([.,;:!?])/g, "$1");
 }
 
 /**
