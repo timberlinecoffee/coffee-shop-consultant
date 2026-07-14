@@ -126,22 +126,39 @@ function isLabelShaped(input: string): boolean {
  * TIM-3854: Strip repeated all-caps placeholder tokens that the model
  * sometimes emits when it is confused about missing context — the canonical
  * failure mode is "HEREHEREHEREHERE..." leaking into the Executive Summary
- * preview. Also catches [FILL IN], {{PLACEHOLDER}}, XXXXXXX-style visual
- * placeholders, and any all-caps ASCII token repeated 3+ times back-to-back.
- * The upstream fix is the workspace-first seed (see TIM-3854 seed-context
+ * preview. Also catches [FILL IN], {{PLACEHOLDER}}, and XXXXXX visual
+ * placeholders. Upstream fix is the workspace-first seed (see the seed-context
  * module) — this is defense-in-depth so a garbage token never reaches the UI.
+ *
+ * Two false-positive gates surfaced in TIM-3854 code review:
+ *  1. Space-separated repetition of a legit ALLCAPS acronym is real prose
+ *     ("SBA SBA SBA underwriters..."). Only strip space-separated repeats
+ *     when the token is 4+ chars AND appears 4+ times — real acronyms are
+ *     rarely typed four times in a row, "HEREHEREHEREHERE" always is.
+ *     Concatenated repeats ("HEREHEREHERE") stay at 3+ since legitimate
+ *     prose never runs the same all-caps word together with no separator.
+ *  2. Bracket markers `[TODO]`/`[TBD]` are legitimate lender-facing "to
+ *     be determined" annotations — dropped from the strip list. The
+ *     canonical junk shape is `[FILL IN]`/`[INSERT XYZ]`/`{{VAR}}`.
  */
 export function stripPlaceholderTokens(input: string): string {
   if (!input) return input;
   return input
-    // Repeated ALLCAPS ASCII word 3+ times, optionally with whitespace between
-    // (matches "HEREHEREHERE", "HERE HERE HERE", "TODOTODOTODO").
-    .replace(/\b([A-Z]{2,8})(\s*\1){2,}\b/g, "")
-    // Bracket-style placeholders: [FILL IN], [PLACEHOLDER], [TODO], {{VAR}}.
-    .replace(/\[(?:FILL[ _-]?IN|PLACEHOLDER|TODO|TBD|INSERT[ _-]?[A-Z0-9 _-]*)\]/gi, "")
+    // Concatenated repetition — "HEREHEREHERE", "TODOTODOTODO". Legit prose
+    // never runs the same all-caps word together with zero separator.
+    .replace(/\b([A-Z]{2,8})\1{2,}\b/g, "")
+    // Space-separated repetition — require 4+ occurrences AND 4+ char token
+    // so "SBA SBA SBA" and "CAM CAM CAM" survive. "HERE HERE HERE HERE" does not.
+    .replace(/\b([A-Z]{4,8})(?:[ \t]+\1){3,}\b/g, "")
+    // Bracket-style placeholders. Deliberately NOT stripping TODO/TBD — those
+    // are legit "to be determined" annotations a lender/founder may keep in
+    // the draft. FILL IN / PLACEHOLDER / INSERT are only ever junk.
+    .replace(/\[(?:FILL[ _-]?IN|PLACEHOLDER|INSERT[ _-]?[A-Z0-9 _-]*)\]/gi, "")
     .replace(/\{\{[A-Z0-9_]+\}\}/g, "")
-    // Runs of the same visual placeholder char (X or _) 6+ in a row.
-    .replace(/([Xx_]){6,}/g, "")
+    // Runs of the same visual placeholder char (X or _) 6+ in a row. Case-
+    // sensitive uppercase X only — lowercase `xxxxxx` in prose is unlikely
+    // but not junk (e.g. redacted anonymized token in a sample paragraph).
+    .replace(/[X_]{6,}/g, "")
     // Collapse the double-space + stranded punctuation-space blemish that
     // shows up when a stripped token sat between two words (e.g.
     // "prose HEREHEREHERE continues" → "prose  continues").

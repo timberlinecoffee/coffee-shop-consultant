@@ -101,14 +101,25 @@ test("all functions are safe on empty input", () => {
 // seed) — this scrubber makes sure a garbage token from any lane never
 // reaches the founder-facing preview.
 
-test("stripPlaceholderTokens removes HEREHEREHERE and similar repeats", () => {
+test("stripPlaceholderTokens removes concatenated HEREHEREHERE-style runs", () => {
   assert.equal(stripPlaceholderTokens("HEREHEREHERE"), "");
   // Post-strip whitespace collapsed to a single space — the "double space
   // blemish" was called out in TIM-3854 code review; matched here so a
   // regression re-introducing it fails this pin.
   assert.equal(stripPlaceholderTokens("HEREHEREHEREHERE more text"), " more text");
   assert.equal(stripPlaceholderTokens("Prefix TODOTODOTODO suffix"), "Prefix suffix");
-  assert.equal(stripPlaceholderTokens("Repeat HERE HERE HERE space"), "Repeat space");
+});
+
+test("stripPlaceholderTokens strips space-separated repeats only at 4+ occurrences of 4+ char tokens", () => {
+  // TIM-3854 code-review fix: space-separated 3x of a legit acronym is
+  // real prose ("SBA SBA SBA underwriters"). Must survive.
+  const survives = "The SBA SBA SBA loan program is common.";
+  assert.equal(stripPlaceholderTokens(survives), survives);
+  // Four+ space-separated repeats of a 4+ char token is junk.
+  assert.equal(
+    stripPlaceholderTokens("prose HERE HERE HERE HERE ends"),
+    "prose ends",
+  );
 });
 
 test("stripPlaceholderTokens removes bracketed [FILL IN] / {{VAR}} placeholders", () => {
@@ -122,9 +133,24 @@ test("stripPlaceholderTokens removes bracketed [FILL IN] / {{VAR}} placeholders"
   assert.equal(stripPlaceholderTokens("Insert [INSERT SHOP NAME] there"), "Insert there");
 });
 
+test("stripPlaceholderTokens preserves legit [TODO] / [TBD] annotations", () => {
+  // Founders and lenders both use [TBD] / [TODO] as legit "not yet
+  // determined" markers in early drafts. Do not strip.
+  const tbd = "Address: [TBD] as of signing.";
+  assert.equal(stripPlaceholderTokens(tbd), tbd);
+  const todo = "Rent split: [TODO] confirm with landlord.";
+  assert.equal(stripPlaceholderTokens(todo), todo);
+});
+
 test("stripPlaceholderTokens removes XXXX / ____ visual placeholders", () => {
   assert.equal(stripPlaceholderTokens("XXXXXX plans"), " plans");
   assert.equal(stripPlaceholderTokens("Address: ______"), "Address: ");
+});
+
+test("stripPlaceholderTokens leaves lowercase runs alone", () => {
+  // Lowercase xxxxxx or repeat-underscore-in-prose is uncommon but not junk;
+  // being case-sensitive avoids false positives on redacted samples / code.
+  assert.equal(stripPlaceholderTokens("The xxxxxx sample"), "The xxxxxx sample");
 });
 
 test("stripPlaceholderTokens leaves legit ALLCAPS acronyms alone", () => {

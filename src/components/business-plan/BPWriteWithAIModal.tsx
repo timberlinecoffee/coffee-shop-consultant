@@ -169,6 +169,11 @@ export function BPWriteWithAIModal({
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  // TIM-3854 code-review fix: separate controller for the seed-context
+  // fetch so a modal close mid-fetch aborts the request and prevents
+  // setState against an unmounted component (the seed fetch is ~300ms;
+  // fast enough to slip through unmount if the founder Escapes).
+  const seedAbortRef = useRef<AbortController | null>(null);
   // TIM-3675 review-fix: cleared on unmount so a rapid remount doesn't fire
   // the "done → close" timer against a stale onClose captured from the prior
   // render.
@@ -177,6 +182,7 @@ export function BPWriteWithAIModal({
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      seedAbortRef.current?.abort();
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     };
   }, []);
@@ -358,6 +364,10 @@ export function BPWriteWithAIModal({
     // TIM-3672 follow-up: allow re-seeding after Reject. The user may want
     // to try again with a different draft as the AI's starting point.
     setHasSeededContext(false);
+    // TIM-3854 code-review fix: cancel any in-flight seed fetch so the
+    // Reject-bounce doesn't race a late setContent that would land on top
+    // of the founder's iteration.
+    seedAbortRef.current?.abort();
   }
 
   // TIM-3854: pull per-workspace summarized blocks from the server for the
@@ -375,10 +385,18 @@ export function BPWriteWithAIModal({
     if (hasSeededContext || seedLoading) return;
     setSeedLoading(true);
     setSeedError(null);
+    // TIM-3854 code-review fix: abort any prior in-flight seed fetch and
+    // track the current one so unmount / close / Reject cleanly abort it.
+    // Prevents setState-on-unmounted-component and the silent "seed lands
+    // in stale content state" surprise when the founder Escapes mid-fetch.
+    seedAbortRef.current?.abort();
+    const controller = new AbortController();
+    seedAbortRef.current = controller;
     try {
       const res = await fetch("/api/business-plan/seed-context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           sectionKey,
           // Executive Summary is the ONE section that also seeds from other
@@ -428,10 +446,16 @@ export function BPWriteWithAIModal({
         }
         el.scrollTop = el.scrollHeight;
       });
-    } catch {
+    } catch (err: unknown) {
+      // Aborts (unmount, Reject bounce, close) are silent — no error state.
+      if (err instanceof Error && err.name === "AbortError") return;
       setSeedError("Couldn't load workspace context. Please try again.");
     } finally {
-      setSeedLoading(false);
+      // Only clear loading if this fetch is still the active one.
+      if (seedAbortRef.current === controller) {
+        seedAbortRef.current = null;
+        setSeedLoading(false);
+      }
     }
   }
 

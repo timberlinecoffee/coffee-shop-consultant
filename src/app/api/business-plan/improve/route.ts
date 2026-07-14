@@ -113,13 +113,13 @@ Rules:
 - Improve clarity, flow, and persuasiveness without changing the substance or inventing new facts. Numbers in the input must not be rounded away or invented.
 - If the input contains a "FROM ... WORKSPACE:" seed block, treat those bullets as source data (not the final draft). Extract the specifics, then write the section prose that draws on them.
 - If a seed block says "No content yet. Fill out the X workspace...", DO NOT include that placeholder in the output. Skip it and write from what IS available.
-- Length target: follow the section spec below.
 - No em dashes anywhere. Use a regular dash with spaces ( -- ) if you need a pause.
 - No AI vocabulary: leverage, unlock, embark, elevate, delve, seamlessly, robust, comprehensive, innovative, holistic, synergy, passionate.
 - No filler phrases: "high-quality experience," "welcoming space," "wide variety," "we pride ourselves on," "is committed to."
 - Title case for named items (role titles, equipment names, drink names, persona names). Body prose is sentence case.
-- **Never output template placeholders like "HERE", "[FILL IN]", "TODO", or any repeated capitalized token. If you don't have a specific fact, write around it in plain prose.**
-- If the founder supplies user instructions below, treat them as the primary rewrite directive: prioritize them over your own stylistic instincts, but never break the rules above.${sectionSpecBlock}`;
+- **Never output template placeholders like "HERE", "[FILL IN]", or any repeated capitalized token. If you don't have a specific fact, write around it in plain prose.**
+- If the founder supplies user instructions below, treat them as the primary rewrite directive: prioritize them over your own stylistic instincts, but never break the rules above.
+- Length target: ${sectionSpec ? "follow the section spec below" : "match the length of the original unless shorter is clearly better"}.${sectionSpecBlock}`;
 
   const instructionsBlock = boundedInstructions.length > 0
     ? `\n\nUser instructions (apply these when rewriting):\n${boundedInstructions}`

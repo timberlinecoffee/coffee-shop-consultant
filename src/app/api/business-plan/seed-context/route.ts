@@ -55,6 +55,24 @@ interface ResponseBody {
 const MAX_BP_EXCERPT_CHARS = 500;
 const MAX_BP_EXCERPTS = 40;
 
+// Server-side placeholder filter — mirrors isBpPlaceholderContent in
+// BPWriteWithAIModal.tsx so a race-condition or bypassed client cannot leak
+// assembler-placeholder strings into the seed. Defense-in-depth against the
+// exact failure pattern TIM-3854 set out to prevent (feeding a placeholder
+// to /improve produces a rewrite of the placeholder, then re-hallucinates).
+function isPlaceholderExcerpt(content: string): boolean {
+  return (
+    content.includes("workspace to populate") ||
+    content.includes("workspaces to populate") ||
+    content.includes("Click Generate") ||
+    content.includes("Complete the other") ||
+    content.includes("Complete the Marketing") ||
+    content.includes("Complete the Financials workspace") ||
+    content.includes("click the text field") ||
+    content.includes("rendered in the exported PDF appendix")
+  );
+}
+
 export async function POST(request: NextRequest): Promise<Response> {
   const supabase = await createClient();
 
@@ -95,7 +113,12 @@ export async function POST(request: NextRequest): Promise<Response> {
       title: typeof e.title === "string" ? e.title.trim() : "",
       excerpt: typeof e.excerpt === "string" ? e.excerpt.trim().slice(0, MAX_BP_EXCERPT_CHARS) : "",
     }))
-    .filter((e) => e.title.length > 0 && e.excerpt.length > 0);
+    .filter((e) => e.title.length > 0 && e.excerpt.length > 0)
+    // TIM-3854 code-review fix: drop excerpts that ARE assembler placeholder
+    // strings ("Complete the X workspace to populate this section"). The
+    // client's bpOtherSectionsForContext memo filters these out today, but
+    // a bypassed caller / race must not re-open the garbage-output hole.
+    .filter((e) => !isPlaceholderExcerpt(e.excerpt));
 
   // Latest plan owned by this user — matches /generate route's plan resolution.
   const { data: plan } = await supabase
