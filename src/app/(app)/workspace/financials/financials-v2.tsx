@@ -5,6 +5,7 @@
 // suggestions carry through unchanged from FinancialsWorkspace.
 
 import { useState, useCallback, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { BarChart2, ChevronDown, CheckCircle, Circle, Minus } from "lucide-react";
 import { SectionHeader } from "@/components/section-header";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
@@ -64,6 +65,36 @@ import type { EquipmentItem } from "./financials-workspace";
 
 type V2Tab = "inputs" | "reports";
 type SectionStatus = "complete" | "in_progress" | "empty";
+
+// TIM-3851: sub-nav report keys inside the Reports tab. Order matches the
+// former stacked layout so the default landing (pl) is unchanged.
+type V2Report =
+  | "pl"
+  | "cash-flow"
+  | "balance-sheet"
+  | "break-even"
+  | "depreciation"
+  | "ratios";
+
+const REPORT_TABS: { id: V2Report; label: string }[] = [
+  { id: "pl", label: "Profit & Loss" },
+  { id: "cash-flow", label: "Cash Flow" },
+  { id: "balance-sheet", label: "Balance Sheet" },
+  { id: "break-even", label: "Break-Even" },
+  { id: "depreciation", label: "Depreciation" },
+  { id: "ratios", label: "Health Check" },
+];
+
+function isV2Report(value: string | null | undefined): value is V2Report {
+  return (
+    value === "pl" ||
+    value === "cash-flow" ||
+    value === "balance-sheet" ||
+    value === "break-even" ||
+    value === "depreciation" ||
+    value === "ratios"
+  );
+}
 
 // TIM-3488: v2 has a single Inputs tab with four accordion sections, so every
 // step targets the inputs tab and names the AccordionSection id that holds the
@@ -1249,11 +1280,13 @@ function GrowthRampContent({
   );
 }
 
-// ── Reports tab — all 6 sub-reports stacked ───────────────────────────────────
+// ── Reports tab — canonical WorkspaceSubNav, one report at a time ─────────────
+// TIM-3851: previously stacked all 6 reports on one long scrolling page. Board
+// asked for sub-nav per report so users pick one report at a time. Matches the
+// Hiring / Menu / Ops Playbook sub-nav idiom (canonical WorkspaceSubNav, TIM-1793).
 
 function ReportsTab({
   slices,
-  projections,
   financialInputs,
   fiscalYearStartMonth,
   currencyCode,
@@ -1271,9 +1304,10 @@ function ReportsTab({
   onClearLineOverrides,
   onGoToProjections,
   onChangeForecastLines,
+  activeReport,
+  onSelectReport,
 }: {
   slices: MonthlySlice[];
-  projections: FinancialProjections;
   financialInputs: FinancialInputs;
   fiscalYearStartMonth: number;
   currencyCode: string;
@@ -1291,12 +1325,22 @@ function ReportsTab({
   onClearLineOverrides: (lineId: string) => void;
   onGoToProjections: () => void;
   onChangeForecastLines: (next: ForecastLine[]) => void;
+  activeReport: V2Report;
+  onSelectReport: (key: V2Report) => void;
 }) {
   return (
-    <div className="space-y-8">
-      {/* P&L */}
-      <section>
-        <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Profit &amp; Loss</h2>
+    <div>
+      <div className="mb-5">
+        <WorkspaceSubNav
+          tabs={REPORT_TABS.map((t) => ({ key: t.id, label: t.label }))}
+          active={activeReport}
+          onSelect={onSelectReport}
+          ariaLabel="Financials reports"
+          className="mb-0"
+        />
+      </div>
+
+      {activeReport === "pl" && (
         <PLTab
           slices={slices}
           fiscalYearStartMonth={fiscalYearStartMonth}
@@ -1308,47 +1352,31 @@ function ReportsTab({
           onToggleManual={onToggleManual}
           onApplyForward={onApplyForward}
         />
-      </section>
+      )}
 
-      <div className="border-t border-[var(--border)]" />
-
-      {/* Cash Flow */}
-      <section>
-        <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Cash Flow</h2>
+      {activeReport === "cash-flow" && (
         <CashFlowTab slices={slices} fiscalYearStartMonth={fiscalYearStartMonth} currencyCode={currencyCode} />
-      </section>
+      )}
 
-      <div className="border-t border-[var(--border)]" />
-
-      {/* Balance Sheet */}
-      <section>
-        <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Balance Sheet</h2>
+      {activeReport === "balance-sheet" && (
         <BalanceSheetTab
           slices={slices}
           fiscalYearStartMonth={fiscalYearStartMonth}
           currencyCode={currencyCode}
           financialInputs={financialInputs}
         />
-      </section>
+      )}
 
-      <div className="border-t border-[var(--border)]" />
-
-      {/* Break-Even */}
-      <section>
-        <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Break-Even</h2>
+      {activeReport === "break-even" && (
         <BreakEvenTab
           slices={slices}
           inputs={financialInputs}
           forecastLines={forecastLines}
           currencyCode={currencyCode}
         />
-      </section>
+      )}
 
-      <div className="border-t border-[var(--border)]" />
-
-      {/* Depreciation */}
-      <section>
-        <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Depreciation Schedule</h2>
+      {activeReport === "depreciation" && (
         <DepreciationTab
           equipmentItems={liveEquipmentItems}
           slices={slices}
@@ -1364,15 +1392,9 @@ function ReportsTab({
           onClearLineOverrides={onClearLineOverrides}
           onGoToProjections={onGoToProjections}
         />
-      </section>
+      )}
 
-      <div className="border-t border-[var(--border)]" />
-
-      {/* Ratios */}
-      <section>
-        <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Health Check</h2>
-        <RatiosTab slices={slices} />
-      </section>
+      {activeReport === "ratios" && <RatiosTab slices={slices} />}
     </div>
   );
 }
@@ -1384,7 +1406,6 @@ export function FinancialsV2({
   mp,
   onMpUpdate,
   financialInputs,
-  projections,
   slices,
   canEdit,
   saveState,
@@ -1421,7 +1442,37 @@ export function FinancialsV2({
   onTourClose,
   initialTrialMessagesUsed,
 }: FinancialsV2Props) {
-  const [activeTab, setActiveTab] = useState<V2Tab>("inputs");
+  // TIM-3851: deep-link Reports sub-nav via `?tab=reports&report=<key>`.
+  // Read the URL once on first render (matches menu-workspace pattern in
+  // TIM-1416) — later user navigation is state-driven, and we sync back to
+  // the URL below so a share/reload lands on the same report.
+  const searchParams = useSearchParams();
+  const urlTab = searchParams?.get("tab") ?? null;
+  const urlReport = searchParams?.get("report") ?? null;
+  const [activeTab, setActiveTab] = useState<V2Tab>(() =>
+    urlTab === "reports" || (urlReport != null && isV2Report(urlReport))
+      ? "reports"
+      : "inputs",
+  );
+  const [activeReport, setActiveReport] = useState<V2Report>(() =>
+    isV2Report(urlReport) ? urlReport : "pl",
+  );
+
+  // TIM-3851: mirror the selected tab/report into the URL so each sub-nav
+  // entry has a stable, shareable route. `history.replaceState` keeps this
+  // out of the Next.js router (no re-render, no data refetch).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (activeTab === "reports") {
+      url.searchParams.set("tab", "reports");
+      url.searchParams.set("report", activeReport);
+    } else {
+      url.searchParams.delete("tab");
+      url.searchParams.delete("report");
+    }
+    window.history.replaceState(null, "", url.toString());
+  }, [activeTab, activeReport]);
 
   // TIM-3488: open the v2 AccordionSection that owns the spotlighted field
   // before the GuidedTour measures it.
@@ -1588,7 +1639,6 @@ export function FinancialsV2({
         {activeTab === "reports" && (
           <ReportsTab
             slices={slices}
-            projections={projections}
             financialInputs={financialInputs}
             fiscalYearStartMonth={fiscalYearStartMonth}
             currencyCode={currencyCode}
@@ -1606,6 +1656,8 @@ export function FinancialsV2({
             onClearLineOverrides={onClearLineOverrides}
             onGoToProjections={() => setActiveTab("reports")}
             onChangeForecastLines={(next) => onMpUpdate({ ...mp, forecast_lines: next })}
+            activeReport={activeReport}
+            onSelectReport={setActiveReport}
           />
         )}
 
