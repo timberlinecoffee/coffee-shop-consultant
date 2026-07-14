@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { CookiePreferencesLink } from "@/components/consent/CookiePreferencesLink";
@@ -9,6 +10,8 @@ import {
   SessionExpiredBanner,
   isSessionExpiredFlag,
 } from "../_components/SessionExpiredBanner";
+import { OAuthHashHandler } from "../coming-soon/OAuthHashHandler";
+import { buildAuthForwardUrl } from "../coming-soon/apex-auth-forward";
 import FeatureAccordion, { type AccordionItem } from "../_components/FeatureAccordion";
 import BenefitSections from "../_components/BenefitSections";
 import {
@@ -172,17 +175,27 @@ const FOOTER_COLS = [
 export default async function LandingPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ expired?: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // TIM-3845: apex now renders this page (public paid beta launch, board
+  // pivot 2026-07-14). Preserve the /coming-soon OAuth Site-URL-fallback
+  // forwarder here too — if Supabase drops the browser on apex with a
+  // `?code=`/`?error=` because the redirectTo didn't match the allowlist,
+  // forward to /auth/callback so the PKCE exchange can run.
+  const params = (await searchParams) ?? {};
+  const forwardUrl = buildAuthForwardUrl(params);
+  if (forwardUrl) redirect(forwardUrl);
+
   // TIM-2732: render the shared session-expiry banner above the nav when the
   // visitor was bounced here with `?expired=1`. Today (app)/layout.tsx and
   // src/proxy.ts redirect to /login; this keeps the banner symmetric on
   // /landing so any future entry path (or a hand-shared deep link) reads the
   // same way visually.
-  const { expired } = (await searchParams) ?? {};
+  const expired = typeof params.expired === "string" ? params.expired : undefined;
   const sessionExpired = isSessionExpiredFlag(expired);
   return (
     <main className="flex flex-col">
+      <OAuthHashHandler />
       {sessionExpired && (
         <div className="bg-white border-b border-neutral-200 px-4 py-3">
           <div className="max-w-5xl mx-auto">
