@@ -82,6 +82,10 @@ export type MenuIngredient = {
   package_cost_cents: number
   vendor_id: string | null
   notes: string | null
+  // TIM-3861: grouping for two-section recipe display. 'supply' = disposables/packaging;
+  // 'ingredient' = food/beverage. null = unclassified (UI applies keyword heuristic).
+  // Child 4 (TIM-3862) sets this on category defaults; AI prompt rework reads this field.
+  category: 'ingredient' | 'supply' | null
   created_at: string
   updated_at: string
 }
