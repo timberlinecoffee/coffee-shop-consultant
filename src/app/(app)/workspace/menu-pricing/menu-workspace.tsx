@@ -4223,7 +4223,7 @@ export function MenuWorkspace({
       const currentLines = itemIngredients.filter((ii) => ii.menu_item_id === item.id);
       const currentRawLines = currentLines.map((ii) => {
         const ing = ingredients.find((g) => g.id === ii.ingredient_id);
-        return { name: ing?.name ?? ii.ingredient_id, amount: ii.amount, unit: ii.unit };
+        return { name: ing?.name ?? ii.ingredient_id, amount: ii.amount, unit: ii.unit, inventory_item_id: ii.ingredient_id };
       });
       openAIReviewModal({
         suggestions: [
@@ -4234,6 +4234,7 @@ export function MenuWorkspace({
             originalValue: JSON.stringify(currentRawLines),
             proposedValue: JSON.stringify(data.lines),
             isStructured: true,
+            isRecipeLines: true,
           },
         ],
         context: { workspace: "Menu & Pricing", section: item.name },

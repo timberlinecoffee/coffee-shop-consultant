@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, X, Pencil, Sparkles, AlertCircle, Link2 } from "lucide-react";
+import { Check, X, Pencil, Sparkles, AlertCircle, Link2, Plus } from "lucide-react";
 import { CollapseButton } from "@/components/ui/CollapseButton";
 import { COPILOT_NAME } from "@/lib/copilot/branding";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/lib/cross-workspace-apply";
 import { parseFactValue } from "@/lib/cross-workspace-sync";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
+import { ALLOWED_UNITS } from "@/lib/recipe-suggest";
 
 // ── Public types ────────────────────────────────────────────────────────────
 
@@ -26,6 +27,9 @@ export interface SuggestionPayload {
   originalValue: string;
   proposedValue: string;
   isStructured?: boolean;
+  // TIM-3860: when true, use the ingredient-specific table/diff/form-editor UI
+  // instead of the generic StructuredDiff. Only set for recipe suggestions.
+  isRecipeLines?: boolean;
   // TIM-1798: cross-workspace coordinated proposals. When present, cards are
   // grouped by workspaceLabel. A `derived` card is a linked figure (e.g. the
   // Financials equipment line + startup-cost total that follow an equipment-cost
@@ -151,8 +155,203 @@ function DiffText({ original, proposed }: { original: string; proposed: string }
   );
 }
 
-// ── Structured (table) diff ─────────────────────────────────────────────────
+// ── Recipe ingredient helpers (structured recipe diff & form editor) ─────────
 
+type RecipeLine = {
+  name: string;
+  amount: number;
+  unit: string;
+  inventory_item_id?: string;
+};
+
+function parseRecipeLines(value: string): RecipeLine[] {
+  try {
+    const parsed = JSON.parse(value);
+    // Handle bare array or common AI wrapper shapes: {lines:[...]} / {ingredients:[...]}
+    const arr: unknown = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray((parsed as Record<string, unknown>)?.lines)
+      ? (parsed as Record<string, unknown>).lines
+      : Array.isArray((parsed as Record<string, unknown>)?.ingredients)
+      ? (parsed as Record<string, unknown>).ingredients
+      : null;
+    if (!Array.isArray(arr)) return [];
+    // Only keep entries that have a non-empty string name — guards against
+    // AI responses missing the name field (which would crash normalizeIngredientName).
+    return arr.filter(
+      (r): r is RecipeLine =>
+        !!r &&
+        typeof r === "object" &&
+        typeof (r as RecipeLine).name === "string" &&
+        ((r as RecipeLine).name as string).trim().length > 0,
+    );
+  } catch { /* empty */ }
+  return [];
+}
+
+function normalizeIngredientName(name: string): string {
+  if (!name || typeof name !== "string") return "";
+  return name.toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+// Clean ingredient table — identical layout to the diff table, used for the
+// Current column so both columns share the same visual structure.
+function IngredientTable({ value }: { value: string }) {
+  const lines = parseRecipeLines(value);
+  if (lines.length === 0) {
+    return <p className="text-xs italic text-[var(--dark-grey)]">Empty</p>;
+  }
+  return (
+    <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-[var(--border)] bg-[var(--muted)]">
+            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Ingredient</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Amount</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Unit</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[var(--border)]">
+          {lines.map((line, i) => (
+            <tr key={i} className="bg-white">
+              <td className="px-3 py-2 text-neutral-950">{line.name}</td>
+              <td className="px-3 py-2 text-neutral-950">{line.amount}</td>
+              <td className="px-3 py-2 text-neutral-950">{line.unit}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+type DiffRowKind = "unchanged" | "added" | "removed" | "changed";
+
+type IngredientDiffRow = {
+  kind: DiffRowKind;
+  name: string;
+  origAmount?: number;
+  origUnit?: string;
+  propAmount?: number;
+  propUnit?: string;
+};
+
+function computeIngredientDiff(
+  origLines: RecipeLine[],
+  propLines: RecipeLine[],
+): IngredientDiffRow[] {
+  // Two indexes: stable UUID (for linked inventory items) and normalized name
+  // (for free-text or AI-proposed lines that have no inventory_item_id).
+  // AI-proposed lines never carry inventory_item_id, so they always match by
+  // name — the UUID index is purely for future-proofing.
+  const origById = new Map<string, RecipeLine>();
+  const origByName = new Map<string, RecipeLine>();
+  for (const line of origLines) {
+    if (line.inventory_item_id) origById.set(line.inventory_item_id, line);
+    origByName.set(normalizeIngredientName(line.name), line);
+  }
+
+  const rows: IngredientDiffRow[] = [];
+  // Track by the *original* line's canonical key so removals are detected correctly.
+  const handledOrigKeys = new Set<string>();
+
+  for (const prop of propLines) {
+    const orig =
+      (prop.inventory_item_id ? origById.get(prop.inventory_item_id) : undefined)
+      ?? origByName.get(normalizeIngredientName(prop.name));
+
+    if (!orig) {
+      rows.push({ kind: "added", name: prop.name, propAmount: prop.amount, propUnit: prop.unit });
+    } else {
+      const origKey = orig.inventory_item_id ?? normalizeIngredientName(orig.name);
+      handledOrigKeys.add(origKey);
+      if (orig.amount === prop.amount && orig.unit === prop.unit) {
+        rows.push({ kind: "unchanged", name: prop.name, propAmount: prop.amount, propUnit: prop.unit });
+      } else {
+        rows.push({ kind: "changed", name: prop.name, origAmount: orig.amount, origUnit: orig.unit, propAmount: prop.amount, propUnit: prop.unit });
+      }
+    }
+  }
+
+  // Original lines not matched by any proposed line → removed by the AI.
+  for (const orig of origLines) {
+    const origKey = orig.inventory_item_id ?? normalizeIngredientName(orig.name);
+    if (!handledOrigKeys.has(origKey)) {
+      rows.push({ kind: "removed", name: orig.name, origAmount: orig.amount, origUnit: orig.unit });
+    }
+  }
+
+  return rows;
+}
+
+// Diff table — used in the Suggested column. Unchanged rows are unstyled;
+// added rows get a green tint; removed rows get a red tint + strikethrough;
+// changed rows show the old amount/unit crossed out beside the new value.
+function IngredientDiff({ original, proposed }: { original: string; proposed: string }) {
+  const rows = computeIngredientDiff(parseRecipeLines(original), parseRecipeLines(proposed));
+
+  if (rows.length === 0) {
+    return <p className="text-xs italic text-[var(--dark-grey)]">Empty</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-[var(--border)] bg-[var(--muted)]">
+            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Ingredient</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Amount</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Unit</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[var(--border)]">
+          {rows.map((row, i) => {
+            const rowCls =
+              row.kind === "added"
+                ? "bg-[var(--teal-tint-500)]"
+                : row.kind === "removed"
+                ? "bg-red-50"
+                : "bg-white";
+
+            if (row.kind === "removed") {
+              return (
+                <tr key={i} className={rowCls}>
+                  <td className="px-3 py-2 line-through text-[var(--dark-grey)]">{row.name}</td>
+                  <td className="px-3 py-2 line-through text-[var(--dark-grey)]">{row.origAmount}</td>
+                  <td className="px-3 py-2 line-through text-[var(--dark-grey)]">{row.origUnit}</td>
+                </tr>
+              );
+            }
+
+            return (
+              <tr key={i} className={rowCls}>
+                <td className="px-3 py-2 text-neutral-950">{row.name}</td>
+                <td className="px-3 py-2">
+                  {row.kind === "changed" && row.origAmount !== row.propAmount ? (
+                    <><span className="line-through text-[var(--dark-grey)] mr-1">{row.origAmount}</span><span className="text-neutral-950">{row.propAmount}</span></>
+                  ) : (
+                    <span className="text-neutral-950">{row.propAmount}</span>
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  {row.kind === "changed" && row.origUnit !== row.propUnit ? (
+                    <><span className="line-through text-[var(--dark-grey)] mr-1">{row.origUnit}</span><span className="text-neutral-950">{row.propUnit}</span></>
+                  ) : (
+                    <span className="text-neutral-950">{row.propUnit}</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Generic structured diff — fallback for isStructured: true suggestions that are
+// NOT recipe lines (prep steps, supplier lists, milestones, cross-suite figures).
+// The ingredient-specific path requires isRecipeLines: true.
 function StructuredDiff({ original, proposed }: { original: string; proposed: string }) {
   let origRows: string[] = [];
   let propRows: string[] = [];
@@ -205,6 +404,107 @@ function StructuredDiff({ original, proposed }: { original: string; proposed: st
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// Form-based editor for structured recipe ingredient lists (Rule 3: server
+// validates fields on the apply route; the form just produces valid JSON).
+
+function IngredientFormEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [rows, setRows] = useState<RecipeLine[]>(() => {
+    const parsed = parseRecipeLines(value);
+    return parsed.length > 0 ? parsed : [{ name: "", amount: 1, unit: "g" }];
+  });
+
+  function updateRows(next: RecipeLine[]) {
+    setRows(next);
+    onChange(JSON.stringify(next));
+  }
+
+  function updateRow(idx: number, patch: Partial<RecipeLine>) {
+    updateRows(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-[var(--border)] bg-[var(--muted)]">
+              <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Ingredient</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide w-20">Amount</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide w-20">Unit</th>
+              <th className="px-2 py-2 w-8" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
+            {rows.map((row, i) => (
+              <tr key={i} className="bg-white">
+                <td className="px-2 py-1.5">
+                  <input
+                    type="text"
+                    aria-label={`Ingredient name for row ${i + 1}`}
+                    placeholder="Ingredient name"
+                    value={row.name}
+                    onChange={(e) => updateRow(i, { name: e.target.value })}
+                    className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-neutral-950 placeholder:text-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
+                  />
+                </td>
+                <td className="px-2 py-1.5">
+                  <input
+                    type="number"
+                    aria-label={`Amount for row ${i + 1}`}
+                    min={0}
+                    step={0.01}
+                    value={row.amount}
+                    onChange={(e) => { const v = e.target.valueAsNumber; updateRow(i, { amount: isNaN(v) ? 0 : Math.max(0, v) }); }}
+                    className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+                  />
+                </td>
+                <td className="px-2 py-1.5">
+                  <select
+                    aria-label={`Unit for row ${i + 1}`}
+                    value={row.unit}
+                    onChange={(e) => updateRow(i, { unit: e.target.value })}
+                    className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+                  >
+                    {(ALLOWED_UNITS.includes(row.unit as typeof ALLOWED_UNITS[number])
+                      ? ALLOWED_UNITS
+                      : [...ALLOWED_UNITS, row.unit]
+                    ).map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-2 py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => updateRows(rows.filter((_, j) => j !== i))}
+                    aria-label={`Remove ${row.name || "this ingredient"}`}
+                    className="w-6 h-6 rounded-lg bg-neutral-200 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-colors text-neutral-500"
+                  >
+                    <X size={12} aria-hidden />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button
+        type="button"
+        onClick={() => updateRows([...rows, { name: "", amount: 1, unit: "g" }])}
+        className="flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] hover:underline transition-colors"
+      >
+        <Plus size={12} aria-hidden /> Add Row
+      </button>
     </div>
   );
 }
@@ -284,25 +584,31 @@ function ChangeCard({
           <div className="space-y-3">
             <div>
               <p className="text-xs font-medium text-[var(--dark-grey)] uppercase tracking-wide mb-1">Current</p>
-              <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2">
-                {sug.isStructured ? (
-                  <p className="text-xs text-[var(--dark-grey)]">{sug.originalValue || <em>Empty</em>}</p>
-                ) : (
+              {sug.isRecipeLines ? (
+                <IngredientTable value={sug.originalValue} />
+              ) : sug.isStructured ? (
+                <StructuredDiff original={sug.originalValue} proposed={sug.originalValue} />
+              ) : (
+                <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2">
                   <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
                     {sug.originalValue.trim() || <em className="text-[var(--dark-grey)]">Empty</em>}
                   </p>
-                )}
-              </div>
+                </div>
+              )}
             </div>
             <div>
               <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide mb-1">Suggested</p>
-              <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2">
-                {sug.isStructured ? (
+              {sug.isRecipeLines ? (
+                <IngredientDiff original={sug.originalValue} proposed={cardState.editedValue} />
+              ) : sug.isStructured ? (
+                <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2">
                   <StructuredDiff original={sug.originalValue} proposed={cardState.editedValue} />
-                ) : (
+                </div>
+              ) : (
+                <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2">
                   <DiffText original={sug.originalValue} proposed={cardState.editedValue} />
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -310,45 +616,57 @@ function ChangeCard({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs font-medium text-[var(--dark-grey)] uppercase tracking-wide mb-1.5">Current</p>
-              <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2.5 min-h-[60px]">
-                {sug.isStructured ? (
-                  <p className="text-xs text-[var(--dark-grey)]">{sug.originalValue || <em>Empty</em>}</p>
-                ) : (
+              {sug.isRecipeLines ? (
+                <IngredientTable value={sug.originalValue} />
+              ) : sug.isStructured ? (
+                <StructuredDiff original={sug.originalValue} proposed={sug.originalValue} />
+              ) : (
+                <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2.5 min-h-[60px]">
                   <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
                     {sug.originalValue.trim() || <em className="text-[var(--dark-grey)]">Empty</em>}
                   </p>
-                )}
-              </div>
+                </div>
+              )}
             </div>
             <div>
               <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide mb-1.5">Suggested</p>
-              <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2.5 min-h-[60px]">
-                {sug.isStructured ? (
+              {sug.isRecipeLines ? (
+                <IngredientDiff original={sug.originalValue} proposed={cardState.editedValue} />
+              ) : sug.isStructured ? (
+                <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2.5 min-h-[60px]">
                   <StructuredDiff original={sug.originalValue} proposed={cardState.editedValue} />
-                ) : (
+                </div>
+              ) : (
+                <div className="rounded-lg bg-white border border-[var(--teal)]/30 px-3 py-2.5 min-h-[60px]">
                   <DiffText original={sug.originalValue} proposed={cardState.editedValue} />
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         )
       )}
 
-      {/* Edit textarea */}
+      {/* Edit mode: form editor for structured fields, textarea for plain text */}
       {isEditing && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide">Editing suggested text</p>
-          <textarea
-            ref={textareaRef}
-            value={cardState.editedValue}
-            onChange={(e) => onEditChange(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") onEditSave();
-              if (e.key === "Escape") onEditDiscard();
-            }}
-            aria-label={`Edit suggested text for ${sug.fieldLabel}`}
-            className="w-full min-h-[80px] border border-[var(--teal)] rounded-lg p-3 text-sm resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
-          />
+          <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide">
+            {sug.isRecipeLines ? "Edit Ingredients" : "Editing Suggested Text"}
+          </p>
+          {sug.isRecipeLines ? (
+            <IngredientFormEditor value={cardState.editedValue} onChange={onEditChange} />
+          ) : (
+            <textarea
+              ref={textareaRef}
+              value={cardState.editedValue}
+              onChange={(e) => onEditChange(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") onEditSave();
+                if (e.key === "Escape") onEditDiscard();
+              }}
+              aria-label={`Edit suggested text for ${sug.fieldLabel}`}
+              className="w-full min-h-[80px] border border-[var(--teal)] rounded-lg p-3 text-sm resize-y focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
+            />
+          )}
         </div>
       )}
 
