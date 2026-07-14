@@ -455,7 +455,7 @@ export async function POST(request: NextRequest) {
         // aliases ("La Marzocko" → "La Marzocco") and Levenshtein ≤ 2
         // near-misses against the plan_state.entities registry so the saved
         // draft is internally consistent before the founder ever opens it.
-        let workingText = normalizeAIOutput(fullText);
+        let workingText = normalizeAIOutput(fullText, { stripPlaceholders: true });
         let canon = canonicalizeNarrative(workingText, planState.entities);
 
         // TIM-2343: per-section self-consistency — proofreader call on the
@@ -487,7 +487,7 @@ export async function POST(request: NextRequest) {
             maxTokens,
           });
           if (regen) {
-            workingText = normalizeAIOutput(regen);
+            workingText = normalizeAIOutput(regen, { stripPlaceholders: true });
             canon = canonicalizeNarrative(workingText, planState.entities);
             contradictions = await runSelfConsistencyCheck({
               lane: scoutLane,
