@@ -36,6 +36,9 @@ export const SCOUT_LANES = [
   "analyse_financials_revenue_streams",
   "analyse_financials_costs_overhead",
   "analyse_financials_growth_ramp",
+  // TIM-3891: Opening Month Plan analyse lanes.
+  "analyse_opening_month_milestones",
+  "analyse_opening_month_playbook",
   // Marketing, hiring, suppliers, concept, financials → DeepSeek.
   "marketing_generate",
   "hiring_improve_jd",
@@ -74,6 +77,8 @@ export const FORCE_ANTHROPIC_LANES = new Set<ScoutLane>([
   "analyse_financials_revenue_streams",
   "analyse_financials_costs_overhead",
   "analyse_financials_growth_ramp",
+  "analyse_opening_month_milestones",
+  "analyse_opening_month_playbook",
 ])
 
 // Lanes that need Anthropic Sonnet 4.6 specifically — they depend on the

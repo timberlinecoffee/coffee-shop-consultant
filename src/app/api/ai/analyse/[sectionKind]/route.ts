@@ -3,10 +3,14 @@
 // location-shortlist, and lease-terms sections. Pro plan only.
 // TIM-3884: Extended with 4 Financials v2 section kinds (daily-traffic,
 // revenue-streams, costs-overhead, growth-ramp). Reads financial_models table.
+// TIM-3891: Extended with Opening Month Plan sections (milestones, playbook).
+//   Reads launch_milestones, soft_open_plan_items, workspace_documents tables.
 //
-// Rule 1 (RLS): No new tables. Reads only existing tables that already have
-//   RLS enabled (location_candidates, location_rubric_scores, location_lease_terms,
-//   module_responses, financial_models). No service-client writes.
+// Rule 1 (RLS): No new tables. Reads only existing RLS-enabled tables:
+//   location_candidates, location_rubric_scores, location_lease_terms,
+//   module_responses, financial_models (TIM-3878/3884),
+//   launch_milestones, soft_open_plan_items, workspace_documents (TIM-3891).
+//   No service-client writes.
 // Rule 2 (server-side auth): effectivePlanForGating + plan ownership re-checked
 //   server-side on every request. Client button state is UI only.
 // Rule 3 (validate): Zod on request body AND on AI response shape;
@@ -44,6 +48,9 @@ const SECTION_KINDS = [
   "financials-revenue-streams",
   "financials-costs-overhead",
   "financials-growth-ramp",
+  // TIM-3891: Opening Month Plan sections
+  "opening-month-milestones",
+  "opening-month-playbook",
 ] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
@@ -59,6 +66,8 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "financials-revenue-streams": "analyse_financials_revenue_streams",
   "financials-costs-overhead": "analyse_financials_costs_overhead",
   "financials-growth-ramp": "analyse_financials_growth_ramp",
+  "opening-month-milestones": "analyse_opening_month_milestones",
+  "opening-month-playbook": "analyse_opening_month_playbook",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -618,6 +627,127 @@ Assess whether the ramp period assumptions are realistic (a new coffee shop typi
 ${JSON_SCHEMA_INSTRUCTION}`
 }
 
+// ── TIM-3891: Opening Month Plan data loaders ────────────────────────────────
+
+type MilestoneRow = {
+  title: string
+  track: string | null
+  target_date: string | null
+  status: string | null
+  critical_path: boolean | null
+}
+
+async function loadMilestonesContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const [
+    { data: milestones, error: milestonesErr },
+    { data: configDoc },
+  ] = await Promise.all([
+    supabase
+      .from("launch_milestones")
+      .select("title, track, target_date, status, critical_path")
+      .eq("plan_id", planId)
+      .order("target_date", { ascending: true })
+      .limit(50),
+    supabase
+      .from("workspace_documents")
+      .select("content")
+      .eq("plan_id", planId)
+      .eq("workspace_key", "opening_month_plan")
+      .maybeSingle(),
+  ])
+
+  if (milestonesErr) throw new Error(`launch_milestones query failed: ${milestonesErr.message}`)
+  if (!milestones || milestones.length === 0) return ""
+
+  const config = (configDoc?.content ?? {}) as Record<string, unknown>
+  const targetLaunchDate = config.targetLaunchDate as string | undefined
+
+  const tracks = new Map<string, MilestoneRow[]>()
+  for (const m of milestones as MilestoneRow[]) {
+    const t = m.track ?? "general"
+    const list = tracks.get(t) ?? []
+    list.push(m)
+    tracks.set(t, list)
+  }
+
+  const trackLines: string[] = []
+  for (const [track, items] of tracks) {
+    const rows = items.map((m) => {
+      const date = m.target_date ?? "no date"
+      const status = m.status ?? "not_started"
+      const cp = m.critical_path ? " [critical path]" : ""
+      return `  - ${m.title} (${date}, ${status})${cp}`
+    })
+    trackLines.push(`${track}:\n${rows.join("\n")}`)
+  }
+
+  const totalCount = milestones.length
+  const doneCount = (milestones as MilestoneRow[]).filter((m) => m.status === "done").length
+  const criticalCount = (milestones as MilestoneRow[]).filter((m) => m.critical_path).length
+
+  return `Analyse the launch milestone plan for this coffee shop.
+${targetLaunchDate ? `\nTarget opening date: ${targetLaunchDate}` : ""}
+
+Milestones (${totalCount} total, ${doneCount} done, ${criticalCount} on critical path):
+${trackLines.join("\n\n")}
+
+Assess the overall milestone plan: Is the timeline realistic? Are critical-path milestones sequenced correctly? Are there gaps in coverage (missing permit, staffing, equipment, or training milestones)? Flag any milestones that are overdue or at risk based on their target dates and status. Benchmark against typical coffee shop pre-opening timelines (usually 3–9 months from lease signing to open). Weight concerns by severity: critical = timeline blocker, warn = potential delay, info = worth monitoring.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
+type PlaybookItemRow = {
+  day_offset: number
+  task: string
+  owner: string | null
+  status: string | null
+}
+
+async function loadPlaybookContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const { data: items, error: itemsErr } = await supabase
+    .from("soft_open_plan_items")
+    .select("day_offset, task, owner, status")
+    .eq("plan_id", planId)
+    .order("day_offset", { ascending: true })
+    .limit(100)
+
+  if (itemsErr) throw new Error(`soft_open_plan_items query failed: ${itemsErr.message}`)
+  if (!items || items.length === 0) return ""
+
+  const pre = (items as PlaybookItemRow[]).filter((i) => i.day_offset < 0)
+  const opening = (items as PlaybookItemRow[]).filter((i) => i.day_offset >= 0 && i.day_offset <= 7)
+  const first30 = (items as PlaybookItemRow[]).filter((i) => i.day_offset > 7)
+
+  function summarizeBucket(rows: PlaybookItemRow[], label: string): string {
+    if (rows.length === 0) return `${label}: none`
+    const doneCount = rows.filter((r) => r.status === "done").length
+    const sample = rows.slice(0, 5).map((r) => {
+      const owner = r.owner ? ` (${r.owner})` : ""
+      return `  Day ${r.day_offset}: ${r.task}${owner} [${r.status ?? "pending"}]`
+    })
+    if (rows.length > 5) sample.push(`  … and ${rows.length - 5} more`)
+    return `${label} (${rows.length} tasks, ${doneCount} done):\n${sample.join("\n")}`
+  }
+
+  return `Analyse the opening month playbook for this coffee shop.
+
+${summarizeBucket(pre, "Pre-open weeks (days < 0)")}
+
+${summarizeBucket(opening, "Opening week (days 0–7)")}
+
+${summarizeBucket(first30, "First 30 days (days 8–30)")}
+
+Assess the playbook: Is the task distribution across pre-open, opening week, and first-30-days balanced? Are there critical operational areas that appear underrepresented (staffing, supplier orders, training, marketing, compliance)? Flag any tasks that lack an assigned owner. Benchmark against typical coffee shop opening checklists. Weight concerns by severity.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -728,7 +858,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
       prompt = ctx.prompt
       sectionKey = `location-lease.lease-terms.${resourceId}`
-    } else {
+    } else if (
+      sectionKind === "financials-daily-traffic" ||
+      sectionKind === "financials-revenue-streams" ||
+      sectionKind === "financials-costs-overhead" ||
+      sectionKind === "financials-growth-ramp"
+    ) {
       // TIM-3884: Financials v2 sections — load from financial_models table.
       const mp = await loadFinancialModel(supabase, planId)
       if (!mp) {
@@ -756,6 +891,26 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           { status: 422 },
         )
       }
+    } else if (sectionKind === "opening-month-milestones") {
+      // TIM-3891: Opening Month Plan — Milestones section
+      prompt = await loadMilestonesContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "No milestones found — generate your launch milestones first" },
+          { status: 422 },
+        )
+      }
+      sectionKey = `opening-month.milestones.${planId}`
+    } else if (sectionKind === "opening-month-playbook") {
+      // TIM-3891: Opening Month Plan — Playbook section
+      prompt = await loadPlaybookContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "No playbook tasks found — seed your opening month playbook first" },
+          { status: 422 },
+        )
+      }
+      sectionKey = `opening-month.playbook.${planId}`
     }
   } catch (err) {
     console.error(`[ai-analyse/${sectionKind}] data load error:`, err)
