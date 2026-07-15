@@ -266,13 +266,19 @@ function AccordionSection({
 
   return (
     <div id={id} className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
-      {/* TIM-3869: toggle is a chevron-only button; SectionHeader (which may render
-          aiAction buttons) sits alongside it at the same level to prevent nested
-          <button> elements (invalid HTML). */}
-      <div className="w-full flex items-center gap-2 px-5 py-4">
+      {/* TIM-3869: SectionHeader (which may render aiAction buttons) sits OUTSIDE the
+          toggle <button> to prevent nested interactive elements.
+          The outer row div handles click for the full title-text target; the chevron
+          button carries the a11y contract (aria-expanded/controls) and keyboard toggle;
+          stopPropagation on the SectionHeader wrapper prevents aiAction clicks from
+          collapsing the section. */}
+      <div
+        className="w-full flex items-center gap-2 px-5 py-4 cursor-pointer"
+        onClick={() => setOpen((o) => !o)}
+      >
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
           aria-expanded={open}
           aria-controls={id ? `${id}-content` : undefined}
           aria-label={open ? "Collapse section" : "Expand section"}
@@ -284,8 +290,13 @@ function AccordionSection({
             aria-hidden="true"
           />
         </button>
-        <SectionHeader title={title} className="mb-0 flex-1 min-w-0" aiActions={aiActions} />
-        <StatusBadge status={status} />
+        {/* stopPropagation prevents aiAction button clicks from collapsing the section */}
+        <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+          <SectionHeader title={title} className="mb-0" aiActions={aiActions} />
+        </div>
+        <div onClick={(e) => e.stopPropagation()}>
+          <StatusBadge status={status} />
+        </div>
       </div>
       {open && (
         <div id={id ? `${id}-content` : undefined} className="px-5 pb-5 pt-1 border-t border-[var(--border)] space-y-5">
@@ -1543,6 +1554,7 @@ export function FinancialsV2({
           setResult(data as AnalyseResponse);
         }
       } catch {
+        setResult(null);
         setError("Network error. Please try again.");
       } finally {
         inFlightRef.current = false;
