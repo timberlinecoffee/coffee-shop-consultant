@@ -763,6 +763,14 @@ function RolePageV2(props: RolePageProps) {
   const [roleAnalyseError, setRoleAnalyseError] = useState<string | null>(null);
   const roleAnalyseInFlight = useRef(false);
 
+  // Clear stale analysis when the selected role changes so Role A's results
+  // don't bleed into Role B's panel.
+  useEffect(() => {
+    setRoleAnalyseResult(null);
+    setRoleAnalyseError(null);
+    roleAnalyseInFlight.current = false;
+  }, [role.id]);
+
   const [roleWriteCallout, setRoleWriteCallout] = useState<{
     fieldLabel: string;
     fieldKey: string;
@@ -807,6 +815,7 @@ function RolePageV2(props: RolePageProps) {
       }
       setRoleAnalyseResult(data as AnalyseResponse);
     } catch {
+      setRoleAnalyseResult(null);
       setRoleAnalyseError("Connection error. Please try again.");
     } finally {
       setRoleAnalyseLoading(false);
@@ -960,11 +969,17 @@ function Accordion({
     >
       <summary className="list-none cursor-pointer px-4 py-3 select-none">
         <div className="flex items-center gap-2">
-          <SectionHeader
-            title={title}
-            aiActions={aiActions}
-            className="mb-0 flex-1"
-          />
+          {/* Stop click on AI buttons from bubbling to <summary> and toggling the accordion. */}
+          <div
+            className="flex-1 min-w-0"
+            onClick={(e) => { if ((e.target as HTMLElement).closest("button")) e.stopPropagation(); }}
+          >
+            <SectionHeader
+              title={title}
+              aiActions={aiActions}
+              className="mb-0"
+            />
+          </div>
           <span className="shrink-0 text-[var(--dark-grey)] transition-transform group-open:rotate-180">
             <ChevronDown size={16} />
           </span>

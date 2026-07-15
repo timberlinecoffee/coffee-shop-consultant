@@ -431,24 +431,27 @@ async function loadHiringRoleContext(
   planId: string,
   roleId: string,
 ): Promise<{ owned: boolean; prompt: string }> {
-  const { data: role } = await supabase
+  const { data: role, error: roleErr } = await supabase
     .from("hiring_plan_roles")
     .select("id, plan_id, role_title, headcount, notes, jd_template_id")
     .eq("id", roleId)
     .maybeSingle()
 
+  if (roleErr) throw roleErr
   if (!role || role.plan_id !== planId) {
     return { owned: false, prompt: "" }
   }
 
-  const jd = role.jd_template_id
-    ? await supabase
-        .from("job_description_templates")
-        .select("title, summary, responsibilities, requirements, comp")
-        .eq("id", role.jd_template_id)
-        .maybeSingle()
-        .then((r) => r.data)
-    : null
+  let jd: { title: string | null; summary: string | null; responsibilities: string | null; requirements: string | null; comp: string | null } | null = null
+  if (role.jd_template_id) {
+    const { data: jdData, error: jdErr } = await supabase
+      .from("job_description_templates")
+      .select("title, summary, responsibilities, requirements, comp")
+      .eq("id", role.jd_template_id)
+      .maybeSingle()
+    if (jdErr) throw jdErr
+    jd = jdData
+  }
 
   const title = role.role_title?.trim() || "Unnamed role"
   const fields: string[] = [`Role: ${title}`, `Headcount: ${role.headcount ?? 1}`]
@@ -462,8 +465,8 @@ async function loadHiringRoleContext(
     if (jd.comp?.trim()) fields.push(`Compensation & benefits: ${jd.comp.trim()}`)
   }
 
-  const hasContent = fields.length > 2 || jd != null
-  if (!hasContent) return { owned: true, prompt: "" }
+  // Guard on populated fields only — a linked but empty JD template is not enough context.
+  if (fields.length <= 2) return { owned: true, prompt: "" }
 
   const prompt = `Analyse this coffee shop staffing role for a business plan.
 
