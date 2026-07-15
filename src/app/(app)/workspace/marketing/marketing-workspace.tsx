@@ -31,7 +31,7 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
-import { InlineAnalysisCard, type AnalyseResponse } from "@/components/location-lease/InlineAnalysisCard";
+import { InlineAnalysisCard, type AnalyseResponse } from "@/components/ai-analyse/InlineAnalysisCard";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -347,7 +347,6 @@ export function MarketingWorkspace({
     channelsAnalyseInFlightRef.current = true;
     setChannelsAnalyseLoading(true);
     setChannelsAnalyseError("");
-    setChannelsAnalyseResult(null);
     try {
       const res = await fetch("/api/ai/analyse/marketing-channels", {
         method: "POST",
@@ -355,15 +354,7 @@ export function MarketingWorkspace({
         body: JSON.stringify({}),
       });
       if (res.status === 402) {
-        // Route returns {error, code} not {reason}; code:"pro_required" means Pro-plan gate.
-        const body402 = (await res.json().catch(() => null)) as { error?: string; code?: string; reason?: string } | null;
-        if (body402?.code === "pro_required") {
-          setChannelsAnalyseError("Analyse with AI requires a Pro plan.");
-          return;
-        }
-        setPaywallReason(
-          (body402?.reason as "no_subscription" | "paused" | "expired") ?? "no_subscription",
-        );
+        setPaywallReason("no_subscription");
         return;
       }
       if (!res.ok) {
@@ -396,7 +387,6 @@ export function MarketingWorkspace({
     preLaunchAnalyseInFlightRef.current = true;
     setPreLaunchAnalyseLoading(true);
     setPreLaunchAnalyseError("");
-    setPreLaunchAnalyseResult(null);
     try {
       const res = await fetch("/api/ai/analyse/marketing-pre-launch", {
         method: "POST",
@@ -404,15 +394,7 @@ export function MarketingWorkspace({
         body: JSON.stringify({}),
       });
       if (res.status === 402) {
-        // Route returns {error, code} not {reason}; code:"pro_required" means Pro-plan gate.
-        const body402 = (await res.json().catch(() => null)) as { error?: string; code?: string; reason?: string } | null;
-        if (body402?.code === "pro_required") {
-          setPreLaunchAnalyseError("Analyse with AI requires a Pro plan.");
-          return;
-        }
-        setPaywallReason(
-          (body402?.reason as "no_subscription" | "paused" | "expired") ?? "no_subscription",
-        );
+        setPaywallReason("no_subscription");
         return;
       }
       if (!res.ok) {
