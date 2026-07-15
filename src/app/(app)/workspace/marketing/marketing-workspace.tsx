@@ -331,6 +331,10 @@ export function MarketingWorkspace({
         onApply: async () => {
           setDoc(body.content);
           setSavedAt(new Date().toISOString());
+          // Clear any stale analyse result for this section so the card
+          // doesn't persist against freshly-written content.
+          if (section === "channels") setChannelsAnalyseResult(null);
+          if (section === "pre_launch") setPreLaunchAnalyseResult(null);
         },
       });
     } finally {
@@ -352,9 +356,15 @@ export function MarketingWorkspace({
         body: JSON.stringify({}),
       });
       if (res.status === 402) {
-        const body = (await res.json().catch(() => null)) as { reason?: string } | null;
+        // Analyse route returns {error, code} not {reason}. Pro-plan gates
+        // use code:"pro_required"; subscription gates use no code.
+        const body402 = (await res.json().catch(() => null)) as { error?: string; code?: string; reason?: string } | null;
+        if (body402?.code === "pro_required") {
+          setChannelsAnalyseError("Analyse with AI requires a Pro plan.");
+          return;
+        }
         setPaywallReason(
-          (body?.reason as "no_subscription" | "paused" | "expired") ?? "no_subscription",
+          (body402?.reason as "no_subscription" | "paused" | "expired") ?? "no_subscription",
         );
         return;
       }
@@ -396,9 +406,15 @@ export function MarketingWorkspace({
         body: JSON.stringify({}),
       });
       if (res.status === 402) {
-        const body = (await res.json().catch(() => null)) as { reason?: string } | null;
+        // Analyse route returns {error, code} not {reason}. Pro-plan gates
+        // use code:"pro_required"; subscription gates use no code.
+        const body402 = (await res.json().catch(() => null)) as { error?: string; code?: string; reason?: string } | null;
+        if (body402?.code === "pro_required") {
+          setPreLaunchAnalyseError("Analyse with AI requires a Pro plan.");
+          return;
+        }
         setPaywallReason(
-          (body?.reason as "no_subscription" | "paused" | "expired") ?? "no_subscription",
+          (body402?.reason as "no_subscription" | "paused" | "expired") ?? "no_subscription",
         );
         return;
       }
