@@ -29,6 +29,7 @@ import { enforceRateLimit } from "@/lib/rate-limit"
 import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/lib/access"
 import type { NextRequest } from "next/server"
 import type { ScoutLane } from "@/lib/ai/scout-lane"
+import { toTitleCase } from "@/lib/text"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -545,7 +546,7 @@ function buildCostsOverheadPrompt(mp: MonthlyProjectionsRaw): string {
     fields.push(`Personnel (${personnel.length} roles):`)
     personnel.forEach((p) => {
       const pay =
-        (p.hourly_rate_cents as number) != null
+        (p.hourly_rate_cents as number) > 0
           ? `${fmtCents(p.hourly_rate_cents as number)}/hr`
           : `${fmtCents(p.annual_salary_cents as number)}/yr`
       fields.push(`  ${p.role_title ?? "Staff"}: ${pay}`)
@@ -747,10 +748,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       } else if (sectionKind === "financials-costs-overhead") {
         prompt = buildCostsOverheadPrompt(financialsMp)
         sectionKey = `financials.costs-overhead.${planId}`
-      } else {
-        // financials-growth-ramp
+      } else if (sectionKind === "financials-growth-ramp") {
         prompt = buildGrowthRampPrompt(financialsMp)
         sectionKey = `financials.growth-ramp.${planId}`
+      } else {
+        // Should not be reachable — SECTION_KINDS allowlist checked at route entry
+        return Response.json({ error: "Unknown section kind" }, { status: 400 })
       }
 
       if (!prompt) {
@@ -815,11 +818,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       const validation = AIContentSchema.safeParse(raw)
 
       if (validation.success) {
+        const d = validation.data
+        // TIM-1002: normalize label-shaped fields through toTitleCase before returning.
         analysisResult = {
           version: 1,
           sectionKey,
           generatedAt,
-          ...validation.data,
+          ...d,
+          score: d.score ? { ...d.score, label: d.score.label ? toTitleCase(d.score.label) : d.score.label } : d.score,
         }
         break
       }
