@@ -2,6 +2,8 @@
 //   "router unit tests cover all 27 lanes for both default-flag-off
 //    (everything Anthropic in prod) and default-flag-on (chat lanes DeepSeek)
 //    behavior."
+// TIM-3878: +3 analyse lanes (location_property, shortlist, lease_terms) → 30.
+// TIM-3884: +4 financials analyse lanes → 34.
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
@@ -20,8 +22,8 @@ import {
   RESEARCH_AI_MODEL,
 } from "./models.ts"
 
-test("registry has 27 lanes (plan §3 taxonomy)", () => {
-  assert.equal(SCOUT_LANES.length, 27)
+test("registry has 34 lanes (plan §3 taxonomy + TIM-3878 analyse + TIM-3884 financials analyse)", () => {
+  assert.equal(SCOUT_LANES.length, 34)
 })
 
 test("default-flag-OFF (prod today) → every lane routes to Anthropic", () => {

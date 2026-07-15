@@ -31,6 +31,11 @@ export const SCOUT_LANES = [
   "analyse_location_property",
   "analyse_location_shortlist",
   "analyse_lease_terms",
+  // TIM-3884: Financials v2 analyse lanes — one per accordion section.
+  "analyse_financials_daily_traffic",
+  "analyse_financials_revenue_streams",
+  "analyse_financials_costs_overhead",
+  "analyse_financials_growth_ramp",
   // Marketing, hiring, suppliers, concept, financials → DeepSeek.
   "marketing_generate",
   "hiring_improve_jd",
@@ -61,10 +66,14 @@ export const FORCE_ANTHROPIC_LANES = new Set<ScoutLane>([
   "opening_month_generate",
   "document_import_extract",
   "buildout_import",
-  // TIM-3878: Analyse lanes require structured JSON output — Anthropic for reliability.
+  // TIM-3878/3884: Analyse lanes require structured JSON output — Anthropic for reliability.
   "analyse_location_property",
   "analyse_location_shortlist",
   "analyse_lease_terms",
+  "analyse_financials_daily_traffic",
+  "analyse_financials_revenue_streams",
+  "analyse_financials_costs_overhead",
+  "analyse_financials_growth_ramp",
 ])
 
 // Lanes that need Anthropic Sonnet 4.6 specifically — they depend on the

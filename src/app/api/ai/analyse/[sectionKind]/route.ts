@@ -1,10 +1,12 @@
 // TIM-3878: POST /api/ai/analyse/<sectionKind>
 // Phase 3 of TIM-3870 — structured AI analysis for location-property,
 // location-shortlist, and lease-terms sections. Pro plan only.
+// TIM-3884: Extended with 4 Financials v2 section kinds (daily-traffic,
+// revenue-streams, costs-overhead, growth-ramp). Reads financial_models table.
 //
 // Rule 1 (RLS): No new tables. Reads only existing tables that already have
 //   RLS enabled (location_candidates, location_rubric_scores, location_lease_terms,
-//   module_responses). No service-client writes.
+//   module_responses, financial_models). No service-client writes.
 // Rule 2 (server-side auth): effectivePlanForGating + plan ownership re-checked
 //   server-side on every request. Client button state is UI only.
 // Rule 3 (validate): Zod on request body AND on AI response shape;
@@ -33,7 +35,16 @@ export const maxDuration = 60
 
 const ROUTE_PATH = "/api/ai/analyse/[sectionKind]"
 
-const SECTION_KINDS = ["location-property", "location-shortlist", "lease-terms"] as const
+const SECTION_KINDS = [
+  "location-property",
+  "location-shortlist",
+  "lease-terms",
+  // TIM-3884: Financials v2 sections
+  "financials-daily-traffic",
+  "financials-revenue-streams",
+  "financials-costs-overhead",
+  "financials-growth-ramp",
+] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
 function isSectionKind(v: string): v is SectionKind {
@@ -44,6 +55,10 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "location-property": "analyse_location_property",
   "location-shortlist": "analyse_location_shortlist",
   "lease-terms": "analyse_lease_terms",
+  "financials-daily-traffic": "analyse_financials_daily_traffic",
+  "financials-revenue-streams": "analyse_financials_revenue_streams",
+  "financials-costs-overhead": "analyse_financials_costs_overhead",
+  "financials-growth-ramp": "analyse_financials_growth_ramp",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -377,6 +392,232 @@ ${JSON_SCHEMA_INSTRUCTION}`
   return { owned: true, prompt }
 }
 
+// ── Financials v2 data loader (shared across all 4 sections) ─────────────────
+
+type MonthlyProjectionsRaw = Record<string, unknown>
+
+async function loadFinancialModel(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<MonthlyProjectionsRaw | null> {
+  const { data: model } = await supabase
+    .from("financial_models")
+    .select("forecast_inputs, monthly_projections")
+    .eq("plan_id", planId)
+    .maybeSingle()
+
+  if (!model) return null
+  const mp = (model as { forecast_inputs?: unknown; monthly_projections?: unknown }).forecast_inputs
+    ?? (model as { monthly_projections?: unknown }).monthly_projections
+  if (!mp || typeof mp !== "object" || Array.isArray(mp)) return null
+  return mp as MonthlyProjectionsRaw
+}
+
+function fmtCents(cents: unknown): string {
+  if (typeof cents !== "number") return "—"
+  return `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
+}
+
+function fmtPct(pct: unknown): string {
+  if (typeof pct !== "number") return "—"
+  return `${pct}%`
+}
+
+// TIM-3884: Daily Traffic & Schedule section loader
+function buildDailyTrafficPrompt(mp: MonthlyProjectionsRaw): string {
+  const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
+  const DAY_LABELS: Record<string, string> = {
+    mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday",
+    fri: "Friday", sat: "Saturday", sun: "Sunday",
+  }
+
+  const schedule = (mp.weekly_schedule ?? {}) as Record<string, { open?: boolean; open_time?: string; close_time?: string }>
+  const flow = (mp.daily_flow ?? {}) as Record<string, number>
+
+  const openDays = DAY_KEYS.filter((d) => schedule[d]?.open)
+  if (openDays.length === 0) return ""
+
+  const scheduleLines = openDays.map((d) => {
+    const sched = schedule[d]
+    const customers = flow[d] ?? 0
+    const open = sched?.open_time ?? "?"
+    const close = sched?.close_time ?? "?"
+    return `  ${DAY_LABELS[d]}: ${open}–${close}, ${customers} customers`
+  })
+
+  const totalWeeklyCustomers = openDays.reduce((s, d) => s + (flow[d] ?? 0), 0)
+  const avgCustomersPerDay = openDays.length > 0
+    ? Math.round(totalWeeklyCustomers / openDays.length)
+    : 0
+
+  return `Analyse the daily traffic and operating schedule for this coffee shop.
+
+Operating schedule (${openDays.length} days/week):
+${scheduleLines.join("\n")}
+
+Weekly total: ${totalWeeklyCustomers} customers
+Average per open day: ${avgCustomersPerDay} customers
+
+Assess whether the customer volume and hours are realistic for a coffee shop in this stage. Identify if the weekly traffic is too low or too high given the hours, and flag any schedule patterns that could affect revenue (e.g. no weekend coverage, very long hours with low traffic). Include concrete benchmarks for typical coffee shop daily foot traffic. Weight concerns by severity.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
+// TIM-3884: Revenue Streams section loader
+function buildRevenueStreamsPrompt(mp: MonthlyProjectionsRaw): string {
+  const avgTicketCents = mp.avg_ticket_cents as number | undefined
+  const cogsPct = mp.cogs_pct as number | undefined
+  const revenueSplit = mp.revenue_split_enabled as boolean | undefined
+  const bevTicketCents = mp.beverage_ticket_cents as number | undefined
+  const foodTicketCents = mp.food_ticket_cents as number | undefined
+
+  const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
+  const schedule = (mp.weekly_schedule ?? {}) as Record<string, { open?: boolean }>
+  const flow = (mp.daily_flow ?? {}) as Record<string, number>
+  const openDays = DAY_KEYS.filter((d) => schedule[d]?.open)
+  const totalWeeklyCustomers = openDays.reduce((s, d) => s + (flow[d] ?? 0), 0)
+
+  const fields: string[] = []
+  if (revenueSplit && bevTicketCents != null && foodTicketCents != null) {
+    fields.push(`Beverage avg ticket: ${fmtCents(bevTicketCents)}`)
+    fields.push(`Food avg ticket: ${fmtCents(foodTicketCents)}`)
+    fields.push(`Combined avg ticket: ${fmtCents(bevTicketCents + foodTicketCents)}`)
+  } else if (avgTicketCents != null) {
+    fields.push(`Average ticket: ${fmtCents(avgTicketCents)}`)
+  }
+  if (cogsPct != null) fields.push(`COGS % of revenue: ${fmtPct(cogsPct)}`)
+  if (totalWeeklyCustomers > 0) fields.push(`Weekly customers: ${totalWeeklyCustomers}`)
+
+  if (fields.length === 0) return ""
+
+  const forecastLines = Array.isArray(mp.forecast_lines) ? mp.forecast_lines as Array<Record<string, unknown>> : []
+  const revenueLines = forecastLines.filter((l) => l.category === "revenue" && ((l.value as number) ?? 0) > 0)
+  const revLinesSummary = revenueLines.length > 0
+    ? revenueLines.map((l) => `  ${l.label ?? "Revenue line"}: ${fmtCents(l.value as number)}/mo`).join("\n")
+    : "  None"
+
+  return `Analyse the revenue streams for this coffee shop.
+
+Revenue inputs:
+${fields.map((f) => `  ${f}`).join("\n")}
+
+Additional revenue streams:
+${revLinesSummary}
+
+Assess whether the average ticket and COGS percentage are realistic. Benchmark against typical coffee shop industry norms (avg ticket $6–$10, COGS 28–35%). Flag if COGS is out of range. Evaluate whether additional revenue streams diversify income effectively. Weight concerns by severity.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
+// TIM-3884: Costs & Overhead section loader
+function buildCostsOverheadPrompt(mp: MonthlyProjectionsRaw): string {
+  const forecastLines = Array.isArray(mp.forecast_lines) ? mp.forecast_lines as Array<Record<string, unknown>> : []
+  const costLines = forecastLines.filter((l) =>
+    ["overhead", "cogs"].includes(l.category as string) && ((l.value as number) ?? 0) > 0
+  )
+  const personnel = Array.isArray(mp.personnel) ? mp.personnel as Array<Record<string, unknown>> : []
+  const paymentProcessingPct = mp.payment_processing_pct as number | undefined
+  const spoilagePct = mp.spoilage_pct as number | undefined
+  const loyaltyDiscountPct = mp.loyalty_discount_pct as number | undefined
+
+  const sc = (mp.startup_costs ?? {}) as Record<string, unknown>
+  const equipmentCents = sc.equipment_cents as number | undefined
+  const buildoutCents = sc.buildout_cents as number | undefined
+  const totalStartup = (equipmentCents ?? 0) + (buildoutCents ?? 0)
+
+  const fundingSources = Array.isArray(mp.funding_sources) ? mp.funding_sources as Array<Record<string, unknown>> : []
+
+  const fields: string[] = []
+
+  if (costLines.length > 0) {
+    fields.push("Monthly operating costs:")
+    costLines.forEach((l) => {
+      const val = typeof l.value === "number" && l.is_pct_of_revenue
+        ? `${l.value}% of revenue`
+        : fmtCents(l.value as number)
+      fields.push(`  ${l.label ?? "Cost"}: ${val}/mo`)
+    })
+  }
+
+  if (paymentProcessingPct != null) fields.push(`Payment processing: ${fmtPct(paymentProcessingPct)} of revenue`)
+  if (spoilagePct != null) fields.push(`Spoilage: ${fmtPct(spoilagePct)} of COGS`)
+  if (loyaltyDiscountPct != null) fields.push(`Loyalty discount: ${fmtPct(loyaltyDiscountPct)} of revenue`)
+
+  if (personnel.length > 0) {
+    fields.push(`Personnel (${personnel.length} roles):`)
+    personnel.forEach((p) => {
+      const pay = p.pay_type === "hourly"
+        ? `${fmtCents(p.hourly_rate_cents as number)}/hr × ${p.hours_per_week ?? "?"} hrs/wk`
+        : `${fmtCents(p.annual_salary_cents as number)}/yr`
+      fields.push(`  ${p.role_title ?? "Staff"}: ${pay}`)
+    })
+  }
+
+  if (totalStartup > 0) {
+    fields.push(`Startup costs: ${fmtCents(totalStartup)} (equipment: ${fmtCents(equipmentCents)}, buildout: ${fmtCents(buildoutCents)})`)
+  }
+
+  if (fundingSources.length > 0) {
+    fields.push(`Funding sources (${fundingSources.length}):`)
+    fundingSources.forEach((f) => {
+      fields.push(`  ${f.label ?? "Funding"}: ${fmtCents(f.amount_cents as number)}`)
+    })
+  }
+
+  if (fields.length === 0) return ""
+
+  return `Analyse the costs, overhead, and staffing for this coffee shop.
+
+Cost inputs:
+${fields.join("\n")}
+
+Assess whether the cost structure is realistic. Benchmark overhead against industry norms (rent typically 8–12% of revenue, payroll 35–45% of revenue). Flag overspending or underspending in any category. Evaluate whether startup costs and funding are adequate. Weight concerns by severity: critical = financially dangerous gap, warn = needs adjustment, info = worth monitoring.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
+// TIM-3884: Growth & Ramp section loader
+function buildGrowthRampPrompt(mp: MonthlyProjectionsRaw): string {
+  const rampMonths = mp.ramp_months as number | undefined
+  const rampMultipliers = Array.isArray(mp.ramp_multipliers) ? mp.ramp_multipliers as number[] : []
+  const growthMode = (mp.growth_mode ?? "simple") as string
+  const growthMonthlyPct = mp.growth_monthly_pct as number | undefined
+  const growthCustomMonthly = Array.isArray(mp.growth_custom_monthly) ? mp.growth_custom_monthly as number[] : []
+  const incomeTaxPct = mp.income_tax_pct as number | undefined
+  const salesTaxPct = mp.sales_tax_pct as number | undefined
+
+  const fields: string[] = []
+  if (rampMonths != null && rampMonths > 0) {
+    fields.push(`Ramp period: ${rampMonths} months`)
+    if (rampMultipliers.length > 0) {
+      fields.push(`Ramp multipliers: ${rampMultipliers.map((v, i) => `M${i + 1}=${v}%`).join(", ")}`)
+    }
+  } else {
+    fields.push("Ramp period: none (starts at full revenue)")
+  }
+
+  if (growthMode === "custom" && growthCustomMonthly.length > 0) {
+    fields.push(`Monthly growth (custom): ${growthCustomMonthly.map((v, i) => `M${i + 1}=${v}%`).join(", ")}`)
+  } else if (growthMonthlyPct != null) {
+    const annualApprox = Math.round(((1 + growthMonthlyPct / 100) ** 12 - 1) * 100)
+    fields.push(`Monthly growth: ${fmtPct(growthMonthlyPct)} (~${annualApprox}% annually)`)
+  }
+
+  if (incomeTaxPct != null) fields.push(`Income tax rate: ${fmtPct(incomeTaxPct)}`)
+  if (salesTaxPct != null) fields.push(`Sales tax rate: ${fmtPct(salesTaxPct)}`)
+
+  if (fields.length === 0) return ""
+
+  return `Analyse the growth assumptions and tax settings for this coffee shop projection.
+
+Growth and tax inputs:
+${fields.map((f) => `  ${f}`).join("\n")}
+
+Assess whether the ramp period assumptions are realistic (a new coffee shop typically takes 3–12 months to reach steady-state revenue). Evaluate whether the monthly growth rate is achievable (2–5%/month is aggressive but possible; over 8%/month is unrealistic for a single location). Flag if the income tax rate is far from typical small-business rates (20–30%). Include benchmarks where applicable. Weight concerns by severity.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -476,8 +717,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       prompt = await loadShortlistContext(supabase, planId)
       if (!prompt) return Response.json({ error: "No candidates on shortlist yet" }, { status: 422 })
       sectionKey = `location-lease.shortlist.${planId}`
-    } else {
-      // lease-terms
+    } else if (sectionKind === "lease-terms") {
       const ctx = await loadLeaseTermsContext(supabase, planId, resourceId!)
       if (!ctx.owned) return Response.json({ error: "Candidate not found" }, { status: 404 })
       if (!ctx.prompt) {
@@ -488,6 +728,34 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
       prompt = ctx.prompt
       sectionKey = `location-lease.lease-terms.${resourceId}`
+    } else {
+      // TIM-3884: Financials v2 sections — load from financial_models table.
+      const mp = await loadFinancialModel(supabase, planId)
+      if (!mp) {
+        return Response.json({ error: "No financial model found" }, { status: 404 })
+      }
+
+      if (sectionKind === "financials-daily-traffic") {
+        prompt = buildDailyTrafficPrompt(mp)
+        sectionKey = `financials.daily-traffic.${planId}`
+      } else if (sectionKind === "financials-revenue-streams") {
+        prompt = buildRevenueStreamsPrompt(mp)
+        sectionKey = `financials.revenue-streams.${planId}`
+      } else if (sectionKind === "financials-costs-overhead") {
+        prompt = buildCostsOverheadPrompt(mp)
+        sectionKey = `financials.costs-overhead.${planId}`
+      } else {
+        // financials-growth-ramp
+        prompt = buildGrowthRampPrompt(mp)
+        sectionKey = `financials.growth-ramp.${planId}`
+      }
+
+      if (!prompt) {
+        return Response.json(
+          { error: "Not enough data entered yet — fill in this section before running analysis" },
+          { status: 422 },
+        )
+      }
     }
   } catch (err) {
     console.error(`[ai-analyse/${sectionKind}] data load error:`, err)
@@ -503,7 +771,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   let lastScoutResult: Awaited<ReturnType<typeof runScoutTurn>> | null = null
 
   // Accumulate token counts across all retry attempts so telemetry reflects true spend.
-  let accUsage = {
+  const accUsage = {
     inputTokensUncached: 0,
     inputTokensCachedRead: 0,
     inputTokensCacheCreate: 0,
