@@ -354,7 +354,7 @@ export function OperationsPlaybookWorkspace({
                                 {
                                   kind: "write" as const,
                                   onClick: () => generateSection(key as SopCategoryKey),
-                                  disabled: generating === key,
+                                  disabled: generating !== null,
                                 },
                               ]
                             : undefined
@@ -379,7 +379,7 @@ export function OperationsPlaybookWorkspace({
                                 {
                                   kind: "write" as const,
                                   onClick: () => generateSection("roles"),
-                                  disabled: generating === "roles",
+                                  disabled: generating !== null,
                                 },
                               ]
                             : undefined
@@ -410,7 +410,7 @@ export function OperationsPlaybookWorkspace({
                                 {
                                   kind: "write" as const,
                                   onClick: () => generateSection("training"),
-                                  disabled: generating === "training",
+                                  disabled: generating !== null,
                                 },
                               ]
                             : undefined
