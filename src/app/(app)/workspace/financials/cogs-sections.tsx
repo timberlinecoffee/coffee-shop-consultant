@@ -19,8 +19,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { SectionHeader } from "@/components/section-header";
-import { InlineAnalysisCard } from "@/components/location-lease/InlineAnalysisCard";
-import type { AnalyseResponse } from "@/components/location-lease/InlineAnalysisCard";
+import { InlineAnalysisCard } from "@/components/ai-analyse/InlineAnalysisCard";
+import type { AnalyseResponse } from "@/components/ai-analyse/InlineAnalysisCard";
 import { SectionSubtotalRow, GrandTotalRow } from "@/lib/workspace-table-rows";
 import {
   TABLE_CELL_TEXT,
