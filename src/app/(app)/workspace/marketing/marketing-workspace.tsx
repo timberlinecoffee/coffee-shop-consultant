@@ -351,12 +351,25 @@ export function MarketingWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = await res.json() as Record<string, unknown>;
-      if (!res.ok) {
-        setChannelsAnalyseError((data.error as string) ?? "Analysis failed. Please try again.");
+      if (res.status === 402) {
+        const body = (await res.json().catch(() => null)) as { reason?: string } | null;
+        setPaywallReason(
+          (body?.reason as "no_subscription" | "paused" | "expired") ?? "no_subscription",
+        );
         return;
       }
-      if (!Array.isArray(data.strengths)) {
+      if (!res.ok) {
+        const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
+        setChannelsAnalyseError(errBody?.error ?? "Analysis failed. Please try again.");
+        return;
+      }
+      const data = (await res.json()) as Record<string, unknown>;
+      if (
+        !Array.isArray(data.strengths) ||
+        !Array.isArray(data.concerns) ||
+        !Array.isArray(data.callouts) ||
+        !Array.isArray(data.recommendations)
+      ) {
         setChannelsAnalyseError("Analysis returned an unexpected format.");
         return;
       }
@@ -367,7 +380,7 @@ export function MarketingWorkspace({
       setChannelsAnalyseLoading(false);
       channelsAnalyseInFlightRef.current = false;
     }
-  }, [canEdit]);
+  }, [canEdit, setPaywallReason]);
 
   // TIM-3885: Pre-launch analyse handler.
   const runPreLaunchAnalyse = useCallback(async () => {
@@ -382,12 +395,25 @@ export function MarketingWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = await res.json() as Record<string, unknown>;
-      if (!res.ok) {
-        setPreLaunchAnalyseError((data.error as string) ?? "Analysis failed. Please try again.");
+      if (res.status === 402) {
+        const body = (await res.json().catch(() => null)) as { reason?: string } | null;
+        setPaywallReason(
+          (body?.reason as "no_subscription" | "paused" | "expired") ?? "no_subscription",
+        );
         return;
       }
-      if (!Array.isArray(data.strengths)) {
+      if (!res.ok) {
+        const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
+        setPreLaunchAnalyseError(errBody?.error ?? "Analysis failed. Please try again.");
+        return;
+      }
+      const data = (await res.json()) as Record<string, unknown>;
+      if (
+        !Array.isArray(data.strengths) ||
+        !Array.isArray(data.concerns) ||
+        !Array.isArray(data.callouts) ||
+        !Array.isArray(data.recommendations)
+      ) {
         setPreLaunchAnalyseError("Analysis returned an unexpected format.");
         return;
       }
@@ -398,10 +424,11 @@ export function MarketingWorkspace({
       setPreLaunchAnalyseLoading(false);
       preLaunchAnalyseInFlightRef.current = false;
     }
-  }, [canEdit]);
+  }, [canEdit, setPaywallReason]);
 
   // TIM-3885: Recommendations view handler — read-only, no-op onApply per TIM-3879 pattern.
   const handleViewRecommendation = useCallback((text: string, actionRef: string) => {
+    if (!canEdit) return;
     openAIReviewModal({
       suggestions: [
         {
@@ -416,7 +443,7 @@ export function MarketingWorkspace({
       context: { workspace: "Marketing", section: "Analysis" },
       onApply: async () => {},
     });
-  }, [openAIReviewModal]);
+  }, [canEdit, openAIReviewModal]);
 
   const hasContent = MARKETING_SECTION_KEYS.some((k) => {
     const s = doc[k];
@@ -593,12 +620,12 @@ function SectionBody(props: SectionBodyProps) {
         </div>
       )}
 
-      {analyseResult && (
+      {analyseResult && onAnalyse && (
         <div className="mb-4">
           <InlineAnalysisCard
             result={analyseResult}
             loading={analyseLoading ?? false}
-            onRegenerate={onAnalyse!}
+            onRegenerate={onAnalyse}
             onViewRecommendation={onViewRecommendation}
           />
         </div>

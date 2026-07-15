@@ -613,7 +613,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       prompt = await loadMarketingChannelsContext(supabase, planId)
       if (!prompt) {
         return Response.json(
-          { error: "No channels selected yet — add channels in the Marketing workspace before running analysis" },
+          { error: "No channels selected yet. Add channels in the Marketing workspace before running analysis." },
           { status: 422 },
         )
       }
@@ -622,7 +622,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       prompt = await loadMarketingPreLaunchContext(supabase, planId)
       if (!prompt) {
         return Response.json(
-          { error: "No milestones in the pre-launch plan yet — add milestones before running analysis" },
+          { error: "No milestones in the pre-launch plan yet. Add milestones before running analysis." },
           { status: 422 },
         )
       }
