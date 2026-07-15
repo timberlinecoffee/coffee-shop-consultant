@@ -90,7 +90,7 @@ export async function POST(request: Request) {
   if (!body.item_id || typeof body.item_id !== "string") {
     return Response.json({ error: "Missing required field: item_id" }, { status: 400 })
   }
-  const itemName = body.item_name?.trim()
+  const itemName = sanitizeForPrompt(body.item_name?.trim() ?? "")
   if (!itemName) {
     return Response.json({ error: "Name the item before suggesting a recipe" }, { status: 400 })
   }
@@ -228,10 +228,10 @@ export async function POST(request: Request) {
 
   const ctx = body.concept_context ?? {}
   const conceptLines: string[] = []
-  if (ctx.shop_identity) conceptLines.push(`Shop: ${ctx.shop_identity}`)
-  if (ctx.location) conceptLines.push(`Location: ${ctx.location}`)
-  if (ctx.target_customer) conceptLines.push(`Target customer: ${ctx.target_customer}`)
-  if (ctx.vision) conceptLines.push(`Vision: ${ctx.vision}`)
+  if (ctx.shop_identity) conceptLines.push(`Shop: ${sanitizeForPrompt(ctx.shop_identity)}`)
+  if (ctx.location) conceptLines.push(`Location: ${sanitizeForPrompt(ctx.location)}`)
+  if (ctx.target_customer) conceptLines.push(`Target customer: ${sanitizeForPrompt(ctx.target_customer)}`)
+  if (ctx.vision) conceptLines.push(`Vision: ${sanitizeForPrompt(ctx.vision)}`)
   const conceptSummary = conceptLines.length > 0
     ? conceptLines.join("\n")
     : "No concept details provided — assume a specialty independent café."
