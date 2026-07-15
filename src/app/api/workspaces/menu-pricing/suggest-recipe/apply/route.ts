@@ -52,7 +52,12 @@ export async function POST(request: Request) {
 
   const lines = body.lines.filter(
     (l): l is { name: string; amount: number; unit: string } =>
-      typeof l.name === "string" && typeof l.amount === "number" && typeof l.unit === "string",
+      typeof l.name === "string" &&
+      l.name.trim().length > 0 &&
+      typeof l.amount === "number" &&
+      l.amount > 0 &&
+      Number.isFinite(l.amount) &&
+      typeof l.unit === "string",
   )
 
   if (lines.length === 0) {

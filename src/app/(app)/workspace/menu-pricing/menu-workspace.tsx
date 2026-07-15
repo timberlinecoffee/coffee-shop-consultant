@@ -1147,7 +1147,7 @@ function ItemEditorPanel({
       <div className="px-5 pt-3" role="tablist" aria-label="Item details">
         <div className="inline-flex items-center gap-1 bg-[var(--background)] border border-[var(--border)] rounded-lg p-0.5">
           {([
-            { id: "recipe" as const, label: "Recipe" },
+            { id: "recipe" as const, label: "Ingredients & Supplies" },
             { id: "cogs" as const, label: "Cost of Goods" },
           ]).map((t) => (
             <button
@@ -1222,9 +1222,22 @@ function ItemEditorPanel({
   );
 }
 
+// TIM-3861: keyword-based role inference for the two-group recipe display.
+// Prefer the explicit ingredient.category when set; fall back to keyword match on name.
+// Returns 'supply' for disposables/packaging, 'ingredient' for everything else.
+// Child 4 (TIM-3862) and the AI prompt rework should read ingredient.category directly.
+const SUPPLY_KEYWORDS = /\b(cup|cups|lid|lids|sleeve|sleeves|napkin|napkins|straw|straws|wrapper|wrappers|plate|plates|utensil|utensils|spoon|spoons|fork|forks|knife|knives|bag|bags|box|boxes|container|containers|packaging|wrap|wraps|seal|seals|tray|trays|doily|doilies)\b/i;
+
+function inferIngredientRole(ingredient: MenuIngredient | null): 'ingredient' | 'supply' {
+  if (!ingredient) return 'ingredient';
+  if (ingredient.category === 'supply') return 'supply';
+  if (ingredient.category === 'ingredient') return 'ingredient';
+  return SUPPLY_KEYWORDS.test(ingredient.name) ? 'supply' : 'ingredient';
+}
+
 // TIM-1471: Recipe tab — reads like a recipe page. Ingredients on top, then
 // preparation steps as an ordered list. Both editable. Both AI-seedable.
-// UX/UI Designer to layer a treatment pass on top of this structure.
+// TIM-3861: recipe lines split into Ingredients / Supplies & Packaging groups.
 function RecipeTabContent({
   item,
   ingredients,
@@ -1327,15 +1340,41 @@ function RecipeTabContent({
         </p>
       )}
 
-      {/* Ingredients */}
+      {/* TIM-3861: Ingredients & Supplies — two-group recipe section */}
       <section>
-        <h3 className="text-[15px] font-semibold text-[var(--foreground)] tracking-tight mb-4">
-          Ingredients
-        </h3>
-        {recipeLines.length > 0 ? (
-          <ul className="space-y-1 mb-4">
-            {recipeLines.map((line) => {
-              const ing = ingredients.find((i) => i.id === line.ingredient_id);
+        {/* Section header with help tooltip — copy from board spec */}
+        <SectionHeader
+          title="Recipe and Cost Components"
+          helpContent="This includes everything that goes into making and serving this item — ingredients, disposables, and packaging — so we can calculate your true cost per item."
+          className="mb-4"
+          headingLevel={3}
+        />
+
+        {recipeLines.length === 0 ? (
+          <p className="text-sm text-[var(--muted-foreground)] mb-4 italic">
+            No ingredients yet. Add one below to build the recipe and compute COGS.
+          </p>
+        ) : (() => {
+          // Build a lookup map so each line resolves its ingredient in O(1)
+          // instead of O(n) per find call.
+          const ingMap = new Map(ingredients.map((i) => [i.id, i]));
+
+          // Partition recipe lines into Ingredients vs Supplies & Packaging.
+          // Both groups roll into total COGS — the total per item is unchanged.
+          const ingredientLines: typeof recipeLines = [];
+          const supplyLines: typeof recipeLines = [];
+          for (const line of recipeLines) {
+            const ing = ingMap.get(line.ingredient_id);
+            if (inferIngredientRole(ing ?? null) === 'supply') {
+              supplyLines.push(line);
+            } else {
+              ingredientLines.push(line);
+            }
+          }
+
+          const groupItems = (lines: typeof recipeLines) =>
+            lines.map((line) => {
+              const ing = ingMap.get(line.ingredient_id);
               const lineCost = ing ? line.amount * costPerUnit(ing) : null;
               return (
                 <li key={line.id}>
@@ -1350,13 +1389,29 @@ function RecipeTabContent({
                   />
                 </li>
               );
-            })}
-          </ul>
-        ) : (
-          <p className="text-sm text-[var(--muted-foreground)] mb-4 italic">
-            No ingredients yet. Add one below to build the recipe and compute COGS.
-          </p>
-        )}
+            });
+
+          return (
+            <div className="space-y-4 mb-4">
+              {ingredientLines.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-2">
+                    Ingredients
+                  </p>
+                  <ul className="space-y-1 mb-2">{groupItems(ingredientLines)}</ul>
+                </div>
+              )}
+              {supplyLines.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-2">
+                    Supplies and Packaging
+                  </p>
+                  <ul className="space-y-1 mb-2">{groupItems(supplyLines)}</ul>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* TIM-2950: Add Ingredient control is ALWAYS visible — never hidden
             when category defaults are present. When the catalog is exhausted
@@ -1372,7 +1427,7 @@ function RecipeTabContent({
         )}
         {canEdit && availableIngredients.length === 0 && (
           <div>
-            <label className={labelCls}>Add Ingredient</label>
+            <label className={labelCls}>Add Ingredient or Supply</label>
             <div className="relative">
               <Search
                 size={12}
@@ -2147,6 +2202,8 @@ function SortableMenuItemRow({
 
 // ─── Category-default ingredients editor ─────────────────────────────────────
 
+// TIM-3863: per-category supply defaults. Uses menu_ingredients.category from TIM-3861
+// as the discriminator (supply vs ingredient) — same category_default_ingredients table.
 function CategoryDefaultsEditor({
   category,
   defaults,
@@ -2167,7 +2224,25 @@ function CategoryDefaultsEditor({
   onApplyToExisting: () => Promise<void>;
 }) {
   const used = new Set(defaults.map((d) => d.ingredient_id));
-  const available = ingredients.filter((i) => !used.has(i.id));
+  // Build a lookup map once to avoid O(defaults × ingredients) scans per pass.
+  const ingMap = new Map(ingredients.map((i) => [i.id, i]));
+
+  // Split defaults into supply vs ingredient groups using the same role
+  // inference as the recipe display (TIM-3861).
+  const supplyDefaults = defaults.filter((d) =>
+    inferIngredientRole(ingMap.get(d.ingredient_id) ?? null) === 'supply'
+  );
+  const ingredientDefaults = defaults.filter((d) =>
+    inferIngredientRole(ingMap.get(d.ingredient_id) ?? null) === 'ingredient'
+  );
+
+  const availableSupplies = ingredients.filter(
+    (i) => !used.has(i.id) && inferIngredientRole(i) === 'supply'
+  );
+  const availableIngredients = ingredients.filter(
+    (i) => !used.has(i.id) && inferIngredientRole(i) === 'ingredient'
+  );
+
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState<number | null>(null);
 
@@ -2183,44 +2258,79 @@ function CategoryDefaultsEditor({
   }
 
   return (
-    <div className="px-5 py-4 bg-[var(--gray-50)] border-t border-[var(--neutral-cool-150)] space-y-3">
-      <div>
-        <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-          Default ingredients are auto-added to every <strong>new</strong> item in <strong>{category.name}</strong> — handy for amortizing
-          cups, lids, sleeves, and napkins across beverages (try 0.7 cups to represent 70% to-go).
-          Editing or removing a default on an existing item won&apos;t change the category default.
+    <div className="px-5 py-4 bg-[var(--gray-50)] border-t border-[var(--neutral-cool-150)] space-y-4">
+      <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+        Configure default supplies and ingredients for <strong>{category.name}</strong>.
+        New items in this category inherit these rows as editable recipe entries.
+        Changes here apply to <strong>new items only</strong> — existing items keep their current recipe.
+        Editing or removing a row on an item does not affect these category defaults.
+      </p>
+
+      {/* Supply & Packaging Defaults */}
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold text-[var(--neutral-cool-650)] uppercase tracking-wide">
+          Supply Defaults
         </p>
+        {supplyDefaults.length > 0 ? (
+          <div className="space-y-1.5">
+            {supplyDefaults.map((d) => {
+              const ing = ingMap.get(d.ingredient_id);
+              return (
+                <DefaultLineRow
+                  key={d.id}
+                  def={d}
+                  ingredient={ing ?? null}
+                  canEdit={canEdit}
+                  onUpdate={(patch) => onUpdate(d.id, patch)}
+                  onDelete={() => onDelete(d.id)}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-[11px] text-[var(--neutral-cool-350)]">No supply defaults yet.</p>
+        )}
+        {canEdit && availableSupplies.length > 0 && (
+          <DefaultAddRow available={availableSupplies} onAdd={onAdd} />
+        )}
+        {canEdit && availableSupplies.length === 0 && supplyDefaults.length === 0 && (
+          <p className="text-[11px] text-[var(--muted-foreground)]">
+            Add cups, lids, or other packaging to your Ingredients list first, then configure defaults here.
+          </p>
+        )}
       </div>
 
-      {defaults.length > 0 ? (
-        <div className="space-y-2">
-          {defaults.map((d) => {
-            const ing = ingredients.find((i) => i.id === d.ingredient_id);
-            return (
-              <DefaultLineRow
-                key={d.id}
-                def={d}
-                ingredient={ing ?? null}
-                canEdit={canEdit}
-                onUpdate={(patch) => onUpdate(d.id, patch)}
-                onDelete={() => onDelete(d.id)}
-              />
-            );
-          })}
-        </div>
-      ) : (
-        <p className="text-xs text-[var(--dark-grey)]">No default ingredients yet.</p>
-      )}
-
-      {canEdit && available.length > 0 && (
-        <DefaultAddRow
-          available={available}
-          onAdd={onAdd}
-        />
-      )}
+      {/* Ingredient Defaults */}
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold text-[var(--neutral-cool-650)] uppercase tracking-wide">
+          Ingredient Defaults
+        </p>
+        {ingredientDefaults.length > 0 ? (
+          <div className="space-y-1.5">
+            {ingredientDefaults.map((d) => {
+              const ing = ingMap.get(d.ingredient_id);
+              return (
+                <DefaultLineRow
+                  key={d.id}
+                  def={d}
+                  ingredient={ing ?? null}
+                  canEdit={canEdit}
+                  onUpdate={(patch) => onUpdate(d.id, patch)}
+                  onDelete={() => onDelete(d.id)}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-[11px] text-[var(--neutral-cool-350)]">No ingredient defaults yet.</p>
+        )}
+        {canEdit && availableIngredients.length > 0 && (
+          <DefaultAddRow available={availableIngredients} onAdd={onAdd} />
+        )}
+      </div>
 
       {canEdit && defaults.length > 0 && (
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex items-center gap-2 pt-1 border-t border-[var(--neutral-cool-150)]">
           <button
             type="button"
             onClick={handleApply}
@@ -3956,6 +4066,7 @@ export function MenuWorkspace({
       package_cost_cents: payload.package_cost_cents,
       vendor_id: null,
       notes: null,
+      category: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -4223,7 +4334,7 @@ export function MenuWorkspace({
       const currentLines = itemIngredients.filter((ii) => ii.menu_item_id === item.id);
       const currentRawLines = currentLines.map((ii) => {
         const ing = ingredients.find((g) => g.id === ii.ingredient_id);
-        return { name: ing?.name ?? ii.ingredient_id, amount: ii.amount, unit: ii.unit };
+        return { name: ing?.name ?? ii.ingredient_id, amount: ii.amount, unit: ii.unit, inventory_item_id: ii.ingredient_id };
       });
       openAIReviewModal({
         suggestions: [
@@ -4234,6 +4345,7 @@ export function MenuWorkspace({
             originalValue: JSON.stringify(currentRawLines),
             proposedValue: JSON.stringify(data.lines),
             isStructured: true,
+            isRecipeLines: true,
           },
         ],
         context: { workspace: "Menu & Pricing", section: item.name },

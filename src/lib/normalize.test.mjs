@@ -9,6 +9,7 @@ import {
   stripAIJargon,
   applyVoiceRules,
   stripEmojiFromBody,
+  stripPlaceholderTokens,
   normalizeAIOutput,
 } from "./normalize.ts";
 
@@ -90,7 +91,105 @@ test("normalizeAIOutput leaves multi-line prose in sentence case", () => {
 });
 
 test("all functions are safe on empty input", () => {
-  for (const fn of [toTitleCase, stripAIJargon, applyVoiceRules, stripEmojiFromBody, normalizeAIOutput]) {
+  for (const fn of [toTitleCase, stripAIJargon, applyVoiceRules, stripEmojiFromBody, stripPlaceholderTokens, normalizeAIOutput]) {
     assert.equal(fn(""), "");
   }
+});
+
+// TIM-3854: defense-in-depth against LLM "HEREHEREHERE..." confusion output.
+// Root cause is upstream (circular BP-to-BP seed replaced with workspace
+// seed) — this scrubber makes sure a garbage token from any lane never
+// reaches the founder-facing preview.
+
+test("stripPlaceholderTokens removes concatenated HEREHEREHERE-style runs", () => {
+  assert.equal(stripPlaceholderTokens("HEREHEREHERE"), "");
+  // Post-strip whitespace collapsed to a single space — the "double space
+  // blemish" was called out in TIM-3854 code review; matched here so a
+  // regression re-introducing it fails this pin.
+  assert.equal(stripPlaceholderTokens("HEREHEREHEREHERE more text"), " more text");
+  assert.equal(stripPlaceholderTokens("Prefix TODOTODOTODO suffix"), "Prefix suffix");
+});
+
+test("stripPlaceholderTokens strips space-separated repeats only at 4+ occurrences of 4+ char tokens", () => {
+  // TIM-3854 code-review fix: space-separated 3x of a legit acronym is
+  // real prose ("SBA SBA SBA underwriters"). Must survive.
+  const survives = "The SBA SBA SBA loan program is common.";
+  assert.equal(stripPlaceholderTokens(survives), survives);
+  // Four+ space-separated repeats of a 4+ char token is junk.
+  assert.equal(
+    stripPlaceholderTokens("prose HERE HERE HERE HERE ends"),
+    "prose ends",
+  );
+});
+
+test("stripPlaceholderTokens removes bracketed [FILL IN] / {{VAR}} placeholders", () => {
+  // Punctuation-adjacent placeholders leave no stranded space before the punct.
+  assert.equal(stripPlaceholderTokens("Total: [FILL IN] units"), "Total: units");
+  // Trailing space at end-of-string is preserved (real prose ends in a period
+  // or newline that trims cleanly). The blemish we care about is double-space
+  // IN the middle of a paragraph.
+  assert.equal(stripPlaceholderTokens("Total: [FILL_IN]"), "Total: ");
+  assert.equal(stripPlaceholderTokens("Value {{PLACEHOLDER}} here"), "Value here");
+  assert.equal(stripPlaceholderTokens("Insert [INSERT SHOP NAME] there"), "Insert there");
+});
+
+test("stripPlaceholderTokens preserves legit [TODO] / [TBD] annotations", () => {
+  // Founders and lenders both use [TBD] / [TODO] as legit "not yet
+  // determined" markers in early drafts. Do not strip.
+  const tbd = "Address: [TBD] as of signing.";
+  assert.equal(stripPlaceholderTokens(tbd), tbd);
+  const todo = "Rent split: [TODO] confirm with landlord.";
+  assert.equal(stripPlaceholderTokens(todo), todo);
+});
+
+test("stripPlaceholderTokens removes XXXX / ____ visual placeholders", () => {
+  assert.equal(stripPlaceholderTokens("XXXXXX plans"), " plans");
+  assert.equal(stripPlaceholderTokens("Address: ______"), "Address: ");
+});
+
+test("stripPlaceholderTokens leaves lowercase runs alone", () => {
+  // Lowercase xxxxxx or repeat-underscore-in-prose is uncommon but not junk;
+  // being case-sensitive avoids false positives on redacted samples / code.
+  assert.equal(stripPlaceholderTokens("The xxxxxx sample"), "The xxxxxx sample");
+});
+
+test("stripPlaceholderTokens leaves legit ALLCAPS acronyms alone", () => {
+  // Single ALLCAPS token — leave untouched.
+  assert.equal(stripPlaceholderTokens("Use the SBA loan program."), "Use the SBA loan program.");
+  assert.equal(stripPlaceholderTokens("NNN lease with CAM."), "NNN lease with CAM.");
+  // Two distinct acronyms in a row — also not the "HEREHERE" pattern.
+  assert.equal(stripPlaceholderTokens("SCA and USA."), "SCA and USA.");
+});
+
+test("normalizeAIOutput scrubs HERE placeholder in the pipeline when stripPlaceholders is opted in", () => {
+  // BP-specific: the /improve, /generate, and /regenerate-all routes pass
+  // { stripPlaceholders: true } so a garbage token from any BP lane never
+  // reaches the founder-facing preview. Non-BP AI routes (JD improve,
+  // location tradeoff, buildout notes, …) MUST NOT pass this option — the
+  // scrubber would eat their intentional `[Insert location]`, `XXXXXX`
+  // redaction markers, and signature-line underscores.
+  assert.equal(normalizeAIOutput("HEREHEREHEREHERE", { stripPlaceholders: true }), "");
+  assert.equal(
+    normalizeAIOutput("The Kestrel opens in HEREHEREHERE with a full team.", { stripPlaceholders: true }),
+    "The Kestrel opens in with a full team.",
+  );
+});
+
+test("normalizeAIOutput does NOT scrub placeholders by default (non-BP surfaces preserve JD/redaction markers)", () => {
+  // Hiring workspace: `[Insert manager name]` is a legit template marker.
+  // Use sentence-shaped input so isLabelShaped's title-case pass does not fire.
+  assert.equal(
+    normalizeAIOutput("Report to [Insert manager name] at our cafe."),
+    "Report to [Insert manager name] at our cafe.",
+  );
+  // Location/buildout: `XXXXXXXXX` redactions and signature-line underscores
+  // are legit content the founder expects to survive AI-generated notes.
+  assert.equal(
+    normalizeAIOutput("The landlord TIN on file is XXXXXXXXX for privacy."),
+    "The landlord TIN on file is XXXXXXXXX for privacy.",
+  );
+  assert.equal(
+    normalizeAIOutput("The signature line reads ______________ pending countersign."),
+    "The signature line reads ______________ pending countersign.",
+  );
 });
