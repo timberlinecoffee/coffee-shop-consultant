@@ -5,8 +5,7 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, Pencil, Sparkles, Eye, EyeOff, RotateCcw, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
-import { SectionHelp } from "@/components/ui/section-help";
+import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, Pencil, Eye, EyeOff, RotateCcw, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
 import { SectionHeader, type AiAction } from "@/components/section-header";
 import { InlineAnalysisCard } from "@/components/ai-analyse/InlineAnalysisCard";
 import type { AnalyseResponse } from "@/app/api/ai/analyse/[sectionKind]/route";
