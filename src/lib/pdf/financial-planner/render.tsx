@@ -22,7 +22,7 @@ import {
   computeMonthlySlices,
   fiscalYearMonthLabels,
 } from "@/lib/financial-projection";
-import { formatMinorUnits, getCurrencyMeta } from "@/lib/currency";
+import { formatCurrencyAmount, formatMinorUnits, getCurrencyMeta } from "@/lib/currency";
 
 registerFonts();
 
@@ -457,17 +457,8 @@ function Footer({ generatedDate, brand }: { generatedDate: string; brand: BrandT
 // ── chart configs (currency-aware axis ticks via prefix on labels) ───────────
 
 function fmtAxis(value: number, code: string): string {
-  // Compact for chart axes; uses currency symbol via formatMinorUnits.
-  const meta = getCurrencyMeta(code);
-  const divisor = Math.pow(10, meta.fractionDigits);
-  const v = value / divisor;
-  return new Intl.NumberFormat(meta.locale, {
-    style: "currency",
-    currency: meta.code,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-    notation: Math.abs(v) >= 1000 ? "compact" : "standard",
-  }).format(v);
+  // TIM-3734: full-precision axis ticks — compact K/M shorthand ripped out.
+  return formatMinorUnits(value, code);
 }
 
 function revenueChartConfig(
@@ -679,15 +670,7 @@ function breakEvenChartConfig(
   return {
     type: "line",
     data: {
-      labels: labels.map((v) =>
-        new Intl.NumberFormat(meta.locale, {
-          style: "currency",
-          currency: meta.code,
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-          notation: "compact",
-        }).format(v)
-      ),
+      labels: labels.map((v) => formatCurrencyAmount(v, meta.code)),
       datasets: [
         {
           label: "Total costs",
@@ -718,14 +701,7 @@ function breakEvenChartConfig(
         y: {
           title: { display: true, text: meta.code },
           ticks: {
-            callback: (v) =>
-              new Intl.NumberFormat(meta.locale, {
-                style: "currency",
-                currency: meta.code,
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-                notation: "compact",
-              }).format(Number(v)),
+            callback: (v) => formatCurrencyAmount(Number(v), meta.code),
           },
         },
       },
@@ -903,17 +879,22 @@ export interface FinancialPlannerPdfProps {
     breakEvenPng: Buffer | null;
   };
   brand?: BrandTokens;
+  // TIM-3735: centralized COGS Grand Total so the PDF uses the same numbers
+  // as the Financials workspace instead of the legacy cogs_pct × revenue path.
+  cogsGrandTotalMonthlyCents?: number | null;
 }
 
 export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
-  const { mp, equipment, shopName, generatedDate, charts, brand = BRAND } = props;
+  const { mp, equipment, shopName, generatedDate, charts, brand = BRAND, cogsGrandTotalMonthlyCents } = props;
   const styles = makeStyles(brand);
   const code = mp.currency_code ?? "USD";
   const meta = getCurrencyMeta(code);
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
   const months = fiscalYearMonthLabels(fiscalStart);
 
-  const slices = computeMonthlySlices(mp, equipment, {});
+  const slices = computeMonthlySlices(mp, equipment, {}, {
+    cogs_grand_total_monthly_cents: cogsGrandTotalMonthlyCents ?? null,
+  });
   const year1 = sliceMonths(slices, 1);
 
   const annualY1 = year1.reduce(
@@ -1156,8 +1137,16 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
           </Text>
         </View>
         <View style={styles.assumptionRow}>
-          <Text style={styles.assumptionLabel}>Base COGS rate</Text>
-          <Text style={styles.assumptionValue}>{mp.cogs_pct}%</Text>
+          <Text style={styles.assumptionLabel}>
+            {typeof cogsGrandTotalMonthlyCents === "number" && cogsGrandTotalMonthlyCents > 0
+              ? "COGS method"
+              : "Base COGS rate"}
+          </Text>
+          <Text style={styles.assumptionValue}>
+            {typeof cogsGrandTotalMonthlyCents === "number" && cogsGrandTotalMonthlyCents > 0
+              ? "Centralized (menu + additional)"
+              : `${mp.cogs_pct}%`}
+          </Text>
         </View>
         <View style={styles.assumptionRow}>
           <Text style={styles.assumptionLabel}>Income tax rate</Text>
@@ -1265,13 +1254,16 @@ export function FinancialPlannerPdf(props: FinancialPlannerPdfProps) {
 export async function renderPlannerCharts(
   mp: MonthlyProjections,
   equipment: EquipmentSummary,
-  brand: BrandTokens = BRAND
+  brand: BrandTokens = BRAND,
+  cogsGrandTotalMonthlyCents?: number | null
 ): Promise<FinancialPlannerPdfProps["charts"]> {
   const code = mp.currency_code ?? "USD";
   const fiscalStart = mp.fiscal_year_start_month ?? 1;
   const months = fiscalYearMonthLabels(fiscalStart);
 
-  const slices = computeMonthlySlices(mp, equipment, {});
+  const slices = computeMonthlySlices(mp, equipment, {}, {
+    cogs_grand_total_monthly_cents: cogsGrandTotalMonthlyCents ?? null,
+  });
   const year1 = sliceMonths(slices, 1);
   if (year1.length === 0) {
     return {

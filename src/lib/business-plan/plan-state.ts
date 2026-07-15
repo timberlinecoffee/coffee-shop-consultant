@@ -258,6 +258,10 @@ export interface BuildPlanStateInputs {
   // Optional precomputed blended menu COGS — same value /generate passes to
   // assembleFinancialPlan, kept here so we don't have to re-walk the menu rows.
   menuBlendedCogsPct: number | null;
+  // TIM-3735: pre-computed COGS Grand Total (menu + additional) in cents for
+  // Month 1. Passed to computeMonthlySlices so the centralized COGS drives
+  // the financial tables rather than the legacy cogs_pct fallback.
+  cogsGrandTotalMonthlyCents?: number | null;
   // TIM-2339: country (ISO-2) resolved by loadPlanContext from
   // plan_hiring_settings.hiring_country OR a signed location_candidate. When
   // provided, plan_state computes a region-aware tax profile and lender list
@@ -393,9 +397,11 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     total_cost_cents: Math.round(totalEquipCostUsd * 100),
     financed_cost_cents: Math.round(totalEquipCostUsd * 100),
   };
-  let slices: MonthlySlice[] = computeMonthlySlices(mp, equipSummary, {}, {
+  const planStateCtx = {
     menu_blended_cogs_pct: inp.menuBlendedCogsPct ?? null,
-  });
+    cogs_grand_total_monthly_cents: inp.cogsGrandTotalMonthlyCents ?? null,
+  };
+  let slices: MonthlySlice[] = computeMonthlySlices(mp, equipSummary, {}, planStateCtx);
 
   // TIM-2339: if the initial Y1 projected income blows past the small-business
   // threshold (rare for new shops, but possible), re-run with the general rate.
@@ -405,9 +411,7 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     const effective = effectiveIncomeTaxPct(regionTaxProfile, projectedY1Income);
     if (Math.abs(effective - mp.income_tax_pct) > 0.001) {
       mp = { ...mp, income_tax_pct: effective };
-      slices = computeMonthlySlices(mp, equipSummary, {}, {
-        menu_blended_cogs_pct: inp.menuBlendedCogsPct ?? null,
-      });
+      slices = computeMonthlySlices(mp, equipSummary, {}, planStateCtx);
     }
   }
 
@@ -471,9 +475,11 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
   const blendedPct = y1RevenueCents > 0
     ? Math.round((y1CogsCents / y1RevenueCents) * 1000) / 10
     : 0;
+  // TIM-3735: when the Grand Total drives the projection, derive base_cogs_pct
+  // from the actual Y1 blended rate so the narrative reflects real computed COGS.
   const cogs: PlanStateCogs = {
     blended_pct: blendedPct,
-    base_cogs_pct: mp.cogs_pct,
+    base_cogs_pct: inp.cogsGrandTotalMonthlyCents && blendedPct > 0 ? blendedPct : mp.cogs_pct,
     menu_blended_pct: inp.menuBlendedCogsPct,
   };
 
@@ -617,6 +623,7 @@ export function buildPlanState(inp: BuildPlanStateInputs): PlanState {
     slices,
     equipment: equipSummary,
     menuBlendedCogsPct: inp.menuBlendedCogsPct ?? null,
+    cogsGrandTotalMonthlyCents: inp.cogsGrandTotalMonthlyCents ?? null,
   });
 
   return {

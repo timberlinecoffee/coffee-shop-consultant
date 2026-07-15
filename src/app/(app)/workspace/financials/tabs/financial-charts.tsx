@@ -20,7 +20,7 @@ import {
   YAxis,
 } from "recharts";
 import { fmt } from "@/lib/financial-projection";
-import { currencySymbol } from "@/lib/currency";
+import { formatMinorUnits } from "@/lib/currency";
 
 // TIM-2755: primary/positive/highlight fall back to the global teal tokens when
 // no BP brand color is set. The workspace injects --bp-brand, --bp-brand-soft,
@@ -43,15 +43,11 @@ export const CHART_COLORS = {
 const AXIS_STYLE = { fill: CHART_COLORS.muted, fontSize: 11 } as const;
 const TICK_LINE = { stroke: CHART_COLORS.grid } as const;
 
-function compactCurrency(cents: number, currencyCode: string) {
-  const dollars = cents / 100;
-  const abs = Math.abs(dollars);
-  let value: string;
-  if (abs >= 1_000_000) value = `${(dollars / 1_000_000).toFixed(1)}M`;
-  else if (abs >= 1_000) value = `${(dollars / 1_000).toFixed(1)}K`;
-  else value = dollars.toFixed(0);
-  const sym = currencySymbol(currencyCode);
-  return dollars < 0 ? `-${sym}${value.slice(1)}` : `${sym}${value}`;
+// TIM-3734 (board directive TIM-3732): full-precision axis ticks. Compact
+// K/M shorthand was ripped out per "under any circumstances." Renders
+// `$37,700.00` — long, but honest.
+function axisCurrency(cents: number, currencyCode: string) {
+  return formatMinorUnits(cents, currencyCode);
 }
 
 interface TooltipPayloadEntry {
@@ -146,8 +142,8 @@ export function FinancialLineChart({
           tick={AXIS_STYLE}
           tickLine={TICK_LINE}
           axisLine={TICK_LINE}
-          tickFormatter={(v) => compactCurrency(Number(v), currencyCode)}
-          width={70}
+          tickFormatter={(v) => axisCurrency(Number(v), currencyCode)}
+          width={120}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} />
         {series.length > 1 && (
@@ -202,8 +198,8 @@ export function FinancialBarChart({
           tick={AXIS_STYLE}
           tickLine={TICK_LINE}
           axisLine={TICK_LINE}
-          tickFormatter={(v) => compactCurrency(Number(v), currencyCode)}
-          width={70}
+          tickFormatter={(v) => axisCurrency(Number(v), currencyCode)}
+          width={120}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} cursor={{ fill: CHART_COLORS.highlight }} />
         {series.length > 1 && (
@@ -256,8 +252,8 @@ export function FinancialAreaChart({
           tick={AXIS_STYLE}
           tickLine={TICK_LINE}
           axisLine={TICK_LINE}
-          tickFormatter={(v) => compactCurrency(Number(v), currencyCode)}
-          width={70}
+          tickFormatter={(v) => axisCurrency(Number(v), currencyCode)}
+          width={120}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} />
         {series.length > 1 && (
@@ -317,8 +313,8 @@ export function FinancialComboChart({
           tick={AXIS_STYLE}
           tickLine={TICK_LINE}
           axisLine={TICK_LINE}
-          tickFormatter={(v) => compactCurrency(Number(v), currencyCode)}
-          width={70}
+          tickFormatter={(v) => axisCurrency(Number(v), currencyCode)}
+          width={120}
         />
         <Tooltip content={<ChartTooltip currencyCode={currencyCode} />} cursor={{ fill: CHART_COLORS.highlight }} />
         <Legend

@@ -30,7 +30,13 @@ import {
   type BpHiringRole,
   toBpMarketingPlanning,
 } from "@/lib/business-plan";
-import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
+import {
+  computeMenuBlendedCogsPct,
+  groupMenuItemsByCategory,
+  computeCogsGrandTotalMonthlyCents,
+  normalizeMonthlyProjections,
+  type MenuItemForCogs,
+} from "@/lib/financial-projection";
 // TIM-2341: build plan_state so we can render the lender-metrics auto-content
 // from the same single source of truth the regenerate-all path uses.
 import { buildPlanState } from "@/lib/business-plan/plan-state";
@@ -91,7 +97,7 @@ export async function GET() {
       // TIM-1694: also select cogs/mix columns so Financials → Cost of Goods can
       // resolve the blended menu COGS pct (menu→COGS auto-sync on load).
       .select(
-        "id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived"
+        "id, name, category_id, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived"
       )
       .eq("plan_id", planId)
       .order("position"),
@@ -133,6 +139,10 @@ export async function GET() {
   // menu-linked COGS lines resolve against live menu costing.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const menuBlendedCogsPct = computeMenuBlendedCogsPct((menuRows ?? []) as any[]);
+  const menuCogsByCategory = groupMenuItemsByCategory((menuRows ?? []) as MenuItemForCogs[]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mpForCogs = normalizeMonthlyProjections((financialModel as any)?.monthly_projections);
+  const cogsGrandTotalMonthlyCents = computeCogsGrandTotalMonthlyCents(mpForCogs, menuCogsByCategory) || null;
 
   // TIM-2341: assemble plan_state ONCE so the lender-ready sections render
   // from the same engine slices the financial tables read. If the financial
@@ -146,6 +156,7 @@ export async function GET() {
     equipment: (equipmentRows ?? []) as BpEquipmentItem[],
     hiringRoles: (hiringRows ?? []) as BpHiringRole[],
     menuBlendedCogsPct,
+    cogsGrandTotalMonthlyCents,
     locationCountry: planContext.location_country,
     competitors: planContext.competitors,
     noDirectCompetitorsIdentified: planContext.no_direct_competitors_identified,
@@ -182,7 +193,7 @@ export async function GET() {
     ),
     "company-overview": assembleCompanyConcept(conceptDoc?.content),
     "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[], currencyCode),
-    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode),
+    "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode, cogsGrandTotalMonthlyCents),
     "financial-plan-unit-economics": assembleUnitEconomicsSection(lenderMetrics, currencyCode),
     "financial-plan-break-even": assembleBreakEvenSection(lenderMetrics, currencyCode),
     "financial-plan-sensitivity": assembleSensitivitySection(lenderMetrics, currencyCode),
@@ -192,7 +203,7 @@ export async function GET() {
     "financial-plan-capex-schedule": assembleCapexScheduleSection(lenderMetrics, currencyCode),
     "financial-plan-depreciation": assembleDepreciationScheduleSection(lenderMetrics, currencyCode),
     "financial-plan-working-capital": assembleWorkingCapitalSection(lenderMetrics, currencyCode),
-    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode),
+    "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode, cogsGrandTotalMonthlyCents),
     "appendix-monthly-statements":
       "Monthly P&L, cash flow, and balance sheet statements are rendered in the exported PDF appendix.",
   };

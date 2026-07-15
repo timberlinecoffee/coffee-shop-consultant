@@ -38,7 +38,13 @@ import type {
   BpEquipmentItem,
   BpHiringRole,
 } from "@/lib/business-plan";
-import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
+import {
+  computeMenuBlendedCogsPct,
+  groupMenuItemsByCategory,
+  computeCogsGrandTotalMonthlyCents,
+  normalizeMonthlyProjections,
+  type MenuItemForCogs,
+} from "@/lib/financial-projection";
 import { normalizeConceptV2 } from "@/lib/concept";
 
 interface PlanCtx {
@@ -101,7 +107,7 @@ async function readAll(
       .select("id, name, cost_local, category, notes")
       .eq("plan_id", planId).eq("archived", false).order("position"),
     supabase.from("menu_items_with_cogs")
-      .select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")
+      .select("id, name, category_id, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")
       .eq("plan_id", planId).order("position"),
     supabase.from("hiring_plan_roles")
       .select("id, role_title, headcount, start_date, monthly_cost_cents")
@@ -117,6 +123,10 @@ async function readAll(
   const shopName = planRow?.plan_name ?? "this coffee shop";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const menuBlendedCogsPct = computeMenuBlendedCogsPct((menuRows ?? []) as any[]);
+  const menuCogsByCategory = groupMenuItemsByCategory((menuRows ?? []) as MenuItemForCogs[]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mpForCogs = normalizeMonthlyProjections((financialModel as any)?.monthly_projections);
+  const cogsGrandTotalMonthlyCents = computeCogsGrandTotalMonthlyCents(mpForCogs, menuCogsByCategory) || null;
   const concept = normalizeConceptV2(conceptDoc?.content);
   const competitors = (concept.competitors ?? []).map((c) => ({
     id: c.id,
@@ -137,6 +147,7 @@ async function readAll(
     equipment: (equipmentRows ?? []) as BpEquipmentItem[],
     hiringRoles: (hiringRows ?? []) as BpHiringRole[],
     menuBlendedCogsPct,
+    cogsGrandTotalMonthlyCents,
     competitors,
     noDirectCompetitorsIdentified,
     cityLabel,

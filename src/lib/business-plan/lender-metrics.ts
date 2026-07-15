@@ -188,6 +188,7 @@ function recomputeY1NetIncome(
   equipment: EquipmentSummary,
   menuBlendedCogsPct: number | null,
   mutate: (mp: MonthlyProjections) => MonthlyProjections,
+  cogsGrandTotalMonthlyCents?: number | null,
 ): { y1_net: number; y1_revenue: number } {
   const mp = mutate({
     ...baselineMp,
@@ -196,6 +197,7 @@ function recomputeY1NetIncome(
   });
   const slices = computeMonthlySlices(mp, equipment, {}, {
     menu_blended_cogs_pct: menuBlendedCogsPct,
+    cogs_grand_total_monthly_cents: cogsGrandTotalMonthlyCents ?? null,
   });
   const y1 = slices.filter((s) => s.year === 1);
   return {
@@ -266,6 +268,7 @@ export function computeSensitivity(
   rawMp: MonthlyProjections | unknown,
   equipment: EquipmentSummary,
   menuBlendedCogsPct: number | null,
+  cogsGrandTotalMonthlyCents?: number | null,
 ): SensitivityReport {
   // Normalize, then re-apply the vertical config to mirror plan-state.ts:
   // baseline must be the same baseline the financial tables see.
@@ -279,14 +282,24 @@ export function computeSensitivity(
 
   const baselineSlices = computeMonthlySlices(baseline, equipment, {}, {
     menu_blended_cogs_pct: menuBlendedCogsPct,
+    cogs_grand_total_monthly_cents: cogsGrandTotalMonthlyCents ?? null,
   });
   const baselineY1 = baselineSlices.filter((s) => s.year === 1);
   const baselineY1Net = baselineY1.reduce((a, r) => a + r.net_income_cents, 0);
   const baselineY1Rev = baselineY1.reduce((a, r) => a + r.net_revenue_cents, 0);
 
+  // TIM-3735: when Grand Total drives COGS, COGS scenario mutations must scale
+  // the Grand Total proportionally (mutating cogs_pct has no effect when Grand
+  // Total is active). For non-COGS scenarios, pass Grand Total unchanged.
+  const hasGrandTotal = typeof cogsGrandTotalMonthlyCents === "number" && cogsGrandTotalMonthlyCents > 0;
+
   // Helper: re-run with a single field mutation.
-  const run = (mut: (mp: MonthlyProjections) => MonthlyProjections) => {
-    const out = recomputeY1NetIncome(baseline, equipment, menuBlendedCogsPct, mut);
+  const run = (
+    mut: (mp: MonthlyProjections) => MonthlyProjections,
+    scenarioCogsGrandTotal?: number | null,
+  ) => {
+    const gt = scenarioCogsGrandTotal !== undefined ? scenarioCogsGrandTotal : (cogsGrandTotalMonthlyCents ?? null);
+    const out = recomputeY1NetIncome(baseline, equipment, menuBlendedCogsPct, mut, gt);
     return out;
   };
 
@@ -295,8 +308,13 @@ export function computeSensitivity(
   // COGS ±20% means the COGS RATE moves by 20% of itself (relative), not 20
   // absolute percentage points — lender convention. So 30% COGS becomes 36%
   // (+20%) or 24% (−20%).
-  const cogsPlus = run((mp) => ({ ...mp, cogs_pct: Math.round(mp.cogs_pct * 1.2 * 10) / 10 }));
-  const cogsMinus = run((mp) => ({ ...mp, cogs_pct: Math.round(mp.cogs_pct * 0.8 * 10) / 10 }));
+  // TIM-3735: when Grand Total is active, scale it ±20% instead of cogs_pct.
+  const cogsPlus = hasGrandTotal
+    ? run((mp) => mp, Math.round((cogsGrandTotalMonthlyCents ?? 0) * 1.2))
+    : run((mp) => ({ ...mp, cogs_pct: Math.round(mp.cogs_pct * 1.2 * 10) / 10 }));
+  const cogsMinus = hasGrandTotal
+    ? run((mp) => mp, Math.round((cogsGrandTotalMonthlyCents ?? 0) * 0.8))
+    : run((mp) => ({ ...mp, cogs_pct: Math.round(mp.cogs_pct * 0.8 * 10) / 10 }));
   const rampPlus = run((mp) => ({ ...mp, ramp_months: Math.min(12, mp.ramp_months + 3) }));
   const rampMinus = run((mp) => ({ ...mp, ramp_months: Math.max(0, mp.ramp_months - 3) }));
 
@@ -546,12 +564,13 @@ export function buildLenderMetrics(args: {
   slices: MonthlySlice[];
   equipment: EquipmentSummary;
   menuBlendedCogsPct: number | null;
+  cogsGrandTotalMonthlyCents?: number | null;
 }): LenderMetricsBundle {
-  const { mp, slices, equipment, menuBlendedCogsPct } = args;
+  const { mp, slices, equipment, menuBlendedCogsPct, cogsGrandTotalMonthlyCents } = args;
   const funding = mp.funding_sources ?? [];
   return {
     unit_economics: computeUnitEconomics(mp),
-    sensitivity: computeSensitivity(mp, equipment, menuBlendedCogsPct),
+    sensitivity: computeSensitivity(mp, equipment, menuBlendedCogsPct, cogsGrandTotalMonthlyCents),
     dscr: computeDscr(slices, funding),
     break_even: computeBreakEven(slices, mp),
     capex: computeCapexSchedule(mp),

@@ -35,6 +35,46 @@ export interface WriteAiApproveExtras {
   consistencyContradictions: ConsistencyContradiction[];
 }
 
+// TIM-3854: Executive Summary is the ONE section that also seeds from other
+// populated BP sections (per board mapping). The parent computes this list
+// from local UI state (userContent vs autoContent, archived filter,
+// placeholder filter) since the server has no cheap way to know which
+// sections the founder has curated. For every other section the seed comes
+// entirely from workspaces via /api/business-plan/seed-context.
+export interface BpOtherSectionExcerpt {
+  title: string;
+  excerpt: string;
+}
+
+// TIM-3854: shape returned by POST /api/business-plan/seed-context. Kept in
+// sync with SeedBlock in src/lib/business-plan/seed-context.ts — duplicated
+// here (not imported) because this file is a client component and pulling in
+// the server-side module would drag @supabase/supabase-js into the client
+// bundle. The wire format is stable and validated by the endpoint.
+interface SeedBlockView {
+  id: string;
+  label: string;
+  heading?: string;
+  bullets: string[];
+  isEmpty: boolean;
+  emptyHint?: string;
+}
+
+// TIM-3854: mirror of formatSeedBlocksAsText from the server module — again,
+// kept client-local to avoid pulling server code into the client bundle.
+function formatBlocksAsSeedText(blocks: SeedBlockView[]): string {
+  if (blocks.length === 0) return "";
+  const header = "Context from your workspaces (edit or remove any lines you don't want the AI to use):";
+  const rendered = blocks.map((b) => {
+    const heading = b.heading ?? `FROM ${b.label.toUpperCase()} WORKSPACE:`;
+    if (b.isEmpty) {
+      return `${heading}\n${b.emptyHint ?? "No content yet."}`;
+    }
+    return `${heading}\n${b.bullets.join("\n")}`;
+  });
+  return `${header}\n\n${rendered.join("\n\n")}`;
+}
+
 interface Props {
   sectionKey: string;
   sectionTitle: string;
@@ -47,6 +87,11 @@ interface Props {
   // TIM-2342 export-gate validator would surface stale claims that no longer
   // appear in the draft.
   onApprove: (finalText: string, extras: WriteAiApproveExtras) => Promise<void>;
+  // TIM-3854: Executive Summary is the ONE section that also seeds from
+  // other populated BP sections. Parent passes non-placeholder excerpts here
+  // from local UI state; the modal forwards them to the seed-context endpoint
+  // when sectionKey === "executive-summary" and ignores them otherwise.
+  otherSectionsForContext?: BpOtherSectionExcerpt[];
 }
 
 type Step = "input" | "generating" | "preview" | "committing" | "done";
@@ -55,14 +100,24 @@ type Step = "input" | "generating" | "preview" | "committing" | "done";
 // modal-opener callbacks (so we don't pre-populate the modal with an
 // assembled-content placeholder like "Complete the Marketing workspace to
 // populate this section"). Exported so both callers stay in sync.
+//
+// TIM-3672 follow-up: extended to cover placeholder strings that the seed-
+// context button was surfacing as excerpts: LENDER_PLACEHOLDER_PREFIX
+// ("Complete the Financials workspace and re-open ..."), the plural
+// "workspaces to populate" from the Execution > Operations assembler when
+// both Location and Equipment are empty, and the appendix PDF-note that is
+// always self-referential ("rendered in the exported PDF appendix").
 export function isBpPlaceholderContent(content: string | null | undefined): boolean {
   if (!content) return true;
   return (
     content.includes("workspace to populate") ||
+    content.includes("workspaces to populate") ||
     content.includes("Click Generate") ||
     content.includes("Complete the other") ||
     content.includes("Complete the Marketing") ||
-    content.includes("click the text field")
+    content.includes("Complete the Financials workspace") ||
+    content.includes("click the text field") ||
+    content.includes("rendered in the exported PDF appendix")
   );
 }
 
@@ -93,6 +148,7 @@ export function BPWriteWithAIModal({
   initialContent,
   onClose,
   onApprove,
+  otherSectionsForContext,
 }: Props) {
   const [content, setContent] = useState(initialContent);
   const [instructions, setInstructions] = useState("");
@@ -102,8 +158,22 @@ export function BPWriteWithAIModal({
   const [estimatedClaims, setEstimatedClaims] = useState<unknown[]>([]);
   const [contradictions, setContradictions] = useState<ConsistencyContradiction[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // TIM-3672 follow-up: gate the seed button after one click so a user can't
+  // duplicate the excerpt block by clicking twice. Reset when the user pastes
+  // a fresh draft by wiping to empty, or when Reject bounces us back to input.
+  const [hasSeededContext, setHasSeededContext] = useState(false);
+  // TIM-3854: track the in-flight seed fetch so the button shows a spinner
+  // instead of appearing broken while the server assembles workspace summaries.
+  const [seedLoading, setSeedLoading] = useState(false);
+  const [seedError, setSeedError] = useState<string | null>(null);
+  const contentRef = useRef<HTMLTextAreaElement | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  // TIM-3854 code-review fix: separate controller for the seed-context
+  // fetch so a modal close mid-fetch aborts the request and prevents
+  // setState against an unmounted component (the seed fetch is ~300ms;
+  // fast enough to slip through unmount if the founder Escapes).
+  const seedAbortRef = useRef<AbortController | null>(null);
   // TIM-3675 review-fix: cleared on unmount so a rapid remount doesn't fire
   // the "done → close" timer against a stale onClose captured from the prior
   // render.
@@ -112,6 +182,7 @@ export function BPWriteWithAIModal({
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      seedAbortRef.current?.abort();
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     };
   }, []);
@@ -290,6 +361,102 @@ export function BPWriteWithAIModal({
     setStreamingBuf("");
     setError(null);
     setStep("input");
+    // TIM-3672 follow-up: allow re-seeding after Reject. The user may want
+    // to try again with a different draft as the AI's starting point.
+    setHasSeededContext(false);
+    // TIM-3854 code-review fix: cancel any in-flight seed fetch so the
+    // Reject-bounce doesn't race a late setContent that would land on top
+    // of the founder's iteration.
+    seedAbortRef.current?.abort();
+  }
+
+  // TIM-3854: pull per-workspace summarized blocks from the server for the
+  // current section (board mapping: workspaces → BP, exec summary also gets
+  // other populated BP sections). Replaces the prior TIM-3672 client-side
+  // BP-to-BP seed that was circular ("Exec Summary seeds from Business
+  // Overview that hasn't been written yet") and produced LLM garbage.
+  //
+  // The returned blocks render as `FROM <WORKSPACE> WORKSPACE:` headings with
+  // summarized bullets underneath — never raw item lists, never spreadsheet
+  // rows. Empty workspaces render an explicit "No content yet..." hint, never
+  // a blank heading. Founder edits/removes lines directly in the textarea
+  // before hitting Generate.
+  async function handleSeedFromOtherSections() {
+    if (hasSeededContext || seedLoading) return;
+    setSeedLoading(true);
+    setSeedError(null);
+    // TIM-3854 code-review fix: abort any prior in-flight seed fetch and
+    // track the current one so unmount / close / Reject cleanly abort it.
+    // Prevents setState-on-unmounted-component and the silent "seed lands
+    // in stale content state" surprise when the founder Escapes mid-fetch.
+    seedAbortRef.current?.abort();
+    const controller = new AbortController();
+    seedAbortRef.current = controller;
+    try {
+      const res = await fetch("/api/business-plan/seed-context", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          sectionKey,
+          // Executive Summary is the ONE section that also seeds from other
+          // populated BP sections. Pass them from local UI state so the
+          // server can append them under a "business plan" label.
+          bpSectionExcerpts: sectionKey === "executive-summary"
+            ? (otherSectionsForContext ?? [])
+            : undefined,
+        }),
+      });
+      if (!res.ok) {
+        setSeedError("Couldn't load workspace context. Please try again.");
+        return;
+      }
+      const data = (await res.json()) as { blocks: SeedBlockView[] };
+      const blocks = data.blocks ?? [];
+      // If EVERY block is empty, the founder has no workspace content yet.
+      // Populating the textarea with a wall of "No content yet..." hints and
+      // letting Generate fire against them just forces the model to
+      // hallucinate. Bail with a clear message instead.
+      if (blocks.length === 0 || blocks.every((b) => b.isEmpty)) {
+        setSeedError("No workspace content yet. Fill out your Concept, Menu, or Financial workspace first — then come back here.");
+        return;
+      }
+      const seedText = formatBlocksAsSeedText(blocks);
+      // TIM-3854 code-review fix: use functional setState so typing that
+      // happened during the async fetch is preserved. Prior `content.trim()`
+      // + `${content}` closure captured the value at seed-click time and
+      // silently discarded any characters the founder typed while waiting.
+      setContent((prev) => {
+        const prevTrimmed = prev.trim();
+        return prevTrimmed.length > 0 ? `${prev}\n\n---\n\n${seedText}` : seedText;
+      });
+      setHasSeededContext(true);
+      // Focus the textarea so the founder can immediately tweak the seed. Move
+      // the caret to the end of the appended block.
+      requestAnimationFrame(() => {
+        const el = contentRef.current;
+        if (!el) return;
+        el.focus();
+        const pos = el.value.length;
+        try {
+          el.setSelectionRange(pos, pos);
+        } catch {
+          // Some browsers throw on textarea setSelectionRange during focus
+          // transitions; safe to ignore — the append still landed.
+        }
+        el.scrollTop = el.scrollHeight;
+      });
+    } catch (err: unknown) {
+      // Aborts (unmount, Reject bounce, close) are silent — no error state.
+      if (err instanceof Error && err.name === "AbortError") return;
+      setSeedError("Couldn't load workspace context. Please try again.");
+    } finally {
+      // Only clear loading if this fetch is still the active one.
+      if (seedAbortRef.current === controller) {
+        seedAbortRef.current = null;
+        setSeedLoading(false);
+      }
+    }
   }
 
   // TIM-3675 review-fix: Generate is now enabled when EITHER the draft OR
@@ -360,14 +527,39 @@ export function BPWriteWithAIModal({
               {error && (
                 <p className="text-sm text-[var(--error)]">{error}</p>
               )}
+              {seedError && (
+                <p className="text-sm text-[var(--error)]">{seedError}</p>
+              )}
 
               <div>
-                <label
-                  htmlFor="bp-wai-content"
-                  className="block text-xs font-semibold text-[var(--foreground)] mb-1.5"
-                >
-                  Current draft
-                </label>
+                <div className="flex items-center justify-between gap-3 mb-1.5">
+                  <label
+                    htmlFor="bp-wai-content"
+                    className="block text-xs font-semibold text-[var(--foreground)]"
+                  >
+                    Current draft
+                  </label>
+                  {/* TIM-3854: seed the draft with per-workspace summarized
+                      context per the board mapping. Server decides whether
+                      any workspace has content; we always show the button
+                      because "workspace is empty" is itself useful signal
+                      (rendered as an explicit empty-hint line in the seed).
+                      Disabled after one click so the user can't stack
+                      duplicate blocks. */}
+                  <button
+                    type="button"
+                    onClick={() => void handleSeedFromOtherSections()}
+                    disabled={hasSeededContext || seedLoading}
+                    className="text-[11px] font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
+                  >
+                    <Sparkles size={11} aria-hidden="true" />
+                    {hasSeededContext
+                      ? "Context added"
+                      : seedLoading
+                      ? "Loading..."
+                      : "Seed from your workspaces"}
+                  </button>
+                </div>
                 <p className="text-[11px] text-[var(--muted-foreground)] mb-1.5">
                   {initialContent.trim().length > 0
                     ? "This is what the section says now. Edit it here if you want to seed the AI with a different starting point."
@@ -375,8 +567,18 @@ export function BPWriteWithAIModal({
                 </p>
                 <textarea
                   id="bp-wai-content"
+                  ref={contentRef}
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setContent(next);
+                    // TIM-3672 follow-up: if the user wipes the draft back to
+                    // empty, allow re-seeding — they cleared the previous
+                    // seed and may want a fresh block.
+                    if (hasSeededContext && next.trim().length === 0) {
+                      setHasSeededContext(false);
+                    }
+                  }}
                   placeholder="Section content..."
                   rows={8}
                   className="w-full text-sm text-[var(--foreground)] border border-[var(--neutral-cool-350)] rounded-xl px-3 py-2.5 focus:border-[var(--teal)] focus-visible:outline-none placeholder:text-[var(--neutral-cool-400)] leading-relaxed"

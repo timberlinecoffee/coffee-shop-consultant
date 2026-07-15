@@ -224,10 +224,6 @@ export function computeProjections(doc: FinancialsDocument): FinancialProjection
   };
 }
 
-export function formatCurrency(n: number, currencyCode = "USD"): string {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }).format(n);
-}
-
 export const FINANCING_LABELS: Record<FinancingMethod, string> = {
   cash: "Cash",
   in_house_financing: "In-house financing",

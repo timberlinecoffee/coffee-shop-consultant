@@ -17,20 +17,20 @@ export function AIChatMockup() {
     },
     {
       role: "assistant" as const,
-      text: "For a 900 sq ft buildout in a mid-size market, I'd plan $110k–$165k all-in. Here's how I'd break it down:",
+      text: "For a 900 sq ft buildout in a mid-size market, I'd plan $110,000–$165,000 all-in. Here's how I'd break it down:",
     },
     {
       role: "assistant" as const,
       list: [
-        "Espresso equipment: $22–38k",
-        "Renovation: $35–65k",
-        "FF&E: $12–22k",
-        "Working capital: $20–30k",
+        "Espresso equipment: $22,000–$38,000",
+        "Renovation: $35,000–$65,000",
+        "FF&E: $12,000–$22,000",
+        "Working capital: $20,000–$30,000",
       ],
     },
     {
       role: "check" as const,
-      text: "Your current estimate of $142k is within the healthy range for this market size.",
+      text: "Your current estimate of $142,000 is within the healthy range for this market size.",
     },
     {
       role: "user" as const,
@@ -186,7 +186,7 @@ export function FinancialsMockup() {
           { label: "Startup cost", value: "$142,500" },
           { label: "Monthly rent", value: "$4,200" },
           { label: "Break-even", value: "Month 14" },
-          { label: "Year 1 revenue", value: "$328k" },
+          { label: "Year 1 revenue", value: "$328,000" },
         ].map((s) => (
           <div key={s.label} className="rounded-lg p-2.5 border" style={{ background: "white", borderColor: "var(--border-subtle)" }}>
             <p style={{ color: "var(--neutral-500)", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>{s.label}</p>

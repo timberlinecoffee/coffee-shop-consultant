@@ -281,7 +281,7 @@ export function toBpMarketingPlanning(content: unknown): BpMarketingPlanning | n
 // safe last-resort; every assembler call site now threads through the plan's
 // `currency_code` so non-USD plans never fall back to it.
 function centsToCurrency(cents: number, currencyCode = "USD"): string {
-  return formatCurrencyAmount(cents / 100, currencyCode, { compact: false });
+  return formatCurrencyAmount(cents / 100, currencyCode);
 }
 
 export function assembleCompanyConcept(conceptContent: unknown): string {
@@ -390,7 +390,7 @@ export function assembleBuildoutEquipment(
 
   if (equipment && equipment.length > 0) {
     const totalCost = equipment.reduce((sum, e) => sum + (e.cost_local ?? 0), 0);
-    lines.push(`Equipment (${equipment.length} items, total ${formatCurrencyAmount(totalCost, currencyCode, { compact: false })})`);
+    lines.push(`Equipment (${equipment.length} items, total ${formatCurrencyAmount(totalCost, currencyCode)})`);
 
     const major = equipment.filter((e) => e.category === "major");
     const minor = equipment.filter((e) => e.category === "minor");
@@ -403,7 +403,7 @@ export function assembleBuildoutEquipment(
     if (major.length > 0) {
       lines.push(`\nMajor Equipment`);
       for (const e of major.slice(0, 10)) {
-        lines.push(`- ${e.name}${e.cost_local ? ` — ${formatCurrencyAmount(e.cost_local, currencyCode, { compact: false })}` : ""}`);
+        lines.push(`- ${e.name}${e.cost_local ? ` — ${formatCurrencyAmount(e.cost_local, currencyCode)}` : ""}`);
       }
       if (major.length > 10) lines.push(`  … and ${major.length - 10} more`);
     }
@@ -411,7 +411,7 @@ export function assembleBuildoutEquipment(
     if (minor.length > 0) {
       lines.push(`\nMinor Equipment`);
       for (const e of minor.slice(0, 8)) {
-        lines.push(`- ${e.name}${e.cost_local ? ` — ${formatCurrencyAmount(e.cost_local, currencyCode, { compact: false })}` : ""}`);
+        lines.push(`- ${e.name}${e.cost_local ? ` — ${formatCurrencyAmount(e.cost_local, currencyCode)}` : ""}`);
       }
       if (minor.length > 8) lines.push(`  … and ${minor.length - 8} more`);
     }
@@ -550,6 +550,8 @@ export function assembleFinancialPlan(
   // because menu-linked lines had no rate to compute against (the ctx was {}).
   menuBlendedCogsPct?: number | null,
   currencyCode = "USD",
+  // TIM-3735: pre-computed COGS Grand Total (menu + additional) in cents.
+  cogsGrandTotalMonthlyCents?: number | null,
 ): string {
   if (!financialModel) {
     return "Complete the Financials workspace to populate this section.";
@@ -573,6 +575,7 @@ export function assembleFinancialPlan(
   const slices = computeMonthlySlices(projections, equipSummary, {}, {
     menu_blended_cogs_pct:
       typeof menuBlendedCogsPct === "number" ? menuBlendedCogsPct : null,
+    cogs_grand_total_monthly_cents: cogsGrandTotalMonthlyCents ?? null,
   });
   const lines: string[] = [];
 
@@ -747,7 +750,7 @@ const LENDER_PLACEHOLDER_PREFIX =
   "Complete the Financials workspace and re-open the Business Plan to populate this section.";
 
 function fmtCentsBusinessPlan(cents: number, currencyCode: string): string {
-  return formatCurrencyAmount(cents / 100, currencyCode, { compact: false });
+  return formatCurrencyAmount(cents / 100, currencyCode);
 }
 
 export function assembleUnitEconomicsSection(

@@ -10,7 +10,7 @@
 // TIM-1101: multi-currency support — currency_code persists on MonthlyProjections;
 //   formatCurrency / fmt accept an optional code and delegate to src/lib/currency.
 
-import { formatCurrencyAmount, normalizeCurrencyCode } from "./currency.ts";
+import { formatCurrencyAmount, formatMinorUnits, normalizeCurrencyCode } from "./currency.ts";
 import type { ExpectedPopularity } from "./menu-engineering.ts";
 import { defaultBaristaWageMinorUnits, type MinWageInfo } from "./wages/minimum-wage.ts";
 
@@ -400,6 +400,14 @@ export interface MonthlyProjections {
   supplies_monthly_cents?: number;
   other_monthly_cents?: number;
   interest_monthly_cents?: number;
+
+  // TIM-3733: Finance workspace COGS extensions — persisted alongside mp in financial_models.
+  // additional_cogs_items: user-defined non-menu COGS lines (e.g. packaging, cleaning supplies).
+  // menu_cogs_synced_at: ISO timestamp of last "Sync from Menu" action.
+  // menu_cogs_category_units: per-category monthly units sold (category_id → count).
+  additional_cogs_items?: AdditionalCogsItem[];
+  menu_cogs_synced_at?: string | null;
+  menu_cogs_category_units?: Record<string, number>;
 }
 
 const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -1201,6 +1209,18 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     // TIM-2338: passthrough — the vertical model owns interpretation.
     coffee_shop_vertical_config:
       r.coffee_shop_vertical_config !== undefined ? r.coffee_shop_vertical_config : undefined,
+    // TIM-3733: COGS sections — passthrough so they survive normalize round-trips.
+    additional_cogs_items: Array.isArray(r.additional_cogs_items)
+      ? r.additional_cogs_items
+      : undefined,
+    menu_cogs_synced_at:
+      typeof r.menu_cogs_synced_at === "string" ? r.menu_cogs_synced_at : undefined,
+    menu_cogs_category_units:
+      r.menu_cogs_category_units !== null &&
+      r.menu_cogs_category_units !== undefined &&
+      typeof r.menu_cogs_category_units === "object"
+        ? (r.menu_cogs_category_units as Record<string, number>)
+        : undefined,
   };
 }
 
@@ -1439,6 +1459,11 @@ export interface ProjectionContext {
   // Computed as Σ(item.cogs_cents × mix) / Σ(item.price_cents × mix) × 100 by
   // the caller; we just consume the number here so the projection stays pure.
   menu_blended_cogs_pct?: number | null;
+  // TIM-3735: pre-computed COGS Grand Total (menu + additional items) in cents
+  // for Month 1 (before ramp/growth). When provided and > 0, replaces the legacy
+  // cogs_pct × revenue as the base COGS. Applied with revFactor so it scales
+  // proportionally with business growth, the same way revenue does.
+  cogs_grand_total_monthly_cents?: number | null;
 }
 
 // TIM-1118: pct-mode COGS and Overhead lines may target a revenue stream rather
@@ -1896,8 +1921,12 @@ export function computeMonthlyProjections(
         else labor_overhead_cents += amt;
       }
 
-      // Default COGS (legacy cogs_pct) applies to total revenue
-      const baseCogs = Math.round(revenue_cents * (mp.cogs_pct / 100));
+      // TIM-3735: use COGS Grand Total (menu + additional) when available; fall
+      // back to legacy percentage-of-revenue for empty-menu / pre-sync plans.
+      const baseCogs =
+        typeof ctx.cogs_grand_total_monthly_cents === "number" && ctx.cogs_grand_total_monthly_cents > 0
+          ? Math.round(ctx.cogs_grand_total_monthly_cents * revFactor)
+          : Math.round(revenue_cents * (mp.cogs_pct / 100));
       let extraCogs = 0;
       const cogsLineResults: LineMonthlyAmount[] = [];
       for (const l of cogsLines) {
@@ -2125,7 +2154,11 @@ export function computeProjections(
 // has no valid items (no positive priced item), so the caller can render
 // "Menu not available" rather than apply a zero rate.
 export interface MenuItemForCogs {
+  id?: string;
   name?: string | null;
+  // TIM-3733: category grouping fields from menu_items_with_cogs view join
+  category_id?: string | null;
+  category_name?: string | null;
   price_cents: number;
   computed_cogs_cents?: number | null;
   cogs_cents?: number | null;
@@ -2137,6 +2170,27 @@ export interface MenuItemForCogs {
   // selected on this interface.
   expected_popularity?: ExpectedPopularity | null;
   archived?: boolean | null;
+}
+
+// TIM-3733: Additional COGS line item stored in Finance workspace state.
+export interface AdditionalCogsItem {
+  id: string;
+  name: string;
+  monthly_cost_cents: number;
+  notes?: string | null;
+}
+
+// TIM-3733: Menu items grouped by category for the Finance COGS sync section.
+export interface MenuCogsCategoryGroup {
+  category_id: string | null;
+  category_name: string;
+  items: Array<{
+    id: string;
+    name: string;
+    computed_cogs_cents: number;
+    price_cents: number;
+    expected_popularity: ExpectedPopularity | null;
+  }>;
 }
 
 // TIM-1799 / TIM-2491: relative sales-mix weight for a menu item in the
@@ -2216,6 +2270,76 @@ export function buildMenuCogsBreakdown(
       cogs_pct: price ? (effectiveCogs / price) * 100 : 0,
     };
   });
+}
+
+// TIM-3733: Group menu items (from menu_items_with_cogs) by category for the
+// Finance COGS sync section. Items without a category land in "Uncategorized".
+export function groupMenuItemsByCategory(
+  items: ReadonlyArray<MenuItemForCogs> | null | undefined
+): MenuCogsCategoryGroup[] {
+  if (!items || items.length === 0) return [];
+  const map = new Map<string, MenuCogsCategoryGroup>();
+  for (const item of items) {
+    if (item.archived) continue;
+    const catId = item.category_id ?? null;
+    const catName = item.category_name ?? "Uncategorized";
+    const key = catId ?? "__uncategorized__";
+    if (!map.has(key)) {
+      map.set(key, { category_id: catId, category_name: catName, items: [] });
+    }
+    const effectiveCogs =
+      typeof item.computed_cogs_cents === "number"
+        ? item.computed_cogs_cents
+        : typeof item.cogs_cents === "number"
+          ? item.cogs_cents
+          : 0;
+    map.get(key)!.items.push({
+      id: item.id ?? "",
+      name: item.name ?? "",
+      computed_cogs_cents: effectiveCogs,
+      price_cents: item.price_cents ?? 0,
+      expected_popularity: item.expected_popularity ?? null,
+    });
+  }
+  return Array.from(map.values()).filter((g) => g.items.length > 0);
+}
+
+// TIM-3735: monthly COGS cents for one category group given how many units are
+// sold in that category per month. Mirrors the identically-named helper in
+// cogs-sections.tsx so server-side callers (plan-state, BP routes) don't need
+// to import a client component.
+export function computeCategoryMonthlyCogsCents(
+  group: MenuCogsCategoryGroup,
+  monthlyUnits: number
+): number {
+  const totalWeight = group.items.reduce((s, it) => s + menuItemMixWeight(it), 0);
+  if (totalWeight === 0 || monthlyUnits <= 0) return 0;
+  return Math.round(
+    group.items.reduce((sum, it) => {
+      const weight = menuItemMixWeight(it);
+      const itemUnits = (monthlyUnits * weight) / totalWeight;
+      return sum + itemUnits * it.computed_cogs_cents;
+    }, 0)
+  );
+}
+
+// TIM-3735: compute the COGS Grand Total for Month 1 (menu COGS + additional
+// COGS line items). Returns 0 when neither source has data, which signals the
+// fallback path (cogs_pct × revenue) inside computeMonthlyProjections.
+export function computeCogsGrandTotalMonthlyCents(
+  mp: Pick<MonthlyProjections, "menu_cogs_category_units" | "additional_cogs_items">,
+  categoryGroups: MenuCogsCategoryGroup[]
+): number {
+  const menuTotal = categoryGroups.reduce((sum, g) => {
+    const key = g.category_id ?? "__uncategorized__";
+    const units = (mp.menu_cogs_category_units ?? {})[key] ?? 0;
+    return sum + computeCategoryMonthlyCogsCents(g, units);
+  }, 0);
+  const additionalTotal = (mp.additional_cogs_items ?? []).reduce(
+    (s, it) => s + (it.monthly_cost_cents || 0),
+    0
+  );
+  return menuTotal + additionalTotal;
 }
 
 // TIM-1101: formatCurrency now takes an optional ISO 4217 currency code so the
@@ -2516,14 +2640,12 @@ export function computeBreakEvenModel(
 // TIM-1101: accepts optional ISO 4217 code; defaults to USD for legacy
 // single-arg callers.
 //
-// TIM-1309: the financial statements (P&L, balance sheet, cash flow, …) render
-// cell values through fmt, and the board flagged that the compact "K" form hid
-// real precision — a few-hundred-dollar change rounded into the same "$12K".
-// fmt now shows the full exact figure (no K/M abbreviation) so the displayed
-// value always matches the user's entry. Chart axes use their own compact
-// formatter and are unaffected.
+// TIM-1309 + TIM-3734: financial statements render cell values through fmt.
+// Uses formatMinorUnits so the divisor is 10^fractionDigits — correct for USD
+// (÷100), JPY (÷1), and all other currencies. Chart axes also route through
+// formatMinorUnits via axisCurrency; compact shorthand was removed entirely.
 export function fmt(cents: number, currencyCode: string = "USD"): string {
-  return formatCurrencyAmount(cents / 100, currencyCode, { compact: false });
+  return formatMinorUnits(cents, currencyCode);
 }
 
 // pct: express numerator / denominator as a percentage string with one decimal.

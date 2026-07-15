@@ -1,11 +1,10 @@
 "use client";
 
-// TIM-3229: Shared money display. Wraps the platform formatter so every
-// price/cost/revenue render gets the workspace currency symbol + locale-aware
-// separators. Use this anywhere a money value appears in JSX — tables, cards,
-// summaries, etc. For headlines that benefit from compact "K / M" bucketing
-// pass `compact` (the default); for menu/ticket prices where cents matter
-// visually use `exact`.
+// TIM-3229 + TIM-3734: Shared money display. Wraps the platform formatter so
+// every price/cost/revenue render gets the workspace currency symbol +
+// locale-aware separators, always at the currency's native fraction digits
+// (`$37,700.00`). Compact K/M shorthand was removed by TIM-3734 (board
+// directive TIM-3732) — every financial figure renders at full precision.
 //
 // Storage convention matches the platform: pass `cents` for minor-unit values
 // (the dominant convention — Financial Planner, Menu Pricing, Equipment,
@@ -14,17 +13,12 @@
 
 import * as React from "react";
 import { useCurrency } from "@/components/CurrencyProvider";
-import { formatMinorExact } from "@/lib/formatters";
 import { formatMinorUnits, formatCurrencyAmount, DEFAULT_CURRENCY_CODE } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 
 type MoneyDisplayProps = {
   /** Optional override; otherwise reads CurrencyProvider context. */
   currencyCode?: string;
-  /** Compact K / M bucketing for large headline figures. Default true. */
-  compact?: boolean;
-  /** Force exact fraction digits (USD: 2dp). Use for menu / ticket prices. */
-  exact?: boolean;
   /** Render `—` (or a custom placeholder) when value is nullish or NaN. */
   placeholder?: string;
   className?: string;
@@ -48,17 +42,9 @@ export function MoneyDisplay(props: MoneyDisplayProps) {
     );
   }
 
-  let text: string;
-  if (props.exact) {
-    // formatMinorExact takes cents; for whole-unit amount, scale up.
-    const cents = "cents" in props ? (raw as number) : Math.round((raw as number) * 100);
-    text = formatMinorExact(cents, code);
-  } else {
-    const compact = props.compact !== false;
-    text = "cents" in props
-      ? formatMinorUnits(raw as number, code)
-      : formatCurrencyAmount(raw as number, code, { compact });
-  }
+  const text = "cents" in props
+    ? formatMinorUnits(raw as number, code)
+    : formatCurrencyAmount(raw as number, code);
 
   return (
     <span className={cn("tabular-nums", props.className)} title={props.title}>

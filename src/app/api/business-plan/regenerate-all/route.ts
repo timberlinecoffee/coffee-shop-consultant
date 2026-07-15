@@ -51,7 +51,13 @@ import {
   type BpHiringRole,
   type BusinessPlanSectionData,
 } from "@/lib/business-plan";
-import { computeMenuBlendedCogsPct } from "@/lib/financial-projection";
+import {
+  computeMenuBlendedCogsPct,
+  groupMenuItemsByCategory,
+  computeCogsGrandTotalMonthlyCents,
+  normalizeMonthlyProjections,
+  type MenuItemForCogs,
+} from "@/lib/financial-projection";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import {
@@ -223,7 +229,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
     supabase.from("location_candidates").select("id, name, address, neighborhood, sq_ft, asking_rent_cents, status, notes, city, country").eq("plan_id", planId).eq("archived", false).order("position"),
     supabase.from("buildout_equipment_items").select("id, name, cost_local, category, notes").eq("plan_id", planId).eq("archived", false).order("position"),
-    supabase.from("menu_items_with_cogs").select("id, name, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
+    supabase.from("menu_items_with_cogs").select("id, name, category_id, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived").eq("plan_id", planId).order("position"),
     supabase.from("launch_timeline_items").select("id, milestone, target_date, status").eq("plan_id", planId).order("order_index"),
     supabase.from("hiring_plan_roles").select("id, role_title, headcount, start_date, monthly_cost_cents").eq("plan_id", planId).order("created_at"),
     supabase.from("workspace_documents").select("content").eq("plan_id", planId).eq("workspace_key", "marketing").maybeSingle(),
@@ -233,6 +239,10 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const menuBlendedCogsPct = computeMenuBlendedCogsPct((menuRows ?? []) as any[]);
+  const menuCogsByCategory = groupMenuItemsByCategory((menuRows ?? []) as MenuItemForCogs[]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mpForCogs = normalizeMonthlyProjections((financialModel as any)?.monthly_projections);
+  const cogsGrandTotalMonthlyCents = computeCogsGrandTotalMonthlyCents(mpForCogs, menuCogsByCategory) || null;
 
   const shopName = plan.plan_name ?? "this coffee shop";
   // TIM-3151: merge per-project intake answers over user-level onboarding data.
@@ -261,6 +271,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     equipment: (equipmentRows ?? []) as BpEquipmentItem[],
     hiringRoles: (hiringRows ?? []) as BpHiringRole[],
     menuBlendedCogsPct,
+    cogsGrandTotalMonthlyCents,
     // TIM-2339: country drives the region-aware tax rate + lender allowlist.
     locationCountry: planContext.location_country,
     // TIM-2340: competitors + city anchor the local-claim guardrails.
@@ -301,7 +312,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       ),
       "company-overview": assembleCompanyConcept(conceptDoc?.content),
       "company-team": assembleTeamHiring((hiringRows ?? []) as BpHiringRole[], currencyCode),
-      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode),
+      "financial-plan-forecast": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode, cogsGrandTotalMonthlyCents),
       "financial-plan-unit-economics": assembleUnitEconomicsSection(lenderMetrics, currencyCode),
       "financial-plan-break-even": assembleBreakEvenSection(lenderMetrics, currencyCode),
       "financial-plan-sensitivity": assembleSensitivitySection(lenderMetrics, currencyCode),
@@ -310,7 +321,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       "financial-plan-capex-schedule": assembleCapexScheduleSection(lenderMetrics, currencyCode),
       "financial-plan-depreciation": assembleDepreciationScheduleSection(lenderMetrics, currencyCode),
       "financial-plan-working-capital": assembleWorkingCapitalSection(lenderMetrics, currencyCode),
-      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode),
+      "financial-plan-statements": assembleFinancialPlan(financialModel, equipmentRows ?? [], menuBlendedCogsPct, currencyCode, cogsGrandTotalMonthlyCents),
       "appendix-monthly-statements": "",
       // TIM-3677: optional sections have no workspace-data assembler — they are
       // user-authored (sourceLabel "Your inputs"). Listed explicitly so a
@@ -577,7 +588,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         // TIM-2337: per-section canonicalization — rewrite registry-known
         // aliases immediately so the user sees the corrected draft on first
         // arrival.
-        let workingText = normalizeAIOutput(fullText);
+        let workingText = normalizeAIOutput(fullText, { stripPlaceholders: true });
         let draftCanon = canonicalizeNarrative(workingText, planState.entities);
 
         // TIM-2343: self-consistency proofread. Run on the canonicalized text.
@@ -603,7 +614,7 @@ export async function POST(request: NextRequest): Promise<Response> {
             maxTokens,
           });
           if (regen) {
-            workingText = normalizeAIOutput(regen);
+            workingText = normalizeAIOutput(regen, { stripPlaceholders: true });
             draftCanon = canonicalizeNarrative(workingText, planState.entities);
             contradictions = await runSelfConsistencyCheck({
               lane: sectionLane,

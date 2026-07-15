@@ -336,7 +336,7 @@ function UsefulLifeInput({
       />
       {annualDepreciation > 0 && (
         <span className="text-[10px] text-[var(--dark-grey)] leading-tight whitespace-nowrap">
-          {format(annualDepreciation, { compact: false })}/yr
+          {format(annualDepreciation)}/yr
         </span>
       )}
     </div>
