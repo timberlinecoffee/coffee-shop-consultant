@@ -41,6 +41,8 @@ const SECTION_KINDS = [
   "lease-terms",
   "marketing-channels",
   "marketing-pre-launch",
+  "financials-cogs-menu",
+  "financials-cogs-additional",
 ] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
@@ -54,6 +56,8 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "lease-terms": "analyse_lease_terms",
   "marketing-channels": "analyse_marketing_channels",
   "marketing-pre-launch": "analyse_marketing_pre_launch",
+  "financials-cogs-menu": "analyse_financials_cogs_menu",
+  "financials-cogs-additional": "analyse_financials_cogs_additional",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -502,6 +506,121 @@ Evaluate the pre-launch sequence: timing and sequencing of milestones, coverage 
 ${JSON_SCHEMA_INSTRUCTION}`
 }
 
+// ── Financials COGS data loaders (TIM-3887) ──────────────────────────────────
+
+async function loadCogsMenuContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const [{ data: model }, { data: menuItems }] = await Promise.all([
+    supabase
+      .from("financial_models")
+      .select("forecast_inputs")
+      .eq("plan_id", planId)
+      .maybeSingle(),
+    supabase
+      .from("menu_items_with_cogs")
+      .select("id, name, category_name, computed_cogs_cents, expected_popularity")
+      .eq("plan_id", planId)
+      .eq("archived", false)
+      .order("category_name"),
+  ])
+
+  if (!menuItems || menuItems.length === 0) return ""
+
+  const inputs = (model?.forecast_inputs ?? {}) as Record<string, unknown>
+  const categoryUnits = (inputs.menu_cogs_category_units ?? {}) as Record<string, number>
+  const currencyCode = typeof inputs.currency_code === "string" ? inputs.currency_code : "USD"
+
+  // Group items by category to compute totals per category.
+  const categoryMap = new Map<string, { name: string; items: typeof menuItems; units: number }>()
+  for (const item of menuItems) {
+    const catKey = item.category_name ?? "Uncategorized"
+    const entry = categoryMap.get(catKey) ?? { name: catKey, items: [] as typeof menuItems, units: 0 }
+    entry.items.push(item)
+    entry.units = categoryUnits[catKey] ?? 0
+    categoryMap.set(catKey, entry)
+  }
+
+  const categoryLines: string[] = []
+  for (const [, cat] of categoryMap) {
+    const avgCogsCents =
+      cat.items.length > 0
+        ? Math.round(cat.items.reduce((s, it) => s + (it.computed_cogs_cents ?? 0), 0) / cat.items.length)
+        : 0
+    const monthlyCostCents = cat.units * avgCogsCents
+    const line = `- ${cat.name}: ${cat.items.length} item${cat.items.length !== 1 ? "s" : ""}, avg COGS ${(avgCogsCents / 100).toFixed(2)} ${currencyCode}/unit, ${cat.units} units/mo sold → ${(monthlyCostCents / 100).toFixed(0)} ${currencyCode}/mo`
+    categoryLines.push(line)
+  }
+
+  const totalItems = menuItems.length
+  const totalMonthlyCents = [...categoryMap.values()].reduce(
+    (s, cat) =>
+      s +
+      cat.units *
+        Math.round(
+          cat.items.length > 0
+            ? cat.items.reduce((ss, it) => ss + (it.computed_cogs_cents ?? 0), 0) / cat.items.length
+            : 0,
+        ),
+    0,
+  )
+
+  return `Analyse the menu-driven Cost of Goods Sold for this coffee shop.
+
+Total menu items: ${totalItems} across ${categoryMap.size} categor${categoryMap.size !== 1 ? "ies" : "y"}
+Currency: ${currencyCode}
+Estimated total menu COGS: ${(totalMonthlyCents / 100).toFixed(0)} ${currencyCode}/month
+
+Category breakdown:
+${categoryLines.join("\n")}
+
+Evaluate the COGS structure: which categories are the highest cost drivers, whether the unit assumptions look reasonable for a coffee shop, category-level COGS percentages relative to typical industry benchmarks (specialty coffee: 28–35% COGS), items where COGS may be too high or underpriced, and concrete recommendations to improve margin. Include benchmark comparisons where you can.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
+async function loadCogsAdditionalContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const { data: model } = await supabase
+    .from("financial_models")
+    .select("forecast_inputs")
+    .eq("plan_id", planId)
+    .maybeSingle()
+
+  const inputs = (model?.forecast_inputs ?? {}) as Record<string, unknown>
+  const additionalItems = Array.isArray(inputs.additional_cogs_items)
+    ? (inputs.additional_cogs_items as Array<{ name?: string; monthly_cost_cents?: number; notes?: string | null }>)
+    : []
+  const currencyCode = typeof inputs.currency_code === "string" ? inputs.currency_code : "USD"
+
+  if (additionalItems.length === 0) return ""
+
+  const itemLines = additionalItems
+    .filter((it) => it.name?.trim())
+    .map((it) => {
+      const cost = ((it.monthly_cost_cents ?? 0) / 100).toFixed(0)
+      const note = it.notes?.trim() ? ` (${it.notes.trim()})` : ""
+      return `- ${it.name?.trim()}: ${cost} ${currencyCode}/mo${note}`
+    })
+
+  if (itemLines.length === 0) return ""
+
+  const totalCents = additionalItems.reduce((s, it) => s + (it.monthly_cost_cents ?? 0), 0)
+
+  return `Analyse the additional (non-menu) Cost of Goods for this coffee shop.
+
+Total additional COGS: ${(totalCents / 100).toFixed(0)} ${currencyCode}/month
+Items (${itemLines.length}):
+${itemLines.join("\n")}
+
+Evaluate these additional COGS items: whether all major non-menu cost categories are covered (packaging, to-go supplies, cleaning products, paper goods, etc.), any items that seem unusually high or low, missing categories typical for a coffee shop, and concrete recommendations to optimise these costs. Include benchmark comparisons where relevant.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -585,9 +704,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return Response.json({ error: "resourceId (candidateId) required for this section" }, { status: 400 })
   }
 
-  // Marketing sections do not use resourceId.
+  // Plan-level sections do not use resourceId.
   if (
-    (sectionKind === "marketing-channels" || sectionKind === "marketing-pre-launch") &&
+    (sectionKind === "marketing-channels" ||
+      sectionKind === "marketing-pre-launch" ||
+      sectionKind === "financials-cogs-menu" ||
+      sectionKind === "financials-cogs-additional") &&
     resourceId
   ) {
     return Response.json({ error: "resourceId is not accepted for this section" }, { status: 400 })
@@ -627,6 +749,24 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         )
       }
       sectionKey = `marketing.pre-launch.${planId}`
+    } else if (sectionKind === "financials-cogs-menu") {
+      prompt = await loadCogsMenuContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "No menu items found. Add items in the Menu workspace before running analysis." },
+          { status: 422 },
+        )
+      }
+      sectionKey = `financials.cogs-menu.${planId}`
+    } else if (sectionKind === "financials-cogs-additional") {
+      prompt = await loadCogsAdditionalContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "No additional COGS items yet. Add items before running analysis." },
+          { status: 422 },
+        )
+      }
+      sectionKey = `financials.cogs-additional.${planId}`
     } else {
       // lease-terms
       const ctx = await loadLeaseTermsContext(supabase, planId, resourceId!)
