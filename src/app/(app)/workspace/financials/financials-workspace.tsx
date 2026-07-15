@@ -1965,17 +1965,19 @@ export function FinancialsWorkspace({
   const handleCogsMenuAnalyse = useCallback(async () => {
     setCogsMenuAnalyseLoading(true);
     setCogsMenuAnalyseError(null);
+    setCogsMenuAnalyseResult(null);
     try {
       const res = await fetch("/api/ai/analyse/financials-cogs-menu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setCogsMenuAnalyseError(data?.error ?? "Analysis failed — please try again.");
+        let msg = "Analysis failed — please try again.";
+        try { msg = (await res.json())?.error ?? msg; } catch { /* non-JSON body */ }
+        setCogsMenuAnalyseError(msg);
       } else {
-        setCogsMenuAnalyseResult(data);
+        setCogsMenuAnalyseResult(await res.json());
       }
     } catch {
       setCogsMenuAnalyseError("Analysis failed — please try again.");
@@ -1986,17 +1988,19 @@ export function FinancialsWorkspace({
   const handleCogsAdditionalAnalyse = useCallback(async () => {
     setCogsAdditionalAnalyseLoading(true);
     setCogsAdditionalAnalyseError(null);
+    setCogsAdditionalAnalyseResult(null);
     try {
       const res = await fetch("/api/ai/analyse/financials-cogs-additional", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setCogsAdditionalAnalyseError(data?.error ?? "Analysis failed — please try again.");
+        let msg = "Analysis failed — please try again.";
+        try { msg = (await res.json())?.error ?? msg; } catch { /* non-JSON body */ }
+        setCogsAdditionalAnalyseError(msg);
       } else {
-        setCogsAdditionalAnalyseResult(data);
+        setCogsAdditionalAnalyseResult(await res.json());
       }
     } catch {
       setCogsAdditionalAnalyseError("Analysis failed — please try again.");

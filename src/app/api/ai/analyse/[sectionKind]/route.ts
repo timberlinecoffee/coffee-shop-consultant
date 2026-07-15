@@ -27,6 +27,7 @@ import { enforceRateLimit } from "@/lib/rate-limit"
 import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/lib/access"
 import { normalizeMarketing } from "@/lib/marketing"
 import { normalizeConceptV2 } from "@/lib/concept"
+import { menuItemMixWeight } from "@/lib/financial-projection"
 import type { NextRequest } from "next/server"
 import type { ScoutLane } from "@/lib/ai/scout-lane"
 
@@ -508,19 +509,11 @@ ${JSON_SCHEMA_INSTRUCTION}`
 
 // ── Financials COGS data loaders (TIM-3887) ──────────────────────────────────
 
-// Popularity weight — mirrors menuItemMixWeight() in financial-projection.ts.
-// Inlined to avoid importing a client-only module into a server route.
-function cogsItemMixWeight(popularity: string | null | undefined): number {
-  if (popularity === "high") return 3
-  if (popularity === "medium") return 2
-  return 1
-}
-
 async function loadCogsMenuContext(
   supabase: SupabaseClient,
   planId: string,
 ): Promise<string> {
-  const [{ data: model }, { data: menuItems }] = await Promise.all([
+  const [modelResult, menuResult] = await Promise.all([
     supabase
       .from("financial_models")
       .select("forecast_inputs")
@@ -529,15 +522,21 @@ async function loadCogsMenuContext(
     supabase
       .from("menu_items_with_cogs")
       // category_id is the key used in menu_cogs_category_units — must be included.
-      .select("id, name, category_id, category_name, computed_cogs_cents, expected_popularity")
+      .select("id, name, category_id, category_name, price_cents, computed_cogs_cents, expected_popularity")
       .eq("plan_id", planId)
       .eq("archived", false)
       .order("category_name"),
   ])
 
+  const menuItems = menuResult.data
   if (!menuItems || menuItems.length === 0) return ""
 
-  const inputs = (model?.forecast_inputs ?? {}) as Record<string, unknown>
+  // Propagate RLS or query errors rather than silently zeroing all cost data.
+  if (modelResult.error) {
+    throw new Error(`financial_models query failed: ${modelResult.error.message}`)
+  }
+
+  const inputs = (modelResult.data?.forecast_inputs ?? {}) as Record<string, unknown>
   // menu_cogs_category_units keys are category_id (UUID) or "__uncategorized__" —
   // mirrors computeCogsGrandTotalMonthlyCents in financial-projection.ts.
   const categoryUnits = (inputs.menu_cogs_category_units ?? {}) as Record<string, number>
@@ -560,13 +559,13 @@ async function loadCogsMenuContext(
   let totalMonthlyCents = 0
   const categoryLines: string[] = []
   for (const [, cat] of categoryMap) {
-    // Popularity-weighted COGS — mirrors computeCategoryMonthlyCogsCents in financial-projection.ts.
-    const totalWeight = cat.items.reduce((s, it) => s + cogsItemMixWeight(it.expected_popularity), 0)
+    // Popularity-weighted COGS — uses canonical menuItemMixWeight from financial-projection.ts.
+    const totalWeight = cat.items.reduce((s, it) => s + menuItemMixWeight(it), 0)
     const monthlyCostCents =
       totalWeight > 0 && cat.units > 0
         ? Math.round(
             cat.items.reduce((sum, it) => {
-              const w = cogsItemMixWeight(it.expected_popularity)
+              const w = menuItemMixWeight(it)
               return sum + (cat.units * w / totalWeight) * (it.computed_cogs_cents ?? 0)
             }, 0),
           )
@@ -575,6 +574,9 @@ async function loadCogsMenuContext(
     const line = `- ${cat.displayName}: ${cat.items.length} item${cat.items.length !== 1 ? "s" : ""}, ${cat.units} units/mo sold → ${(monthlyCostCents / 100).toFixed(0)} ${currencyCode}/mo`
     categoryLines.push(line)
   }
+
+  // Return empty when no units are configured — the AI would receive a fabricated $0 context.
+  if (totalMonthlyCents === 0 && Object.keys(categoryUnits).length === 0) return ""
 
   const totalItems = menuItems.length
 
@@ -610,18 +612,15 @@ async function loadCogsAdditionalContext(
 
   if (additionalItems.length === 0) return ""
 
-  const itemLines = additionalItems
-    .filter((it) => it.name?.trim())
-    .map((it) => {
-      const cost = ((it.monthly_cost_cents ?? 0) / 100).toFixed(0)
-      const note = it.notes?.trim() ? ` (${it.notes.trim()})` : ""
-      return `- ${it.name?.trim()}: ${cost} ${currencyCode}/mo${note}`
-    })
-
-  if (itemLines.length === 0) return ""
-
-  // Sum only named items — matches the itemLines filter above.
+  // Build from named items once — avoids double-filter and keeps count/total in sync.
   const namedItems = additionalItems.filter((it) => it.name?.trim())
+  if (namedItems.length === 0) return ""
+
+  const itemLines = namedItems.map((it) => {
+    const cost = ((it.monthly_cost_cents ?? 0) / 100).toFixed(0)
+    const note = it.notes?.trim() ? ` (${it.notes.trim()})` : ""
+    return `- ${it.name?.trim()}: ${cost} ${currencyCode}/mo${note}`
+  })
   const totalCents = namedItems.reduce((s, it) => s + (it.monthly_cost_cents ?? 0), 0)
 
   return `Analyse the additional (non-menu) Cost of Goods for this coffee shop.
@@ -720,7 +719,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   // Plan-level sections do not use resourceId.
   if (
-    (sectionKind === "marketing-channels" ||
+    (sectionKind === "location-shortlist" ||
+      sectionKind === "marketing-channels" ||
       sectionKind === "marketing-pre-launch" ||
       sectionKind === "financials-cogs-menu" ||
       sectionKind === "financials-cogs-additional") &&
@@ -767,7 +767,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       prompt = await loadCogsMenuContext(supabase, planId)
       if (!prompt) {
         return Response.json(
-          { error: "No menu items found. Add items in the Menu workspace before running analysis." },
+          { error: "No menu items with configured unit costs found. Add items in the Menu workspace and set monthly units in Financials before running analysis." },
           { status: 422 },
         )
       }
