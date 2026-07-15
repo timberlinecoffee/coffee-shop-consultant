@@ -331,8 +331,7 @@ export function MarketingWorkspace({
         onApply: async () => {
           setDoc(body.content);
           setSavedAt(new Date().toISOString());
-          // Clear any stale analyse result for this section so the card
-          // doesn't persist against freshly-written content.
+          // Clear stale analyse card after write so it doesn't persist against new content.
           if (section === "channels") setChannelsAnalyseResult(null);
           if (section === "pre_launch") setPreLaunchAnalyseResult(null);
         },
@@ -356,8 +355,7 @@ export function MarketingWorkspace({
         body: JSON.stringify({}),
       });
       if (res.status === 402) {
-        // Analyse route returns {error, code} not {reason}. Pro-plan gates
-        // use code:"pro_required"; subscription gates use no code.
+        // Route returns {error, code} not {reason}; code:"pro_required" means Pro-plan gate.
         const body402 = (await res.json().catch(() => null)) as { error?: string; code?: string; reason?: string } | null;
         if (body402?.code === "pro_required") {
           setChannelsAnalyseError("Analyse with AI requires a Pro plan.");
@@ -406,8 +404,7 @@ export function MarketingWorkspace({
         body: JSON.stringify({}),
       });
       if (res.status === 402) {
-        // Analyse route returns {error, code} not {reason}. Pro-plan gates
-        // use code:"pro_required"; subscription gates use no code.
+        // Route returns {error, code} not {reason}; code:"pro_required" means Pro-plan gate.
         const body402 = (await res.json().catch(() => null)) as { error?: string; code?: string; reason?: string } | null;
         if (body402?.code === "pro_required") {
           setPreLaunchAnalyseError("Analyse with AI requires a Pro plan.");
