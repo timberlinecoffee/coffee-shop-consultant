@@ -224,7 +224,7 @@ export async function POST(request: Request) {
           .join("\n")
       : "  (none configured)"
 
-  const categoryName = categoryRow?.name ?? "Unknown"
+  const categoryName = sanitizeForPrompt(categoryRow?.name ?? "Unknown")
 
   const ctx = body.concept_context ?? {}
   const conceptLines: string[] = []
