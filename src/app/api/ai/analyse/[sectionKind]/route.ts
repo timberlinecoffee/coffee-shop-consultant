@@ -530,6 +530,9 @@ async function loadCogsMenuContext(
       .order("category_name"),
   ])
 
+  if (menuResult.error) {
+    throw new Error(`menu_items_with_cogs query failed: ${menuResult.error.message}`)
+  }
   const menuItems = menuResult.data
   if (!menuItems || menuItems.length === 0) return ""
 
