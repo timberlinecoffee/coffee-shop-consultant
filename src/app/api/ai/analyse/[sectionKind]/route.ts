@@ -1,10 +1,12 @@
 // TIM-3878: POST /api/ai/analyse/<sectionKind>
 // Phase 3 of TIM-3870 — structured AI analysis for location-property,
 // location-shortlist, and lease-terms sections. Pro plan only.
+// TIM-3897: Extended with 4 Financials v2 section kinds (daily-traffic,
+// revenue-streams, costs-overhead, growth-ramp). Reads financial_models table.
 //
 // Rule 1 (RLS): No new tables. Reads only existing tables that already have
 //   RLS enabled (location_candidates, location_rubric_scores, location_lease_terms,
-//   module_responses). No service-client writes.
+//   module_responses, financial_models). No service-client writes.
 // Rule 2 (server-side auth): effectivePlanForGating + plan ownership re-checked
 //   server-side on every request. Client button state is UI only.
 // Rule 3 (validate): Zod on request body AND on AI response shape;
@@ -45,6 +47,11 @@ const SECTION_KINDS = [
   "financials-cogs-menu",
   "financials-cogs-additional",
   "menu-ingredients",
+  // TIM-3897: Financials v2 sections
+  "financials-daily-traffic",
+  "financials-revenue-streams",
+  "financials-costs-overhead",
+  "financials-growth-ramp",
 ] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
@@ -61,6 +68,10 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "financials-cogs-menu": "analyse_financials_cogs_menu",
   "financials-cogs-additional": "analyse_financials_cogs_additional",
   "menu-ingredients": "analyse_menu_ingredients",
+  "financials-daily-traffic": "analyse_financials_daily_traffic",
+  "financials-revenue-streams": "analyse_financials_revenue_streams",
+  "financials-costs-overhead": "analyse_financials_costs_overhead",
+  "financials-growth-ramp": "analyse_financials_growth_ramp",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -639,6 +650,119 @@ Evaluate these additional COGS items: whether all major non-menu cost categories
 ${JSON_SCHEMA_INSTRUCTION}`
 }
 
+// ── Financials v2 data loader (shared across all 4 sections) ─────────────────
+// TIM-3897: Rule 1 — reads financial_models (existing RLS-enabled table only).
+
+type MonthlyProjectionsRaw = Record<string, unknown>
+
+async function loadFinancialModel(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<MonthlyProjectionsRaw | null> {
+  const { data: model } = await supabase
+    .from("financial_models")
+    .select("forecast_inputs, monthly_projections")
+    .eq("plan_id", planId)
+    .maybeSingle()
+
+  if (!model) return null
+  const mp =
+    (model as { forecast_inputs?: unknown; monthly_projections?: unknown }).forecast_inputs ??
+    (model as { monthly_projections?: unknown }).monthly_projections
+  if (!mp || typeof mp !== "object" || Array.isArray(mp)) return null
+  return mp as MonthlyProjectionsRaw
+}
+
+function fmtCents(cents: unknown): string {
+  if (typeof cents !== "number") return "—"
+  return `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
+}
+
+function fmtPct(pct: unknown): string {
+  if (typeof pct !== "number") return "—"
+  return `${pct}%`
+}
+
+function buildDailyTrafficPrompt(mp: MonthlyProjectionsRaw): string {
+  const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
+  const DAY_LABELS: Record<string, string> = {
+    mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday",
+    fri: "Friday", sat: "Saturday", sun: "Sunday",
+  }
+
+  const schedule = (mp.weekly_schedule ?? {}) as Record<string, { open?: boolean; open_time?: string; close_time?: string }>
+  const flow = (mp.daily_flow ?? {}) as Record<string, number>
+  const openDays = DAY_KEYS.filter((d) => schedule[d]?.open)
+  if (openDays.length === 0) return ""
+
+  const scheduleLines = openDays.map((d) => {
+    const s = schedule[d]
+    const customers = flow[d] ?? 0
+    return `  ${DAY_LABELS[d]}: ${s?.open_time ?? "?"}–${s?.close_time ?? "?"}, ${customers} customers`
+  })
+  const totalWeekly = openDays.reduce((sum, d) => sum + (flow[d] ?? 0), 0)
+  const avgPerDay = openDays.length > 0 ? Math.round(totalWeekly / openDays.length) : 0
+
+  return `Analyse the daily traffic and operating schedule for this coffee shop.
+
+Operating schedule (${openDays.length} days/week):
+${scheduleLines.join("\n")}
+
+Weekly total: ${totalWeekly} customers
+Average per open day: ${avgPerDay} customers
+
+Assess whether the customer volume and hours are realistic. Flag schedule patterns that could affect revenue (e.g. no weekend coverage, very long hours with low traffic). Include concrete benchmarks for typical coffee shop daily foot traffic. Weight concerns by severity.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
+function buildRevenueStreamsPrompt(mp: MonthlyProjectionsRaw): string {
+  const avgTicketCents = mp.avg_ticket_cents as number | undefined
+  const cogsPct = mp.cogs_pct as number | undefined
+  const revenueSplit = mp.revenue_split_enabled as boolean | undefined
+  const bevTicketCents = mp.beverage_ticket_cents as number | undefined
+  const foodTicketCents = mp.food_ticket_cents as number | undefined
+
+  const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
+  const schedule = (mp.weekly_schedule ?? {}) as Record<string, { open?: boolean }>
+  const flow = (mp.daily_flow ?? {}) as Record<string, number>
+  const openDays = DAY_KEYS.filter((d) => schedule[d]?.open)
+  const totalWeekly = openDays.reduce((sum, d) => sum + (flow[d] ?? 0), 0)
+
+  const fields: string[] = []
+  if (revenueSplit && bevTicketCents != null && foodTicketCents != null) {
+    fields.push(`Beverage avg ticket: ${fmtCents(bevTicketCents)}`)
+    fields.push(`Food avg ticket: ${fmtCents(foodTicketCents)}`)
+    fields.push(`Combined avg ticket: ${fmtCents(bevTicketCents + foodTicketCents)}`)
+  } else if (avgTicketCents != null) {
+    fields.push(`Average ticket: ${fmtCents(avgTicketCents)}`)
+  }
+  if (cogsPct != null) fields.push(`COGS % of revenue: ${fmtPct(cogsPct)}`)
+  if (totalWeekly > 0) fields.push(`Weekly customers: ${totalWeekly}`)
+  if (fields.length === 0) return ""
+
+  const forecastLines = Array.isArray(mp.forecast_lines)
+    ? (mp.forecast_lines as Array<Record<string, unknown>>)
+    : []
+  const revenueLines = forecastLines.filter((l) => l.category === "revenue" && ((l.value as number) ?? 0) > 0)
+  const revLinesSummary =
+    revenueLines.length > 0
+      ? revenueLines.map((l) => `  ${l.label ?? "Revenue line"}: ${fmtCents(l.value as number)}/mo`).join("\n")
+      : "  None"
+
+  return `Analyse the revenue streams for this coffee shop.
+
+Revenue inputs:
+${fields.map((f) => `  ${f}`).join("\n")}
+
+Additional revenue streams:
+${revLinesSummary}
+
+Assess whether the average ticket and COGS % are realistic. Benchmark against typical coffee shop norms (avg ticket $6–$10, COGS 28–35%). Flag if COGS is out of range. Evaluate whether additional revenue streams diversify income effectively. Weight concerns by severity.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
 // ── TIM-3888: Menu ingredients context loader ────────────────────────────────
 
 const MENU_INGREDIENTS_LIMIT = 60
@@ -681,6 +805,105 @@ ${catalogHeader}
 ${lines.join("\n")}
 
 Evaluate: cost-per-unit competitiveness, any ingredients that look unusually expensive or cheap for their category, gaps (common coffee-shop ingredients that are missing), and diversity of supply sources implied by the catalog. Recommend 2–4 concrete actions the owner can take to reduce ingredient costs or improve margin without sacrificing quality. Include benchmarkContext if you can cite typical wholesale cost ranges for coffee ingredients.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
+function buildCostsOverheadPrompt(mp: MonthlyProjectionsRaw): string {
+  const fields: string[] = []
+
+  const forecastLines = Array.isArray(mp.forecast_lines)
+    ? (mp.forecast_lines as Array<Record<string, unknown>>)
+    : []
+  const costLines = forecastLines.filter(
+    (l) => ["overhead", "cogs"].includes(l.category as string) && ((l.value as number) ?? 0) > 0,
+  )
+  costLines.forEach((l) => fields.push(`  ${l.label ?? "Cost line"}: ${fmtCents(l.value as number)}/mo`))
+
+  const paymentPct = mp.payment_processing_pct as number | undefined
+  const spoilagePct = mp.spoilage_pct as number | undefined
+  const loyaltyPct = mp.loyalty_discount_pct as number | undefined
+  if (paymentPct != null && paymentPct > 0) fields.push(`Payment processing: ${fmtPct(paymentPct)}`)
+  if (spoilagePct != null && spoilagePct > 0) fields.push(`Spoilage: ${fmtPct(spoilagePct)}`)
+  if (loyaltyPct != null && loyaltyPct > 0) fields.push(`Loyalty discount: ${fmtPct(loyaltyPct)}`)
+
+  const personnel = Array.isArray(mp.personnel) ? (mp.personnel as Array<Record<string, unknown>>) : []
+  if (personnel.length > 0) {
+    fields.push(`Personnel (${personnel.length} roles):`)
+    personnel.forEach((p) => {
+      const pay =
+        (p.hourly_rate_cents as number) != null
+          ? `${fmtCents(p.hourly_rate_cents as number)}/hr`
+          : `${fmtCents(p.annual_salary_cents as number)}/yr`
+      fields.push(`  ${p.role_title ?? "Staff"}: ${pay}`)
+    })
+  }
+
+  const sc = (mp.startup_costs ?? {}) as Record<string, unknown>
+  const equipmentCents = (sc.equipment_cents as number) ?? 0
+  const buildoutCents = (sc.buildout_cents as number) ?? 0
+  const totalStartup = equipmentCents + buildoutCents
+  if (totalStartup > 0) {
+    fields.push(
+      `Startup costs: ${fmtCents(totalStartup)} (equipment: ${fmtCents(equipmentCents)}, buildout: ${fmtCents(buildoutCents)})`,
+    )
+  }
+
+  const funding = Array.isArray(mp.funding_sources) ? (mp.funding_sources as Array<Record<string, unknown>>) : []
+  if (funding.length > 0) {
+    fields.push(`Funding sources (${funding.length}):`)
+    funding.forEach((f) => fields.push(`  ${f.label ?? "Funding"}: ${fmtCents(f.amount_cents as number)}`))
+  }
+
+  if (fields.length === 0) return ""
+
+  return `Analyse the costs, overhead, and staffing for this coffee shop.
+
+Cost inputs:
+${fields.join("\n")}
+
+Assess whether the cost structure is realistic. Benchmark overhead against industry norms (rent typically 8–12% of revenue, payroll 35–45% of revenue). Flag overspending or underspending in any category. Evaluate whether startup costs and funding are adequate. Weight concerns by severity: critical = financially dangerous gap, warn = needs adjustment, info = worth monitoring.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
+function buildGrowthRampPrompt(mp: MonthlyProjectionsRaw): string {
+  const fields: string[] = []
+
+  const rampMonths = mp.ramp_months as number | undefined
+  const rampMultipliers = Array.isArray(mp.ramp_multipliers) ? (mp.ramp_multipliers as number[]) : []
+  const growthMode = (mp.growth_mode ?? "simple") as string
+  const growthMonthlyPct = mp.growth_monthly_pct as number | undefined
+  const growthCustomMonthly = Array.isArray(mp.growth_custom_monthly) ? (mp.growth_custom_monthly as number[]) : []
+  const incomeTaxPct = mp.income_tax_pct as number | undefined
+  const salesTaxPct = mp.sales_tax_pct as number | undefined
+
+  if (rampMonths != null && rampMonths > 0) {
+    fields.push(`Ramp period: ${rampMonths} months`)
+    if (rampMultipliers.length > 0) {
+      fields.push(`Ramp multipliers: ${rampMultipliers.map((v, i) => `M${i + 1}=${v}%`).join(", ")}`)
+    }
+  } else {
+    fields.push("Ramp period: none (starts at full revenue)")
+  }
+
+  if (growthMode === "custom" && growthCustomMonthly.length > 0) {
+    fields.push(`Monthly growth (custom): ${growthCustomMonthly.map((v, i) => `M${i + 1}=${v}%`).join(", ")}`)
+  } else if (growthMonthlyPct != null) {
+    const annualApprox = Math.round(((1 + growthMonthlyPct / 100) ** 12 - 1) * 100)
+    fields.push(`Monthly growth: ${fmtPct(growthMonthlyPct)} (~${annualApprox}% annually)`)
+  }
+
+  if (incomeTaxPct != null) fields.push(`Income tax rate: ${fmtPct(incomeTaxPct)}`)
+  if (salesTaxPct != null) fields.push(`Sales tax rate: ${fmtPct(salesTaxPct)}`)
+  if (fields.length === 0) return ""
+
+  return `Analyse the growth assumptions and tax settings for this coffee shop projection.
+
+Growth and tax inputs:
+${fields.map((f) => `  ${f}`).join("\n")}
+
+Assess whether the ramp period is realistic (a new coffee shop typically takes 3–12 months to reach steady-state). Evaluate whether the monthly growth rate is achievable (2–5%/month is aggressive; over 8%/month is unrealistic for a single location). Flag income tax rates far from typical small-business rates (20–30%). Include benchmarks where applicable. Weight concerns by severity.
 
 ${JSON_SCHEMA_INSTRUCTION}`
 }
@@ -847,6 +1070,38 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       prompt = await loadMenuIngredientsContext(supabase, planId)
       if (!prompt) return Response.json({ error: "No ingredients in catalog yet" }, { status: 422 })
       sectionKey = `menu-pricing.ingredients.${planId}`
+    } else if (
+      sectionKind === "financials-daily-traffic" ||
+      sectionKind === "financials-revenue-streams" ||
+      sectionKind === "financials-costs-overhead" ||
+      sectionKind === "financials-growth-ramp"
+    ) {
+      // TIM-3897: Financials v2 sections — load from financial_models table.
+      const financialsMp = await loadFinancialModel(supabase, planId)
+      if (!financialsMp) {
+        return Response.json({ error: "No financial model found" }, { status: 404 })
+      }
+
+      if (sectionKind === "financials-daily-traffic") {
+        prompt = buildDailyTrafficPrompt(financialsMp)
+        sectionKey = `financials.daily-traffic.${planId}`
+      } else if (sectionKind === "financials-revenue-streams") {
+        prompt = buildRevenueStreamsPrompt(financialsMp)
+        sectionKey = `financials.revenue-streams.${planId}`
+      } else if (sectionKind === "financials-costs-overhead") {
+        prompt = buildCostsOverheadPrompt(financialsMp)
+        sectionKey = `financials.costs-overhead.${planId}`
+      } else {
+        prompt = buildGrowthRampPrompt(financialsMp)
+        sectionKey = `financials.growth-ramp.${planId}`
+      }
+
+      if (!prompt) {
+        return Response.json(
+          { error: "Not enough data entered yet — fill in this section before running analysis" },
+          { status: 422 },
+        )
+      }
     } else {
       const _exhaustive: never = sectionKind
       return Response.json({ error: `Unhandled section kind: ${_exhaustive}` }, { status: 500 })

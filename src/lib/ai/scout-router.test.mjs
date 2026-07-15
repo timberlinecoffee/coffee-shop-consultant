@@ -20,8 +20,8 @@ import {
   RESEARCH_AI_MODEL,
 } from "./models.ts"
 
-test("registry has 27 lanes (plan §3 taxonomy)", () => {
-  assert.equal(SCOUT_LANES.length, 27)
+test("registry has 34 lanes (27 base + 3 TIM-3878 location/lease + 4 TIM-3897 financials)", () => {
+  assert.equal(SCOUT_LANES.length, 34)
 })
 
 test("default-flag-OFF (prod today) → every lane routes to Anthropic", () => {
