@@ -692,7 +692,7 @@ async function loadSuppliersContext(
   supabase: SupabaseClient,
   planId: string,
 ): Promise<string> {
-  const [{ data: candidates }, { data: decisions }] = await Promise.all([
+  const [candidatesResult, decisionsResult] = await Promise.all([
     supabase
       .from("vendor_candidates")
       .select("name, category, price_per_unit, minimum_order, lead_time, notes, status")
@@ -707,6 +707,12 @@ async function loadSuppliersContext(
       .eq("is_current", true),
   ])
 
+  if (candidatesResult.error) throw new Error(`loadSuppliersContext(candidates): ${candidatesResult.error.message}`)
+  if (decisionsResult.error) throw new Error(`loadSuppliersContext(decisions): ${decisionsResult.error.message}`)
+
+  const candidates = candidatesResult.data
+  const decisions = decisionsResult.data
+
   if (!candidates || candidates.length === 0) return ""
 
   const truncated = candidates.length === SUPPLIERS_CANDIDATES_LIMIT
@@ -720,7 +726,7 @@ async function loadSuppliersContext(
   }
 
   const decisionMap = new Map<string, { vendor_name: string; reason: string | null }>()
-  for (const d of decisions ?? []) {
+  for (const d of decisions) {
     decisionMap.set(d.category, { vendor_name: d.vendor_name, reason: d.reason })
   }
 
@@ -930,7 +936,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           { status: 422 },
         )
       }
-      sectionKey = `suppliers.${planId}`
+      sectionKey = `suppliers.shortlist.${planId}`
     } else {
       const _exhaustive: never = sectionKind
       return Response.json({ error: `Unhandled section kind: ${_exhaustive}` }, { status: 500 })
