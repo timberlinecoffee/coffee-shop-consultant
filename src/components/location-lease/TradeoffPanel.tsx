@@ -4,7 +4,7 @@
 'use client'
 
 // TIM-3879: SectionHeader adoption + Analyse button wiring for shortlist compare.
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { formatLocationScore } from '@/lib/format'
@@ -176,6 +176,7 @@ export function TradeoffPanel({
   const [analyseResult, setAnalyseResult] = useState<AnalyseResponse | null>(null)
   const [analyseLoading, setAnalyseLoading] = useState(false)
   const [analyseError, setAnalyseError] = useState('')
+  const analyseInFlightRef = useRef(false)
 
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal()
 
@@ -194,6 +195,8 @@ export function TradeoffPanel({
     setScoresLoading(true)
     setTradeoff(null)
     setTradeoffError('')
+    setAnalyseResult(null)
+    setAnalyseError('')
 
     async function load() {
       const supabase = createClient()
@@ -285,18 +288,24 @@ export function TradeoffPanel({
   }, [canUseAI, tradeoffLoading, candidates])
 
   const runShortlistAnalyse = useCallback(async () => {
-    if (!canUseAI || analyseLoading) return
+    if (!canUseAI || analyseInFlightRef.current) return
+    analyseInFlightRef.current = true
     setAnalyseLoading(true)
     setAnalyseError('')
+    setAnalyseResult(null)
     try {
       const res = await fetch('/api/ai/analyse/location-shortlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       })
-      const data = await res.json().catch(() => ({})) as Record<string, unknown>
+      const data = await res.json() as Record<string, unknown>
       if (!res.ok) {
         setAnalyseError((data.error as string) ?? 'Analysis failed. Please try again.')
+        return
+      }
+      if (!Array.isArray(data.strengths)) {
+        setAnalyseError('Analysis returned an unexpected format.')
         return
       }
       setAnalyseResult(data as AnalyseResponse)
@@ -304,8 +313,9 @@ export function TradeoffPanel({
       setAnalyseError('Connection error. Please try again.')
     } finally {
       setAnalyseLoading(false)
+      analyseInFlightRef.current = false
     }
-  }, [canUseAI, analyseLoading])
+  }, [canUseAI])
 
   const handleViewRecommendation = useCallback((text: string, actionRef: string) => {
     openAIReviewModal({

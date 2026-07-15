@@ -468,23 +468,30 @@ function ScorecardSection({
   const [propertyAnalyseResult, setPropertyAnalyseResult] = useState<AnalyseResponse | null>(null)
   const [propertyAnalyseLoading, setPropertyAnalyseLoading] = useState(false)
   const [propertyAnalyseError, setPropertyAnalyseError] = useState('')
+  const propertyAnalyseInFlightRef = useRef(false)
 
   const { openAIReviewModal: openPropertyReviewModal, AIReviewModalNode: PropertyReviewModalNode } =
     useAIReviewModal()
 
   const runPropertyAnalyse = useCallback(async () => {
-    if (!canUseAI || propertyAnalyseLoading) return
+    if (!canUseAI || propertyAnalyseInFlightRef.current) return
+    propertyAnalyseInFlightRef.current = true
     setPropertyAnalyseLoading(true)
     setPropertyAnalyseError('')
+    setPropertyAnalyseResult(null)
     try {
       const res = await fetch('/api/ai/analyse/location-property', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resourceId: candidateId }),
       })
-      const data = await res.json().catch(() => ({})) as Record<string, unknown>
+      const data = await res.json() as Record<string, unknown>
       if (!res.ok) {
         setPropertyAnalyseError((data.error as string) ?? 'Analysis failed. Please try again.')
+        return
+      }
+      if (!Array.isArray(data.strengths)) {
+        setPropertyAnalyseError('Analysis returned an unexpected format.')
         return
       }
       setPropertyAnalyseResult(data as AnalyseResponse)
@@ -492,8 +499,9 @@ function ScorecardSection({
       setPropertyAnalyseError('Connection error. Please try again.')
     } finally {
       setPropertyAnalyseLoading(false)
+      propertyAnalyseInFlightRef.current = false
     }
-  }, [canUseAI, propertyAnalyseLoading, candidateId])
+  }, [canUseAI, candidateId])
 
   const handlePropertyViewRecommendation = useCallback(
     (text: string, actionRef: string) => {
@@ -1096,23 +1104,30 @@ function LeaseTermsSection({
   const [leaseAnalyseResult, setLeaseAnalyseResult] = useState<AnalyseResponse | null>(null)
   const [leaseAnalyseLoading, setLeaseAnalyseLoading] = useState(false)
   const [leaseAnalyseError, setLeaseAnalyseError] = useState('')
+  const leaseAnalyseInFlightRef = useRef(false)
 
   const { openAIReviewModal: openLeaseReviewModal, AIReviewModalNode: LeaseReviewModalNode } =
     useAIReviewModal()
 
   const runLeaseAnalyse = useCallback(async () => {
-    if (!canUseAI || leaseAnalyseLoading) return
+    if (!canUseAI || leaseAnalyseInFlightRef.current) return
+    leaseAnalyseInFlightRef.current = true
     setLeaseAnalyseLoading(true)
     setLeaseAnalyseError('')
+    setLeaseAnalyseResult(null)
     try {
       const res = await fetch('/api/ai/analyse/lease-terms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resourceId: candidateId }),
       })
-      const data = await res.json().catch(() => ({})) as Record<string, unknown>
+      const data = await res.json() as Record<string, unknown>
       if (!res.ok) {
         setLeaseAnalyseError((data.error as string) ?? 'Analysis failed. Please try again.')
+        return
+      }
+      if (!Array.isArray(data.strengths)) {
+        setLeaseAnalyseError('Analysis returned an unexpected format.')
         return
       }
       setLeaseAnalyseResult(data as AnalyseResponse)
@@ -1120,8 +1135,9 @@ function LeaseTermsSection({
       setLeaseAnalyseError('Connection error. Please try again.')
     } finally {
       setLeaseAnalyseLoading(false)
+      leaseAnalyseInFlightRef.current = false
     }
-  }, [canUseAI, leaseAnalyseLoading, candidateId])
+  }, [canUseAI, candidateId])
 
   const handleLeaseViewRecommendation = useCallback(
     (text: string, actionRef: string) => {

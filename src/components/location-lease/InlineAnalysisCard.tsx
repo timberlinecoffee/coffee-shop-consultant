@@ -137,7 +137,7 @@ export function InlineAnalysisCard({
                 {r.actionRef && onViewRecommendation && (
                   <button
                     type="button"
-                    onClick={() => onViewRecommendation(r.text, r.actionRef!)}
+                    onClick={() => onViewRecommendation(r.text, r.actionRef as string)}
                     className="shrink-0 text-xs text-[var(--teal)] font-medium hover:underline"
                   >
                     Review →
