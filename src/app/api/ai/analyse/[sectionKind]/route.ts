@@ -25,6 +25,8 @@ import { createServiceClient } from "@/lib/supabase/service"
 import { getActivePlanId } from "@/lib/plan-context"
 import { enforceRateLimit } from "@/lib/rate-limit"
 import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/lib/access"
+import { normalizeMarketing } from "@/lib/marketing"
+import { normalizeConceptV2 } from "@/lib/concept"
 import type { NextRequest } from "next/server"
 import type { ScoutLane } from "@/lib/ai/scout-lane"
 
@@ -33,7 +35,13 @@ export const maxDuration = 60
 
 const ROUTE_PATH = "/api/ai/analyse/[sectionKind]"
 
-const SECTION_KINDS = ["location-property", "location-shortlist", "lease-terms"] as const
+const SECTION_KINDS = [
+  "location-property",
+  "location-shortlist",
+  "lease-terms",
+  "marketing-channels",
+  "marketing-pre-launch",
+] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
 function isSectionKind(v: string): v is SectionKind {
@@ -44,6 +52,8 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "location-property": "analyse_location_property",
   "location-shortlist": "analyse_location_shortlist",
   "lease-terms": "analyse_lease_terms",
+  "marketing-channels": "analyse_marketing_channels",
+  "marketing-pre-launch": "analyse_marketing_pre_launch",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -394,6 +404,104 @@ ${JSON_SCHEMA_INSTRUCTION}`
   return { owned: true, prompt }
 }
 
+// ── Marketing data loaders (TIM-3885) ────────────────────────────────────────
+
+async function loadMarketingChannelsContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const [{ data: marketingDoc }, { data: conceptDoc }] = await Promise.all([
+    supabase
+      .from("workspace_documents")
+      .select("content")
+      .eq("plan_id", planId)
+      .eq("workspace_key", "marketing")
+      .maybeSingle(),
+    supabase
+      .from("workspace_documents")
+      .select("content")
+      .eq("plan_id", planId)
+      .eq("workspace_key", "concept")
+      .maybeSingle(),
+  ])
+
+  const marketing = normalizeMarketing(marketingDoc?.content)
+  const selected = marketing.channels.selected
+
+  if (selected.length === 0) return ""
+
+  const concept = normalizeConceptV2(conceptDoc?.content)
+  const conceptBits: string[] = []
+  for (const k of ["shop_identity", "target_customer", "differentiation", "brand_voice"] as const) {
+    const v = concept.components[k]?.content
+    if (typeof v === "string" && v.trim()) conceptBits.push(v.trim())
+  }
+
+  const channelLines = selected.map((c) => {
+    const notes = c.notes?.trim() ? ` — ${c.notes.trim()}` : ""
+    return `- ${c.name}${notes}`
+  })
+
+  return `Analyse the marketing channel mix for this coffee shop.
+${conceptBits.length > 0 ? `\nShop context:\n${conceptBits.join(" — ")}\n` : ""}
+Current channels (${selected.length}):
+${channelLines.join("\n")}
+
+Evaluate this channel selection: which channels are strongest given the concept and audience, coverage gaps, channels that may be hard to sustain consistently, and what the owner should prioritise first. Consider mix breadth, effort-to-reach ratio, and consistency of execution. Score the overall mix as a channel strategy.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
+async function loadMarketingPreLaunchContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const [{ data: marketingDoc }, { data: conceptDoc }] = await Promise.all([
+    supabase
+      .from("workspace_documents")
+      .select("content")
+      .eq("plan_id", planId)
+      .eq("workspace_key", "marketing")
+      .maybeSingle(),
+    supabase
+      .from("workspace_documents")
+      .select("content")
+      .eq("plan_id", planId)
+      .eq("workspace_key", "concept")
+      .maybeSingle(),
+  ])
+
+  const marketing = normalizeMarketing(marketingDoc?.content)
+  const milestones = marketing.pre_launch.milestones
+
+  if (milestones.length === 0) return ""
+
+  const concept = normalizeConceptV2(conceptDoc?.content)
+  const conceptBits: string[] = []
+  for (const k of ["shop_identity", "target_customer", "differentiation"] as const) {
+    const v = concept.components[k]?.content
+    if (typeof v === "string" && v.trim()) conceptBits.push(v.trim())
+  }
+
+  const done = milestones.filter((m) => m.completed).length
+  const milestoneLines = milestones.map((m, i) => {
+    const label = m.label?.trim() || `Milestone ${i + 1}`
+    const date = m.target_date ? ` (target: ${m.target_date})` : ""
+    const status = m.completed ? " [done]" : ""
+    const notes = m.notes?.trim() ? ` — ${m.notes.trim()}` : ""
+    return `${i + 1}. ${label}${date}${status}${notes}`
+  })
+
+  return `Analyse the pre-launch marketing plan for this coffee shop.
+${conceptBits.length > 0 ? `\nShop context:\n${conceptBits.join(" — ")}\n` : ""}
+Pre-launch milestones (${done}/${milestones.length} complete):
+${milestoneLines.join("\n")}
+
+Evaluate the pre-launch sequence: timing and sequencing of milestones, coverage of key launch activities (community building, press and PR, soft launch or trial events, grand opening), and any gaps. Identify the most critical milestones and any that are missing. Score the plan's overall launch readiness and provide concrete recommendations to improve it.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -477,6 +585,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return Response.json({ error: "resourceId (candidateId) required for this section" }, { status: 400 })
   }
 
+  // Marketing sections do not use resourceId.
+  if (
+    (sectionKind === "marketing-channels" || sectionKind === "marketing-pre-launch") &&
+    resourceId
+  ) {
+    return Response.json({ error: "resourceId is not accepted for this section" }, { status: 400 })
+  }
+
   // ── Load section-specific data ────────────────────────────────────────────
 
   let prompt = ""
@@ -493,6 +609,24 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       prompt = await loadShortlistContext(supabase, planId)
       if (!prompt) return Response.json({ error: "No candidates on shortlist yet" }, { status: 422 })
       sectionKey = `location-lease.shortlist.${planId}`
+    } else if (sectionKind === "marketing-channels") {
+      prompt = await loadMarketingChannelsContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "No channels selected yet — add channels in the Marketing workspace before running analysis" },
+          { status: 422 },
+        )
+      }
+      sectionKey = `marketing.channels.${planId}`
+    } else if (sectionKind === "marketing-pre-launch") {
+      prompt = await loadMarketingPreLaunchContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "No milestones in the pre-launch plan yet — add milestones before running analysis" },
+          { status: 422 },
+        )
+      }
+      sectionKey = `marketing.pre-launch.${planId}`
     } else {
       // lease-terms
       const ctx = await loadLeaseTermsContext(supabase, planId, resourceId!)
@@ -520,7 +654,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   let lastScoutResult: Awaited<ReturnType<typeof runScoutTurn>> | null = null
 
   // Accumulate token counts across all retry attempts so telemetry reflects true spend.
-  let accUsage = {
+  const accUsage = {
     inputTokensUncached: 0,
     inputTokensCachedRead: 0,
     inputTokensCacheCreate: 0,
