@@ -5,8 +5,10 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, Pencil, Sparkles, Eye, EyeOff, RotateCcw, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
-import { SectionHelp } from "@/components/ui/section-help";
+import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, Pencil, Eye, EyeOff, RotateCcw, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
+import { SectionHeader, type AiAction } from "@/components/section-header";
+import { InlineAnalysisCard } from "@/components/ai-analyse/InlineAnalysisCard";
+import type { AnalyseResponse } from "@/app/api/ai/analyse/[sectionKind]/route";
 import { CollapseButton } from "@/components/ui/CollapseButton";
 import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 import ReactMarkdown from "react-markdown";
@@ -253,6 +255,11 @@ export function BusinessPlanWorkspace({
     | { kind: "custom"; sectionId: string; sectionTitle: string; initialContent: string }
     | null
   >(null);
+  // TIM-3893: Analyse-with-AI state for Financial Plan sections.
+  const [bpFpAnalyseResult, setBpFpAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [bpFpAnalyseLoading, setBpFpAnalyseLoading] = useState(false);
+  const [bpFpAnalyseError, setBpFpAnalyseError] = useState("");
+  const [bpFpAnalyseActiveKey, setBpFpAnalyseActiveKey] = useState<BusinessPlanSectionKey | null>(null);
   // TIM-2385: Two-phase loading UX. Phase 1 — this overlay covers the workspace
   // while a Generate or Improve run streams. Phase 2 — the modal opens on done.
   const {
@@ -936,6 +943,39 @@ export function BusinessPlanWorkspace({
     });
   }, [canEdit, customSections, updateCustomSection]);
 
+  // TIM-3893: Analyse-with-AI handler for Financial Plan sections.
+  const runBpFinancialPlanAnalyse = useCallback(async (sectionKey: BusinessPlanSectionKey) => {
+    if (bpFpAnalyseLoading) return;
+    // Clear stale result only when switching to a different section; preserve it
+    // when regenerating the same section so InlineAnalysisCard can show a spinner.
+    if (bpFpAnalyseActiveKey !== sectionKey) setBpFpAnalyseResult(null);
+    setBpFpAnalyseActiveKey(sectionKey);
+    setBpFpAnalyseLoading(true);
+    setBpFpAnalyseError("");
+    try {
+      const res = await fetch(`/api/ai/analyse/business-plan-financial-plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        if (res.status === 402) {
+          setGlobalError("Analyse with AI requires a Pro subscription.");
+        } else {
+          setBpFpAnalyseError((json.error as string | undefined) ?? "Analysis failed. Please try again.");
+        }
+        return;
+      }
+      const json = await res.json();
+      setBpFpAnalyseResult(json as AnalyseResponse);
+    } catch {
+      setBpFpAnalyseError("Network error — please try again.");
+    } finally {
+      setBpFpAnalyseLoading(false);
+    }
+  }, [bpFpAnalyseLoading, bpFpAnalyseActiveKey, planId]);
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   const visibleCount = sections.filter((s) => s.isVisible).length;
@@ -1318,6 +1358,12 @@ export function BusinessPlanWorkspace({
               onCustomWriteWithAi={handleOpenCustomWriteAiModal}
               onArchiveSection={(key, title) => setArchiveConfirmTarget({ type: "standard", key, title })}
               onArchiveCustomSection={(id, title) => setArchiveConfirmTarget({ type: "custom", id, title })}
+              // TIM-3893: Analyse-with-AI for Financial Plan sections.
+              onBpFinancialPlanAnalyse={runBpFinancialPlanAnalyse}
+              bpFpAnalyseResult={bpFpAnalyseResult}
+              bpFpAnalyseLoading={bpFpAnalyseLoading}
+              bpFpAnalyseError={bpFpAnalyseError}
+              bpFpAnalyseActiveKey={bpFpAnalyseActiveKey}
             />
           </SortableContext>
         </DndContext>
@@ -1450,6 +1496,12 @@ interface BpFlatSectionListProps {
   // TIM-3575: archive callbacks.
   onArchiveSection: (key: BusinessPlanSectionKey, title: string) => void;
   onArchiveCustomSection: (id: string, title: string) => void;
+  // TIM-3893: Analyse-with-AI for Financial Plan sections.
+  onBpFinancialPlanAnalyse?: (key: BusinessPlanSectionKey) => void;
+  bpFpAnalyseResult?: AnalyseResponse | null;
+  bpFpAnalyseLoading?: boolean;
+  bpFpAnalyseError?: string;
+  bpFpAnalyseActiveKey?: BusinessPlanSectionKey | null;
 }
 
 function BpFlatSectionList(props: BpFlatSectionListProps) {
@@ -1550,6 +1602,16 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
               }
             : undefined;
           const sectionMeta = sectionMetaByKey.get(section.key);
+          // TIM-3893: Wire Analyse button for Financial Plan sections.
+          const isFinancialPlan = sectionMeta?.groupKey === "financial-plan";
+          const onAnalyse =
+            isFinancialPlan && props.onBpFinancialPlanAnalyse
+              ? () => {
+                  if (!section.isExpanded) props.onToggleExpand(section.key, section.isExpanded);
+                  props.onBpFinancialPlanAnalyse!(section.key);
+                }
+              : undefined;
+          const isActiveAnalyse = props.bpFpAnalyseActiveKey === section.key;
           return (
             <SortableCardRow id={section.key} canEdit={props.canEdit} key={section.key}>
               <SectionCard
@@ -1575,6 +1637,10 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
                 }
                 onResetToAuto={() => props.onResetToAuto(section.key)}
                 onWriteWithAi={onWriteWithAi}
+                onAnalyse={onAnalyse}
+                analyseResult={isActiveAnalyse ? props.bpFpAnalyseResult : null}
+                analyseLoading={isActiveAnalyse ? props.bpFpAnalyseLoading : false}
+                analyseError={isActiveAnalyse ? props.bpFpAnalyseError : ""}
                 onArchive={!sectionMeta?.isLocked ? () => props.onArchiveSection(section.key, section.title) : undefined}
               />
             </SortableCardRow>
@@ -1941,6 +2007,11 @@ interface SectionCardProps {
   onEditCancel: () => void;
   onResetToAuto: () => void;
   onWriteWithAi?: () => void;
+  // TIM-3893: Analyse-with-AI for Financial Plan sections.
+  onAnalyse?: () => void;
+  analyseResult?: AnalyseResponse | null;
+  analyseLoading?: boolean;
+  analyseError?: string;
   // TIM-3575: archive action. Absent when isLocked is true.
   onArchive?: () => void;
 }
@@ -1989,6 +2060,10 @@ function SectionCard({
   onEditCancel,
   onResetToAuto,
   onWriteWithAi,
+  onAnalyse,
+  analyseResult,
+  analyseLoading,
+  analyseError,
   onArchive,
 }: SectionCardProps) {
   const [openExample, setOpenExample] = useState(false);
@@ -2128,80 +2203,40 @@ function SectionCard({
           Keeps the kebab + popover at full opacity when the section is hidden
           so the "Show in PDF" reveal path is always visible. */}
       <div className={`transition-opacity ${section.isVisible ? "opacity-100" : "opacity-60"}`}>
-      {/* Header — TIM-3492: identical title styling in collapsed & expanded
-          (text-xl font-semibold per TIM-3491 directive — intentionally diverges
-          from the canonical SectionHeader's text-sm because BP cards are
-          top-level expandable sections, not sub-section headers).
-          TIM-3501: right side stays strictly [Write with AI] per TIM-3300.
-          (StatusChip was removed entirely by TIM-3506 board redirect.)
-          TIM-3672: Write with AI is shown in BOTH collapsed and expanded
-          headers so the affordance is discoverable per-section without
-          requiring an expand click first (board flag: "Management Team has
-          no Write with AI button" — Trent never expanded it). Collapsed row
-          splits chevron+title into their own click-to-expand region so the
-          sparkle button can sit beside it as a shrink-0 sibling; row tap
-          target stays ≥44px (chevron+title is still the majority of the row).
-          pr-12 on the inner header flex reserves room for the kebab. */}
+      {/* Header — TIM-3893: replaced hand-rolled h2 + Write button with shared
+          SectionHeader (closes drift called out in TIM-3492 comment).
+          Chevron toggle is a standalone shrink-0 button; SectionHeader fills
+          the remaining space and owns the [Analyse][Write] action slots.
+          pr-12 on the outer flex reserves room for the kebab. */}
       <div className="px-4 sm:px-5 py-4">
         <div className="flex items-center gap-2 sm:gap-3 pr-12">
-          {section.isExpanded ? (
-            <>
-              <button
-                type="button"
-                onClick={onToggleExpand}
-                aria-expanded={true}
-                aria-label={`Collapse ${section.title}`}
-                className="flex-shrink-0 p-0.5 rounded hover:bg-[var(--neutral-cool-100)] transition-colors"
-              >
-                <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)]" />
-              </button>
-              <div className="flex-1 min-w-0 flex items-center gap-2">
-                <h2
-                  className="text-xl font-semibold text-[var(--foreground)] truncate min-w-0"
-                  title={section.title}
-                >
-                  {section.title}
-                </h2>
-                {blurb && (
-                  <SectionHelp title={section.title}>{blurb}</SectionHelp>
-                )}
-              </div>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={onToggleExpand}
-              aria-expanded={false}
-              aria-label={`Expand ${section.title}`}
-              className="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 text-left"
-            >
-              <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)] flex-shrink-0" />
-              <h2
-                className="text-xl font-semibold text-[var(--foreground)] truncate min-w-0 flex-1"
-                title={section.title}
-              >
-                {section.title}
-              </h2>
-            </button>
-          )}
-          {/* TIM-3675: button is persistent — no `section.isEditing` gate. The
-              board flag was that typing manually into a section made the button
-              disappear, so users lost the affordance mid-draft. The modal now
-              pre-populates whatever's in the section (userContent or the edit
-              buffer) so the mid-edit path stays intact. Still hidden while an
-              inline stream is in flight — the modal owns the new stream path
-              instead. */}
-          {canEdit && !isStreaming && onWriteWithAi && (
-            <button
-              type="button"
-              onClick={onWriteWithAi}
-              aria-label={`Write ${section.title} with AI`}
-              className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap"
-            >
-              <Sparkles size={12} aria-hidden="true" />
-              Write with AI
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            aria-expanded={section.isExpanded}
+            aria-label={section.isExpanded ? `Collapse ${section.title}` : `Expand ${section.title}`}
+            className="flex-shrink-0 p-0.5 rounded hover:bg-[var(--neutral-cool-100)] transition-colors"
+          >
+            {section.isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)]" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)]" />
+            )}
+          </button>
+          <SectionHeader
+            title={section.title}
+            helpContent={blurb || undefined}
+            headingLevel={2}
+            className="flex-1"
+            aiActions={[
+              ...(onAnalyse != null
+                ? [{ kind: "analyse" as const, onClick: onAnalyse, disabled: analyseLoading ?? false }]
+                : []),
+              ...(onWriteWithAi != null
+                ? [{ kind: "write" as const, onClick: onWriteWithAi, disabled: !canEdit || isStreaming }]
+                : []),
+            ] satisfies AiAction[]}
+          />
         </div>
 
         {/* Sub-header: source label + Edited badge (expanded), or blurb (collapsed).
@@ -2240,6 +2275,19 @@ function SectionCard({
       {/* Body */}
       {section.isExpanded && (
         <div className="px-5 pb-5">
+          {/* TIM-3893: Analyse-with-AI result card for Financial Plan sections. */}
+          {analyseError && (
+            <p className="text-xs text-red-600 mb-3">{analyseError}</p>
+          )}
+          {analyseResult && (
+            <div className="mb-4">
+              <InlineAnalysisCard
+                result={analyseResult}
+                loading={analyseLoading ?? false}
+                onRegenerate={() => onAnalyse?.()}
+              />
+            </div>
+          )}
           {/* TIM-3112: multi-shop example panel — matches Concept workspace styling exactly */}
           {openExample && bpExamples.length > 0 && (() => {
             const ex = bpExamples[exampleIdx % Math.max(bpExamples.length, 1)];
