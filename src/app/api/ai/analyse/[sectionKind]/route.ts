@@ -28,6 +28,7 @@ import { enforceRateLimit } from "@/lib/rate-limit"
 import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/lib/access"
 import type { NextRequest } from "next/server"
 import type { ScoutLane } from "@/lib/ai/scout-lane"
+import { toTitleCase } from "@/lib/text"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -189,7 +190,7 @@ Rules:
 - recommendations: 2–5 items minimum.
 - score.band: "strong" if value >= 70, "ok" if 40–69, "weak" if < 40.
 - benchmarkContext: include when you cite market norms or industry figures.
-- Plain English. No consultant jargon. No emojis. Title Case for dataRef/actionRef keys only.`
+- Plain English. No consultant jargon. No emojis. Title Case for score.label and dataRef/actionRef keys (AP style — every word capitalized except articles, short prepositions, and conjunctions). Example score.label: "Good Cost Structure".`
 
 // ── Per-section data loaders ─────────────────────────────────────────────────
 
@@ -760,11 +761,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       const validation = AIContentSchema.safeParse(raw)
 
       if (validation.success) {
+        const d = validation.data
         analysisResult = {
           version: 1,
           sectionKey,
           generatedAt,
-          ...validation.data,
+          ...d,
+          // TIM-1002: score.label is a short label — enforce Title Case at the
+          // API boundary so the model's casing is never visible to users.
+          score: d.score
+            ? { ...d.score, label: d.score.label ? toTitleCase(d.score.label) : d.score.label }
+            : d.score,
         }
         break
       }

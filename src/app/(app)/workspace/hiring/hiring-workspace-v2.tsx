@@ -768,6 +768,12 @@ function RolePageV2(props: RolePageProps) {
   const [roleAnalyseError, setRoleAnalyseError] = useState<string | null>(null);
   const roleAnalyseInFlight = useRef(false);
 
+  // Reset the in-flight guard when the user switches to a different role so
+  // Analyse on the new role is never silently blocked by a stale prior fetch.
+  useEffect(() => {
+    roleAnalyseInFlight.current = false;
+  }, [role.id]);
+
   // Only show result/error for the currently selected role.
   const showRoleAnalyseResult = roleAnalyseRoleId === role.id && roleAnalyseResult != null;
   const showRoleAnalyseError = roleAnalyseRoleId === role.id && roleAnalyseError != null;
@@ -832,7 +838,7 @@ function RolePageV2(props: RolePageProps) {
           <p className="text-xs text-red-700">{roleAnalyseError}</p>
         </div>
       )}
-      {showRoleAnalyseResult && roleAnalyseResult && (
+      {showRoleAnalyseResult && (
         <div className="mb-4">
           <InlineAnalysisCard
             result={roleAnalyseResult}
@@ -939,9 +945,9 @@ function RolePageV2(props: RolePageProps) {
   );
 }
 
-// TIM-3899: Accordion now composes SectionHeader inside <summary> to resolve
-// the local-header drift noted in the issue. helpContent carries the former
-// subtitle so the content is accessible via the (?) popover.
+// TIM-3899: Accordion composes SectionHeader inside <summary> to resolve the
+// local-header drift. subtitle is kept as always-visible secondary text so
+// users can scan collapsed sections; it is not demoted to a popover.
 function Accordion({
   id,
   title,
@@ -962,11 +968,10 @@ function Accordion({
       className="group rounded-xl border border-[var(--border)] bg-white open:shadow-sm"
     >
       <summary className="list-none flex items-center justify-between cursor-pointer px-4 py-3 select-none">
-        <SectionHeader
-          title={title}
-          helpContent={subtitle}
-          className="flex-1 mb-0"
-        />
+        <div className="flex-1">
+          <SectionHeader title={title} className="mb-0" />
+          <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{subtitle}</p>
+        </div>
         <span className="shrink-0 text-[var(--dark-grey)] transition-transform group-open:rotate-180 ml-2">
           <ChevronDown size={16} />
         </span>

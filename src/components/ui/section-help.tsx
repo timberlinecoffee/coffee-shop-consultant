@@ -59,6 +59,7 @@ export function SectionHelp({ title, children }: SectionHelpProps) {
           role="dialog"
           aria-label={title ? `${title} help` : 'Section help'}
           className="absolute left-0 top-full z-30 mt-1 w-72 max-w-[calc(100vw-1rem)] rounded-xl border border-[var(--warm-800)] bg-[var(--warm-250)] p-3 shadow-lg"
+          onClick={(e) => e.stopPropagation()}
         >
           {title && (
             <div className="mb-1.5 flex items-start justify-between gap-2">
