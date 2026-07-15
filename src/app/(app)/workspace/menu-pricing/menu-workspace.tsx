@@ -2202,6 +2202,8 @@ function SortableMenuItemRow({
 
 // ─── Category-default ingredients editor ─────────────────────────────────────
 
+// TIM-3863: per-category supply defaults. Uses menu_ingredients.category from TIM-3861
+// as the discriminator (supply vs ingredient) — same category_default_ingredients table.
 function CategoryDefaultsEditor({
   category,
   defaults,
@@ -2222,7 +2224,25 @@ function CategoryDefaultsEditor({
   onApplyToExisting: () => Promise<void>;
 }) {
   const used = new Set(defaults.map((d) => d.ingredient_id));
-  const available = ingredients.filter((i) => !used.has(i.id));
+  // Build a lookup map once to avoid O(defaults × ingredients) scans per pass.
+  const ingMap = new Map(ingredients.map((i) => [i.id, i]));
+
+  // Split defaults into supply vs ingredient groups using the same role
+  // inference as the recipe display (TIM-3861).
+  const supplyDefaults = defaults.filter((d) =>
+    inferIngredientRole(ingMap.get(d.ingredient_id) ?? null) === 'supply'
+  );
+  const ingredientDefaults = defaults.filter((d) =>
+    inferIngredientRole(ingMap.get(d.ingredient_id) ?? null) === 'ingredient'
+  );
+
+  const availableSupplies = ingredients.filter(
+    (i) => !used.has(i.id) && inferIngredientRole(i) === 'supply'
+  );
+  const availableIngredients = ingredients.filter(
+    (i) => !used.has(i.id) && inferIngredientRole(i) === 'ingredient'
+  );
+
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState<number | null>(null);
 
@@ -2238,44 +2258,79 @@ function CategoryDefaultsEditor({
   }
 
   return (
-    <div className="px-5 py-4 bg-[var(--gray-50)] border-t border-[var(--neutral-cool-150)] space-y-3">
-      <div>
-        <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-          Default ingredients are auto-added to every <strong>new</strong> item in <strong>{category.name}</strong> — handy for amortizing
-          cups, lids, sleeves, and napkins across beverages (try 0.7 cups to represent 70% to-go).
-          Editing or removing a default on an existing item won&apos;t change the category default.
+    <div className="px-5 py-4 bg-[var(--gray-50)] border-t border-[var(--neutral-cool-150)] space-y-4">
+      <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+        Configure default supplies and ingredients for <strong>{category.name}</strong>.
+        New items in this category inherit these rows as editable recipe entries.
+        Changes here apply to <strong>new items only</strong> — existing items keep their current recipe.
+        Editing or removing a row on an item does not affect these category defaults.
+      </p>
+
+      {/* Supply & Packaging Defaults */}
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold text-[var(--neutral-cool-650)] uppercase tracking-wide">
+          Supply Defaults
         </p>
+        {supplyDefaults.length > 0 ? (
+          <div className="space-y-1.5">
+            {supplyDefaults.map((d) => {
+              const ing = ingMap.get(d.ingredient_id);
+              return (
+                <DefaultLineRow
+                  key={d.id}
+                  def={d}
+                  ingredient={ing ?? null}
+                  canEdit={canEdit}
+                  onUpdate={(patch) => onUpdate(d.id, patch)}
+                  onDelete={() => onDelete(d.id)}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-[11px] text-[var(--neutral-cool-350)]">No supply defaults yet.</p>
+        )}
+        {canEdit && availableSupplies.length > 0 && (
+          <DefaultAddRow available={availableSupplies} onAdd={onAdd} />
+        )}
+        {canEdit && availableSupplies.length === 0 && supplyDefaults.length === 0 && (
+          <p className="text-[11px] text-[var(--muted-foreground)]">
+            Add cups, lids, or other packaging to your Ingredients list first, then configure defaults here.
+          </p>
+        )}
       </div>
 
-      {defaults.length > 0 ? (
-        <div className="space-y-2">
-          {defaults.map((d) => {
-            const ing = ingredients.find((i) => i.id === d.ingredient_id);
-            return (
-              <DefaultLineRow
-                key={d.id}
-                def={d}
-                ingredient={ing ?? null}
-                canEdit={canEdit}
-                onUpdate={(patch) => onUpdate(d.id, patch)}
-                onDelete={() => onDelete(d.id)}
-              />
-            );
-          })}
-        </div>
-      ) : (
-        <p className="text-xs text-[var(--dark-grey)]">No default ingredients yet.</p>
-      )}
-
-      {canEdit && available.length > 0 && (
-        <DefaultAddRow
-          available={available}
-          onAdd={onAdd}
-        />
-      )}
+      {/* Ingredient Defaults */}
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold text-[var(--neutral-cool-650)] uppercase tracking-wide">
+          Ingredient Defaults
+        </p>
+        {ingredientDefaults.length > 0 ? (
+          <div className="space-y-1.5">
+            {ingredientDefaults.map((d) => {
+              const ing = ingMap.get(d.ingredient_id);
+              return (
+                <DefaultLineRow
+                  key={d.id}
+                  def={d}
+                  ingredient={ing ?? null}
+                  canEdit={canEdit}
+                  onUpdate={(patch) => onUpdate(d.id, patch)}
+                  onDelete={() => onDelete(d.id)}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-[11px] text-[var(--neutral-cool-350)]">No ingredient defaults yet.</p>
+        )}
+        {canEdit && availableIngredients.length > 0 && (
+          <DefaultAddRow available={availableIngredients} onAdd={onAdd} />
+        )}
+      </div>
 
       {canEdit && defaults.length > 0 && (
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex items-center gap-2 pt-1 border-t border-[var(--neutral-cool-150)]">
           <button
             type="button"
             onClick={handleApply}

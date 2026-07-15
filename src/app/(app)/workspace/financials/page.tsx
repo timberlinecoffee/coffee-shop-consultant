@@ -9,6 +9,7 @@ import {
   defaultMonthlyProjections,
   computeMenuBlendedCogsPct,
   buildMenuCogsBreakdown,
+  groupMenuItemsByCategory,
 } from "@/lib/financial-projection";
 import type { CritiqueResult } from "@/lib/financials";
 import { getAccountSettings } from "@/lib/account-settings";
@@ -62,7 +63,8 @@ export default async function FinancialsWorkspacePage() {
     // menuItemMixWeight() in financial-projection.ts for the canon.
     supabase
       .from("menu_items_with_cogs")
-      .select("name, price_cents, cogs_cents, computed_cogs_cents, expected_popularity, archived")
+      // TIM-3733: id, category_id, category_name needed for groupMenuItemsByCategory (COGS sync section).
+      .select("id, name, category_id, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_popularity, archived")
       .eq("plan_id", plan.id)
       .eq("archived", false),
     // TIM-1253: fetch equipment items for shared-read capex sync — each item
@@ -182,6 +184,8 @@ export default async function FinancialsWorkspacePage() {
   // TIM-1799: built via the shared recompute so it reflects ALL priced items
   // (incl. Beverages), weighting by popularity when no numeric mix is set.
   const menuCogsItems = buildMenuCogsBreakdown(rawMenuItems);
+  // TIM-3733: category grouping for the Finance COGS sync section (seeds liveMenuCogsByCategory).
+  const menuCogsByCategory = groupMenuItemsByCategory(rawMenuItems);
 
   return (
     <FinancialsWorkspace
@@ -196,6 +200,7 @@ export default async function FinancialsWorkspacePage() {
       initialEquipmentItems={initialEquipmentItems}
       menuBlendedCogsPct={menuBlendedCogsPct}
       menuCogsItems={menuCogsItems}
+      menuCogsByCategory={menuCogsByCategory}
       minimumWage={planMinimumWage}
       initialAccentColor={initialAccentColor}
     />
