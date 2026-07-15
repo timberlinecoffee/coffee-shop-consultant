@@ -1639,7 +1639,7 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
                 onWriteWithAi={onWriteWithAi}
                 onAnalyse={onAnalyse}
                 analyseResult={isActiveAnalyse ? props.bpFpAnalyseResult : null}
-                analyseLoading={props.bpFpAnalyseLoading}
+                analyseLoading={isActiveAnalyse ? props.bpFpAnalyseLoading : false}
                 analyseError={isActiveAnalyse ? props.bpFpAnalyseError : ""}
                 onArchive={!sectionMeta?.isLocked ? () => props.onArchiveSection(section.key, section.title) : undefined}
               />
