@@ -15,8 +15,9 @@
 //   5. Elegant truncation via shared <TruncatedText> in every cell — no more
 //      silently clipped bubbles.
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { Truck, Plus, Sparkles, Trash2, GripHorizontal, MoreVertical, Pencil } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { AlertCircle, Truck, Plus, Sparkles, Trash2, GripHorizontal, MoreVertical, Pencil } from "lucide-react";
+import { InlineAnalysisCard, type AnalyseResponse } from "@/components/location-lease/InlineAnalysisCard";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { TruncatedText } from "@/components/ui/TruncatedText";
@@ -181,6 +182,12 @@ export function SuppliersWorkspace({
     candidate: VendorCandidate;
     reason: string;
   } | null>(null);
+
+  // TIM-3900: Analyse-with-AI state for the vendor shortlist.
+  const [analyseLoading, setAnalyseLoading] = useState(false);
+  const [analyseError, setAnalyseError] = useState("");
+  const [analyseResult, setAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const analyseInFlightRef = useRef(false);
 
   // Column UI state (localStorage-backed) — hydrate after mount to avoid SSR mismatch.
   const [colWidths, setColWidths] = useState<Map<SupplierColId, number>>(() =>
@@ -429,6 +436,47 @@ export function SuppliersWorkspace({
     },
     [canEdit]
   );
+
+  // TIM-3900: Analyse-with-AI handler — calls POST /api/ai/analyse/suppliers.
+  const runAnalyse = useCallback(async () => {
+    if (!canEdit || analyseInFlightRef.current) return;
+    analyseInFlightRef.current = true;
+    setAnalyseLoading(true);
+    setAnalyseError("");
+    setAnalyseResult(null);
+    try {
+      const res = await fetch("/api/ai/analyse/suppliers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.status === 402) {
+        setPaywallOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
+        setAnalyseError(errBody?.error ?? "Analysis failed. Please try again.");
+        return;
+      }
+      const data = (await res.json()) as Record<string, unknown>;
+      if (
+        !Array.isArray(data.strengths) ||
+        !Array.isArray(data.concerns) ||
+        !Array.isArray(data.callouts) ||
+        !Array.isArray(data.recommendations)
+      ) {
+        setAnalyseError("Analysis returned an unexpected format.");
+        return;
+      }
+      setAnalyseResult(data as AnalyseResponse);
+    } catch {
+      setAnalyseError("Connection error. Please try again.");
+    } finally {
+      setAnalyseLoading(false);
+      analyseInFlightRef.current = false;
+    }
+  }, [canEdit]);
 
   const handleAddCategory = useCallback(async () => {
     if (!canEdit) {
@@ -783,12 +831,14 @@ export function SuppliersWorkspace({
             <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
               <div className="px-5 pt-5 pb-4 border-b border-[var(--border)]">
                 {/* TIM-3695 (P1-1): v3 — SectionHeader standalone (contract: title+help only);
-                    actions live in WorkspaceHeader above. v1 — original flex row kept. */}
+                    actions live in WorkspaceHeader above. v1 — original flex row kept.
+                    TIM-3900: aiActions adds Analyse-with-AI button in both branches. */}
                 {uiRevampV3 ? (
                   <SectionHeader
                     title={labelFor(activeCategory)}
                     helpContent={subtitleFor(activeCategory)}
                     className="mb-0"
+                    aiActions={canEdit ? [{ kind: "analyse", onClick: runAnalyse, disabled: analyseLoading }] : undefined}
                   />
                 ) : (
                   <div className="flex items-start justify-between gap-4">
@@ -819,6 +869,21 @@ export function SuppliersWorkspace({
                         Add vendor
                       </WorkspaceActionButton>
                     </div>
+                  </div>
+                )}
+                {analyseError && (
+                  <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 mt-3">
+                    <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" aria-hidden="true" />
+                    <p className="text-xs text-red-700">{analyseError}</p>
+                  </div>
+                )}
+                {analyseResult && (
+                  <div className="mt-3">
+                    <InlineAnalysisCard
+                      result={analyseResult}
+                      loading={analyseLoading}
+                      onRegenerate={runAnalyse}
+                    />
                   </div>
                 )}
                 {seedError && (

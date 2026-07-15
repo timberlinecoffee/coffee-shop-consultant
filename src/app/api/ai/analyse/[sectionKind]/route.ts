@@ -45,6 +45,7 @@ const SECTION_KINDS = [
   "financials-cogs-menu",
   "financials-cogs-additional",
   "menu-ingredients",
+  "suppliers",
 ] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
@@ -61,6 +62,7 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "financials-cogs-menu": "analyse_financials_cogs_menu",
   "financials-cogs-additional": "analyse_financials_cogs_additional",
   "menu-ingredients": "analyse_menu_ingredients",
+  "suppliers": "analyse_suppliers",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -682,6 +684,81 @@ Evaluate: cost-per-unit competitiveness, any ingredients that look unusually exp
 ${JSON_SCHEMA_INSTRUCTION}`
 }
 
+// ── TIM-3900: Suppliers workspace context loader ─────────────────────────────
+
+const SUPPLIERS_CANDIDATES_LIMIT = 80
+
+async function loadSuppliersContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const [{ data: candidates }, { data: decisions }] = await Promise.all([
+    supabase
+      .from("vendor_candidates")
+      .select("name, category, price_per_unit, minimum_order, lead_time, notes, status")
+      .eq("plan_id", planId)
+      .order("category", { ascending: true })
+      .order("position", { ascending: true })
+      .limit(SUPPLIERS_CANDIDATES_LIMIT),
+    supabase
+      .from("vendor_decisions")
+      .select("category, vendor_name, reason")
+      .eq("plan_id", planId)
+      .eq("is_current", true),
+  ])
+
+  if (!candidates || candidates.length === 0) return ""
+
+  const truncated = candidates.length === SUPPLIERS_CANDIDATES_LIMIT
+
+  // Group candidates by category.
+  const byCategory = new Map<string, typeof candidates>()
+  for (const c of candidates) {
+    const list = byCategory.get(c.category) ?? []
+    list.push(c)
+    byCategory.set(c.category, list)
+  }
+
+  const decisionMap = new Map<string, { vendor_name: string; reason: string | null }>()
+  for (const d of decisions ?? []) {
+    decisionMap.set(d.category, { vendor_name: d.vendor_name, reason: d.reason })
+  }
+
+  const categoryLines: string[] = []
+  for (const [cat, rows] of byCategory) {
+    const decision = decisionMap.get(cat)
+    const chosen = decision ? ` → CHOSEN: ${decision.vendor_name}${decision.reason ? ` (reason: ${decision.reason})` : ""}` : ""
+    const statusCounts: Record<string, number> = {}
+    for (const r of rows) statusCounts[r.status] = (statusCounts[r.status] ?? 0) + 1
+    const statusSummary = Object.entries(statusCounts)
+      .map(([s, n]) => `${n} ${s}`)
+      .join(", ")
+    categoryLines.push(`\n${cat}${chosen} (${statusSummary}):`)
+    for (const r of rows) {
+      const parts: string[] = []
+      if (r.price_per_unit?.trim()) parts.push(`price: ${r.price_per_unit.trim()}`)
+      if (r.minimum_order?.trim()) parts.push(`min order: ${r.minimum_order.trim()}`)
+      if (r.lead_time?.trim()) parts.push(`lead time: ${r.lead_time.trim()}`)
+      if (r.notes?.trim()) parts.push(`notes: ${r.notes.trim()}`)
+      const detail = parts.length > 0 ? ` — ${parts.join(", ")}` : ""
+      categoryLines.push(`  [${r.status}] ${r.name || "(unnamed)"}${detail}`)
+    }
+  }
+
+  const totalCategories = byCategory.size
+  const chosenCount = decisionMap.size
+  const totalCandidates = candidates.length
+
+  return `Analyse the supplier and vendor shortlist for this coffee shop.
+
+Summary: ${totalCandidates}${truncated ? "+" : ""} candidates across ${totalCategories} categor${totalCategories !== 1 ? "ies" : "y"}, ${chosenCount} categor${chosenCount !== 1 ? "ies" : "y"} with a chosen vendor.
+${categoryLines.join("\n")}
+
+Evaluate the vendor selection process: which categories are well-researched with strong shortlists, which categories have only one or two candidates (thin comparison), whether the chosen vendors look like solid choices given the available data, pricing and lead time concerns, and what the owner should do next to finalise remaining categories. Note any categories with no candidates. Score the overall vendor selection readiness.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -771,7 +848,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       sectionKind === "marketing-pre-launch" ||
       sectionKind === "financials-cogs-menu" ||
       sectionKind === "financials-cogs-additional" ||
-      sectionKind === "menu-ingredients") &&
+      sectionKind === "menu-ingredients" ||
+      sectionKind === "suppliers") &&
     resourceId
   ) {
     return Response.json({ error: "resourceId is not accepted for this section" }, { status: 400 })
@@ -844,6 +922,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       prompt = await loadMenuIngredientsContext(supabase, planId)
       if (!prompt) return Response.json({ error: "No ingredients in catalog yet" }, { status: 422 })
       sectionKey = `menu-pricing.ingredients.${planId}`
+    } else if (sectionKind === "suppliers") {
+      prompt = await loadSuppliersContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "No vendor candidates yet. Add vendors to your shortlists before running analysis." },
+          { status: 422 },
+        )
+      }
+      sectionKey = `suppliers.${planId}`
     } else {
       const _exhaustive: never = sectionKind
       return Response.json({ error: `Unhandled section kind: ${_exhaustive}` }, { status: 500 })
