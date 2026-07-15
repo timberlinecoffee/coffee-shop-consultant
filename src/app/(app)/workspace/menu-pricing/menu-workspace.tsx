@@ -750,6 +750,7 @@ function IngredientSortHeader({
 function IngredientsTab({
   canEdit,
   canUseAI,
+  onPaywall,
   ingredients,
   onAddIngredient,
   onUpdateIngredient,
@@ -757,6 +758,7 @@ function IngredientsTab({
 }: {
   canEdit: boolean;
   canUseAI: boolean;
+  onPaywall: () => void;
   ingredients: MenuIngredient[];
   onAddIngredient: (init: {
     name: string;
@@ -804,12 +806,28 @@ function IngredientsTab({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = (await res.json()) as Record<string, unknown>;
       if (!res.ok) {
-        setIngredientsAnalyseError((data.error as string) ?? "Analysis failed. Please try again.");
+        if (res.status === 402) {
+          onPaywall();
+          return;
+        }
+        let errMsg = "Analysis failed. Please try again.";
+        try {
+          const errData = (await res.json()) as Record<string, unknown>;
+          if (typeof errData.error === "string") errMsg = errData.error;
+        } catch {}
+        setIngredientsAnalyseResult(null);
+        setIngredientsAnalyseError(errMsg);
         return;
       }
-      if (!Array.isArray(data.strengths)) {
+      const data = (await res.json()) as Record<string, unknown>;
+      if (
+        !Array.isArray(data.strengths) ||
+        !Array.isArray(data.concerns) ||
+        !Array.isArray(data.callouts) ||
+        !Array.isArray(data.recommendations)
+      ) {
+        setIngredientsAnalyseResult(null);
         setIngredientsAnalyseError("Analysis returned an unexpected format.");
         return;
       }
@@ -4765,6 +4783,7 @@ export function MenuWorkspace({
           <IngredientsTab
             canEdit={canEdit}
             canUseAI={canEdit}
+            onPaywall={() => setPaywallOpen(true)}
             ingredients={ingredients}
             onAddIngredient={addIngredient}
             onUpdateIngredient={updateIngredient}
