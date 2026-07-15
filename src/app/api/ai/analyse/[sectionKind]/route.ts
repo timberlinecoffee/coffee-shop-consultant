@@ -28,6 +28,7 @@ import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/li
 import { normalizeMarketing } from "@/lib/marketing"
 import { normalizeConceptV2 } from "@/lib/concept"
 import { menuItemMixWeight } from "@/lib/financial-projection"
+import { BUSINESS_PLAN_SECTIONS } from "@/lib/business-plan"
 import type { NextRequest } from "next/server"
 import type { ScoutLane } from "@/lib/ai/scout-lane"
 
@@ -45,6 +46,8 @@ const SECTION_KINDS = [
   "financials-cogs-menu",
   "financials-cogs-additional",
   "menu-ingredients",
+  // TIM-3893: Business Plan Financial Plan sections.
+  "business-plan-financial-plan",
 ] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
@@ -61,6 +64,7 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "financials-cogs-menu": "analyse_financials_cogs_menu",
   "financials-cogs-additional": "analyse_financials_cogs_additional",
   "menu-ingredients": "analyse_menu_ingredients",
+  "business-plan-financial-plan": "analyse_business_plan_financial_plan",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -682,6 +686,50 @@ Evaluate: cost-per-unit competitiveness, any ingredients that look unusually exp
 ${JSON_SCHEMA_INSTRUCTION}`
 }
 
+// ── TIM-3893: Business Plan Financial Plan data loader ────────────────────────
+
+// Derived from BUSINESS_PLAN_SECTIONS (single source of truth) so that title
+// renames in lib/business-plan.ts automatically flow through to AI prompts.
+const _bpFpSections = BUSINESS_PLAN_SECTIONS.filter((s) => s.groupKey === "financial-plan")
+const BP_FINANCIAL_PLAN_KEYS = _bpFpSections.map((s) => s.key)
+const BP_FINANCIAL_PLAN_TITLES: Record<string, string> = Object.fromEntries(
+  _bpFpSections.map((s) => [s.key, s.title]),
+)
+
+async function loadBpFinancialPlanContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const { data: sections, error } = await supabase
+    .from("business_plan_sections")
+    .select("section_key, user_content")
+    .eq("plan_id", planId)
+    .in("section_key", BP_FINANCIAL_PLAN_KEYS)
+
+  if (error) throw new Error(`business_plan_sections query failed: ${error.message}`)
+  if (!sections || sections.length === 0) return ""
+
+  const populated = sections.filter(
+    (s) => typeof s.user_content === "string" && s.user_content.trim().length > 0,
+  )
+  if (populated.length === 0) return ""
+
+  const sectionTexts = populated
+    .map((s) => {
+      const title = BP_FINANCIAL_PLAN_TITLES[s.section_key] ?? s.section_key
+      return `### ${title}\n${(s.user_content as string).trim()}`
+    })
+    .join("\n\n")
+
+  return `Analyse the financial plan sections for this coffee shop business plan.
+
+${sectionTexts}
+
+Provide a comprehensive analysis: Are the revenue and cost assumptions realistic? Is the financing plan sound? Are there gaps or inconsistencies across sections? Identify the strongest parts of the financial plan and the areas of highest risk. Benchmark key metrics against coffee shop industry norms where possible (e.g. COGS 28–35%, payroll 35–45%, rent 8–12% of revenue, break-even typically 3–12 months). Weight concerns by severity: critical = financial viability risk, warn = needs adjustment, info = monitoring point.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -771,7 +819,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       sectionKind === "marketing-pre-launch" ||
       sectionKind === "financials-cogs-menu" ||
       sectionKind === "financials-cogs-additional" ||
-      sectionKind === "menu-ingredients") &&
+      sectionKind === "menu-ingredients" ||
+      sectionKind === "business-plan-financial-plan") &&
     resourceId
   ) {
     return Response.json({ error: "resourceId is not accepted for this section" }, { status: 400 })
@@ -844,6 +893,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       prompt = await loadMenuIngredientsContext(supabase, planId)
       if (!prompt) return Response.json({ error: "No ingredients in catalog yet" }, { status: 422 })
       sectionKey = `menu-pricing.ingredients.${planId}`
+    } else if (sectionKind === "business-plan-financial-plan") {
+      // TIM-3893: Business Plan Financial Plan sections.
+      prompt = await loadBpFinancialPlanContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "No saved financial plan content yet — add your own notes to one or more financial plan sections first" },
+          { status: 422 },
+        )
+      }
+      sectionKey = `business-plan.financial-plan.${planId}`
     } else {
       const _exhaustive: never = sectionKind
       return Response.json({ error: `Unhandled section kind: ${_exhaustive}` }, { status: 500 })
