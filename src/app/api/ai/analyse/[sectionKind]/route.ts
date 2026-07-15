@@ -33,7 +33,7 @@ export const maxDuration = 60
 
 const ROUTE_PATH = "/api/ai/analyse/[sectionKind]"
 
-const SECTION_KINDS = ["location-property", "location-shortlist", "lease-terms", "menu-ingredients"] as const
+const SECTION_KINDS = ["location-property", "location-shortlist", "lease-terms", "menu-ingredients", "hiring-role"] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
 function isSectionKind(v: string): v is SectionKind {
@@ -45,6 +45,7 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "location-shortlist": "analyse_location_shortlist",
   "lease-terms": "analyse_lease_terms",
   "menu-ingredients": "analyse_menu_ingredients",
+  "hiring-role": "analyse_hiring_role",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -423,6 +424,58 @@ Evaluate: cost-per-unit competitiveness, any ingredients that look unusually exp
 ${JSON_SCHEMA_INSTRUCTION}`
 }
 
+// ── TIM-3889: Hiring role context loader ─────────────────────────────────────
+
+async function loadHiringRoleContext(
+  supabase: SupabaseClient,
+  planId: string,
+  roleId: string,
+): Promise<{ owned: boolean; prompt: string }> {
+  const { data: role } = await supabase
+    .from("hiring_plan_roles")
+    .select("id, plan_id, role_title, headcount, notes, jd_template_id")
+    .eq("id", roleId)
+    .maybeSingle()
+
+  if (!role || role.plan_id !== planId) {
+    return { owned: false, prompt: "" }
+  }
+
+  const jd = role.jd_template_id
+    ? await supabase
+        .from("job_description_templates")
+        .select("title, summary, responsibilities, requirements, comp")
+        .eq("id", role.jd_template_id)
+        .maybeSingle()
+        .then((r) => r.data)
+    : null
+
+  const title = role.role_title?.trim() || "Unnamed role"
+  const fields: string[] = [`Role: ${title}`, `Headcount: ${role.headcount ?? 1}`]
+  if (role.notes?.trim()) fields.push(`Notes: ${role.notes.trim()}`)
+
+  if (jd) {
+    if (jd.title?.trim() && jd.title.trim() !== title) fields.push(`JD title: ${jd.title.trim()}`)
+    if (jd.summary?.trim()) fields.push(`Summary: ${jd.summary.trim()}`)
+    if (jd.responsibilities?.trim()) fields.push(`Responsibilities: ${jd.responsibilities.trim()}`)
+    if (jd.requirements?.trim()) fields.push(`Requirements: ${jd.requirements.trim()}`)
+    if (jd.comp?.trim()) fields.push(`Compensation & benefits: ${jd.comp.trim()}`)
+  }
+
+  const hasContent = fields.length > 2 || jd != null
+  if (!hasContent) return { owned: true, prompt: "" }
+
+  const prompt = `Analyse this coffee shop staffing role for a business plan.
+
+${fields.join("\n")}
+
+Evaluate: whether the role definition is complete and clear, compensation competitiveness vs. local coffee-shop market norms, headcount appropriateness for a new coffee shop, any gaps in the job description or requirements, and hiring risk factors. Recommend 2–4 concrete actions to strengthen this role definition or hiring strategy. Include benchmarkContext if you can cite typical pay ranges or staffing ratios for this role type.
+
+${JSON_SCHEMA_INSTRUCTION}`
+
+  return { owned: true, prompt }
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -500,12 +553,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const { resourceId } = parsedBody.data
 
   if (
-    (sectionKind === "location-property" || sectionKind === "lease-terms") &&
+    (sectionKind === "location-property" || sectionKind === "lease-terms" || sectionKind === "hiring-role") &&
     !resourceId
   ) {
-    return Response.json({ error: "resourceId (candidateId) required for this section" }, { status: 400 })
+    return Response.json({ error: "resourceId required for this section" }, { status: 400 })
   }
-  // menu-ingredients never needs a resourceId — the plan owns the ingredient catalog.
+  // location-shortlist and menu-ingredients never need a resourceId — the plan owns those catalogs.
 
   // ── Load section-specific data ────────────────────────────────────────────
 
@@ -538,6 +591,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       prompt = await loadMenuIngredientsContext(supabase, planId)
       if (!prompt) return Response.json({ error: "No ingredients in catalog yet" }, { status: 422 })
       sectionKey = `menu-pricing.ingredients.${planId}`
+    } else if (sectionKind === "hiring-role") {
+      const ctx = await loadHiringRoleContext(supabase, planId, resourceId!)
+      if (!ctx.owned) return Response.json({ error: "Role not found" }, { status: 404 })
+      if (!ctx.prompt) return Response.json({ error: "Add role details before running analysis" }, { status: 422 })
+      prompt = ctx.prompt
+      sectionKey = `hiring.role.${resourceId}`
     } else {
       const _exhaustive: never = sectionKind
       return Response.json({ error: `Unhandled section kind: ${_exhaustive}` }, { status: 500 })

@@ -33,6 +33,8 @@ export const SCOUT_LANES = [
   "analyse_lease_terms",
   // TIM-3888: Menu Pricing workspace — ingredients cost analysis.
   "analyse_menu_ingredients",
+  // TIM-3889: Hiring v2 — per-role structured analysis.
+  "analyse_hiring_role",
   // Marketing, hiring, suppliers, concept, financials → DeepSeek.
   "marketing_generate",
   "hiring_improve_jd",
@@ -69,6 +71,8 @@ export const FORCE_ANTHROPIC_LANES = new Set<ScoutLane>([
   "analyse_lease_terms",
   // TIM-3888: Menu ingredients analysis — structured JSON, Anthropic for reliability.
   "analyse_menu_ingredients",
+  // TIM-3889: Hiring role analysis — structured JSON, Anthropic for reliability.
+  "analyse_hiring_role",
 ])
 
 // Lanes that need Anthropic Sonnet 4.6 specifically — they depend on the

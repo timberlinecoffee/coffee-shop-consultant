@@ -7,7 +7,7 @@
 // TIM-3558: Hiring Laws panel migrated from v1 RequirementsTab so left nav
 // no longer links to ?hiring=v1 (which was trapping users in v1 permanently).
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -23,6 +23,7 @@ import {
   FileText,
   BookOpen,
   AlertTriangle,
+  AlertCircle,
   Sparkles,
   Pencil,
   Check,
@@ -89,9 +90,12 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { SectionHeader } from "@/components/section-header";
+import type { AiAction } from "@/components/section-header";
 import { SectionHelp } from "@/components/ui/section-help";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
+import { InlineAnalysisCard } from "@/components/ai-analyse/InlineAnalysisCard";
+import type { AnalyseResponse } from "@/components/ai-analyse/InlineAnalysisCard";
 import { ScorecardGridPanel } from "@/components/hiring/ScorecardGridPanel";
 
 interface Props {
@@ -754,13 +758,123 @@ type RolePageProps = {
 
 function RolePageV2(props: RolePageProps) {
   const { role } = props;
+  const [roleAnalyseLoading, setRoleAnalyseLoading] = useState(false);
+  const [roleAnalyseResult, setRoleAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [roleAnalyseError, setRoleAnalyseError] = useState<string | null>(null);
+  const roleAnalyseInFlight = useRef(false);
+
+  const [roleWriteCallout, setRoleWriteCallout] = useState<{
+    fieldLabel: string;
+    fieldKey: string;
+    currentValue: string;
+    onApply: (v: string) => void;
+  } | null>(null);
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
+
+  async function runRoleAnalyse() {
+    if (roleAnalyseInFlight.current || role.id.startsWith("local_")) return;
+    roleAnalyseInFlight.current = true;
+    setRoleAnalyseLoading(true);
+    setRoleAnalyseError(null);
+    try {
+      const res = await fetch("/api/ai/analyse/hiring-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resourceId: role.id }),
+      });
+      if (!res.ok) {
+        let errMsg = res.status === 402
+          ? "Pro plan required for AI analysis."
+          : "Analysis failed. Please try again.";
+        try {
+          const errData = (await res.json()) as Record<string, unknown>;
+          if (typeof errData.error === "string" && res.status !== 402) errMsg = errData.error;
+        } catch {}
+        setRoleAnalyseResult(null);
+        setRoleAnalyseError(errMsg);
+        return;
+      }
+      const data = (await res.json()) as Record<string, unknown>;
+      if (
+        !Array.isArray(data.strengths) ||
+        !Array.isArray(data.concerns) ||
+        !Array.isArray(data.callouts) ||
+        !Array.isArray(data.recommendations)
+      ) {
+        setRoleAnalyseResult(null);
+        setRoleAnalyseError("Analysis returned an unexpected format.");
+        return;
+      }
+      setRoleAnalyseResult(data as AnalyseResponse);
+    } catch {
+      setRoleAnalyseError("Connection error. Please try again.");
+    } finally {
+      setRoleAnalyseLoading(false);
+      roleAnalyseInFlight.current = false;
+    }
+  }
+
+  const isLocalRole = role.id.startsWith("local_");
+
   return (
     <div>
       <SectionHeader
         title={role.role_title || "Untitled role"}
         helpContent="Every hiring-and-onboarding component for this role is grouped below. Click a section to expand it."
         className="mb-4 flex-1"
+        aiActions={[
+          {
+            kind: "analyse",
+            onClick: runRoleAnalyse,
+            disabled: roleAnalyseLoading || isLocalRole,
+          } satisfies AiAction,
+          {
+            kind: "write",
+            onClick: () =>
+              setRoleWriteCallout({
+                fieldLabel: "Role Notes",
+                fieldKey: "notes",
+                currentValue: role.notes ?? "",
+                onApply: (v) => props.onUpdateRole({ notes: v }),
+              }),
+            disabled: !props.canEdit || isLocalRole,
+          } satisfies AiAction,
+        ]}
       />
+
+      {roleAnalyseError && (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 mb-4">
+          <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" />
+          <p className="text-xs text-red-700">{roleAnalyseError}</p>
+        </div>
+      )}
+
+      {roleAnalyseResult && (
+        <div className="mb-4">
+          <InlineAnalysisCard
+            result={roleAnalyseResult}
+            loading={roleAnalyseLoading}
+            onRegenerate={runRoleAnalyse}
+          />
+        </div>
+      )}
+
+      {roleWriteCallout && (
+        <AIAssistCallout
+          open={true}
+          onClose={() => setRoleWriteCallout(null)}
+          fieldLabel={roleWriteCallout.fieldLabel}
+          moduleLabel="Hiring & Onboarding"
+          fieldKey={roleWriteCallout.fieldKey}
+          workspaceKey="hiring"
+          planId={props.planId}
+          currentValue={roleWriteCallout.currentValue}
+          onApply={roleWriteCallout.onApply}
+          openAIReviewModal={openAIReviewModal}
+        />
+      )}
+      {AIReviewModalNode}
+
       <div className="space-y-2">
         <Accordion id="basics" title="Role basics" subtitle="Title, headcount, parent, notes" defaultOpen>
           <RoleBasicsSection
@@ -828,12 +942,14 @@ function Accordion({
   title,
   subtitle,
   defaultOpen,
+  aiActions,
   children,
 }: {
   id: string;
   title: string;
   subtitle: string;
   defaultOpen?: boolean;
+  aiActions?: AiAction[];
   children: React.ReactNode;
 }) {
   return (
@@ -842,14 +958,18 @@ function Accordion({
       open={defaultOpen}
       className="group rounded-xl border border-[var(--border)] bg-white open:shadow-sm"
     >
-      <summary className="list-none flex items-center justify-between cursor-pointer px-4 py-3 select-none">
-        <div>
-          <div className="text-sm font-semibold text-[var(--foreground)]">{title}</div>
-          <div className="text-xs text-[var(--muted-foreground)] mt-0.5">{subtitle}</div>
+      <summary className="list-none cursor-pointer px-4 py-3 select-none">
+        <div className="flex items-center gap-2">
+          <SectionHeader
+            title={title}
+            aiActions={aiActions}
+            className="mb-0 flex-1"
+          />
+          <span className="shrink-0 text-[var(--dark-grey)] transition-transform group-open:rotate-180">
+            <ChevronDown size={16} />
+          </span>
         </div>
-        <span className="shrink-0 text-[var(--dark-grey)] transition-transform group-open:rotate-180">
-          <ChevronDown size={16} />
-        </span>
+        <div className="text-xs text-[var(--muted-foreground)] mt-0.5">{subtitle}</div>
       </summary>
       <div className="border-t border-[var(--border)]">{children}</div>
     </details>
