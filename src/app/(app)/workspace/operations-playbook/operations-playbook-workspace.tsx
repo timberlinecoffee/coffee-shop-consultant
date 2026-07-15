@@ -31,7 +31,7 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
-import { SectionHeader } from "@/components/section-header";
+import { SectionHeader, type AiAction } from "@/components/section-header";
 import {
   type OperationsPlaybookDocument,
   type SopCategoryKey,
@@ -156,6 +156,7 @@ export function OperationsPlaybookWorkspace({
     "no_subscription" | "paused" | "expired" | null
   >(null);
   const [generating, setGenerating] = useState<GeneratableSection | null>(null);
+  const generateInFlight = useRef(false);
   const [activeView, setActiveView] = useState<OperationsView>("playbook");
 
   const opsTabs: { id: OperationsView; label: string }[] = [
@@ -226,6 +227,37 @@ export function OperationsPlaybookWorkspace({
     },
     [],
   );
+
+  const handleGenerate = useCallback(async (section: GeneratableSection) => {
+    if (!canEdit || generating || generateInFlight.current) return;
+    generateInFlight.current = true;
+    setGenerating(section);
+    try {
+      const res = await fetch("/api/workspaces/operations_playbook/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section }),
+      });
+      if (res.status === 402) {
+        const body = (await res.json().catch(() => null)) as { reason?: string } | null;
+        setPaywallReason((body?.reason ?? "no_subscription") as "no_subscription" | "paused" | "expired");
+        return;
+      }
+      if (!res.ok) return;
+      const data = (await res.json()) as { content?: OperationsPlaybookDocument };
+      if (data?.content) {
+        // Merge only the generated section — preserve client edits to every
+        // other section that may not yet have reached the DB (autosave debounce).
+        const generated = data.content;
+        setDoc((prev) => ({ ...prev, [section]: generated[section] }));
+      }
+    } catch {
+      // silent — user sees existing content unchanged
+    } finally {
+      setGenerating(null);
+      generateInFlight.current = false;
+    }
+  }, [canEdit, generating]);
 
   // Section statuses for progress bar
   const statuses = OPERATIONS_SECTION_KEYS.map((key) =>
@@ -312,6 +344,8 @@ export function OperationsPlaybookWorkspace({
                         canEdit={canEdit}
                         doc={doc}
                         updateDoc={updateDoc}
+                        onGenerate={canEdit ? () => handleGenerate(key as SopCategoryKey) : undefined}
+                        generating={generating !== null}
                       />
                     )}
 
@@ -326,6 +360,8 @@ export function OperationsPlaybookWorkspace({
                         canEdit={canEdit}
                         doc={doc}
                         updateDoc={updateDoc}
+                        onGenerate={canEdit ? () => handleGenerate("roles") : undefined}
+                        generating={generating !== null}
                       />
                     )}
 
@@ -346,6 +382,8 @@ export function OperationsPlaybookWorkspace({
                         canEdit={canEdit}
                         doc={doc}
                         updateDoc={updateDoc}
+                        onGenerate={canEdit ? () => handleGenerate("training") : undefined}
+                        generating={generating !== null}
                       />
                     )}
                   </AccordionSection>
@@ -377,6 +415,8 @@ interface CategoryEditorProps {
   canEdit: boolean;
   doc: OperationsPlaybookDocument;
   updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
+  onGenerate?: () => void;
+  generating?: boolean;
 }
 
 function CategoryEditor({
@@ -386,6 +426,8 @@ function CategoryEditor({
   canEdit,
   doc,
   updateDoc,
+  onGenerate,
+  generating,
 }: CategoryEditorProps) {
   const category = doc[categoryKey];
   const useStation = categoryKey === "cleaning";
@@ -456,9 +498,13 @@ function CategoryEditor({
     return Array.from(map.entries());
   }, [useStation, category.items]);
 
+  const sopAiActions: AiAction[] | undefined = onGenerate
+    ? [{ kind: "write", onClick: onGenerate, disabled: generating }]
+    : undefined;
+
   return (
     <div>
-      <SectionHeader title={label} helpContent={tagline} />
+      <SectionHeader title={label} helpContent={tagline} aiActions={sopAiActions} />
 
       <div className="mb-5">
         {/* TIM-1477: helper one-liner moved into a "?" popup beside the
@@ -946,12 +992,16 @@ function RolesEditor({
   canEdit,
   doc,
   updateDoc,
+  onGenerate,
+  generating,
 }: {
   label: string;
   tagline: string;
   canEdit: boolean;
   doc: OperationsPlaybookDocument;
   updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
+  onGenerate?: () => void;
+  generating?: boolean;
 }) {
   const section = doc.roles;
 
@@ -992,9 +1042,13 @@ function RolesEditor({
     updateDoc((d) => ({ ...d, roles: { ...d.roles, intro } }));
   }
 
+  const rolesAiActions: AiAction[] | undefined = onGenerate
+    ? [{ kind: "write", onClick: onGenerate, disabled: generating }]
+    : undefined;
+
   return (
     <div>
-      <SectionHeader title={label} helpContent={tagline} className="mb-2" />
+      <SectionHeader title={label} helpContent={tagline} className="mb-2" aiActions={rolesAiActions} />
       <div className="flex items-center gap-2 flex-wrap mb-4">
         <Link
           href="/workspace/operations-playbook/print?doc=roles"
@@ -1330,12 +1384,16 @@ function TrainingEditor({
   canEdit,
   doc,
   updateDoc,
+  onGenerate,
+  generating,
 }: {
   label: string;
   tagline: string;
   canEdit: boolean;
   doc: OperationsPlaybookDocument;
   updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
+  onGenerate?: () => void;
+  generating?: boolean;
 }) {
   const section = doc.training;
 
@@ -1373,6 +1431,10 @@ function TrainingEditor({
     updateDoc((d) => ({ ...d, training: { ...d.training, intro } }));
   }
 
+  const trainingAiActions: AiAction[] | undefined = onGenerate
+    ? [{ kind: "write", onClick: onGenerate, disabled: generating }]
+    : undefined;
+
   const groupedByPhase = useMemo(() => {
     const map: Record<TrainingPhase, { item: TrainingItem; idx: number }[]> = {
       day_1: [],
@@ -1387,7 +1449,7 @@ function TrainingEditor({
 
   return (
     <div>
-      <SectionHeader title={label} helpContent={tagline} className="mb-2" />
+      <SectionHeader title={label} helpContent={tagline} className="mb-2" aiActions={trainingAiActions} />
       <div className="flex items-center gap-2 flex-wrap mb-4">
         <Link
           href="/workspace/operations-playbook/print?doc=training"
