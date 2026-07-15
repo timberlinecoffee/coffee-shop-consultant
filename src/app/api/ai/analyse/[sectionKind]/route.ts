@@ -638,6 +638,8 @@ ${JSON_SCHEMA_INSTRUCTION}`
 
 // ── TIM-3888: Menu ingredients context loader ────────────────────────────────
 
+const MENU_INGREDIENTS_LIMIT = 60
+
 async function loadMenuIngredientsContext(
   supabase: SupabaseClient,
   planId: string,
@@ -647,27 +649,31 @@ async function loadMenuIngredientsContext(
     .select("name, package_size, package_unit, package_cost_cents, category, notes")
     .eq("plan_id", planId)
     .order("name", { ascending: true })
-    .limit(60)
+    .limit(MENU_INGREDIENTS_LIMIT)
 
   if (!ingredients || ingredients.length === 0) return ""
 
+  const truncated = ingredients.length === MENU_INGREDIENTS_LIMIT
   const lines = ingredients.map((ing) => {
-    const cpu =
-      ing.package_size > 0 && ing.package_cost_cents != null
-        ? `$${(ing.package_cost_cents / ing.package_size / 100).toFixed(4)}/${ing.package_unit}`
-        : null
-    const costLine =
-      ing.package_cost_cents != null
-        ? `$${(ing.package_cost_cents / 100).toFixed(2)} for ${ing.package_size} ${ing.package_unit}${cpu ? ` → ${cpu}` : ""}`
-        : "no cost entered"
+    const costPkg = ing.package_cost_cents / 100
+    const cpu = ing.package_size > 0
+      ? `$${(costPkg / ing.package_size).toFixed(4)}/${ing.package_unit}`
+      : null
+    const costLine = ing.package_cost_cents > 0
+      ? `$${costPkg.toFixed(2)} for ${ing.package_size} ${ing.package_unit}${cpu ? ` → ${cpu}` : ""}`
+      : "no cost entered"
     const cat = ing.category ? ` [${ing.category}]` : ""
     const note = ing.notes?.trim() ? ` (${ing.notes.trim()})` : ""
     return `  ${ing.name}${cat}: ${costLine}${note}`
   })
 
+  const catalogHeader = truncated
+    ? `Ingredient catalog (first ${MENU_INGREDIENTS_LIMIT} of a larger catalog, alphabetical):`
+    : `Ingredient catalog (${ingredients.length} items):`
+
   return `Analyse the ingredient cost structure for this coffee shop's menu.
 
-Ingredient catalog (${ingredients.length} items):
+${catalogHeader}
 ${lines.join("\n")}
 
 Evaluate: cost-per-unit competitiveness, any ingredients that look unusually expensive or cheap for their category, gaps (common coffee-shop ingredients that are missing), and diversity of supply sources implied by the catalog. Recommend 2–4 concrete actions the owner can take to reduce ingredient costs or improve margin without sacrificing quality. Include benchmarkContext if you can cite typical wholesale cost ranges for coffee ingredients.
@@ -834,11 +840,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
       prompt = ctx.prompt
       sectionKey = `location-lease.lease-terms.${resourceId}`
-    } else {
-      // menu-ingredients
+    } else if (sectionKind === "menu-ingredients") {
       prompt = await loadMenuIngredientsContext(supabase, planId)
       if (!prompt) return Response.json({ error: "No ingredients in catalog yet" }, { status: 422 })
       sectionKey = `menu-pricing.ingredients.${planId}`
+    } else {
+      const _exhaustive: never = sectionKind
+      return Response.json({ error: `Unhandled section kind: ${_exhaustive}` }, { status: 500 })
     }
   } catch (err) {
     console.error(`[ai-analyse/${sectionKind}] data load error:`, err)
