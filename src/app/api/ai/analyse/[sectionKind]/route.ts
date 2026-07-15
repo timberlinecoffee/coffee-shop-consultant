@@ -40,6 +40,7 @@ const SECTION_KINDS = [
   "lease-terms",
   "concept-differentiation",
   "concept-competitors",
+  "hiring-role",
 ] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
@@ -53,6 +54,7 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "lease-terms": "analyse_lease_terms",
   "concept-differentiation": "analyse_concept_differentiation",
   "concept-competitors": "analyse_concept_competitors",
+  "hiring-role": "analyse_hiring_role",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -508,6 +510,59 @@ Evaluate: how competitive this market appears, whether the owner's differentiati
 ${JSON_SCHEMA_INSTRUCTION}`
 }
 
+// ── TIM-3899: Hiring v2 context loader ────────────────────────────────────────
+
+async function loadHiringRoleContext(
+  supabase: SupabaseClient,
+  planId: string,
+  roleId: string,
+): Promise<{ owned: boolean; prompt: string }> {
+  const { data: role } = await supabase
+    .from("hiring_plan_roles")
+    .select("id, plan_id, role_title, headcount, notes, monthly_cost_cents, jd_template_id")
+    .eq("id", roleId)
+    .maybeSingle()
+
+  if (!role || role.plan_id !== planId) {
+    return { owned: false, prompt: "" }
+  }
+
+  const jdLines: string[] = []
+  if (role.jd_template_id) {
+    const { data: jd } = await supabase
+      .from("job_description_templates")
+      .select("summary, responsibilities, requirements, comp")
+      .eq("id", role.jd_template_id)
+      .maybeSingle()
+    if (jd) {
+      if (jd.summary?.trim()) jdLines.push(`  Summary: ${jd.summary.trim().slice(0, 300)}`)
+      if (jd.responsibilities?.trim())
+        jdLines.push(`  Responsibilities: ${jd.responsibilities.trim().slice(0, 300)}`)
+      if (jd.requirements?.trim())
+        jdLines.push(`  Requirements: ${jd.requirements.trim().slice(0, 300)}`)
+      if (jd.comp?.trim()) jdLines.push(`  Compensation description: ${jd.comp.trim().slice(0, 200)}`)
+    }
+  }
+
+  const costLine =
+    role.monthly_cost_cents != null
+      ? `$${(role.monthly_cost_cents / 100).toFixed(0)}/mo loaded`
+      : "Not yet set"
+
+  const prompt = `Analyse this hiring role for a coffee shop.
+
+Role: ${role.role_title?.trim() || "Untitled"}
+Headcount: ${role.headcount ?? 1}
+Monthly loaded cost: ${costLine}
+${role.notes?.trim() ? `Notes: ${role.notes.trim()}\n` : ""}
+${jdLines.length > 0 ? `\nJob description on file:\n${jdLines.join("\n")}\n` : "No job description on file yet.\n"}
+Evaluate: whether the role title and scope are clear and appropriate for a coffee shop, whether headcount and compensation appear reasonable for the role (industry norms for baristas, managers, kitchen staff etc.), specific gaps in the role definition the owner should address, and concrete next steps to complete the role setup. Weight concerns by severity (critical = likely hiring or budget risk, warn = should address before posting, info = useful refinement).
+
+${JSON_SCHEMA_INSTRUCTION}`
+
+  return { owned: true, prompt }
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -591,6 +646,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return Response.json({ error: "resourceId (candidateId) required for this section" }, { status: 400 })
   }
 
+  if (sectionKind === "hiring-role" && !resourceId) {
+    return Response.json({ error: "resourceId (roleId) required for this section" }, { status: 400 })
+  }
+
   // ── Load section-specific data ────────────────────────────────────────────
 
   let prompt = ""
@@ -636,6 +695,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         )
       }
       sectionKey = `concept.competitors.${planId}`
+    } else if (sectionKind === "hiring-role") {
+      const ctx = await loadHiringRoleContext(supabase, planId, resourceId!)
+      if (!ctx.owned) return Response.json({ error: "Role not found" }, { status: 404 })
+      if (!ctx.prompt) return Response.json({ error: "No role data available to analyse" }, { status: 422 })
+      prompt = ctx.prompt
+      sectionKey = `hiring.role.${resourceId}`
     } else {
       const _exhaustive: never = sectionKind
       return Response.json({ error: `Unhandled section kind: ${_exhaustive}` }, { status: 500 })

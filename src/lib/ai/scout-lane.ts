@@ -34,6 +34,8 @@ export const SCOUT_LANES = [
   // TIM-3894: Concept workspace — differentiation + competitors analysis.
   "analyse_concept_differentiation",
   "analyse_concept_competitors",
+  // TIM-3899: Hiring v2 — role analysis.
+  "analyse_hiring_role",
   // Marketing, hiring, suppliers, concept, financials → DeepSeek.
   "marketing_generate",
   "hiring_improve_jd",
@@ -71,6 +73,8 @@ export const FORCE_ANTHROPIC_LANES = new Set<ScoutLane>([
   // TIM-3894: Concept analyse lanes — structured JSON, Anthropic for reliability.
   "analyse_concept_differentiation",
   "analyse_concept_competitors",
+  // TIM-3899: Hiring analyse lane — structured JSON, Anthropic for reliability.
+  "analyse_hiring_role",
 ])
 
 // Lanes that need Anthropic Sonnet 4.6 specifically — they depend on the

@@ -7,7 +7,7 @@
 // TIM-3558: Hiring Laws panel migrated from v1 RequirementsTab so left nav
 // no longer links to ?hiring=v1 (which was trapping users in v1 permanently).
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -23,6 +23,7 @@ import {
   FileText,
   BookOpen,
   AlertTriangle,
+  AlertCircle,
   Sparkles,
   Pencil,
   Check,
@@ -89,7 +90,10 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { SectionHeader } from "@/components/section-header";
+import type { AiAction } from "@/components/section-header";
 import { SectionHelp } from "@/components/ui/section-help";
+import { InlineAnalysisCard } from "@/components/ai-analyse/InlineAnalysisCard";
+import type { AnalyseResponse } from "@/components/ai-analyse/InlineAnalysisCard";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
 import { ScorecardGridPanel } from "@/components/hiring/ScorecardGridPanel";
@@ -754,13 +758,125 @@ type RolePageProps = {
 
 function RolePageV2(props: RolePageProps) {
   const { role } = props;
+
+  // TIM-3899: Analyse-with-AI state for the per-role header.
+  // Store the roleId alongside result/error so stale results from a previous
+  // role are hidden when the user switches without a useEffect reset.
+  const [roleAnalyseRoleId, setRoleAnalyseRoleId] = useState<string | null>(null);
+  const [roleAnalyseResult, setRoleAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [roleAnalyseLoading, setRoleAnalyseLoading] = useState(false);
+  const [roleAnalyseError, setRoleAnalyseError] = useState<string | null>(null);
+  const roleAnalyseInFlight = useRef(false);
+
+  // Only show result/error for the currently selected role.
+  const showRoleAnalyseResult = roleAnalyseRoleId === role.id && roleAnalyseResult != null;
+  const showRoleAnalyseError = roleAnalyseRoleId === role.id && roleAnalyseError != null;
+  const roleAnalyseLoadingForCurrent = roleAnalyseRoleId === role.id && roleAnalyseLoading;
+
+  // TIM-3899: Write-with-AI state for the per-role header (writes role.notes).
+  const [aiAssistRoleOpen, setAiAssistRoleOpen] = useState(false);
+  const { openAIReviewModal: openRoleReviewModal, AIReviewModalNode: RoleReviewModalNode } = useAIReviewModal();
+
+  const runRoleAnalyse = useCallback(async () => {
+    if (roleAnalyseInFlight.current) return;
+    roleAnalyseInFlight.current = true;
+    setRoleAnalyseRoleId(role.id);
+    setRoleAnalyseLoading(true);
+    setRoleAnalyseError(null);
+    setRoleAnalyseResult(null);
+    try {
+      const res = await fetch("/api/ai/analyse/hiring-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resourceId: role.id }),
+      });
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok) {
+        const msg =
+          res.status === 402
+            ? "Pro plan required for AI analysis."
+            : typeof data.error === "string"
+            ? data.error
+            : "Analysis failed. Please try again.";
+        setRoleAnalyseError(msg);
+        return;
+      }
+      setRoleAnalyseResult(data as AnalyseResponse);
+    } catch {
+      setRoleAnalyseError("Connection error. Please try again.");
+    } finally {
+      setRoleAnalyseLoading(false);
+      roleAnalyseInFlight.current = false;
+    }
+  }, [role.id]);
+
+  const roleAiActions: AiAction[] = [
+    { kind: "analyse", onClick: runRoleAnalyse, disabled: roleAnalyseLoadingForCurrent },
+    ...(props.canEdit
+      ? [{ kind: "write" as const, onClick: () => setAiAssistRoleOpen(true) }]
+      : []),
+  ];
+
   return (
     <div>
       <SectionHeader
         title={role.role_title || "Untitled role"}
         helpContent="Every hiring-and-onboarding component for this role is grouped below. Click a section to expand it."
-        className="mb-4 flex-1"
+        aiActions={roleAiActions}
+        className="mb-4"
       />
+
+      {showRoleAnalyseError && (
+        <div className="mb-3 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+          <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" aria-hidden="true" />
+          <p className="text-xs text-red-700">{roleAnalyseError}</p>
+        </div>
+      )}
+      {showRoleAnalyseResult && roleAnalyseResult && (
+        <div className="mb-4">
+          <InlineAnalysisCard
+            result={roleAnalyseResult}
+            loading={roleAnalyseLoadingForCurrent}
+            onRegenerate={runRoleAnalyse}
+            onViewRecommendation={(text: string, actionRef: string) =>
+              openRoleReviewModal({
+                suggestions: [
+                  {
+                    id: `hiring-role-rec-${actionRef}`,
+                    fieldId: actionRef,
+                    fieldLabel: "Recommendation",
+                    originalValue: "",
+                    proposedValue: text,
+                    isStructured: false,
+                  },
+                ],
+                context: {
+                  workspace: "Hiring & Onboarding",
+                  section: `${role.role_title || "Role"} — Analysis`,
+                },
+                onApply: async () => {},
+              })
+            }
+          />
+        </div>
+      )}
+      {RoleReviewModalNode}
+
+      {aiAssistRoleOpen && (
+        <AIAssistCallout
+          open
+          onClose={() => setAiAssistRoleOpen(false)}
+          fieldLabel="Role Notes"
+          moduleLabel="Hiring & Onboarding"
+          fieldKey="role-notes"
+          workspaceKey="hiring"
+          planId={props.planId}
+          currentValue={role.notes ?? ""}
+          onApply={(v) => props.onUpdateRole({ notes: v.trim() || null })}
+          openAIReviewModal={openRoleReviewModal}
+        />
+      )}
+
       <div className="space-y-2">
         <Accordion id="basics" title="Role basics" subtitle="Title, headcount, parent, notes" defaultOpen>
           <RoleBasicsSection
@@ -823,6 +939,9 @@ function RolePageV2(props: RolePageProps) {
   );
 }
 
+// TIM-3899: Accordion now composes SectionHeader inside <summary> to resolve
+// the local-header drift noted in the issue. helpContent carries the former
+// subtitle so the content is accessible via the (?) popover.
 function Accordion({
   id,
   title,
@@ -843,11 +962,12 @@ function Accordion({
       className="group rounded-xl border border-[var(--border)] bg-white open:shadow-sm"
     >
       <summary className="list-none flex items-center justify-between cursor-pointer px-4 py-3 select-none">
-        <div>
-          <div className="text-sm font-semibold text-[var(--foreground)]">{title}</div>
-          <div className="text-xs text-[var(--muted-foreground)] mt-0.5">{subtitle}</div>
-        </div>
-        <span className="shrink-0 text-[var(--dark-grey)] transition-transform group-open:rotate-180">
+        <SectionHeader
+          title={title}
+          helpContent={subtitle}
+          className="flex-1 mb-0"
+        />
+        <span className="shrink-0 text-[var(--dark-grey)] transition-transform group-open:rotate-180 ml-2">
           <ChevronDown size={16} />
         </span>
       </summary>
