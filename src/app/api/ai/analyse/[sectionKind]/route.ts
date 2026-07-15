@@ -41,6 +41,8 @@ const SECTION_KINDS = [
   "lease-terms",
   "marketing-channels",
   "marketing-pre-launch",
+  "concept-differentiation",
+  "concept-competitors",
 ] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
@@ -54,6 +56,8 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "lease-terms": "analyse_lease_terms",
   "marketing-channels": "analyse_marketing_channels",
   "marketing-pre-launch": "analyse_marketing_pre_launch",
+  "concept-differentiation": "analyse_concept_differentiation",
+  "concept-competitors": "analyse_concept_competitors",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -502,6 +506,80 @@ Evaluate the pre-launch sequence: timing and sequencing of milestones, coverage 
 ${JSON_SCHEMA_INSTRUCTION}`
 }
 
+// ── Concept data loaders (TIM-3886) ──────────────────────────────────────────
+
+async function loadConceptDifferentiationContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const { data: conceptDoc } = await supabase
+    .from("workspace_documents")
+    .select("content")
+    .eq("plan_id", planId)
+    .eq("workspace_key", "concept")
+    .maybeSingle()
+
+  const concept = normalizeConceptV2(conceptDoc?.content)
+  const diff = concept.components.differentiation?.content?.trim()
+  if (!diff) return ""
+
+  const contextParts: string[] = []
+  for (const k of ["shop_identity", "vision", "target_customer", "brand_voice", "offering", "location"] as const) {
+    const v = concept.components[k]?.content?.trim()
+    if (v) contextParts.push(`${k.replace(/_/g, " ")}: ${v}`)
+  }
+
+  return `Analyse the differentiation statement for this coffee shop.
+
+Differentiation: ${diff}
+${contextParts.length > 0 ? `\nContext:\n${contextParts.map((l) => `  ${l}`).join("\n")}\n` : ""}
+Evaluate how compelling and defensible this differentiation is: whether it is genuinely distinct from typical coffee shop competitors, whether the target audience will value it, any weaknesses or risks, and concrete ways to sharpen or strengthen it. Score the differentiation's overall strength.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
+async function loadConceptCompetitorsContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const { data: conceptDoc } = await supabase
+    .from("workspace_documents")
+    .select("content")
+    .eq("plan_id", planId)
+    .eq("workspace_key", "concept")
+    .maybeSingle()
+
+  const concept = normalizeConceptV2(conceptDoc?.content)
+  const competitors = concept.competitors ?? []
+  const noDirectCompetitors = concept.no_direct_competitors_identified === true
+
+  if (competitors.length === 0 && !noDirectCompetitors) return ""
+
+  const conceptBits: string[] = []
+  for (const k of ["shop_identity", "differentiation", "target_customer"] as const) {
+    const v = concept.components[k]?.content?.trim()
+    if (v) conceptBits.push(v)
+  }
+
+  const competitorLines = competitors.map((c) => {
+    const addr = c.address ? ` — ${c.address}` : ""
+    return `- ${c.name}${addr}`
+  })
+
+  const competitorSection =
+    competitors.length > 0
+      ? `Nearby competitors (${competitors.length}):\n${competitorLines.join("\n")}`
+      : "Owner indicates no direct competitors in their catchment area."
+
+  return `Analyse the competitive landscape for this coffee shop.
+${conceptBits.length > 0 ? `\nShop context:\n${conceptBits.join(" — ")}\n` : ""}
+${competitorSection}
+
+Evaluate the competitive environment: which competitors pose the greatest threat, how the owner's differentiation holds up against the specific rivals listed, any underserved gaps in the local market, and what the owner should know or do given this competitive context. If no competitors are listed, assess what that might mean (opportunity or oversight) and what competitive risks the owner should still plan for.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -585,9 +663,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return Response.json({ error: "resourceId (candidateId) required for this section" }, { status: 400 })
   }
 
-  // Marketing sections do not use resourceId.
+  // Marketing and concept sections do not use resourceId.
   if (
-    (sectionKind === "marketing-channels" || sectionKind === "marketing-pre-launch") &&
+    (sectionKind === "marketing-channels" ||
+      sectionKind === "marketing-pre-launch" ||
+      sectionKind === "concept-differentiation" ||
+      sectionKind === "concept-competitors") &&
     resourceId
   ) {
     return Response.json({ error: "resourceId is not accepted for this section" }, { status: 400 })
@@ -627,6 +708,24 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         )
       }
       sectionKey = `marketing.pre-launch.${planId}`
+    } else if (sectionKind === "concept-differentiation") {
+      prompt = await loadConceptDifferentiationContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "Add a differentiation statement in the Concept workspace before running analysis." },
+          { status: 422 },
+        )
+      }
+      sectionKey = `concept.differentiation.${planId}`
+    } else if (sectionKind === "concept-competitors") {
+      prompt = await loadConceptCompetitorsContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "Add nearby competitors in the Concept workspace before running analysis." },
+          { status: 422 },
+        )
+      }
+      sectionKey = `concept.competitors.${planId}`
     } else {
       // lease-terms
       const ctx = await loadLeaseTermsContext(supabase, planId, resourceId!)

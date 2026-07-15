@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lightbulb, Printer, Sparkles } from "lucide-react";
+import { AlertCircle, Lightbulb, Printer, Sparkles } from "lucide-react";
 import { CollapseButton } from "@/components/ui/CollapseButton";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
@@ -43,6 +43,8 @@ import {
 } from "@/lib/concept";
 import { CompetitorSection } from "@/components/concept/CompetitorSection";
 import { PersonaSection } from "@/components/concept/PersonaSection";
+import { InlineAnalysisCard, type AnalyseResponse } from "@/components/location-lease/InlineAnalysisCard";
+import { AI_ANALYSE_BUTTON } from "@/lib/ai-analyse-button";
 import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { FIELD_EXAMPLES, type FieldExampleKey } from "@/lib/field-examples";
 
@@ -102,6 +104,17 @@ export function ConceptWorkspace({
     initialTrialMessagesUsed ?? 0
   );
   const [paywallOpen, setPaywallOpen] = useState(false);
+
+  // TIM-3886: Analyse-with-AI state for Differentiation and Competitors sections.
+  const [differentiationAnalyseResult, setDifferentiationAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [differentiationAnalyseLoading, setDifferentiationAnalyseLoading] = useState(false);
+  const [differentiationAnalyseError, setDifferentiationAnalyseError] = useState("");
+  const differentiationAnalyseInFlightRef = useRef(false);
+
+  const [competitorsAnalyseResult, setCompetitorsAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [competitorsAnalyseLoading, setCompetitorsAnalyseLoading] = useState(false);
+  const [competitorsAnalyseError, setCompetitorsAnalyseError] = useState("");
+  const competitorsAnalyseInFlightRef = useRef(false);
 
   const inFlightController = useRef<AbortController | null>(null);
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -307,6 +320,107 @@ export function ConceptWorkspace({
     });
   }, [scheduleSave]);
 
+  // TIM-3886: Differentiation analyse handler.
+  const runDifferentiationAnalyse = useCallback(async () => {
+    if (!canEdit || differentiationAnalyseInFlightRef.current) return;
+    differentiationAnalyseInFlightRef.current = true;
+    setDifferentiationAnalyseLoading(true);
+    setDifferentiationAnalyseError("");
+    setDifferentiationAnalyseResult(null);
+    try {
+      const res = await fetch("/api/ai/analyse/concept-differentiation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.status === 402) {
+        setPaywallOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
+        setDifferentiationAnalyseError(errBody?.error ?? "Analysis failed. Please try again.");
+        return;
+      }
+      const data = (await res.json()) as Record<string, unknown>;
+      if (
+        !Array.isArray(data.strengths) ||
+        !Array.isArray(data.concerns) ||
+        !Array.isArray(data.callouts) ||
+        !Array.isArray(data.recommendations)
+      ) {
+        setDifferentiationAnalyseError("Analysis returned an unexpected format.");
+        return;
+      }
+      setDifferentiationAnalyseResult(data as AnalyseResponse);
+    } catch {
+      setDifferentiationAnalyseError("Connection error. Please try again.");
+    } finally {
+      setDifferentiationAnalyseLoading(false);
+      differentiationAnalyseInFlightRef.current = false;
+    }
+  }, [canEdit]);
+
+  // TIM-3886: Competitors analyse handler.
+  const runCompetitorsAnalyse = useCallback(async () => {
+    if (!canEdit || competitorsAnalyseInFlightRef.current) return;
+    competitorsAnalyseInFlightRef.current = true;
+    setCompetitorsAnalyseLoading(true);
+    setCompetitorsAnalyseError("");
+    setCompetitorsAnalyseResult(null);
+    try {
+      const res = await fetch("/api/ai/analyse/concept-competitors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.status === 402) {
+        setPaywallOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
+        setCompetitorsAnalyseError(errBody?.error ?? "Analysis failed. Please try again.");
+        return;
+      }
+      const data = (await res.json()) as Record<string, unknown>;
+      if (
+        !Array.isArray(data.strengths) ||
+        !Array.isArray(data.concerns) ||
+        !Array.isArray(data.callouts) ||
+        !Array.isArray(data.recommendations)
+      ) {
+        setCompetitorsAnalyseError("Analysis returned an unexpected format.");
+        return;
+      }
+      setCompetitorsAnalyseResult(data as AnalyseResponse);
+    } catch {
+      setCompetitorsAnalyseError("Connection error. Please try again.");
+    } finally {
+      setCompetitorsAnalyseLoading(false);
+      competitorsAnalyseInFlightRef.current = false;
+    }
+  }, [canEdit]);
+
+  // TIM-3886: Read-only recommendation viewer — no-op onApply per TIM-3879 pattern.
+  const handleViewRecommendation = useCallback((text: string, actionRef: string) => {
+    if (!canEdit) return;
+    openAIReviewModal({
+      suggestions: [
+        {
+          id: `concept-rec-${actionRef}`,
+          fieldId: actionRef,
+          fieldLabel: "Recommendation",
+          originalValue: "",
+          proposedValue: text,
+          isStructured: false,
+        },
+      ],
+      context: { workspace: "Concept", section: "Analysis" },
+      onApply: async () => {},
+    });
+  }, [canEdit, openAIReviewModal]);
+
   const trialRemaining = COPILOT_FREE_TRIAL_LIMIT - trialMessagesUsed;
   const showTrialWarning = initialTrialMessagesUsed !== undefined && trialRemaining <= 1;
 
@@ -441,22 +555,56 @@ export function ConceptWorkspace({
               >
                 <div className="px-5 pt-5 pb-4">
                   {/* TIM-3350: canonical SectionHeader replaces Pattern C inline JSX */}
+                  {/* TIM-3886: aiActions API — Differentiation gets Both [Analyse][Write];
+                      all other editable sections get Write only (incl. Personas/target_customer). */}
                   <SectionHeader
                     title={meta.label}
                     helpContent={meta.hint}
-                    onWriteWithAi={
-                      meta.id !== "target_customer" && canEdit
-                        ? () =>
-                            setAiAssistField({
-                              fieldKey: meta.id,
-                              label: meta.label,
-                              currentValue: latestDocRef.current.components[meta.id].content,
-                              onApply: (newValue) => updateContent(meta.id, newValue),
-                            })
+                    aiActions={
+                      canEdit
+                        ? (() => {
+                            const actions: { kind: "analyse" | "write"; onClick: () => void; disabled?: boolean }[] = [];
+                            if (meta.id === "differentiation" && AI_ANALYSE_BUTTON) {
+                              actions.push({
+                                kind: "analyse",
+                                onClick: runDifferentiationAnalyse,
+                                disabled: differentiationAnalyseLoading,
+                              });
+                            }
+                            actions.push({
+                              kind: "write",
+                              onClick: () =>
+                                setAiAssistField({
+                                  fieldKey: meta.id,
+                                  label: meta.label,
+                                  currentValue: latestDocRef.current.components[meta.id].content,
+                                  onApply: (newValue) => updateContent(meta.id, newValue),
+                                }),
+                            });
+                            return actions;
+                          })()
                         : undefined
                     }
                     className="mb-1"
                   />
+                  {/* TIM-3886: Differentiation analyse error + result card */}
+                  {meta.id === "differentiation" && differentiationAnalyseError && (
+                    <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 mb-3">
+                      <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" aria-hidden="true" />
+                      <p className="text-xs text-red-700">{differentiationAnalyseError}</p>
+                    </div>
+                  )}
+                  {meta.id === "differentiation" && differentiationAnalyseResult && (
+                    <div className="mb-3">
+                      <InlineAnalysisCard
+                        result={differentiationAnalyseResult}
+                        loading={differentiationAnalyseLoading}
+                        onRegenerate={runDifferentiationAnalyse}
+                        onViewRecommendation={handleViewRecommendation}
+                      />
+                    </div>
+                  )}
+
                   {(FIELD_EXAMPLES[meta.id as FieldExampleKey] ?? []).length > 0 && (
                     <button
                       type="button"
@@ -591,12 +739,34 @@ export function ConceptWorkspace({
         </div>
 
         {/* ── Competitors card (TIM-2346) ──────────────────── */}
+        {/* TIM-3886: Analyse-only action on Nearby competitors section. */}
         <div className="mt-4 group rounded-xl border border-[var(--border)] bg-white transition-all duration-200 overflow-hidden focus-within:ring-1 focus-within:ring-[var(--teal)]/30">
           <div className="px-5 pt-5 pb-4">
             <SectionHeader
               title="Nearby competitors"
               helpContent="Name the specific shops that compete for your customers. The business plan will only cite competitors you list here — it will not invent names. Leave blank and the plan discusses competition qualitatively."
+              aiActions={
+                canEdit && AI_ANALYSE_BUTTON
+                  ? [{ kind: "analyse", onClick: runCompetitorsAnalyse, disabled: competitorsAnalyseLoading }]
+                  : undefined
+              }
             />
+            {competitorsAnalyseError && (
+              <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 mb-4">
+                <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" aria-hidden="true" />
+                <p className="text-xs text-red-700">{competitorsAnalyseError}</p>
+              </div>
+            )}
+            {competitorsAnalyseResult && (
+              <div className="mb-4">
+                <InlineAnalysisCard
+                  result={competitorsAnalyseResult}
+                  loading={competitorsAnalyseLoading}
+                  onRegenerate={runCompetitorsAnalyse}
+                  onViewRecommendation={handleViewRecommendation}
+                />
+              </div>
+            )}
             <CompetitorSection
               competitors={doc.competitors ?? []}
               noDirectCompetitors={doc.no_direct_competitors_identified ?? false}
