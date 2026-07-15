@@ -644,13 +644,14 @@ async function loadMenuIngredientsContext(
   supabase: SupabaseClient,
   planId: string,
 ): Promise<string> {
-  const { data: ingredients } = await supabase
+  const { data: ingredients, error: ingredientsError } = await supabase
     .from("menu_ingredients")
     .select("name, package_size, package_unit, package_cost_cents, category, notes")
     .eq("plan_id", planId)
     .order("name", { ascending: true })
     .limit(MENU_INGREDIENTS_LIMIT)
 
+  if (ingredientsError) throw new Error(`loadMenuIngredientsContext: ${ingredientsError.message}`)
   if (!ingredients || ingredients.length === 0) return ""
 
   const truncated = ingredients.length === MENU_INGREDIENTS_LIMIT
@@ -763,15 +764,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   ) {
     return Response.json({ error: "resourceId (candidateId) required for this section" }, { status: 400 })
   }
-  // menu-ingredients never needs a resourceId — the plan owns the ingredient catalog.
-
-  // Plan-level sections do not use resourceId.
+  // Sections that do not use resourceId — reject any stray value at the boundary.
   if (
     (sectionKind === "location-shortlist" ||
       sectionKind === "marketing-channels" ||
       sectionKind === "marketing-pre-launch" ||
       sectionKind === "financials-cogs-menu" ||
-      sectionKind === "financials-cogs-additional") &&
+      sectionKind === "financials-cogs-additional" ||
+      sectionKind === "menu-ingredients") &&
     resourceId
   ) {
     return Response.json({ error: "resourceId is not accepted for this section" }, { status: 400 })

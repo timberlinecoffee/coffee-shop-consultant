@@ -808,6 +808,7 @@ function IngredientsTab({
       });
       if (!res.ok) {
         if (res.status === 402) {
+          setIngredientsAnalyseResult(null);
           onPaywall();
           return;
         }
