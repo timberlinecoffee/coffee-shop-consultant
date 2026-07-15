@@ -321,12 +321,13 @@ export function ConceptWorkspace({
   }, [scheduleSave]);
 
   // TIM-3886: Differentiation analyse handler.
+  // Result is kept during regeneration so InlineAnalysisCard stays mounted
+  // and the loading prop (disable + spinner on Regenerate button) is observable.
   const runDifferentiationAnalyse = useCallback(async () => {
     if (!canEdit || differentiationAnalyseInFlightRef.current) return;
     differentiationAnalyseInFlightRef.current = true;
     setDifferentiationAnalyseLoading(true);
     setDifferentiationAnalyseError("");
-    setDifferentiationAnalyseResult(null);
     try {
       const res = await fetch("/api/ai/analyse/concept-differentiation", {
         method: "POST",
@@ -334,7 +335,10 @@ export function ConceptWorkspace({
         body: JSON.stringify({}),
       });
       if (res.status === 402) {
-        setPaywallOpen(true);
+        // Show the route's error inline — avoids opening the copilot_trial
+        // paywall modal which is wrong for "Pro plan required" 402s.
+        const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
+        setDifferentiationAnalyseError(errBody?.error ?? "A subscription is required to use this feature.");
         return;
       }
       if (!res.ok) {
@@ -362,12 +366,12 @@ export function ConceptWorkspace({
   }, [canEdit]);
 
   // TIM-3886: Competitors analyse handler.
+  // Same pattern: keep result during regeneration so the card stays mounted.
   const runCompetitorsAnalyse = useCallback(async () => {
     if (!canEdit || competitorsAnalyseInFlightRef.current) return;
     competitorsAnalyseInFlightRef.current = true;
     setCompetitorsAnalyseLoading(true);
     setCompetitorsAnalyseError("");
-    setCompetitorsAnalyseResult(null);
     try {
       const res = await fetch("/api/ai/analyse/concept-competitors", {
         method: "POST",
@@ -375,7 +379,8 @@ export function ConceptWorkspace({
         body: JSON.stringify({}),
       });
       if (res.status === 402) {
-        setPaywallOpen(true);
+        const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
+        setCompetitorsAnalyseError(errBody?.error ?? "A subscription is required to use this feature.");
         return;
       }
       if (!res.ok) {
