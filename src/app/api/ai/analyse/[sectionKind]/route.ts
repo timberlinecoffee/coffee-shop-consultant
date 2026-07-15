@@ -45,6 +45,9 @@ const SECTION_KINDS = [
   "financials-cogs-menu",
   "financials-cogs-additional",
   "menu-ingredients",
+  // TIM-3901: Opening Month Plan sections
+  "opening-month-milestones",
+  "opening-month-playbook",
 ] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
@@ -61,6 +64,8 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "financials-cogs-menu": "analyse_financials_cogs_menu",
   "financials-cogs-additional": "analyse_financials_cogs_additional",
   "menu-ingredients": "analyse_menu_ingredients",
+  "opening-month-milestones": "analyse_opening_month_milestones",
+  "opening-month-playbook": "analyse_opening_month_playbook",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -682,6 +687,133 @@ Evaluate: cost-per-unit competitiveness, any ingredients that look unusually exp
 ${JSON_SCHEMA_INSTRUCTION}`
 }
 
+// ── TIM-3901: Opening Month Plan data loaders ────────────────────────────────
+
+type MilestoneRow = {
+  title: string
+  track: string | null
+  target_date: string | null
+  status: string | null
+  critical_path: boolean | null
+}
+
+async function loadMilestonesContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const [
+    { data: milestones, error: milestonesErr },
+    { data: configDoc },
+  ] = await Promise.all([
+    supabase
+      .from("launch_milestones")
+      .select("title, track, target_date, status, critical_path")
+      .eq("plan_id", planId)
+      .order("target_date", { ascending: true })
+      .limit(50),
+    supabase
+      .from("workspace_documents")
+      .select("content")
+      .eq("plan_id", planId)
+      .eq("workspace_key", "opening_month_plan")
+      .maybeSingle(),
+  ])
+
+  if (milestonesErr) throw new Error(`launch_milestones query failed: ${milestonesErr.message}`)
+  if (!milestones || milestones.length === 0) return ""
+
+  const config = (configDoc?.content ?? {}) as Record<string, unknown>
+  const rawDate = config.targetLaunchDate
+  const targetLaunchDate = typeof rawDate === "string" ? rawDate : undefined
+
+  const tracks = new Map<string, MilestoneRow[]>()
+  for (const m of milestones as MilestoneRow[]) {
+    const t = m.track ?? "general"
+    const list = tracks.get(t) ?? []
+    list.push(m)
+    tracks.set(t, list)
+  }
+
+  const trackLines: string[] = []
+  for (const [track, items] of tracks) {
+    const rows = items.map((m) => {
+      const date = m.target_date ?? "no date"
+      const status = m.status ?? "not_started"
+      const cp = m.critical_path ? " [critical path]" : ""
+      return `  - ${m.title} (${date}, ${status})${cp}`
+    })
+    trackLines.push(`${track}:\n${rows.join("\n")}`)
+  }
+
+  const totalCount = milestones.length
+  const doneCount = (milestones as MilestoneRow[]).filter((m) => m.status === "done").length
+  const criticalCount = (milestones as MilestoneRow[]).filter((m) => m.critical_path).length
+
+  return `Analyse the launch milestone plan for this coffee shop.
+${targetLaunchDate ? `\nTarget opening date: ${targetLaunchDate}` : ""}
+
+Milestones (${totalCount} total, ${doneCount} done, ${criticalCount} on critical path):
+${trackLines.join("\n\n")}
+
+Assess the overall milestone plan: Is the timeline realistic? Are critical-path milestones sequenced correctly? Are there gaps in coverage (missing permit, staffing, equipment, or training milestones)? Flag any milestones that are overdue or at risk based on their target dates and status. Benchmark against typical coffee shop pre-opening timelines (usually 3–9 months from lease signing to open). Weight concerns by severity: critical = timeline blocker, warn = potential delay, info = worth monitoring.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
+type PlaybookItemRow = {
+  title: string
+  category: string | null
+  day_offset: number | null
+  status: string | null
+}
+
+async function loadPlaybookContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const { data: items, error: itemsErr } = await supabase
+    .from("soft_open_plan_items")
+    .select("title, category, day_offset, status")
+    .eq("plan_id", planId)
+    .order("day_offset", { ascending: true })
+    .limit(80)
+
+  if (itemsErr) throw new Error(`soft_open_plan_items query failed: ${itemsErr.message}`)
+  if (!items || items.length === 0) return ""
+
+  const rows = items as PlaybookItemRow[]
+  const preLaunch = rows.filter((i) => (i.day_offset ?? 0) < 0)
+  const openWeek = rows.filter((i) => (i.day_offset ?? 0) >= 0 && (i.day_offset ?? 0) <= 7)
+  const first30 = rows.filter((i) => (i.day_offset ?? 0) > 7 && (i.day_offset ?? 0) <= 30)
+
+  const toLines = (list: PlaybookItemRow[]) =>
+    list.map((i) => {
+      const cat = i.category ? ` [${i.category}]` : ""
+      const status = i.status ? ` (${i.status})` : ""
+      const day = i.day_offset != null ? ` — day ${i.day_offset}` : ""
+      return `  - ${i.title}${cat}${day}${status}`
+    }).join("\n")
+
+  const sections: string[] = []
+  if (preLaunch.length > 0) sections.push(`Pre-launch (${preLaunch.length} items):\n${toLines(preLaunch)}`)
+  if (openWeek.length > 0) sections.push(`Opening week (${openWeek.length} items):\n${toLines(openWeek)}`)
+  if (first30.length > 0) sections.push(`First 30 days (${first30.length} items):\n${toLines(first30)}`)
+
+  if (sections.length === 0) return ""
+
+  const doneCount = rows.filter((i) => i.status === "done").length
+
+  return `Analyse the opening month playbook for this coffee shop.
+
+Total playbook items: ${rows.length} (${doneCount} complete)
+
+${sections.join("\n\n")}
+
+Evaluate the playbook: Is the sequencing logical (pre-launch → soft open → first month)? Are there coverage gaps in critical opening activities (staff training, supplier setup, POS configuration, marketing, community outreach)? Are any categories overloaded or underrepresented? Flag incomplete items that could jeopardise a smooth opening. Provide concrete recommendations for any gaps or sequencing issues.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -771,7 +903,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       sectionKind === "marketing-pre-launch" ||
       sectionKind === "financials-cogs-menu" ||
       sectionKind === "financials-cogs-additional" ||
-      sectionKind === "menu-ingredients") &&
+      sectionKind === "menu-ingredients" ||
+      sectionKind === "opening-month-milestones" ||
+      sectionKind === "opening-month-playbook") &&
     resourceId
   ) {
     return Response.json({ error: "resourceId is not accepted for this section" }, { status: 400 })
@@ -844,6 +978,24 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       prompt = await loadMenuIngredientsContext(supabase, planId)
       if (!prompt) return Response.json({ error: "No ingredients in catalog yet" }, { status: 422 })
       sectionKey = `menu-pricing.ingredients.${planId}`
+    } else if (sectionKind === "opening-month-milestones") {
+      prompt = await loadMilestonesContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "No milestones yet. Add milestones in the Opening Month Plan workspace before running analysis." },
+          { status: 422 },
+        )
+      }
+      sectionKey = `opening-month-plan.milestones.${planId}`
+    } else if (sectionKind === "opening-month-playbook") {
+      prompt = await loadPlaybookContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "No playbook items yet. Generate the playbook before running analysis." },
+          { status: 422 },
+        )
+      }
+      sectionKey = `opening-month-plan.playbook.${planId}`
     } else {
       const _exhaustive: never = sectionKind
       return Response.json({ error: `Unhandled section kind: ${_exhaustive}` }, { status: 500 })

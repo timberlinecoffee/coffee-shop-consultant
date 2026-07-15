@@ -26,7 +26,9 @@ import {
   type WorkspaceSubNavTab,
 } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
-import { SectionHeader } from "@/components/section-header";
+import { SectionHeader, type AiAction } from "@/components/section-header";
+import { InlineAnalysisCard } from "@/components/ai-analyse/InlineAnalysisCard";
+import type { AnalyseResponse } from "@/components/ai-analyse/InlineAnalysisCard";
 
 // TIM-1888 H-8: list/calendar view toggle as canonical text-only pills.
 const VIEW_TABS: ReadonlyArray<WorkspaceSubNavTab<"list" | "calendar">> = [
@@ -749,6 +751,15 @@ export function OpeningMonthPlanWorkspace({
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // TIM-3901: Analyse-with-AI state — one slot per section.
+  const [milestonesAnalyseResult, setMilestonesAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [milestonesAnalyseLoading, setMilestonesAnalyseLoading] = useState(false);
+  const [milestonesAnalyseError, setMilestonesAnalyseError] = useState("");
+
+  const [playbookAnalyseResult, setPlaybookAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [playbookAnalyseLoading, setPlaybookAnalyseLoading] = useState(false);
+  const [playbookAnalyseError, setPlaybookAnalyseError] = useState("");
+
   // TIM-1450 (carried into TIM-1449 merge): auto-promote not_started →
   // in_progress once either half of the unified suite has content.
   const { promoteOnEdit } = useWorkspaceStatus();
@@ -789,6 +800,52 @@ export function OpeningMonthPlanWorkspace({
     if (!loadPlaybookData) return;
     reloadPlaybook();
   }, [reloadPlaybook, loadPlaybookData]);
+
+  // ── TIM-3901: Analyse-with-AI helpers ────────────────────────────────────────
+  const runAnalyse = useCallback(
+    async (
+      sectionKind: string,
+      setResult: (r: AnalyseResponse | null) => void,
+      isLoading: boolean,
+      setLoading: (v: boolean) => void,
+      setError: (msg: string) => void,
+    ) => {
+      if (isLoading) return; // double-fire guard
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch(`/api/ai/analyse/${sectionKind}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json().catch(() => ({})) as Record<string, unknown>;
+        if (!res.ok) {
+          if (res.status === 402) {
+            setPaywallOpen(true);
+            return;
+          }
+          setError((data.error as string) ?? "Analysis failed. Please try again.");
+          return;
+        }
+        setResult(data as AnalyseResponse);
+      } catch {
+        setError("Connection error. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setPaywallOpen],
+  );
+
+  const runMilestonesAnalyse = useCallback(
+    () => runAnalyse("opening-month-milestones", setMilestonesAnalyseResult, milestonesAnalyseLoading, setMilestonesAnalyseLoading, setMilestonesAnalyseError),
+    [runAnalyse, milestonesAnalyseLoading],
+  );
+  const runPlaybookAnalyse = useCallback(
+    () => runAnalyse("opening-month-playbook", setPlaybookAnalyseResult, playbookAnalyseLoading, setPlaybookAnalyseLoading, setPlaybookAnalyseError),
+    [runAnalyse, playbookAnalyseLoading],
+  );
 
   // ── Save config ───────────────────────────────────────────────────────────────
   async function saveConfig(patch: Partial<LaunchPlanConfig>) {
@@ -1402,7 +1459,23 @@ export function OpeningMonthPlanWorkspace({
               helpContent="The dated, gating steps that get you to opening day. Lease, permits, build-out, equipment, hiring, training, soft-open dates."
               className="mb-3"
               headingLevel={2}
+              aiActions={[
+                { kind: "analyse", onClick: runMilestonesAnalyse, disabled: milestonesAnalyseLoading },
+                { kind: "write", onClick: handleGenerateMilestones, disabled: generating || !canEdit },
+              ] satisfies AiAction[]}
             />
+            {milestonesAnalyseError && (
+              <p className="text-xs text-red-600 mb-3">{milestonesAnalyseError}</p>
+            )}
+            {milestonesAnalyseResult && (
+              <div className="mb-4">
+                <InlineAnalysisCard
+                  result={milestonesAnalyseResult}
+                  loading={milestonesAnalyseLoading}
+                  onRegenerate={runMilestonesAnalyse}
+                />
+              </div>
+            )}
 
             {/* View toggle — canonical pill nav (TIM-1888 H-8) */}
             <WorkspaceSubNav
@@ -1453,7 +1526,23 @@ export function OpeningMonthPlanWorkspace({
               helpContent="Week-by-week and day-by-day tasks for the weeks before opening, opening week, and the first 30 days."
               className="mb-3"
               headingLevel={2}
+              aiActions={[
+                { kind: "analyse", onClick: runPlaybookAnalyse, disabled: playbookAnalyseLoading },
+                { kind: "write", onClick: handleSeedPlaybook, disabled: generating || !canEdit },
+              ] satisfies AiAction[]}
             />
+            {playbookAnalyseError && (
+              <p className="text-xs text-red-600 mb-3">{playbookAnalyseError}</p>
+            )}
+            {playbookAnalyseResult && (
+              <div className="mb-4">
+                <InlineAnalysisCard
+                  result={playbookAnalyseResult}
+                  loading={playbookAnalyseLoading}
+                  onRegenerate={runPlaybookAnalyse}
+                />
+              </div>
+            )}
 
             <div className="space-y-4">
               {playbookItems.length === 0 && !playbookLoading && (
