@@ -3,6 +3,7 @@
 // and an AI-generated recommended ranking with reasoning.
 'use client'
 
+// TIM-3879: SectionHeader adoption + Analyse button wiring for shortlist compare.
 import React, { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -10,6 +11,10 @@ import { formatLocationScore } from '@/lib/format'
 import { AlertCircle, Sparkles, Trophy } from 'lucide-react'
 import { CollapseButton } from '@/components/ui/CollapseButton'
 import { Button } from '@/components/ui/button'
+import { SectionHeader } from '@/components/section-header/SectionHeader'
+import { useAIReviewModal } from '@/hooks/useAIReviewModal'
+import { InlineAnalysisCard } from './InlineAnalysisCard'
+import type { AnalyseResponse } from './InlineAnalysisCard'
 import type { Candidate } from './CandidateListCard'
 
 // ── Factor set used for visual comparison ────────────────────────────────
@@ -167,6 +172,13 @@ export function TradeoffPanel({
   const [tradeoffLoading, setTradeoffLoading] = useState(false)
   const [tradeoffError, setTradeoffError] = useState('')
 
+  // TIM-3879: Shortlist Analyse state
+  const [analyseResult, setAnalyseResult] = useState<AnalyseResponse | null>(null)
+  const [analyseLoading, setAnalyseLoading] = useState(false)
+  const [analyseError, setAnalyseError] = useState('')
+
+  const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal()
+
   const canUseAI = subscriptionTier !== 'free' && aiCreditsRemaining > 0
 
   // Map candidate id → color
@@ -272,6 +284,46 @@ export function TradeoffPanel({
     }
   }, [canUseAI, tradeoffLoading, candidates])
 
+  const runShortlistAnalyse = useCallback(async () => {
+    if (!canUseAI || analyseLoading) return
+    setAnalyseLoading(true)
+    setAnalyseError('')
+    try {
+      const res = await fetch('/api/ai/analyse/location-shortlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const data = await res.json().catch(() => ({})) as Record<string, unknown>
+      if (!res.ok) {
+        setAnalyseError((data.error as string) ?? 'Analysis failed. Please try again.')
+        return
+      }
+      setAnalyseResult(data as AnalyseResponse)
+    } catch {
+      setAnalyseError('Connection error. Please try again.')
+    } finally {
+      setAnalyseLoading(false)
+    }
+  }, [canUseAI, analyseLoading])
+
+  const handleViewRecommendation = useCallback((text: string, actionRef: string) => {
+    openAIReviewModal({
+      suggestions: [
+        {
+          id: `shortlist-rec-${actionRef}`,
+          fieldId: actionRef,
+          fieldLabel: 'Recommendation',
+          originalValue: '',
+          proposedValue: text,
+          isStructured: false,
+        },
+      ],
+      context: { workspace: 'Location & Lease', section: 'Shortlist Analysis' },
+      onApply: async () => {},
+    })
+  }, [openAIReviewModal])
+
   if (!open) return null
 
   return (
@@ -317,7 +369,7 @@ export function TradeoffPanel({
 
           {/* Visual comparison — bars per factor */}
           <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-4">
-            <h3 className="text-sm font-semibold text-foreground mb-1">Score Comparison</h3>
+            <SectionHeader title="Score Comparison" headingLevel={3} className="mb-1" />
             <p className="text-xs text-[var(--neutral-cool-600)] mb-4">
               Highest score per factor wins. Cup icon marks the winner; tied rows show no winner.
             </p>
@@ -341,11 +393,56 @@ export function TradeoffPanel({
             )}
           </div>
 
+          {/* Shortlist Analysis — TIM-3879 Analyse button (location-shortlist) */}
+          <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-4 flex flex-col gap-4">
+            <SectionHeader
+              title="Shortlist Analysis"
+              headingLevel={3}
+              aiActions={[
+                {
+                  kind: 'analyse',
+                  onClick: runShortlistAnalyse,
+                  disabled: analyseLoading || !canUseAI || candidates.length < 2,
+                },
+              ]}
+              className="mb-0"
+            />
+            <p className="text-xs text-[var(--neutral-cool-600)] -mt-3">
+              Structured AI assessment of your shortlisted candidates — strengths, concerns, and a recommended next step.
+            </p>
+
+            {!canUseAI && (
+              <div className="text-xs text-[var(--neutral-cool-600)]">
+                {subscriptionTier === 'free' ? (
+                  <>Paid plan required. <a href="/pricing" className="text-[var(--teal)] underline">Upgrade →</a></>
+                ) : (
+                  <>Out of credits. <a href="/pricing" className="text-[var(--teal)] underline">Upgrade →</a></>
+                )}
+              </div>
+            )}
+
+            {analyseError && (
+              <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+                <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" />
+                <p className="text-xs text-red-700">{analyseError}</p>
+              </div>
+            )}
+
+            {analyseResult && (
+              <InlineAnalysisCard
+                result={analyseResult}
+                loading={analyseLoading}
+                onRegenerate={runShortlistAnalyse}
+                onViewRecommendation={handleViewRecommendation}
+              />
+            )}
+          </div>
+
           {/* AI trade-off CTA + results */}
           <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-4 flex flex-col gap-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
-                <h3 className="text-sm font-semibold text-foreground">AI Recommendation</h3>
+                <SectionHeader title="AI Recommendation" headingLevel={3} className="mb-0" />
                 <p className="text-xs text-[var(--neutral-cool-600)] mt-0.5">
                   Get a per-location read on strengths and weaknesses and a recommended ranking based on your scorecard.
                 </p>
@@ -476,6 +573,7 @@ export function TradeoffPanel({
           </div>
         </div>
       </div>
+      {AIReviewModalNode}
     </>
   )
 }

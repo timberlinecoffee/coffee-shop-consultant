@@ -3,6 +3,8 @@
 // (13 factors + AI feedback), and lease terms. No separate top-level sections.
 'use client'
 
+// TIM-3879: SectionHeader adoption + Analyse button wiring for individual
+// property (location-property) and lease terms (lease-terms).
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import {
@@ -23,6 +25,10 @@ import { formatLocationScore } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/info-tip'
 import { MoneyInput } from '@/components/ui/money-input'
+import { SectionHeader } from '@/components/section-header/SectionHeader'
+import { useAIReviewModal } from '@/hooks/useAIReviewModal'
+import { InlineAnalysisCard } from './InlineAnalysisCard'
+import type { AnalyseResponse } from './InlineAnalysisCard'
 import { AddressAutocomplete, type PlacePick } from './AddressAutocomplete'
 import { AreaAnalysisPanel } from './AreaAnalysisPanel'
 import type { Candidate, CandidateStatus } from './CandidateListCard'
@@ -458,6 +464,57 @@ function ScorecardSection({
   const [loaded, setLoaded] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // TIM-3879: Individual property Analyse
+  const [propertyAnalyseResult, setPropertyAnalyseResult] = useState<AnalyseResponse | null>(null)
+  const [propertyAnalyseLoading, setPropertyAnalyseLoading] = useState(false)
+  const [propertyAnalyseError, setPropertyAnalyseError] = useState('')
+
+  const { openAIReviewModal: openPropertyReviewModal, AIReviewModalNode: PropertyReviewModalNode } =
+    useAIReviewModal()
+
+  const runPropertyAnalyse = useCallback(async () => {
+    if (!canUseAI || propertyAnalyseLoading) return
+    setPropertyAnalyseLoading(true)
+    setPropertyAnalyseError('')
+    try {
+      const res = await fetch('/api/ai/analyse/location-property', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resourceId: candidateId }),
+      })
+      const data = await res.json().catch(() => ({})) as Record<string, unknown>
+      if (!res.ok) {
+        setPropertyAnalyseError((data.error as string) ?? 'Analysis failed. Please try again.')
+        return
+      }
+      setPropertyAnalyseResult(data as AnalyseResponse)
+    } catch {
+      setPropertyAnalyseError('Connection error. Please try again.')
+    } finally {
+      setPropertyAnalyseLoading(false)
+    }
+  }, [canUseAI, propertyAnalyseLoading, candidateId])
+
+  const handlePropertyViewRecommendation = useCallback(
+    (text: string, actionRef: string) => {
+      openPropertyReviewModal({
+        suggestions: [
+          {
+            id: `property-rec-${actionRef}-${candidateId}`,
+            fieldId: actionRef,
+            fieldLabel: 'Recommendation',
+            originalValue: '',
+            proposedValue: text,
+            isStructured: false,
+          },
+        ],
+        context: { workspace: 'Location & Lease', section: `${candidateName} — Property Analysis` },
+        onApply: async () => {},
+      })
+    },
+    [openPropertyReviewModal, candidateId, candidateName],
+  )
+
   useEffect(() => {
     const supabase = createClient()
     supabase
@@ -530,7 +587,20 @@ function ScorecardSection({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <SectionHeader
+        title="Scorecard"
+        headingLevel={3}
+        aiActions={[
+          {
+            kind: 'analyse',
+            onClick: runPropertyAnalyse,
+            disabled: propertyAnalyseLoading || !canUseAI,
+          },
+        ]}
+        className="mb-0"
+      />
+
+      <div className="flex items-center justify-between -mt-2">
         <span className="text-[11px] text-[var(--neutral-cool-600)]">
           {filledCount}/{SCORED_FACTORS.length} rated
           {filledCount > 0 && (
@@ -541,6 +611,23 @@ function ScorecardSection({
           )}
         </span>
       </div>
+
+      {propertyAnalyseError && (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+          <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" />
+          <p className="text-xs text-red-700">{propertyAnalyseError}</p>
+        </div>
+      )}
+
+      {propertyAnalyseResult && (
+        <InlineAnalysisCard
+          result={propertyAnalyseResult}
+          loading={propertyAnalyseLoading}
+          onRegenerate={runPropertyAnalyse}
+          onViewRecommendation={handlePropertyViewRecommendation}
+        />
+      )}
+      {PropertyReviewModalNode}
 
       <div className="flex flex-col gap-4">
         {SCORECARD_FACTORS.map((factor) => (
@@ -723,16 +810,18 @@ function AiFeedbackPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground">AI Feedback</h4>
+        <div className="flex-1 min-w-0">
+          <SectionHeader title="AI Feedback" headingLevel={3} className="mb-0" />
           <p className="text-[11px] text-[var(--neutral-cool-600)] mt-0.5 leading-relaxed">
             Fill in scores above, then run AI feedback for risk profile, strengths, concerns, and due-diligence questions.
           </p>
         </div>
-        <Button size="sm" onClick={requestFeedback} disabled={loading} className="shrink-0">
-          <Sparkles className="size-3.5 mr-1.5" />
-          {loading ? 'Analyzing…' : finalText ? 'Refresh' : 'Get AI Feedback'}
-        </Button>
+        {canUse && (
+          <Button size="sm" onClick={requestFeedback} disabled={loading} className="shrink-0">
+            <Sparkles className="size-3.5 mr-1.5" />
+            {loading ? 'Analyzing…' : finalText ? 'Refresh' : 'Get AI Feedback'}
+          </Button>
+        )}
       </div>
 
       {error && (
@@ -988,11 +1077,13 @@ function LeaseTermsSection({
   candidateId,
   askingRentCents,
   camCents,
+  canUseAI,
   onUpdateCandidate,
 }: {
   candidateId: string
   askingRentCents: number | null
   camCents: number | null
+  canUseAI: boolean
   onUpdateCandidate: (patch: { asking_rent_cents?: number | null; cam_cents?: number | null }) => void
 }) {
   const [terms, setTerms] = useState<TermsDisplay>(EMPTY_TERMS)
@@ -1000,6 +1091,57 @@ function LeaseTermsSection({
   const [saving, setSaving] = useState(false)
   const [rentLinked, setRentLinked] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // TIM-3879: Lease Terms Analyse
+  const [leaseAnalyseResult, setLeaseAnalyseResult] = useState<AnalyseResponse | null>(null)
+  const [leaseAnalyseLoading, setLeaseAnalyseLoading] = useState(false)
+  const [leaseAnalyseError, setLeaseAnalyseError] = useState('')
+
+  const { openAIReviewModal: openLeaseReviewModal, AIReviewModalNode: LeaseReviewModalNode } =
+    useAIReviewModal()
+
+  const runLeaseAnalyse = useCallback(async () => {
+    if (!canUseAI || leaseAnalyseLoading) return
+    setLeaseAnalyseLoading(true)
+    setLeaseAnalyseError('')
+    try {
+      const res = await fetch('/api/ai/analyse/lease-terms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resourceId: candidateId }),
+      })
+      const data = await res.json().catch(() => ({})) as Record<string, unknown>
+      if (!res.ok) {
+        setLeaseAnalyseError((data.error as string) ?? 'Analysis failed. Please try again.')
+        return
+      }
+      setLeaseAnalyseResult(data as AnalyseResponse)
+    } catch {
+      setLeaseAnalyseError('Connection error. Please try again.')
+    } finally {
+      setLeaseAnalyseLoading(false)
+    }
+  }, [canUseAI, leaseAnalyseLoading, candidateId])
+
+  const handleLeaseViewRecommendation = useCallback(
+    (text: string, actionRef: string) => {
+      openLeaseReviewModal({
+        suggestions: [
+          {
+            id: `lease-rec-${actionRef}-${candidateId}`,
+            fieldId: actionRef,
+            fieldLabel: 'Recommendation',
+            originalValue: '',
+            proposedValue: text,
+            isStructured: false,
+          },
+        ],
+        context: { workspace: 'Location & Lease', section: 'Lease Terms Analysis' },
+        onApply: async () => {},
+      })
+    },
+    [openLeaseReviewModal, candidateId],
+  )
 
   // Local display values for asking rent and CAM (candidate-level, not lease_terms)
   const [askingRentLocal, setAskingRentLocal] = useState(centsToDisplay(askingRentCents))
@@ -1085,6 +1227,36 @@ function LeaseTermsSection({
 
   return (
     <div className="flex flex-col gap-4">
+      <SectionHeader
+        title="Lease Terms"
+        headingLevel={3}
+        aiActions={[
+          {
+            kind: 'analyse',
+            onClick: runLeaseAnalyse,
+            disabled: leaseAnalyseLoading || !canUseAI,
+          },
+        ]}
+        className="mb-0"
+      />
+
+      {leaseAnalyseError && (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+          <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" />
+          <p className="text-xs text-red-700">{leaseAnalyseError}</p>
+        </div>
+      )}
+
+      {leaseAnalyseResult && (
+        <InlineAnalysisCard
+          result={leaseAnalyseResult}
+          loading={leaseAnalyseLoading}
+          onRegenerate={runLeaseAnalyse}
+          onViewRecommendation={handleLeaseViewRecommendation}
+        />
+      )}
+      {LeaseReviewModalNode}
+
       {saving && <p className="text-[10px] italic text-[var(--neutral-cool-600)] -mt-1">Saving…</p>}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1629,6 +1801,7 @@ export function LocationCard({
               candidateId={candidate.id}
               askingRentCents={candidate.asking_rent_cents}
               camCents={candidate.cam_cents}
+              canUseAI={canUseAI}
               onUpdateCandidate={(patch) => onPatch(candidate.id, patch)}
             />
           </Section>

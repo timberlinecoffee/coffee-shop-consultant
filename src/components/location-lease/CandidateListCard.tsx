@@ -3,6 +3,7 @@
 // Per-location info (intake, scorecard, lease terms, AI feedback) lives inside LocationCard.
 'use client'
 
+// TIM-3879: SectionHeader adoption for the candidate list section.
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { Plus, Star, Sparkles, MessageCircle, CheckSquare, X, Trash2 } from 'lucide-react'
@@ -14,6 +15,7 @@ import {
   CardContent,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { SectionHeader } from '@/components/section-header/SectionHeader'
 import { LocationCard } from './LocationCard'
 import { TradeoffPanel } from './TradeoffPanel'
 import { CoPilotDrawer } from './CoPilotDrawer'
@@ -463,6 +465,15 @@ export function CandidateListCard({
                 )}
               </div>
             </div>
+          )}
+
+          {/* ── List section header ── */}
+          {visible.length > 0 && (
+            <SectionHeader
+              title={view === 'shortlist' ? 'Shortlisted' : 'All Locations'}
+              headingLevel={3}
+              className="mb-0"
+            />
           )}
 
           {/* ── List ── */}
