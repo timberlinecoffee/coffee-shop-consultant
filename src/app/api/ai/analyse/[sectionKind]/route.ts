@@ -44,6 +44,7 @@ const SECTION_KINDS = [
   "marketing-pre-launch",
   "financials-cogs-menu",
   "financials-cogs-additional",
+  "menu-ingredients",
 ] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
@@ -59,6 +60,7 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "marketing-pre-launch": "analyse_marketing_pre_launch",
   "financials-cogs-menu": "analyse_financials_cogs_menu",
   "financials-cogs-additional": "analyse_financials_cogs_additional",
+  "menu-ingredients": "analyse_menu_ingredients",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -634,6 +636,52 @@ Evaluate these additional COGS items: whether all major non-menu cost categories
 ${JSON_SCHEMA_INSTRUCTION}`
 }
 
+// ── TIM-3888: Menu ingredients context loader ────────────────────────────────
+
+const MENU_INGREDIENTS_LIMIT = 60
+
+async function loadMenuIngredientsContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const { data: ingredients, error: ingredientsError } = await supabase
+    .from("menu_ingredients")
+    .select("name, package_size, package_unit, package_cost_cents, category, notes")
+    .eq("plan_id", planId)
+    .order("name", { ascending: true })
+    .limit(MENU_INGREDIENTS_LIMIT)
+
+  if (ingredientsError) throw new Error(`loadMenuIngredientsContext: ${ingredientsError.message}`)
+  if (!ingredients || ingredients.length === 0) return ""
+
+  const truncated = ingredients.length === MENU_INGREDIENTS_LIMIT
+  const lines = ingredients.map((ing) => {
+    const costPkg = ing.package_cost_cents / 100
+    const cpu = ing.package_size > 0
+      ? `$${(costPkg / ing.package_size).toFixed(4)}/${ing.package_unit}`
+      : null
+    const costLine = ing.package_cost_cents > 0
+      ? `$${costPkg.toFixed(2)} for ${ing.package_size} ${ing.package_unit}${cpu ? ` → ${cpu}` : ""}`
+      : "no cost entered"
+    const cat = ing.category ? ` [${ing.category}]` : ""
+    const note = ing.notes?.trim() ? ` (${ing.notes.trim()})` : ""
+    return `  ${ing.name}${cat}: ${costLine}${note}`
+  })
+
+  const catalogHeader = truncated
+    ? `Ingredient catalog (first ${MENU_INGREDIENTS_LIMIT} of a larger catalog, alphabetical):`
+    : `Ingredient catalog (${ingredients.length} items):`
+
+  return `Analyse the ingredient cost structure for this coffee shop's menu.
+
+${catalogHeader}
+${lines.join("\n")}
+
+Evaluate: cost-per-unit competitiveness, any ingredients that look unusually expensive or cheap for their category, gaps (common coffee-shop ingredients that are missing), and diversity of supply sources implied by the catalog. Recommend 2–4 concrete actions the owner can take to reduce ingredient costs or improve margin without sacrificing quality. Include benchmarkContext if you can cite typical wholesale cost ranges for coffee ingredients.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -716,14 +764,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   ) {
     return Response.json({ error: "resourceId (candidateId) required for this section" }, { status: 400 })
   }
-
-  // Plan-level sections do not use resourceId.
+  // Sections that do not use resourceId — reject any stray value at the boundary.
   if (
     (sectionKind === "location-shortlist" ||
       sectionKind === "marketing-channels" ||
       sectionKind === "marketing-pre-launch" ||
       sectionKind === "financials-cogs-menu" ||
-      sectionKind === "financials-cogs-additional") &&
+      sectionKind === "financials-cogs-additional" ||
+      sectionKind === "menu-ingredients") &&
     resourceId
   ) {
     return Response.json({ error: "resourceId is not accepted for this section" }, { status: 400 })
@@ -781,8 +829,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         )
       }
       sectionKey = `financials.cogs-additional.${planId}`
-    } else {
-      // lease-terms
+    } else if (sectionKind === "lease-terms") {
       const ctx = await loadLeaseTermsContext(supabase, planId, resourceId!)
       if (!ctx.owned) return Response.json({ error: "Candidate not found" }, { status: 404 })
       if (!ctx.prompt) {
@@ -793,6 +840,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
       prompt = ctx.prompt
       sectionKey = `location-lease.lease-terms.${resourceId}`
+    } else if (sectionKind === "menu-ingredients") {
+      prompt = await loadMenuIngredientsContext(supabase, planId)
+      if (!prompt) return Response.json({ error: "No ingredients in catalog yet" }, { status: 422 })
+      sectionKey = `menu-pricing.ingredients.${planId}`
+    } else {
+      const _exhaustive: never = sectionKind
+      return Response.json({ error: `Unhandled section kind: ${_exhaustive}` }, { status: 500 })
     }
   } catch (err) {
     console.error(`[ai-analyse/${sectionKind}] data load error:`, err)

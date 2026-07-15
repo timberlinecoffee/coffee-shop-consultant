@@ -63,6 +63,9 @@ import { DismissibleCallout } from "@/components/DismissibleCallout";
 import { CategoryPresetPicker } from "@/components/menu-pricing/CategoryPresetPicker";
 import { SectionHelp } from "@/components/ui/section-help";
 import { SectionHeader } from "@/components/section-header";
+import type { AiAction } from "@/components/section-header";
+import { InlineAnalysisCard } from "@/components/ai-analyse/InlineAnalysisCard";
+import type { AnalyseResponse } from "@/components/ai-analyse/InlineAnalysisCard";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 // TIM-2482 (F13): menu-side reconciliation banner — shows menu blend vs
 // Forecast Inputs avg ticket and offers a Sync action that opens the
@@ -746,12 +749,16 @@ function IngredientSortHeader({
 
 function IngredientsTab({
   canEdit,
+  canUseAI,
+  onPaywall,
   ingredients,
   onAddIngredient,
   onUpdateIngredient,
   onDeleteIngredient,
 }: {
   canEdit: boolean;
+  canUseAI: boolean;
+  onPaywall: () => void;
   ingredients: MenuIngredient[];
   onAddIngredient: (init: {
     name: string;
@@ -765,6 +772,10 @@ function IngredientsTab({
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<IngredientSortKey>("name");
   const [sortDir, setSortDir] = useState<IngredientSortDir>("asc");
+  const [ingredientsAnalyseResult, setIngredientsAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [ingredientsAnalyseLoading, setIngredientsAnalyseLoading] = useState(false);
+  const [ingredientsAnalyseError, setIngredientsAnalyseError] = useState<string | null>(null);
+  const ingredientsAnalyseInFlight = useRef(false);
   // TIM-2832: right-edge fade affordance for the horizontally scrollable ingredient grid.
   const ingScrollRef = useRef<HTMLDivElement>(null);
   const [showIngFade, setShowIngFade] = useState(false);
@@ -783,6 +794,52 @@ function IngredientsTab({
       ro.disconnect();
     };
   }, []);
+
+  async function runIngredientsAnalyse() {
+    if (ingredientsAnalyseInFlight.current) return;
+    ingredientsAnalyseInFlight.current = true;
+    setIngredientsAnalyseLoading(true);
+    setIngredientsAnalyseError(null);
+    try {
+      const res = await fetch("/api/ai/analyse/menu-ingredients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        if (res.status === 402) {
+          setIngredientsAnalyseResult(null);
+          onPaywall();
+          return;
+        }
+        let errMsg = "Analysis failed. Please try again.";
+        try {
+          const errData = (await res.json()) as Record<string, unknown>;
+          if (typeof errData.error === "string") errMsg = errData.error;
+        } catch {}
+        setIngredientsAnalyseResult(null);
+        setIngredientsAnalyseError(errMsg);
+        return;
+      }
+      const data = (await res.json()) as Record<string, unknown>;
+      if (
+        !Array.isArray(data.strengths) ||
+        !Array.isArray(data.concerns) ||
+        !Array.isArray(data.callouts) ||
+        !Array.isArray(data.recommendations)
+      ) {
+        setIngredientsAnalyseResult(null);
+        setIngredientsAnalyseError("Analysis returned an unexpected format.");
+        return;
+      }
+      setIngredientsAnalyseResult(data as AnalyseResponse);
+    } catch {
+      setIngredientsAnalyseError("Connection error. Please try again.");
+    } finally {
+      setIngredientsAnalyseLoading(false);
+      ingredientsAnalyseInFlight.current = false;
+    }
+  }
 
   function toggleSort(key: IngredientSortKey) {
     if (key === sortKey) {
@@ -827,6 +884,13 @@ function IngredientsTab({
               title="Ingredients"
               helpContent="Track every ingredient, its package size, and cost so recipe lines can compute COGS automatically."
               className="mb-0 flex-1"
+              aiActions={[
+                {
+                  kind: "analyse",
+                  onClick: runIngredientsAnalyse,
+                  disabled: ingredientsAnalyseLoading || !canUseAI || ingredients.length === 0,
+                } satisfies AiAction,
+              ]}
             />
             <span className="text-xs text-[var(--dark-grey)] shrink-0 whitespace-nowrap">
               {ingredients.length} {ingredients.length === 1 ? "ingredient" : "ingredients"}
@@ -913,6 +977,22 @@ function IngredientsTab({
           </div>
         )}
       </div>
+
+      {/* Ingredients analyse error */}
+      {ingredientsAnalyseError && (
+        <div className="flex items-start gap-2 rounded-xl border border-[var(--error-accent)]/30 bg-[var(--error-accent)]/5 px-3 py-2.5">
+          <p className="text-xs text-[var(--error-accent)]">{ingredientsAnalyseError}</p>
+        </div>
+      )}
+
+      {/* Ingredients analyse result */}
+      {ingredientsAnalyseResult && (
+        <InlineAnalysisCard
+          result={ingredientsAnalyseResult}
+          loading={ingredientsAnalyseLoading}
+          onRegenerate={runIngredientsAnalyse}
+        />
+      )}
     </div>
   );
 }
@@ -1626,9 +1706,7 @@ function CostOfGoodsTabContent({
     <div className="space-y-6">
       {/* Costing summary — 4-stat grid */}
       <section>
-        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
-          Costing
-        </h3>
+        <SectionHeader title="Costing" headingLevel={3} />
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>Selling Price</label>
@@ -1679,9 +1757,7 @@ function CostOfGoodsTabContent({
       {/* TIM-3248: Category target callout — shown when the item's category has a COGS range. */}
       {hasCatRange && (
         <section>
-          <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
-            Category Target
-          </h3>
+          <SectionHeader title="Category Target" headingLevel={3} />
           <div className="rounded-lg border border-[var(--border)] bg-[var(--off-white)] px-3 py-2.5 space-y-1.5">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--foreground)]">
               <Tag size={12} className="text-[var(--teal)]" aria-hidden="true" />
@@ -1714,9 +1790,7 @@ function CostOfGoodsTabContent({
       {/* Expected popularity — kept on the costing tab since it pairs with margin
           for the Insights matrix. */}
       <section>
-        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
-          Expected Popularity
-        </h3>
+        <SectionHeader title="Expected Popularity" headingLevel={3} />
         <PopularitySelector
           value={item.expected_popularity}
           disabled={!canEdit}
@@ -1730,9 +1804,7 @@ function CostOfGoodsTabContent({
       {/* AI suggest retail price — TIM-1561: bespoke box replaced by unified modal */}
       {canEdit && (
         <section>
-          <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
-            AI Price Suggestion
-          </h3>
+          <SectionHeader title="AI Price Suggestion" headingLevel={3} />
           <WorkspaceActionButton
             variant="primary"
             onClick={onSuggestPrice}
@@ -1748,9 +1820,7 @@ function CostOfGoodsTabContent({
       {/* AI benchmark against cafés in my area (TIM-1471) */}
       {canEdit && (
         <section>
-          <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
-            Local Benchmark
-          </h3>
+          <SectionHeader title="Local Benchmark" headingLevel={3} />
           <WorkspaceActionButton
             variant="secondary"
             onClick={onBenchmarkPrice}
@@ -3488,9 +3558,7 @@ function InsightsTab({
       {/* Needs info */}
       {needsInfo.length > 0 && (
         <div>
-          <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-[var(--muted-foreground)] mb-3">
-            Not Enough Info Yet ({needsInfo.length})
-          </h3>
+          <SectionHeader title={`Not Enough Info Yet (${needsInfo.length})`} headingLevel={3} />
           <div className="rounded-xl border border-[var(--border)] bg-white divide-y divide-[var(--gray-200)]">
             {needsInfo.map((n) => {
               const item = items.find((i) => i.id === n.id);
@@ -4715,6 +4783,8 @@ export function MenuWorkspace({
         {activeTab === "ingredients" && (
           <IngredientsTab
             canEdit={canEdit}
+            canUseAI={canEdit}
+            onPaywall={() => setPaywallOpen(true)}
             ingredients={ingredients}
             onAddIngredient={addIngredient}
             onUpdateIngredient={updateIngredient}
