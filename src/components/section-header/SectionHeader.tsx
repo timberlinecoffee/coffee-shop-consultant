@@ -80,15 +80,16 @@ export function SectionHeader({
 
       {effectiveActions.length > 0 && (
         <div className="flex items-center gap-2 flex-shrink-0">
-          {effectiveActions.map((action) => (
+          {effectiveActions.map((action, i) => (
             <button
-              key={action.kind}
+              key={`${action.kind}-${i}`}
               type="button"
               onClick={() => {
                 try {
                   action.onClick()
                 } catch (err) {
                   if (process.env.NODE_ENV !== 'production') console.error(err)
+                  throw err
                 }
               }}
               disabled={action.disabled}
