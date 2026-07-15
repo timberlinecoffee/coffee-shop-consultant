@@ -44,6 +44,7 @@ const SECTION_KINDS = [
   "marketing-pre-launch",
   "financials-cogs-menu",
   "financials-cogs-additional",
+  "suppliers-category",
 ] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
@@ -59,6 +60,7 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "marketing-pre-launch": "analyse_marketing_pre_launch",
   "financials-cogs-menu": "analyse_financials_cogs_menu",
   "financials-cogs-additional": "analyse_financials_cogs_additional",
+  "suppliers-category": "analyse_suppliers_category",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -132,9 +134,11 @@ const AIContentSchema = z.object({
     .optional(),
 })
 
-// Request body — resourceId is required for location-property and lease-terms.
+// Request body — resourceId is required for location-property and lease-terms;
+// categoryId is required for suppliers-category.
 const RequestBodySchema = z.object({
   resourceId: z.string().uuid().optional(),
+  categoryId: z.string().min(1).max(80).optional(),
 })
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -634,6 +638,89 @@ Evaluate these additional COGS items: whether all major non-menu cost categories
 ${JSON_SCHEMA_INSTRUCTION}`
 }
 
+// ── Suppliers data loader (TIM-3890) ─────────────────────────────────────────
+
+const SUPPLIER_CATEGORY_LABELS: Record<string, string> = {
+  coffee_roaster: "Coffee Roaster",
+  dairy_altmilk: "Dairy & Alt-Milk",
+  bakery: "Bakery",
+  syrups_sauces: "Syrups & Sauces",
+  tea: "Tea",
+  packaging: "Packaging",
+  cleaning_chemicals: "Cleaning & Chemicals",
+  equipment_service: "Equipment Service",
+  other: "Other",
+}
+
+async function loadSuppliersCategoryContext(
+  supabase: SupabaseClient,
+  planId: string,
+  categoryId: string,
+): Promise<string> {
+  const categoryLabel = categoryId.startsWith("custom:")
+    ? categoryId.slice(7).replace(/[-_]/g, " ")
+    : (SUPPLIER_CATEGORY_LABELS[categoryId] ?? categoryId)
+
+  const [candidatesResult, conceptResult, decisionResult] = await Promise.all([
+    supabase
+      .from("vendor_candidates")
+      .select("name, contact, price_per_unit, minimum_order, lead_time, notes, status")
+      .eq("plan_id", planId)
+      .eq("category", categoryId)
+      .order("position", { ascending: true })
+      .limit(20),
+    supabase
+      .from("workspace_documents")
+      .select("content")
+      .eq("plan_id", planId)
+      .eq("workspace_key", "concept")
+      .maybeSingle(),
+    supabase
+      .from("vendor_decisions")
+      .select("vendor_name, reason, decided_on")
+      .eq("plan_id", planId)
+      .eq("category", categoryId)
+      .eq("is_current", true)
+      .maybeSingle(),
+  ])
+
+  const candidates = candidatesResult.data ?? []
+  if (candidates.length === 0) return ""
+
+  const concept = normalizeConceptV2(conceptResult.data?.content)
+  const conceptBits: string[] = []
+  for (const k of ["shop_identity", "target_customer", "differentiation"] as const) {
+    const v = concept.components[k]?.content
+    if (typeof v === "string" && v.trim()) conceptBits.push(v.trim())
+  }
+
+  const chosen = decisionResult.data
+  const decisionLine = chosen
+    ? `Current decision: ${chosen.vendor_name}${chosen.reason ? ` (reason: ${chosen.reason})` : ""}${chosen.decided_on ? `, decided ${chosen.decided_on}` : ""}`
+    : "No vendor decision logged yet."
+
+  const candidateLines = candidates.map((c) => {
+    const parts: string[] = [`${c.name} [${c.status}]`]
+    if (c.price_per_unit) parts.push(`price: ${c.price_per_unit}`)
+    if (c.minimum_order) parts.push(`min order: ${c.minimum_order}`)
+    if (c.lead_time) parts.push(`lead time: ${c.lead_time}`)
+    if (c.contact) parts.push(`contact: ${c.contact}`)
+    if (c.notes?.trim()) parts.push(`notes: ${c.notes.trim()}`)
+    return `- ${parts.join(" | ")}`
+  })
+
+  return `Compare and evaluate vendors in the ${categoryLabel} category for this coffee shop.
+${conceptBits.length > 0 ? `\nShop context:\n${conceptBits.join(" — ")}\n` : ""}
+${decisionLine}
+
+Vendors under consideration (${candidates.length}):
+${candidateLines.join("\n")}
+
+Assess how well each vendor fits a coffee shop of this type. Identify the strongest option and any that should be dropped. Highlight key factors the owner should verify before committing — pricing, minimum orders, reliability, supply chain risk. If a vendor has already been chosen, evaluate whether it is the best fit and flag any concerns. Score the overall shortlist for this category and provide concrete recommendations for the owner.
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -708,7 +795,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     )
   }
 
-  const { resourceId } = parsedBody.data
+  const { resourceId, categoryId } = parsedBody.data
 
   if (
     (sectionKind === "location-property" || sectionKind === "lease-terms") &&
@@ -717,13 +804,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return Response.json({ error: "resourceId (candidateId) required for this section" }, { status: 400 })
   }
 
+  if (sectionKind === "suppliers-category" && !categoryId) {
+    return Response.json({ error: "categoryId required for this section" }, { status: 400 })
+  }
+
   // Plan-level sections do not use resourceId.
   if (
     (sectionKind === "location-shortlist" ||
       sectionKind === "marketing-channels" ||
       sectionKind === "marketing-pre-launch" ||
       sectionKind === "financials-cogs-menu" ||
-      sectionKind === "financials-cogs-additional") &&
+      sectionKind === "financials-cogs-additional" ||
+      sectionKind === "suppliers-category") &&
     resourceId
   ) {
     return Response.json({ error: "resourceId is not accepted for this section" }, { status: 400 })
@@ -781,6 +873,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         )
       }
       sectionKey = `financials.cogs-additional.${planId}`
+    } else if (sectionKind === "suppliers-category") {
+      prompt = await loadSuppliersCategoryContext(supabase, planId, categoryId!)
+      if (!prompt) {
+        return Response.json(
+          { error: "No vendors in this category yet. Add vendors before running analysis." },
+          { status: 422 },
+        )
+      }
+      sectionKey = `suppliers.${categoryId}.${planId}`
     } else {
       // lease-terms
       const ctx = await loadLeaseTermsContext(supabase, planId, resourceId!)

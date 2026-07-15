@@ -15,7 +15,7 @@
 //   5. Elegant truncation via shared <TruncatedText> in every cell — no more
 //      silently clipped bubbles.
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Truck, Plus, Sparkles, Trash2, GripHorizontal, MoreVertical, Pencil } from "lucide-react";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAIReviewModal } from "@/hooks/useAIReviewModal";
@@ -29,6 +29,7 @@ import {
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { SectionHeader } from "@/components/section-header";
+import { InlineAnalysisCard, type AnalyseResponse } from "@/components/location-lease/InlineAnalysisCard";
 import { useMutationStatus } from "@/hooks/use-mutation-status";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { useCurrency } from "@/components/CurrencyProvider";
@@ -198,6 +199,12 @@ export function SuppliersWorkspace({
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
+  // TIM-3890: Analyse-with-AI state for Category label section.
+  const [categoryAnalyseResult, setCategoryAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [categoryAnalyseLoading, setCategoryAnalyseLoading] = useState(false);
+  const [categoryAnalyseError, setCategoryAnalyseError] = useState("");
+  const categoryAnalyseInFlightRef = useRef(false);
+
   const { promoteOnEdit } = useWorkspaceStatus();
   const { saving: mutationSaving, savedAt: mutationSavedAt, confirmSaved } = useMutationStatus();
 
@@ -255,6 +262,42 @@ export function SuppliersWorkspace({
   useEffect(() => {
     if (chosenCount > 0) promoteOnEdit("suppliers");
   }, [chosenCount, promoteOnEdit]);
+
+  // TIM-3890: Reset analyse results when the active category changes so stale data is not shown.
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- clear stale analyse result on category switch */
+    setCategoryAnalyseResult(null);
+    setCategoryAnalyseError("");
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [activeCategory]);
+
+  // TIM-3890: Analyse handler — mirrors LocationCard.runPropertyAnalyse pattern.
+  const runCategoryAnalyse = useCallback(async () => {
+    if (!canEdit || categoryAnalyseInFlightRef.current) return;
+    categoryAnalyseInFlightRef.current = true;
+    setCategoryAnalyseLoading(true);
+    setCategoryAnalyseError("");
+    setCategoryAnalyseResult(null);
+    try {
+      const res = await fetch("/api/ai/analyse/suppliers-category", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryId: activeCategory }),
+      });
+      const data: unknown = await res.json();
+      if (!res.ok) {
+        const errBody = data as { error?: string } | null;
+        setCategoryAnalyseError(errBody?.error ?? "Analysis failed. Please try again.");
+        return;
+      }
+      setCategoryAnalyseResult(data as AnalyseResponse);
+    } catch {
+      setCategoryAnalyseError("Connection error. Please try again.");
+    } finally {
+      setCategoryAnalyseLoading(false);
+      categoryAnalyseInFlightRef.current = false;
+    }
+  }, [canEdit, activeCategory]);
 
   const persistCandidate = useMemo(
     () =>
@@ -782,13 +825,14 @@ export function SuppliersWorkspace({
           <section className="min-w-0">
             <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
               <div className="px-5 pt-5 pb-4 border-b border-[var(--border)]">
-                {/* TIM-3695 (P1-1): v3 — SectionHeader standalone (contract: title+help only);
-                    actions live in WorkspaceHeader above. v1 — original flex row kept. */}
+                {/* TIM-3695 (P1-1): v3 — SectionHeader standalone; v1 — original flex row kept.
+                    TIM-3890: aiActions adds Analyse button via shared SectionHeader slot. */}
                 {uiRevampV3 ? (
                   <SectionHeader
                     title={labelFor(activeCategory)}
                     helpContent={subtitleFor(activeCategory)}
                     className="mb-0"
+                    aiActions={canEdit ? [{ kind: "analyse", onClick: runCategoryAnalyse, disabled: categoryAnalyseLoading }] : undefined}
                   />
                 ) : (
                   <div className="flex items-start justify-between gap-4">
@@ -796,6 +840,7 @@ export function SuppliersWorkspace({
                       title={labelFor(activeCategory)}
                       helpContent={subtitleFor(activeCategory)}
                       className="mb-0 flex-1"
+                      aiActions={canEdit ? [{ kind: "analyse", onClick: runCategoryAnalyse, disabled: categoryAnalyseLoading }] : undefined}
                     />
                     <div className="flex items-center gap-2 shrink-0">
                       {/* TIM-1846: canonical WorkspaceActionButton chrome (were hand-rolled). */}
@@ -819,6 +864,18 @@ export function SuppliersWorkspace({
                         Add vendor
                       </WorkspaceActionButton>
                     </div>
+                  </div>
+                )}
+                {categoryAnalyseError && (
+                  <p className="mt-2 text-xs text-[var(--error)]">{categoryAnalyseError}</p>
+                )}
+                {categoryAnalyseResult && (
+                  <div className="mt-3">
+                    <InlineAnalysisCard
+                      result={categoryAnalyseResult}
+                      loading={categoryAnalyseLoading}
+                      onRegenerate={runCategoryAnalyse}
+                    />
                   </div>
                 )}
                 {seedError && (
