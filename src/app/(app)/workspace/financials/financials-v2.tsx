@@ -227,24 +227,29 @@ function AccordionSection({
 
   return (
     <div id={id} className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--background)] transition-colors"
-      >
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+      {/* TIM-3869: outer element changed from <button> to <div> to prevent nested
+          interactive elements when Phase 3+4 aiAction buttons are added inside
+          SectionHeader (nested <button> is invalid HTML and causes click propagation
+          to collapse the accordion). Toggle affordance is scoped to the inner button. */}
+      <div className="w-full flex items-center justify-between px-5 py-4">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls={id ? `${id}-content` : undefined}
+          className="flex items-center gap-3 flex-1 min-w-0 hover:bg-[var(--background)] -mx-2 px-2 py-1 rounded-lg transition-colors text-left"
+        >
           <ChevronDown
             size={16}
             className={`text-[var(--muted-foreground)] transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
           <SectionHeader title={title} className="mb-0 flex-1" />
-        </div>
+        </button>
         <StatusBadge status={status} />
-      </button>
+      </div>
       {open && (
-        <div className="px-5 pb-5 pt-1 border-t border-[var(--border)] space-y-5">
+        <div id={id ? `${id}-content` : undefined} className="px-5 pb-5 pt-1 border-t border-[var(--border)] space-y-5">
           {children}
         </div>
       )}
