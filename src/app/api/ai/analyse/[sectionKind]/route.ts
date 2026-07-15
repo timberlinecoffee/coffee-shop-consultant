@@ -185,25 +185,26 @@ async function loadPropertyContext(
     return { owned: false, prompt: "" }
   }
 
-  const { data: scores } = await supabase
-    .from("location_rubric_scores")
-    .select("factor_key, score_1_5, notes")
-    .eq("candidate_id", candidateId)
-
-  const { data: leaseRow } = await supabase
-    .from("location_lease_terms")
-    .select(
-      "base_rent_cents, rent_escalation_pct, term_months, ti_allowance_cents, security_deposit_cents, personal_guarantee, exit_clauses",
-    )
-    .eq("candidate_id", candidateId)
-    .maybeSingle()
-
-  const { data: conceptRow } = await supabase
-    .from("module_responses")
-    .select("response_data")
-    .eq("plan_id", planId)
-    .eq("module_number", 1)
-    .maybeSingle()
+  // Parallelize the three independent lookups after ownership is confirmed.
+  const [{ data: scores }, { data: leaseRow }, { data: conceptRow }] = await Promise.all([
+    supabase
+      .from("location_rubric_scores")
+      .select("factor_key, score_1_5, notes")
+      .eq("candidate_id", candidateId),
+    supabase
+      .from("location_lease_terms")
+      .select(
+        "base_rent_cents, rent_escalation_pct, term_months, ti_allowance_cents, security_deposit_cents, personal_guarantee, exit_clauses",
+      )
+      .eq("candidate_id", candidateId)
+      .maybeSingle(),
+    supabase
+      .from("module_responses")
+      .select("response_data")
+      .eq("plan_id", planId)
+      .eq("module_number", 1)
+      .maybeSingle(),
+  ])
 
   const conceptBits: string[] = []
   const conceptData = (conceptRow?.response_data ?? {}) as Record<string, unknown>
@@ -272,6 +273,8 @@ async function loadShortlistContext(
     return ""
   }
 
+  const truncated = candidates.length === 10
+
   const { data: allScores } = await supabase
     .from("location_rubric_scores")
     .select("candidate_id, factor_key, score_1_5")
@@ -299,7 +302,8 @@ async function loadShortlistContext(
     return `- ${loc}${avg}`
   })
 
-  return `Compare and rank the following ${candidates.length} location candidates on the shortlist for this coffee shop owner.
+  const countNote = truncated ? `the first ${candidates.length} (list may have more — ranked oldest-first)` : `all ${candidates.length}`
+  return `Compare and rank ${countNote} location candidates on the shortlist for this coffee shop owner.
 
 Candidates:
 ${lines.join("\n")}
@@ -352,6 +356,11 @@ async function loadLeaseTermsContext(
   if (lease.personal_guarantee) fields.push(`Personal guarantee: ${lease.personal_guarantee}`)
   if (lease.exit_clauses) fields.push(`Exit / termination clauses: ${lease.exit_clauses}`)
 
+  // No meaningful data to analyse — all nullable columns are null.
+  if (fields.length === 0) {
+    return { owned: true, prompt: "" }
+  }
+
   const location = [candidate.name, candidate.address, candidate.city].filter(Boolean).join(", ")
 
   const prompt = `Analyse the lease terms for this coffee shop candidate site.
@@ -373,8 +382,8 @@ ${JSON_SCHEMA_INSTRUCTION}`
 type RouteContext = { params: Promise<{ sectionKind: string }> }
 
 export async function POST(request: NextRequest, { params }: RouteContext) {
-  // Feature flag gate — 403 when off (TIM-3878 spec).
-  if (process.env.NEXT_PUBLIC_AI_ANALYSE_BUTTON !== "true") {
+  // Feature flag gate — 403 when explicitly disabled (mirrors ai-analyse-button.ts default-ON polarity).
+  if (process.env.NEXT_PUBLIC_AI_ANALYSE_BUTTON === "false") {
     return Response.json({ error: "Feature not available" }, { status: 403 })
   }
 
@@ -493,6 +502,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   let analysisResult: AnalyseResponse | null = null
   let lastScoutResult: Awaited<ReturnType<typeof runScoutTurn>> | null = null
 
+  // Accumulate token counts across all retry attempts so telemetry reflects true spend.
+  let accUsage = {
+    inputTokensUncached: 0,
+    inputTokensCachedRead: 0,
+    inputTokensCacheCreate: 0,
+    outputTokens: 0,
+    webSearchRequests: 0,
+    toolCalls: 0,
+  }
+  let accLatencyMs = 0
+
   try {
     for (let attempt = 0; attempt < 3; attempt++) {
       const systemText =
@@ -509,7 +529,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         routeTag: ROUTE_PATH,
       })
 
-      lastScoutResult = scoutResult
+      // Accumulate across attempts so telemetry captures total spend, not just the last attempt.
+      accUsage.inputTokensUncached += scoutResult.usage.inputTokensUncached
+      accUsage.inputTokensCachedRead += scoutResult.usage.inputTokensCachedRead
+      accUsage.inputTokensCacheCreate += scoutResult.usage.inputTokensCacheCreate
+      accUsage.outputTokens += scoutResult.usage.outputTokens
+      accUsage.webSearchRequests += scoutResult.usage.webSearchRequests
+      accUsage.toolCalls += scoutResult.usage.toolCalls
+      accLatencyMs += scoutResult.latencyMs
+
+      lastScoutResult = { ...scoutResult, usage: accUsage, latencyMs: accLatencyMs }
 
       const raw = extractJson(scoutResult.text ?? "")
       const validation = AIContentSchema.safeParse(raw)
