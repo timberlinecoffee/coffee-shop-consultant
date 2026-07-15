@@ -28,6 +28,7 @@ import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/li
 import { normalizeMarketing } from "@/lib/marketing"
 import { normalizeConceptV2 } from "@/lib/concept"
 import { menuItemMixWeight } from "@/lib/financial-projection"
+import { VENDOR_CATEGORY_LABELS } from "@/lib/suppliers"
 import type { NextRequest } from "next/server"
 import type { ScoutLane } from "@/lib/ai/scout-lane"
 
@@ -640,28 +641,12 @@ ${JSON_SCHEMA_INSTRUCTION}`
 
 // ── Suppliers data loader (TIM-3890) ─────────────────────────────────────────
 
-const SUPPLIER_CATEGORY_LABELS: Record<string, string> = {
-  coffee_roaster: "Coffee Roaster",
-  dairy_altmilk: "Dairy & Alt-Milk",
-  bakery: "Bakery",
-  syrups_sauces: "Syrups & Sauces",
-  tea: "Tea",
-  packaging: "Packaging",
-  cleaning_chemicals: "Cleaning & Chemicals",
-  equipment_service: "Equipment Service",
-  other: "Other",
-}
-
 async function loadSuppliersCategoryContext(
   supabase: SupabaseClient,
   planId: string,
   categoryId: string,
 ): Promise<string> {
-  const categoryLabel = categoryId.startsWith("custom:")
-    ? categoryId.slice(7).replace(/[-_]/g, " ")
-    : (SUPPLIER_CATEGORY_LABELS[categoryId] ?? categoryId)
-
-  const [candidatesResult, conceptResult, decisionResult] = await Promise.all([
+  const [candidatesResult, conceptResult, decisionResult, customCatResult] = await Promise.all([
     supabase
       .from("vendor_candidates")
       .select("name, contact, price_per_unit, minimum_order, lead_time, notes, status")
@@ -682,10 +667,26 @@ async function loadSuppliersCategoryContext(
       .eq("category", categoryId)
       .eq("is_current", true)
       .maybeSingle(),
+    categoryId.startsWith("custom:")
+      ? supabase
+          .from("vendor_custom_categories")
+          .select("label")
+          .eq("plan_id", planId)
+          .eq("key", categoryId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ])
+
+  if (candidatesResult.error) {
+    throw new Error(`vendor_candidates query failed: ${candidatesResult.error.message}`)
+  }
 
   const candidates = candidatesResult.data ?? []
   if (candidates.length === 0) return ""
+
+  const categoryLabel = categoryId.startsWith("custom:")
+    ? (customCatResult.data?.label ?? categoryId.slice(7).replace(/[-_]/g, " "))
+    : (VENDOR_CATEGORY_LABELS[categoryId as keyof typeof VENDOR_CATEGORY_LABELS] ?? categoryId)
 
   const concept = normalizeConceptV2(conceptResult.data?.content)
   const conceptBits: string[] = []

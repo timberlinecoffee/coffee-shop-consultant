@@ -204,6 +204,9 @@ export function SuppliersWorkspace({
   const [categoryAnalyseLoading, setCategoryAnalyseLoading] = useState(false);
   const [categoryAnalyseError, setCategoryAnalyseError] = useState("");
   const categoryAnalyseInFlightRef = useRef(false);
+  // Tracks the category for which the in-flight request was started, to guard against
+  // stale results being painted when the user switches category mid-flight.
+  const categoryAnalyseForRef = useRef<VendorCategoryId | null>(null);
 
   const { promoteOnEdit } = useWorkspaceStatus();
   const { saving: mutationSaving, savedAt: mutationSavedAt, confirmSaved } = useMutationStatus();
@@ -274,17 +277,22 @@ export function SuppliersWorkspace({
   // TIM-3890: Analyse handler — mirrors LocationCard.runPropertyAnalyse pattern.
   const runCategoryAnalyse = useCallback(async () => {
     if (!canEdit || categoryAnalyseInFlightRef.current) return;
+    const snapshotCategory = activeCategory;
     categoryAnalyseInFlightRef.current = true;
+    categoryAnalyseForRef.current = snapshotCategory;
     setCategoryAnalyseLoading(true);
     setCategoryAnalyseError("");
-    setCategoryAnalyseResult(null);
+    // Do NOT null the result here — keep the previous result visible as context while
+    // regenerating. The useEffect nulls it on a real category switch.
     try {
       const res = await fetch("/api/ai/analyse/suppliers-category", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ categoryId: activeCategory }),
+        body: JSON.stringify({ categoryId: snapshotCategory }),
       });
       const data: unknown = await res.json();
+      // Guard: discard the result if the user switched category while in-flight.
+      if (categoryAnalyseForRef.current !== snapshotCategory) return;
       if (!res.ok) {
         const errBody = data as { error?: string } | null;
         setCategoryAnalyseError(errBody?.error ?? "Analysis failed. Please try again.");
@@ -292,7 +300,9 @@ export function SuppliersWorkspace({
       }
       setCategoryAnalyseResult(data as AnalyseResponse);
     } catch {
-      setCategoryAnalyseError("Connection error. Please try again.");
+      if (categoryAnalyseForRef.current === snapshotCategory) {
+        setCategoryAnalyseError("Connection error. Please try again.");
+      }
     } finally {
       setCategoryAnalyseLoading(false);
       categoryAnalyseInFlightRef.current = false;
