@@ -1461,7 +1461,7 @@ export function OpeningMonthPlanWorkspace({
               headingLevel={2}
               aiActions={[
                 { kind: "analyse", onClick: runMilestonesAnalyse, disabled: milestonesAnalyseLoading },
-                { kind: "write", onClick: handleGenerateMilestones, disabled: generating || !canEdit },
+                { kind: "write", onClick: handleGenerateMilestones, disabled: generating || !canEdit || !launchDateInput },
               ] satisfies AiAction[]}
             />
             {milestonesAnalyseError && (
