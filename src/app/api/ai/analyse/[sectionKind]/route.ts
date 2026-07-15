@@ -508,6 +508,14 @@ ${JSON_SCHEMA_INSTRUCTION}`
 
 // ── Financials COGS data loaders (TIM-3887) ──────────────────────────────────
 
+// Popularity weight — mirrors menuItemMixWeight() in financial-projection.ts.
+// Inlined to avoid importing a client-only module into a server route.
+function cogsItemMixWeight(popularity: string | null | undefined): number {
+  if (popularity === "high") return 3
+  if (popularity === "medium") return 2
+  return 1
+}
+
 async function loadCogsMenuContext(
   supabase: SupabaseClient,
   planId: string,
@@ -520,7 +528,8 @@ async function loadCogsMenuContext(
       .maybeSingle(),
     supabase
       .from("menu_items_with_cogs")
-      .select("id, name, category_name, computed_cogs_cents, expected_popularity")
+      // category_id is the key used in menu_cogs_category_units — must be included.
+      .select("id, name, category_id, category_name, computed_cogs_cents, expected_popularity")
       .eq("plan_id", planId)
       .eq("archived", false)
       .order("category_name"),
@@ -529,42 +538,45 @@ async function loadCogsMenuContext(
   if (!menuItems || menuItems.length === 0) return ""
 
   const inputs = (model?.forecast_inputs ?? {}) as Record<string, unknown>
+  // menu_cogs_category_units keys are category_id (UUID) or "__uncategorized__" —
+  // mirrors computeCogsGrandTotalMonthlyCents in financial-projection.ts.
   const categoryUnits = (inputs.menu_cogs_category_units ?? {}) as Record<string, number>
   const currencyCode = typeof inputs.currency_code === "string" ? inputs.currency_code : "USD"
 
-  // Group items by category to compute totals per category.
-  const categoryMap = new Map<string, { name: string; items: typeof menuItems; units: number }>()
+  // Group by category_id (the key used in the financial model), store category_name for display.
+  type CatEntry = { displayName: string; items: typeof menuItems; units: number }
+  const categoryMap = new Map<string, CatEntry>()
   for (const item of menuItems) {
-    const catKey = item.category_name ?? "Uncategorized"
-    const entry = categoryMap.get(catKey) ?? { name: catKey, items: [] as typeof menuItems, units: 0 }
+    const idKey = item.category_id ?? "__uncategorized__"
+    const entry = categoryMap.get(idKey) ?? {
+      displayName: item.category_name ?? "Uncategorized",
+      items: [] as typeof menuItems,
+      units: categoryUnits[idKey] ?? 0,
+    }
     entry.items.push(item)
-    entry.units = categoryUnits[catKey] ?? 0
-    categoryMap.set(catKey, entry)
+    categoryMap.set(idKey, entry)
   }
 
+  let totalMonthlyCents = 0
   const categoryLines: string[] = []
   for (const [, cat] of categoryMap) {
-    const avgCogsCents =
-      cat.items.length > 0
-        ? Math.round(cat.items.reduce((s, it) => s + (it.computed_cogs_cents ?? 0), 0) / cat.items.length)
+    // Popularity-weighted COGS — mirrors computeCategoryMonthlyCogsCents in financial-projection.ts.
+    const totalWeight = cat.items.reduce((s, it) => s + cogsItemMixWeight(it.expected_popularity), 0)
+    const monthlyCostCents =
+      totalWeight > 0 && cat.units > 0
+        ? Math.round(
+            cat.items.reduce((sum, it) => {
+              const w = cogsItemMixWeight(it.expected_popularity)
+              return sum + (cat.units * w / totalWeight) * (it.computed_cogs_cents ?? 0)
+            }, 0),
+          )
         : 0
-    const monthlyCostCents = cat.units * avgCogsCents
-    const line = `- ${cat.name}: ${cat.items.length} item${cat.items.length !== 1 ? "s" : ""}, avg COGS ${(avgCogsCents / 100).toFixed(2)} ${currencyCode}/unit, ${cat.units} units/mo sold → ${(monthlyCostCents / 100).toFixed(0)} ${currencyCode}/mo`
+    totalMonthlyCents += monthlyCostCents
+    const line = `- ${cat.displayName}: ${cat.items.length} item${cat.items.length !== 1 ? "s" : ""}, ${cat.units} units/mo sold → ${(monthlyCostCents / 100).toFixed(0)} ${currencyCode}/mo`
     categoryLines.push(line)
   }
 
   const totalItems = menuItems.length
-  const totalMonthlyCents = [...categoryMap.values()].reduce(
-    (s, cat) =>
-      s +
-      cat.units *
-        Math.round(
-          cat.items.length > 0
-            ? cat.items.reduce((ss, it) => ss + (it.computed_cogs_cents ?? 0), 0) / cat.items.length
-            : 0,
-        ),
-    0,
-  )
 
   return `Analyse the menu-driven Cost of Goods Sold for this coffee shop.
 
@@ -608,7 +620,9 @@ async function loadCogsAdditionalContext(
 
   if (itemLines.length === 0) return ""
 
-  const totalCents = additionalItems.reduce((s, it) => s + (it.monthly_cost_cents ?? 0), 0)
+  // Sum only named items — matches the itemLines filter above.
+  const namedItems = additionalItems.filter((it) => it.name?.trim())
+  const totalCents = namedItems.reduce((s, it) => s + (it.monthly_cost_cents ?? 0), 0)
 
   return `Analyse the additional (non-menu) Cost of Goods for this coffee shop.
 
