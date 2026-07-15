@@ -31,7 +31,7 @@ import {
   WORKSPACE_ACTION_ICON_SIZE,
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
-import { SectionHeader } from "@/components/section-header";
+import { SectionHeader, type AiAction } from "@/components/section-header";
 import {
   type OperationsPlaybookDocument,
   type SopCategoryKey,
@@ -227,6 +227,42 @@ export function OperationsPlaybookWorkspace({
     [],
   );
 
+  // TIM-3902: Generate handler for Write-with-AI buttons. Calls the existing
+  // /generate endpoint and replaces the doc with the AI result; autosave picks
+  // up the diff. Concurrent generates are blocked via ref to avoid a race
+  // where two rapid clicks double-charge the AI call.
+  const generatingRef = useRef(false);
+  const generateSection = useCallback(
+    async (section: GeneratableSection) => {
+      if (!canEdit || generatingRef.current) return;
+      generatingRef.current = true;
+      setGenerating(section);
+      try {
+        const res = await fetch("/api/workspaces/operations_playbook/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ section }),
+        });
+        if (res.status === 402) {
+          const body = await res.json().catch(() => null);
+          setPaywallReason(body?.reason ?? "no_subscription");
+          return;
+        }
+        if (!res.ok) return;
+        const data = (await res.json()) as { content?: OperationsPlaybookDocument };
+        if (data?.content) {
+          setDoc(data.content);
+        }
+      } catch {
+        // server-side error — no raw stack trace to client (Rule 5)
+      } finally {
+        generatingRef.current = false;
+        setGenerating(null);
+      }
+    },
+    [canEdit],
+  );
+
   // Section statuses for progress bar
   const statuses = OPERATIONS_SECTION_KEYS.map((key) =>
     getSectionStatus(doc, key, initialRecipeCards.length),
@@ -312,6 +348,17 @@ export function OperationsPlaybookWorkspace({
                         canEdit={canEdit}
                         doc={doc}
                         updateDoc={updateDoc}
+                        aiActions={
+                          canEdit
+                            ? [
+                                {
+                                  kind: "write" as const,
+                                  onClick: () => generateSection(key as SopCategoryKey),
+                                  disabled: generating === key,
+                                },
+                              ]
+                            : undefined
+                        }
                       />
                     )}
 
@@ -326,6 +373,17 @@ export function OperationsPlaybookWorkspace({
                         canEdit={canEdit}
                         doc={doc}
                         updateDoc={updateDoc}
+                        aiActions={
+                          canEdit
+                            ? [
+                                {
+                                  kind: "write" as const,
+                                  onClick: () => generateSection("roles"),
+                                  disabled: generating === "roles",
+                                },
+                              ]
+                            : undefined
+                        }
                       />
                     )}
 
@@ -346,6 +404,17 @@ export function OperationsPlaybookWorkspace({
                         canEdit={canEdit}
                         doc={doc}
                         updateDoc={updateDoc}
+                        aiActions={
+                          canEdit
+                            ? [
+                                {
+                                  kind: "write" as const,
+                                  onClick: () => generateSection("training"),
+                                  disabled: generating === "training",
+                                },
+                              ]
+                            : undefined
+                        }
                       />
                     )}
                   </AccordionSection>
@@ -377,6 +446,7 @@ interface CategoryEditorProps {
   canEdit: boolean;
   doc: OperationsPlaybookDocument;
   updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
+  aiActions?: AiAction[];
 }
 
 function CategoryEditor({
@@ -386,6 +456,7 @@ function CategoryEditor({
   canEdit,
   doc,
   updateDoc,
+  aiActions,
 }: CategoryEditorProps) {
   const category = doc[categoryKey];
   const useStation = categoryKey === "cleaning";
@@ -458,7 +529,7 @@ function CategoryEditor({
 
   return (
     <div>
-      <SectionHeader title={label} helpContent={tagline} />
+      <SectionHeader title={label} helpContent={tagline} aiActions={aiActions} />
 
       <div className="mb-5">
         {/* TIM-1477: helper one-liner moved into a "?" popup beside the
@@ -946,12 +1017,14 @@ function RolesEditor({
   canEdit,
   doc,
   updateDoc,
+  aiActions,
 }: {
   label: string;
   tagline: string;
   canEdit: boolean;
   doc: OperationsPlaybookDocument;
   updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
+  aiActions?: AiAction[];
 }) {
   const section = doc.roles;
 
@@ -994,7 +1067,7 @@ function RolesEditor({
 
   return (
     <div>
-      <SectionHeader title={label} helpContent={tagline} className="mb-2" />
+      <SectionHeader title={label} helpContent={tagline} aiActions={aiActions} className="mb-2" />
       <div className="flex items-center gap-2 flex-wrap mb-4">
         <Link
           href="/workspace/operations-playbook/print?doc=roles"
@@ -1330,12 +1403,14 @@ function TrainingEditor({
   canEdit,
   doc,
   updateDoc,
+  aiActions,
 }: {
   label: string;
   tagline: string;
   canEdit: boolean;
   doc: OperationsPlaybookDocument;
   updateDoc: (mut: (d: OperationsPlaybookDocument) => OperationsPlaybookDocument) => void;
+  aiActions?: AiAction[];
 }) {
   const section = doc.training;
 
@@ -1387,7 +1462,7 @@ function TrainingEditor({
 
   return (
     <div>
-      <SectionHeader title={label} helpContent={tagline} className="mb-2" />
+      <SectionHeader title={label} helpContent={tagline} aiActions={aiActions} className="mb-2" />
       <div className="flex items-center gap-2 flex-wrap mb-4">
         <Link
           href="/workspace/operations-playbook/print?doc=training"
