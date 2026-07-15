@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { SectionHeader } from "@/components/section-header";
+import { InlineAnalysisCard } from "@/components/location-lease/InlineAnalysisCard";
+import type { AnalyseResponse } from "@/components/location-lease/InlineAnalysisCard";
 import { SectionSubtotalRow, GrandTotalRow } from "@/lib/workspace-table-rows";
 import {
   TABLE_CELL_TEXT,
@@ -59,6 +61,10 @@ interface MenuCogsSyncSectionProps {
   isRefreshing: boolean;
   onSync: () => void;
   currencyCode: string;
+  onAnalyse?: () => void;
+  analyseLoading?: boolean;
+  analyseError?: string | null;
+  analyseResult?: AnalyseResponse | null;
 }
 
 export function MenuCogsSyncSection({
@@ -70,6 +76,10 @@ export function MenuCogsSyncSection({
   isRefreshing,
   onSync,
   currencyCode,
+  onAnalyse,
+  analyseLoading,
+  analyseError,
+  analyseResult,
 }: MenuCogsSyncSectionProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
@@ -103,6 +113,7 @@ export function MenuCogsSyncSection({
             recipes there.
           </p>
         }
+        aiActions={onAnalyse ? [{ kind: "analyse", onClick: onAnalyse, disabled: analyseLoading ?? false }] : undefined}
         className="mb-2"
       />
 
@@ -262,6 +273,21 @@ export function MenuCogsSyncSection({
           </div>
         </div>
       )}
+
+      {analyseError && (
+        <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+          <p className="text-xs text-red-700">{analyseError}</p>
+        </div>
+      )}
+      {analyseResult && onAnalyse && (
+        <div className="mt-3">
+          <InlineAnalysisCard
+            result={analyseResult}
+            loading={analyseLoading ?? false}
+            onRegenerate={onAnalyse}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -273,6 +299,10 @@ interface AdditionalCogsSectionProps {
   items: AdditionalCogsItem[];
   onItemsChange: (items: AdditionalCogsItem[]) => void;
   currencyCode: string;
+  onAnalyse?: () => void;
+  analyseLoading?: boolean;
+  analyseError?: string | null;
+  analyseResult?: AnalyseResponse | null;
 }
 
 export function AdditionalCogsSection({
@@ -280,6 +310,10 @@ export function AdditionalCogsSection({
   items,
   onItemsChange,
   currencyCode,
+  onAnalyse,
+  analyseLoading,
+  analyseError,
+  analyseResult,
 }: AdditionalCogsSectionProps) {
   const [draft, setDraft] = useState<AdditionalCogsItem | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -318,6 +352,7 @@ export function AdditionalCogsSection({
             These are added here and do not appear in your Menu workspace.
           </p>
         }
+        aiActions={onAnalyse ? [{ kind: "analyse", onClick: onAnalyse, disabled: analyseLoading ?? false }] : undefined}
         className="mb-2"
       />
 
@@ -480,6 +515,21 @@ export function AdditionalCogsSection({
           </button>
         )}
       </div>
+
+      {analyseError && (
+        <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+          <p className="text-xs text-red-700">{analyseError}</p>
+        </div>
+      )}
+      {analyseResult && onAnalyse && (
+        <div className="mt-3">
+          <InlineAnalysisCard
+            result={analyseResult}
+            loading={analyseLoading ?? false}
+            onRegenerate={onAnalyse}
+          />
+        </div>
+      )}
     </div>
   );
 }

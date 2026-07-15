@@ -577,6 +577,14 @@ function ForecastTab({
   isRefreshingMenu,
   onRefreshEquipment,
   isRefreshingEquipment,
+  onCogsMenuAnalyse,
+  cogsMenuAnalyseLoading,
+  cogsMenuAnalyseError,
+  cogsMenuAnalyseResult,
+  onCogsAdditionalAnalyse,
+  cogsAdditionalAnalyseLoading,
+  cogsAdditionalAnalyseError,
+  cogsAdditionalAnalyseResult,
 }: {
   mp: MonthlyProjections;
   canEdit: boolean;
@@ -598,6 +606,15 @@ function ForecastTab({
   isRefreshingMenu?: boolean;
   onRefreshEquipment?: () => void;
   isRefreshingEquipment?: boolean;
+  // TIM-3887: Analyse-with-AI for COGS sections.
+  onCogsMenuAnalyse?: () => void;
+  cogsMenuAnalyseLoading?: boolean;
+  cogsMenuAnalyseError?: string | null;
+  cogsMenuAnalyseResult?: import("@/components/location-lease/InlineAnalysisCard").AnalyseResponse | null;
+  onCogsAdditionalAnalyse?: () => void;
+  cogsAdditionalAnalyseLoading?: boolean;
+  cogsAdditionalAnalyseError?: string | null;
+  cogsAdditionalAnalyseResult?: import("@/components/location-lease/InlineAnalysisCard").AnalyseResponse | null;
 }) {
   function update(partial: Partial<MonthlyProjections>) {
     onUpdateMp({ ...mp, ...partial });
@@ -952,12 +969,20 @@ function ForecastTab({
                   update({ menu_cogs_synced_at: new Date().toISOString() });
                 }}
                 currencyCode={mp.currency_code ?? "USD"}
+                onAnalyse={onCogsMenuAnalyse}
+                analyseLoading={cogsMenuAnalyseLoading}
+                analyseError={cogsMenuAnalyseError}
+                analyseResult={cogsMenuAnalyseResult}
               />
               <AdditionalCogsSection
                 canEdit={canEdit}
                 items={mp.additional_cogs_items ?? []}
                 onItemsChange={(items) => update({ additional_cogs_items: items })}
                 currencyCode={mp.currency_code ?? "USD"}
+                onAnalyse={onCogsAdditionalAnalyse}
+                analyseLoading={cogsAdditionalAnalyseLoading}
+                analyseError={cogsAdditionalAnalyseError}
+                analyseResult={cogsAdditionalAnalyseResult}
               />
               <CogsSectionsGrandTotal
                 menuSubtotalCents={menuCogsByCategory.reduce((sum, g) => {
@@ -1929,6 +1954,60 @@ export function FinancialsWorkspace({
   const [isRefreshingMenu, setIsRefreshingMenu] = useState(false);
   const [isRefreshingEquipment, setIsRefreshingEquipment] = useState(false);
 
+  // TIM-3887: Analyse-with-AI state for COGS sections.
+  const [cogsMenuAnalyseLoading, setCogsMenuAnalyseLoading] = useState(false);
+  const [cogsMenuAnalyseError, setCogsMenuAnalyseError] = useState<string | null>(null);
+  const [cogsMenuAnalyseResult, setCogsMenuAnalyseResult] = useState<import("@/components/location-lease/InlineAnalysisCard").AnalyseResponse | null>(null);
+  const [cogsAdditionalAnalyseLoading, setCogsAdditionalAnalyseLoading] = useState(false);
+  const [cogsAdditionalAnalyseError, setCogsAdditionalAnalyseError] = useState<string | null>(null);
+  const [cogsAdditionalAnalyseResult, setCogsAdditionalAnalyseResult] = useState<import("@/components/location-lease/InlineAnalysisCard").AnalyseResponse | null>(null);
+
+  const handleCogsMenuAnalyse = useCallback(async () => {
+    setCogsMenuAnalyseLoading(true);
+    setCogsMenuAnalyseError(null);
+    setCogsMenuAnalyseResult(null);
+    try {
+      const res = await fetch("/api/ai/analyse/financials-cogs-menu", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        let msg = "Analysis failed — please try again.";
+        try { msg = (await res.json())?.error ?? msg; } catch { /* non-JSON body */ }
+        setCogsMenuAnalyseError(msg);
+      } else {
+        setCogsMenuAnalyseResult(await res.json());
+      }
+    } catch {
+      setCogsMenuAnalyseError("Analysis failed — please try again.");
+    }
+    setCogsMenuAnalyseLoading(false);
+  }, []);
+
+  const handleCogsAdditionalAnalyse = useCallback(async () => {
+    setCogsAdditionalAnalyseLoading(true);
+    setCogsAdditionalAnalyseError(null);
+    setCogsAdditionalAnalyseResult(null);
+    try {
+      const res = await fetch("/api/ai/analyse/financials-cogs-additional", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        let msg = "Analysis failed — please try again.";
+        try { msg = (await res.json())?.error ?? msg; } catch { /* non-JSON body */ }
+        setCogsAdditionalAnalyseError(msg);
+      } else {
+        setCogsAdditionalAnalyseResult(await res.json());
+      }
+    } catch {
+      setCogsAdditionalAnalyseError("Analysis failed — please try again.");
+    }
+    setCogsAdditionalAnalyseLoading(false);
+  }, []);
+
   const handleRefreshMenu = useCallback(async () => {
     setIsRefreshingMenu(true);
     try {
@@ -2564,6 +2643,14 @@ export function FinancialsWorkspace({
             isRefreshingMenu={isRefreshingMenu}
             onRefreshEquipment={handleRefreshEquipment}
             isRefreshingEquipment={isRefreshingEquipment}
+            onCogsMenuAnalyse={handleCogsMenuAnalyse}
+            cogsMenuAnalyseLoading={cogsMenuAnalyseLoading}
+            cogsMenuAnalyseError={cogsMenuAnalyseError}
+            cogsMenuAnalyseResult={cogsMenuAnalyseResult}
+            onCogsAdditionalAnalyse={handleCogsAdditionalAnalyse}
+            cogsAdditionalAnalyseLoading={cogsAdditionalAnalyseLoading}
+            cogsAdditionalAnalyseError={cogsAdditionalAnalyseError}
+            cogsAdditionalAnalyseResult={cogsAdditionalAnalyseResult}
           />
         )}
         {activeTab === "personnel" && (
