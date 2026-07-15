@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lightbulb, Printer, Sparkles } from "lucide-react";
+import { AlertCircle, Lightbulb, Printer, Sparkles } from "lucide-react";
 import { CollapseButton } from "@/components/ui/CollapseButton";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
@@ -23,6 +23,9 @@ import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal"
 import { SaveIndicator } from "@/components/ui/save-indicator";
 import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-textarea";
 import { SectionHeader } from "@/components/section-header/SectionHeader";
+import type { AiAction } from "@/components/section-header/SectionHeader";
+import { InlineAnalysisCard } from "@/components/ai-analyse/InlineAnalysisCard";
+import type { AnalyseResponse } from "@/components/ai-analyse/InlineAnalysisCard";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { useUiRevamp } from "@/hooks/useUiRevamp";
@@ -103,6 +106,17 @@ export function ConceptWorkspace({
   );
   const [paywallOpen, setPaywallOpen] = useState(false);
 
+  // TIM-3894: Analyse-with-AI state for Differentiation and Nearby Competitors.
+  const [diffAnalyseResult, setDiffAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [diffAnalyseLoading, setDiffAnalyseLoading] = useState(false);
+  const [diffAnalyseError, setDiffAnalyseError] = useState<string | null>(null);
+  const diffAnalyseInFlight = useRef(false);
+
+  const [compAnalyseResult, setCompAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [compAnalyseLoading, setCompAnalyseLoading] = useState(false);
+  const [compAnalyseError, setCompAnalyseError] = useState<string | null>(null);
+  const compAnalyseInFlight = useRef(false);
+
   const inFlightController = useRef<AbortController | null>(null);
   const pendingSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestDocRef = useRef<ConceptDocumentV2>(initialDoc);
@@ -115,6 +129,69 @@ export function ConceptWorkspace({
   // AIAssistCallout draft-modal unmount (`onClose()` runs immediately after
   // `openAIReviewModal()` when the stream completes).
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
+
+  // TIM-3894: Analyse handlers for Differentiation and Nearby Competitors.
+  const runDiffAnalyse = useCallback(async () => {
+    if (diffAnalyseInFlight.current) return;
+    diffAnalyseInFlight.current = true;
+    setDiffAnalyseLoading(true);
+    setDiffAnalyseError(null);
+    try {
+      const res = await fetch("/api/ai/analyse/concept-differentiation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok) {
+        const msg =
+          res.status === 402
+            ? "Pro plan required for AI analysis."
+            : typeof data.error === "string"
+            ? data.error
+            : "Analysis failed. Please try again.";
+        setDiffAnalyseError(msg);
+        return;
+      }
+      setDiffAnalyseResult(data as AnalyseResponse);
+    } catch {
+      setDiffAnalyseError("Connection error. Please try again.");
+    } finally {
+      setDiffAnalyseLoading(false);
+      diffAnalyseInFlight.current = false;
+    }
+  }, []);
+
+  const runCompAnalyse = useCallback(async () => {
+    if (compAnalyseInFlight.current) return;
+    compAnalyseInFlight.current = true;
+    setCompAnalyseLoading(true);
+    setCompAnalyseError(null);
+    try {
+      const res = await fetch("/api/ai/analyse/concept-competitors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok) {
+        const msg =
+          res.status === 402
+            ? "Pro plan required for AI analysis."
+            : typeof data.error === "string"
+            ? data.error
+            : "Analysis failed. Please try again.";
+        setCompAnalyseError(msg);
+        return;
+      }
+      setCompAnalyseResult(data as AnalyseResponse);
+    } catch {
+      setCompAnalyseError("Connection error. Please try again.");
+    } finally {
+      setCompAnalyseLoading(false);
+      compAnalyseInFlight.current = false;
+    }
+  }, []);
 
   const progress = useMemo(() => getConceptV2Progress(doc), [doc]);
   const complete = useMemo(() => isConceptV2Complete(doc), [doc]);
@@ -440,21 +517,39 @@ export function ConceptWorkspace({
                 className="group rounded-xl border border-[var(--border)] bg-white transition-all duration-200 overflow-hidden focus-within:ring-1 focus-within:ring-[var(--teal)]/30"
               >
                 <div className="px-5 pt-5 pb-4">
-                  {/* TIM-3350: canonical SectionHeader replaces Pattern C inline JSX */}
+                  {/* TIM-3350: canonical SectionHeader replaces Pattern C inline JSX.
+                      TIM-3894: migrated from onWriteWithAi → aiActions. Differentiation
+                      gets [Analyse][Write]; all others get [Write] only. Personas (target_customer)
+                      now includes Write at section level (previously suppressed). */}
                   <SectionHeader
                     title={meta.label}
                     helpContent={meta.hint}
-                    onWriteWithAi={
-                      meta.id !== "target_customer" && canEdit
-                        ? () =>
-                            setAiAssistField({
-                              fieldKey: meta.id,
-                              label: meta.label,
-                              currentValue: latestDocRef.current.components[meta.id].content,
-                              onApply: (newValue) => updateContent(meta.id, newValue),
-                            })
-                        : undefined
-                    }
+                    aiActions={[
+                      ...(meta.id === "differentiation"
+                        ? [
+                            {
+                              kind: "analyse" as const,
+                              onClick: runDiffAnalyse,
+                              disabled: diffAnalyseLoading,
+                            } satisfies AiAction,
+                          ]
+                        : []),
+                      ...(canEdit
+                        ? [
+                            {
+                              kind: "write" as const,
+                              onClick: () =>
+                                setAiAssistField({
+                                  fieldKey: meta.id,
+                                  label: meta.label,
+                                  currentValue:
+                                    latestDocRef.current.components[meta.id].content,
+                                  onApply: (newValue) => updateContent(meta.id, newValue),
+                                }),
+                            } satisfies AiAction,
+                          ]
+                        : []),
+                    ]}
                     className="mb-1"
                   />
                   {(FIELD_EXAMPLES[meta.id as FieldExampleKey] ?? []).length > 0 && (
@@ -583,6 +678,42 @@ export function ConceptWorkspace({
                       {meta.emptyPrompt}
                     </p>
                   )}
+
+                  {/* TIM-3894: Differentiation analysis result */}
+                  {meta.id === "differentiation" && diffAnalyseError && (
+                    <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+                      <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" aria-hidden="true" />
+                      <p className="text-xs text-red-700">{diffAnalyseError}</p>
+                    </div>
+                  )}
+                  {meta.id === "differentiation" && diffAnalyseResult && (
+                    <div className="mt-3">
+                      <InlineAnalysisCard
+                        result={diffAnalyseResult}
+                        loading={diffAnalyseLoading}
+                        onRegenerate={runDiffAnalyse}
+                        onViewRecommendation={(text: string, actionRef: string) =>
+                          openAIReviewModal({
+                            suggestions: [
+                              {
+                                id: `concept-diff-rec-${actionRef}`,
+                                fieldId: actionRef,
+                                fieldLabel: "Recommendation",
+                                originalValue: "",
+                                proposedValue: text,
+                                isStructured: false,
+                              },
+                            ],
+                            context: {
+                              workspace: "Concept",
+                              section: "Differentiation — Analysis",
+                            },
+                            onApply: async () => {},
+                          })
+                        }
+                      />
+                    </div>
+                  )}
                 </div>
 
               </div>
@@ -593,9 +724,17 @@ export function ConceptWorkspace({
         {/* ── Competitors card (TIM-2346) ──────────────────── */}
         <div className="mt-4 group rounded-xl border border-[var(--border)] bg-white transition-all duration-200 overflow-hidden focus-within:ring-1 focus-within:ring-[var(--teal)]/30">
           <div className="px-5 pt-5 pb-4">
+            {/* TIM-3894: Analyse action on Nearby Competitors */}
             <SectionHeader
               title="Nearby competitors"
               helpContent="Name the specific shops that compete for your customers. The business plan will only cite competitors you list here — it will not invent names. Leave blank and the plan discusses competition qualitatively."
+              aiActions={[
+                {
+                  kind: "analyse" as const,
+                  onClick: runCompAnalyse,
+                  disabled: compAnalyseLoading,
+                } satisfies AiAction,
+              ]}
             />
             <CompetitorSection
               competitors={doc.competitors ?? []}
@@ -604,6 +743,41 @@ export function ConceptWorkspace({
               onUpdateCompetitors={updateCompetitors}
               onToggleNoDirectCompetitors={toggleNoDirectCompetitors}
             />
+            {/* TIM-3894: Competitors analysis result */}
+            {compAnalyseError && (
+              <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+                <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" aria-hidden="true" />
+                <p className="text-xs text-red-700">{compAnalyseError}</p>
+              </div>
+            )}
+            {compAnalyseResult && (
+              <div className="mt-3">
+                <InlineAnalysisCard
+                  result={compAnalyseResult}
+                  loading={compAnalyseLoading}
+                  onRegenerate={runCompAnalyse}
+                  onViewRecommendation={(text: string, actionRef: string) =>
+                    openAIReviewModal({
+                      suggestions: [
+                        {
+                          id: `concept-comp-rec-${actionRef}`,
+                          fieldId: actionRef,
+                          fieldLabel: "Recommendation",
+                          originalValue: "",
+                          proposedValue: text,
+                          isStructured: false,
+                        },
+                      ],
+                      context: {
+                        workspace: "Concept",
+                        section: "Nearby Competitors — Analysis",
+                      },
+                      onApply: async () => {},
+                    })
+                  }
+                />
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 // TIM-3878: POST /api/ai/analyse/<sectionKind>
 // Phase 3 of TIM-3870 — structured AI analysis for location-property,
 // location-shortlist, and lease-terms sections. Pro plan only.
+// TIM-3894: Concept workspace — concept-differentiation, concept-competitors.
 //
 // Rule 1 (RLS): No new tables. Reads only existing tables that already have
 //   RLS enabled (location_candidates, location_rubric_scores, location_lease_terms,
@@ -33,7 +34,13 @@ export const maxDuration = 60
 
 const ROUTE_PATH = "/api/ai/analyse/[sectionKind]"
 
-const SECTION_KINDS = ["location-property", "location-shortlist", "lease-terms"] as const
+const SECTION_KINDS = [
+  "location-property",
+  "location-shortlist",
+  "lease-terms",
+  "concept-differentiation",
+  "concept-competitors",
+] as const
 type SectionKind = (typeof SECTION_KINDS)[number]
 
 function isSectionKind(v: string): v is SectionKind {
@@ -44,6 +51,8 @@ const LANE_BY_KIND: Record<SectionKind, ScoutLane> = {
   "location-property": "analyse_location_property",
   "location-shortlist": "analyse_location_shortlist",
   "lease-terms": "analyse_lease_terms",
+  "concept-differentiation": "analyse_concept_differentiation",
+  "concept-competitors": "analyse_concept_competitors",
 }
 
 // ── AnalyseResponse Zod schema (locked per TIM-3878 spec) ────────────────────
@@ -394,6 +403,111 @@ ${JSON_SCHEMA_INSTRUCTION}`
   return { owned: true, prompt }
 }
 
+// ── TIM-3894: Concept workspace context loaders ───────────────────────────────
+
+type ConceptComponentsRow = {
+  components?: Record<string, { content?: string }>
+  personas?: Array<{ name?: string; whyTheyVisit?: string }>
+  competitors?: Array<{ name?: string; address?: string }>
+  no_direct_competitors_identified?: boolean
+}
+
+async function loadConceptDoc(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<ConceptComponentsRow | null> {
+  const { data: doc } = await supabase
+    .from("workspace_documents")
+    .select("content")
+    .eq("plan_id", planId)
+    .eq("workspace_key", "concept")
+    .maybeSingle()
+
+  if (!doc?.content) return null
+  return doc.content as ConceptComponentsRow
+}
+
+function conceptField(doc: ConceptComponentsRow, key: string): string {
+  return (doc.components?.[key]?.content ?? "").trim()
+}
+
+async function loadDifferentiationContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const doc = await loadConceptDoc(supabase, planId)
+  if (!doc) return ""
+
+  const differentiation = conceptField(doc, "differentiation")
+  if (!differentiation) return ""
+
+  const contextFields: string[] = []
+  const shopName = conceptField(doc, "shop_identity")
+  if (shopName) contextFields.push(`Shop name: ${shopName}`)
+  const vision = conceptField(doc, "vision")
+  if (vision) contextFields.push(`Vision: ${vision}`)
+  const brandVoice = conceptField(doc, "brand_voice")
+  if (brandVoice) contextFields.push(`Brand voice: ${brandVoice}`)
+  const offering = conceptField(doc, "offering")
+  if (offering) contextFields.push(`Offering: ${offering}`)
+  const location = conceptField(doc, "location")
+  if (location) contextFields.push(`Location context: ${location}`)
+
+  const personas = (doc.personas ?? [])
+    .map((p) => p.name?.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+  if (personas.length > 0) contextFields.push(`Target personas: ${personas.join(", ")}`)
+
+  return `Analyse the differentiation strategy for this coffee shop concept.
+
+Differentiation statement: ${differentiation}
+${contextFields.length > 0 ? `\nContext:\n${contextFields.map((f) => `  ${f}`).join("\n")}` : ""}
+
+Evaluate: how distinctive and defensible this differentiation is, whether competitors in a typical coffee market could easily replicate it, how well it aligns with the stated vision and target customers, and what the owner can do to sharpen or reinforce it. Weight concerns by severity (critical = core risk to the business model, warn = should address before launch, info = useful refinement).
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
+async function loadCompetitorsContext(
+  supabase: SupabaseClient,
+  planId: string,
+): Promise<string> {
+  const doc = await loadConceptDoc(supabase, planId)
+  if (!doc) return ""
+
+  const competitors = doc.competitors ?? []
+  const noDirectCompetitors = doc.no_direct_competitors_identified === true
+
+  if (competitors.length === 0 && !noDirectCompetitors) return ""
+
+  const contextFields: string[] = []
+  const shopName = conceptField(doc, "shop_identity")
+  if (shopName) contextFields.push(`Shop name: ${shopName}`)
+  const differentiation = conceptField(doc, "differentiation")
+  if (differentiation) contextFields.push(`Differentiation: ${differentiation}`)
+  const location = conceptField(doc, "location")
+  if (location) contextFields.push(`Location: ${location}`)
+
+  const competitorLines =
+    noDirectCompetitors && competitors.length === 0
+      ? ["Owner indicates no direct competitors in their catchment."]
+      : competitors.map((c) => {
+          const parts = [c.name?.trim(), c.address?.trim()].filter(Boolean)
+          return `  - ${parts.join(" · ")}`
+        })
+
+  return `Analyse the competitive landscape for this coffee shop based on nearby competitors.
+${contextFields.length > 0 ? `\nShop context:\n${contextFields.map((f) => `  ${f}`).join("\n")}` : ""}
+
+Nearby competitors:
+${competitorLines.join("\n")}
+
+Evaluate: how competitive this market appears, whether the owner's differentiation addresses the competitive pressures identified, any gaps or under-served customer segments the competitors leave open, and concrete actions to strengthen the owner's competitive position before launch. Weight concerns by severity (critical = direct threat to viability, warn = requires a clear response strategy, info = worth monitoring).
+
+${JSON_SCHEMA_INSTRUCTION}`
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 type RouteContext = { params: Promise<{ sectionKind: string }> }
@@ -493,8 +607,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       prompt = await loadShortlistContext(supabase, planId)
       if (!prompt) return Response.json({ error: "No candidates on shortlist yet" }, { status: 422 })
       sectionKey = `location-lease.shortlist.${planId}`
-    } else {
-      // lease-terms
+    } else if (sectionKind === "lease-terms") {
       const ctx = await loadLeaseTermsContext(supabase, planId, resourceId!)
       if (!ctx.owned) return Response.json({ error: "Candidate not found" }, { status: 404 })
       if (!ctx.prompt) {
@@ -505,6 +618,27 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
       prompt = ctx.prompt
       sectionKey = `location-lease.lease-terms.${resourceId}`
+    } else if (sectionKind === "concept-differentiation") {
+      prompt = await loadDifferentiationContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "Fill in your Differentiation section before running analysis" },
+          { status: 422 },
+        )
+      }
+      sectionKey = `concept.differentiation.${planId}`
+    } else if (sectionKind === "concept-competitors") {
+      prompt = await loadCompetitorsContext(supabase, planId)
+      if (!prompt) {
+        return Response.json(
+          { error: "Add competitors or mark no direct competitors before running analysis" },
+          { status: 422 },
+        )
+      }
+      sectionKey = `concept.competitors.${planId}`
+    } else {
+      const _exhaustive: never = sectionKind
+      return Response.json({ error: `Unhandled section kind: ${_exhaustive}` }, { status: 500 })
     }
   } catch (err) {
     console.error(`[ai-analyse/${sectionKind}] data load error:`, err)
