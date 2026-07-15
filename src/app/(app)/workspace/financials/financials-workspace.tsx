@@ -86,6 +86,7 @@ import { PersonnelEditor } from "./personnel-editor";
 import { OrgSyncPanel } from "./org-sync-panel";
 import { GuidedTour, type TourStep } from "./guided-tour";
 import type { CritiqueResult } from "@/lib/financials";
+import { type AnalyseResponse } from "@/components/ai-analyse/InlineAnalysisCard";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
@@ -610,11 +611,11 @@ function ForecastTab({
   onCogsMenuAnalyse?: () => void;
   cogsMenuAnalyseLoading?: boolean;
   cogsMenuAnalyseError?: string | null;
-  cogsMenuAnalyseResult?: import("@/components/location-lease/InlineAnalysisCard").AnalyseResponse | null;
+  cogsMenuAnalyseResult?: AnalyseResponse | null;
   onCogsAdditionalAnalyse?: () => void;
   cogsAdditionalAnalyseLoading?: boolean;
   cogsAdditionalAnalyseError?: string | null;
-  cogsAdditionalAnalyseResult?: import("@/components/location-lease/InlineAnalysisCard").AnalyseResponse | null;
+  cogsAdditionalAnalyseResult?: AnalyseResponse | null;
 }) {
   function update(partial: Partial<MonthlyProjections>) {
     onUpdateMp({ ...mp, ...partial });
@@ -1957,12 +1958,16 @@ export function FinancialsWorkspace({
   // TIM-3887: Analyse-with-AI state for COGS sections.
   const [cogsMenuAnalyseLoading, setCogsMenuAnalyseLoading] = useState(false);
   const [cogsMenuAnalyseError, setCogsMenuAnalyseError] = useState<string | null>(null);
-  const [cogsMenuAnalyseResult, setCogsMenuAnalyseResult] = useState<import("@/components/location-lease/InlineAnalysisCard").AnalyseResponse | null>(null);
+  const [cogsMenuAnalyseResult, setCogsMenuAnalyseResult] = useState<AnalyseResponse | null>(null);
   const [cogsAdditionalAnalyseLoading, setCogsAdditionalAnalyseLoading] = useState(false);
   const [cogsAdditionalAnalyseError, setCogsAdditionalAnalyseError] = useState<string | null>(null);
-  const [cogsAdditionalAnalyseResult, setCogsAdditionalAnalyseResult] = useState<import("@/components/location-lease/InlineAnalysisCard").AnalyseResponse | null>(null);
+  const [cogsAdditionalAnalyseResult, setCogsAdditionalAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const cogsMenuAnalyseInFlightRef = useRef(false);
+  const cogsAdditionalAnalyseInFlightRef = useRef(false);
 
   const handleCogsMenuAnalyse = useCallback(async () => {
+    if (cogsMenuAnalyseInFlightRef.current) return;
+    cogsMenuAnalyseInFlightRef.current = true;
     setCogsMenuAnalyseLoading(true);
     setCogsMenuAnalyseError(null);
     setCogsMenuAnalyseResult(null);
@@ -1972,20 +1977,38 @@ export function FinancialsWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
+      if (res.status === 402) {
+        setPaywallOpen(true);
+        return;
+      }
       if (!res.ok) {
         let msg = "Analysis failed — please try again.";
         try { msg = (await res.json())?.error ?? msg; } catch { /* non-JSON body */ }
         setCogsMenuAnalyseError(msg);
       } else {
-        setCogsMenuAnalyseResult(await res.json());
+        const data = (await res.json()) as Record<string, unknown>;
+        if (
+          !Array.isArray(data.strengths) ||
+          !Array.isArray(data.concerns) ||
+          !Array.isArray(data.callouts) ||
+          !Array.isArray(data.recommendations)
+        ) {
+          setCogsMenuAnalyseError("Analysis returned an unexpected format.");
+        } else {
+          setCogsMenuAnalyseResult(data as AnalyseResponse);
+        }
       }
     } catch {
       setCogsMenuAnalyseError("Analysis failed — please try again.");
+    } finally {
+      setCogsMenuAnalyseLoading(false);
+      cogsMenuAnalyseInFlightRef.current = false;
     }
-    setCogsMenuAnalyseLoading(false);
   }, []);
 
   const handleCogsAdditionalAnalyse = useCallback(async () => {
+    if (cogsAdditionalAnalyseInFlightRef.current) return;
+    cogsAdditionalAnalyseInFlightRef.current = true;
     setCogsAdditionalAnalyseLoading(true);
     setCogsAdditionalAnalyseError(null);
     setCogsAdditionalAnalyseResult(null);
@@ -1995,17 +2018,33 @@ export function FinancialsWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
+      if (res.status === 402) {
+        setPaywallOpen(true);
+        return;
+      }
       if (!res.ok) {
         let msg = "Analysis failed — please try again.";
         try { msg = (await res.json())?.error ?? msg; } catch { /* non-JSON body */ }
         setCogsAdditionalAnalyseError(msg);
       } else {
-        setCogsAdditionalAnalyseResult(await res.json());
+        const data = (await res.json()) as Record<string, unknown>;
+        if (
+          !Array.isArray(data.strengths) ||
+          !Array.isArray(data.concerns) ||
+          !Array.isArray(data.callouts) ||
+          !Array.isArray(data.recommendations)
+        ) {
+          setCogsAdditionalAnalyseError("Analysis returned an unexpected format.");
+        } else {
+          setCogsAdditionalAnalyseResult(data as AnalyseResponse);
+        }
       }
     } catch {
       setCogsAdditionalAnalyseError("Analysis failed — please try again.");
+    } finally {
+      setCogsAdditionalAnalyseLoading(false);
+      cogsAdditionalAnalyseInFlightRef.current = false;
     }
-    setCogsAdditionalAnalyseLoading(false);
   }, []);
 
   const handleRefreshMenu = useCallback(async () => {
