@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AlertCircle,
   Megaphone,
   Plus,
   Trash2,
@@ -30,6 +31,7 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
+import { InlineAnalysisCard, type AnalyseResponse } from "@/components/location-lease/InlineAnalysisCard";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -178,6 +180,17 @@ export function MarketingWorkspace({
   const [generating, setGenerating] = useState<MarketingSectionKey | null>(null);
   const { openAIReviewModal, AIReviewModalNode } = useAIReviewModal();
 
+  // TIM-3885: Analyse-with-AI state for Channels and Pre-launch Plan sections.
+  const [channelsAnalyseResult, setChannelsAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [channelsAnalyseLoading, setChannelsAnalyseLoading] = useState(false);
+  const [channelsAnalyseError, setChannelsAnalyseError] = useState("");
+  const channelsAnalyseInFlightRef = useRef(false);
+
+  const [preLaunchAnalyseResult, setPreLaunchAnalyseResult] = useState<AnalyseResponse | null>(null);
+  const [preLaunchAnalyseLoading, setPreLaunchAnalyseLoading] = useState(false);
+  const [preLaunchAnalyseError, setPreLaunchAnalyseError] = useState("");
+  const preLaunchAnalyseInFlightRef = useRef(false);
+
   const { promoteOnEdit } = useWorkspaceStatus();
   // Auto-promote not_started → in_progress on first successful save.
   useEffect(() => {
@@ -325,6 +338,113 @@ export function MarketingWorkspace({
     }
   }
 
+  // TIM-3885: Channels analyse handler — mirrors LocationCard.runPropertyAnalyse pattern.
+  const runChannelsAnalyse = useCallback(async () => {
+    if (!canEdit || channelsAnalyseInFlightRef.current) return;
+    channelsAnalyseInFlightRef.current = true;
+    setChannelsAnalyseLoading(true);
+    setChannelsAnalyseError("");
+    setChannelsAnalyseResult(null);
+    try {
+      const res = await fetch("/api/ai/analyse/marketing-channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.status === 402) {
+        const body = (await res.json().catch(() => null)) as { reason?: string } | null;
+        setPaywallReason(
+          (body?.reason as "no_subscription" | "paused" | "expired") ?? "no_subscription",
+        );
+        return;
+      }
+      if (!res.ok) {
+        const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
+        setChannelsAnalyseError(errBody?.error ?? "Analysis failed. Please try again.");
+        return;
+      }
+      const data = (await res.json()) as Record<string, unknown>;
+      if (
+        !Array.isArray(data.strengths) ||
+        !Array.isArray(data.concerns) ||
+        !Array.isArray(data.callouts) ||
+        !Array.isArray(data.recommendations)
+      ) {
+        setChannelsAnalyseError("Analysis returned an unexpected format.");
+        return;
+      }
+      setChannelsAnalyseResult(data as AnalyseResponse);
+    } catch {
+      setChannelsAnalyseError("Connection error. Please try again.");
+    } finally {
+      setChannelsAnalyseLoading(false);
+      channelsAnalyseInFlightRef.current = false;
+    }
+  }, [canEdit, setPaywallReason]);
+
+  // TIM-3885: Pre-launch analyse handler.
+  const runPreLaunchAnalyse = useCallback(async () => {
+    if (!canEdit || preLaunchAnalyseInFlightRef.current) return;
+    preLaunchAnalyseInFlightRef.current = true;
+    setPreLaunchAnalyseLoading(true);
+    setPreLaunchAnalyseError("");
+    setPreLaunchAnalyseResult(null);
+    try {
+      const res = await fetch("/api/ai/analyse/marketing-pre-launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.status === 402) {
+        const body = (await res.json().catch(() => null)) as { reason?: string } | null;
+        setPaywallReason(
+          (body?.reason as "no_subscription" | "paused" | "expired") ?? "no_subscription",
+        );
+        return;
+      }
+      if (!res.ok) {
+        const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
+        setPreLaunchAnalyseError(errBody?.error ?? "Analysis failed. Please try again.");
+        return;
+      }
+      const data = (await res.json()) as Record<string, unknown>;
+      if (
+        !Array.isArray(data.strengths) ||
+        !Array.isArray(data.concerns) ||
+        !Array.isArray(data.callouts) ||
+        !Array.isArray(data.recommendations)
+      ) {
+        setPreLaunchAnalyseError("Analysis returned an unexpected format.");
+        return;
+      }
+      setPreLaunchAnalyseResult(data as AnalyseResponse);
+    } catch {
+      setPreLaunchAnalyseError("Connection error. Please try again.");
+    } finally {
+      setPreLaunchAnalyseLoading(false);
+      preLaunchAnalyseInFlightRef.current = false;
+    }
+  }, [canEdit, setPaywallReason]);
+
+  // TIM-3885: Recommendations view handler — read-only, no-op onApply per TIM-3879 pattern.
+  const handleViewRecommendation = useCallback((text: string, actionRef: string) => {
+    if (!canEdit) return;
+    openAIReviewModal({
+      suggestions: [
+        {
+          id: `marketing-rec-${actionRef}`,
+          fieldId: actionRef,
+          fieldLabel: "Recommendation",
+          originalValue: "",
+          proposedValue: text,
+          isStructured: false,
+        },
+      ],
+      context: { workspace: "Marketing", section: "Analysis" },
+      onApply: async () => {},
+    });
+  }, [canEdit, openAIReviewModal]);
+
   const hasContent = MARKETING_SECTION_KEYS.some((k) => {
     const s = doc[k];
     return Boolean(s);
@@ -377,6 +497,24 @@ export function MarketingWorkspace({
             {MARKETING_SECTION_KEYS.map((key, i) => {
               const label = MARKETING_SECTION_LABELS[key];
               const status = getMarketingSectionStatus(doc, key);
+              const analyseProps =
+                key === "channels"
+                  ? {
+                      onAnalyse: runChannelsAnalyse,
+                      analyseLoading: channelsAnalyseLoading,
+                      analyseError: channelsAnalyseError,
+                      analyseResult: channelsAnalyseResult,
+                      onViewRecommendation: handleViewRecommendation,
+                    }
+                  : key === "pre_launch"
+                  ? {
+                      onAnalyse: runPreLaunchAnalyse,
+                      analyseLoading: preLaunchAnalyseLoading,
+                      analyseError: preLaunchAnalyseError,
+                      analyseResult: preLaunchAnalyseResult,
+                      onViewRecommendation: handleViewRecommendation,
+                    }
+                  : {};
               const body = (
                 <SectionBody
                   sectionKey={key}
@@ -387,6 +525,7 @@ export function MarketingWorkspace({
                   updateDoc={updateDoc}
                   onGenerate={() => handleGenerate(key)}
                   generating={generating === key}
+                  {...analyseProps}
                 />
               );
               return UI_REVAMP_V3 ? (
@@ -433,17 +572,64 @@ interface SectionBodyProps {
   updateDoc: (mut: (d: MarketingDocument) => MarketingDocument) => void;
   onGenerate: () => void;
   generating: boolean;
+  // TIM-3885: Analyse-with-AI props — present only for Channels and Pre-launch Plan.
+  onAnalyse?: () => void;
+  analyseLoading?: boolean;
+  analyseError?: string;
+  analyseResult?: AnalyseResponse | null;
+  onViewRecommendation?: (text: string, actionRef: string) => void;
 }
 
 function SectionBody(props: SectionBodyProps) {
-  const { label, tagline, canEdit, onGenerate, generating, sectionKey } = props;
+  const {
+    label,
+    tagline,
+    canEdit,
+    onGenerate,
+    generating,
+    sectionKey,
+    onAnalyse,
+    analyseLoading,
+    analyseError,
+    analyseResult,
+    onViewRecommendation,
+  } = props;
+
+  // Build aiActions: [analyse?, write] when canEdit; empty when not.
+  // TIM-3885: Channels and Pre-launch Plan get Both; Overview and Story get Write only.
+  const aiActions: { kind: "analyse" | "write"; onClick: () => void; disabled?: boolean }[] = [];
+  if (canEdit) {
+    if (onAnalyse) {
+      aiActions.push({ kind: "analyse", onClick: onAnalyse, disabled: analyseLoading ?? false });
+    }
+    aiActions.push({ kind: "write", onClick: onGenerate, disabled: generating });
+  }
+
   return (
     <div>
       <SectionHeader
         title={label}
         helpContent={tagline}
-        onWriteWithAi={canEdit ? onGenerate : undefined}
+        aiActions={aiActions.length > 0 ? aiActions : undefined}
       />
+
+      {analyseError && (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 mb-4">
+          <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" aria-hidden="true" />
+          <p className="text-xs text-red-700">{analyseError}</p>
+        </div>
+      )}
+
+      {analyseResult && onAnalyse && (
+        <div className="mb-4">
+          <InlineAnalysisCard
+            result={analyseResult}
+            loading={analyseLoading ?? false}
+            onRegenerate={onAnalyse}
+            onViewRecommendation={onViewRecommendation}
+          />
+        </div>
+      )}
 
       {sectionKey === "overview" && <OverviewEditor {...props} />}
       {sectionKey === "channels" && <ChannelsEditor {...props} />}
