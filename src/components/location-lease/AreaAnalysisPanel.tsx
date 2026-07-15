@@ -4,9 +4,11 @@
 
 'use client'
 
+// TIM-3879: SectionHeader adoption — h4 replaced with SectionHeader.
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sparkles, AlertCircle, MapPin } from 'lucide-react'
+import { SectionHeader } from '@/components/section-header/SectionHeader'
 import { useAIReviewModal } from '@/hooks/useAIReviewModal'
 
 export function AreaAnalysisPanel({
@@ -131,10 +133,8 @@ export function AreaAnalysisPanel({
       {AIReviewModalNode}
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground">
-              Area Analysis
-            </h4>
+          <div className="flex-1 min-w-0">
+            <SectionHeader title="Area Analysis" headingLevel={3} className="mb-0" />
             <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--neutral-cool-600)]">
               We pull nearby businesses, transit stops, and parking from OpenStreetMap,
               then ask the AI to read the block for your concept.

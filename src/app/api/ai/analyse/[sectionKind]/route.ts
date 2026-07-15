@@ -136,11 +136,28 @@ function extractJson(text: string): unknown {
     } catch {}
   }
   const start = trimmed.indexOf("{")
-  const end = trimmed.lastIndexOf("}")
-  if (start !== -1 && end > start) {
-    try {
-      return JSON.parse(trimmed.slice(start, end + 1))
-    } catch {}
+  if (start !== -1) {
+    // Walk forward tracking brace depth to find the balanced closing brace,
+    // avoiding false matches when the model appends prose containing "}" after
+    // the JSON object (e.g. formula references like {2–3×}).
+    let depth = 0
+    let inString = false
+    let escape = false
+    for (let i = start; i < trimmed.length; i++) {
+      const ch = trimmed[i]
+      if (escape) { escape = false; continue }
+      if (ch === "\\" && inString) { escape = true; continue }
+      if (ch === '"') { inString = !inString; continue }
+      if (inString) continue
+      if (ch === "{") depth++
+      else if (ch === "}") {
+        depth--
+        if (depth === 0) {
+          try { return JSON.parse(trimmed.slice(start, i + 1)) } catch {}
+          break
+        }
+      }
+    }
   }
   return null
 }
