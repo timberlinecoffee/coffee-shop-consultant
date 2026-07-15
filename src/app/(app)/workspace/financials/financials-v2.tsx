@@ -6,8 +6,11 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { BarChart2, ChevronDown, CheckCircle, Circle, Minus } from "lucide-react";
+import { BarChart2, ChevronDown, CheckCircle, Circle, Minus, AlertCircle } from "lucide-react";
 import { SectionHeader } from "@/components/section-header";
+import type { AiAction } from "@/components/section-header";
+import { InlineAnalysisCard } from "@/components/ai-analyse/InlineAnalysisCard";
+import type { AnalyseResponse } from "@/components/ai-analyse/InlineAnalysisCard";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
@@ -231,17 +234,24 @@ function StatusBadge({ status }: { status: SectionStatus }) {
 // TIM-3488: `id` lets the guided tour open this section before spotlighting a
 // field inside it. The matching event name is dispatched by FinancialsV2's
 // onExpandSection handler.
+// TIM-3884: Added `aiActions` prop — passed through to SectionHeader. SectionHeader
+// is rendered OUTSIDE the toggle button (per TIM-3869 comment) so its nested buttons
+// are never inside another <button> (invalid HTML). The toggle is scoped to the
+// chevron-only inner button; clicking the title area no longer toggles (by design,
+// as per TIM-3869: "Toggle affordance is scoped to the inner button.").
 function AccordionSection({
   id,
   title,
   status,
   defaultOpen = false,
+  aiActions,
   children,
 }: {
   id?: string;
   title: string;
   status: SectionStatus;
   defaultOpen?: boolean;
+  aiActions?: AiAction[];
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -258,25 +268,26 @@ function AccordionSection({
 
   return (
     <div id={id} className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
-      {/* TIM-3869: outer element changed from <button> to <div> to prevent nested
-          interactive elements when Phase 3+4 aiAction buttons are added inside
-          SectionHeader (nested <button> is invalid HTML and causes click propagation
-          to collapse the accordion). Toggle affordance is scoped to the inner button. */}
-      <div className="w-full flex items-center justify-between px-5 py-4">
+      {/* TIM-3869: outer element is <div> (not <button>) to allow nested interactive
+          elements. Toggle affordance is scoped to the chevron-only inner button.
+          TIM-3884: SectionHeader moved outside the toggle button so aiAction buttons
+          inside it are never nested in another <button>. */}
+      <div className="w-full flex items-center gap-2 px-5 py-4">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-controls={id ? `${id}-content` : undefined}
-          className="flex items-center gap-3 flex-1 min-w-0 hover:bg-[var(--background)] -mx-2 px-2 py-1 rounded-lg transition-colors text-left"
+          className="shrink-0 hover:bg-[var(--background)] p-1 rounded-lg transition-colors"
+          aria-label={`${open ? "Collapse" : "Expand"} ${title}`}
         >
           <ChevronDown
             size={16}
-            className={`text-[var(--muted-foreground)] transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
+            className={`text-[var(--muted-foreground)] transition-transform ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
-          <SectionHeader title={title} className="mb-0 flex-1" />
         </button>
+        <SectionHeader title={title} aiActions={aiActions} className="mb-0 flex-1 min-w-0" />
         <StatusBadge status={status} />
       </div>
       {open && (
@@ -1486,6 +1497,75 @@ export function FinancialsV2({
       new CustomEvent("financials-v2-tour-expand", { detail: { id: sectionId } }),
     );
   }, []);
+
+  // TIM-3884: Analyse-with-AI state — one slot per section.
+  const [dailyTrafficResult, setDailyTrafficResult] = useState<AnalyseResponse | null>(null);
+  const [dailyTrafficLoading, setDailyTrafficLoading] = useState(false);
+  const [dailyTrafficError, setDailyTrafficError] = useState("");
+
+  const [revenueResult, setRevenueResult] = useState<AnalyseResponse | null>(null);
+  const [revenueLoading, setRevenueLoading] = useState(false);
+  const [revenueError, setRevenueError] = useState("");
+
+  const [costsResult, setCostsResult] = useState<AnalyseResponse | null>(null);
+  const [costsLoading, setCostsLoading] = useState(false);
+  const [costsError, setCostsError] = useState("");
+
+  const [growthResult, setGrowthResult] = useState<AnalyseResponse | null>(null);
+  const [growthLoading, setGrowthLoading] = useState(false);
+  const [growthError, setGrowthError] = useState("");
+
+  const runAnalyse = useCallback(
+    async (
+      sectionKind: string,
+      setResult: (r: AnalyseResponse | null) => void,
+      setLoading: (v: boolean) => void,
+      setError: (msg: string) => void,
+    ) => {
+      if (setLoading === setDailyTrafficLoading && dailyTrafficLoading) return;
+      if (setLoading === setRevenueLoading && revenueLoading) return;
+      if (setLoading === setCostsLoading && costsLoading) return;
+      if (setLoading === setGrowthLoading && growthLoading) return;
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch(`/api/ai/analyse/${sectionKind}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json().catch(() => ({})) as Record<string, unknown>;
+        if (!res.ok) {
+          setError((data.error as string) ?? "Analysis failed. Please try again.");
+          return;
+        }
+        setResult(data as AnalyseResponse);
+      } catch {
+        setError("Connection error. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [dailyTrafficLoading, revenueLoading, costsLoading, growthLoading],
+  );
+
+  const runDailyTrafficAnalyse = useCallback(
+    () => runAnalyse("financials-daily-traffic", setDailyTrafficResult, setDailyTrafficLoading, setDailyTrafficError),
+    [runAnalyse],
+  );
+  const runRevenueAnalyse = useCallback(
+    () => runAnalyse("financials-revenue-streams", setRevenueResult, setRevenueLoading, setRevenueError),
+    [runAnalyse],
+  );
+  const runCostsAnalyse = useCallback(
+    () => runAnalyse("financials-costs-overhead", setCostsResult, setCostsLoading, setCostsError),
+    [runAnalyse],
+  );
+  const runGrowthAnalyse = useCallback(
+    () => runAnalyse("financials-growth-ramp", setGrowthResult, setGrowthLoading, setGrowthError),
+    [runAnalyse],
+  );
+
   const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
   const currencyCode = mp.currency_code ?? "USD";
   const manualLines = mp.manual_lines ?? [];
@@ -1585,11 +1665,50 @@ export function FinancialsV2({
           <div>
             <InputsProgressBar statuses={statuses} />
             <div className="space-y-3">
-              <AccordionSection id="v2-section-daily-traffic" title="Daily Traffic & Schedule" status={s1} defaultOpen>
+              {/* TIM-3884: aiActions wired on all 4 sections — Analyse-only per spec. */}
+              <AccordionSection
+                id="v2-section-daily-traffic"
+                title="Daily Traffic & Schedule"
+                status={s1}
+                defaultOpen
+                aiActions={[{ kind: "analyse", onClick: runDailyTrafficAnalyse, disabled: dailyTrafficLoading }]}
+              >
+                {dailyTrafficError && (
+                  <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+                    <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" aria-hidden="true" />
+                    <p className="text-xs text-red-700">{dailyTrafficError}</p>
+                  </div>
+                )}
+                {dailyTrafficResult && (
+                  <InlineAnalysisCard
+                    result={dailyTrafficResult}
+                    loading={dailyTrafficLoading}
+                    onRegenerate={runDailyTrafficAnalyse}
+                  />
+                )}
                 <DailyTrafficContent mp={mp} canEdit={canEdit} onUpdate={onMpUpdate} />
               </AccordionSection>
 
-              <AccordionSection id="v2-section-revenue" title="Revenue Streams" status={s2} defaultOpen>
+              <AccordionSection
+                id="v2-section-revenue"
+                title="Revenue Streams"
+                status={s2}
+                defaultOpen
+                aiActions={[{ kind: "analyse", onClick: runRevenueAnalyse, disabled: revenueLoading }]}
+              >
+                {revenueError && (
+                  <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+                    <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" aria-hidden="true" />
+                    <p className="text-xs text-red-700">{revenueError}</p>
+                  </div>
+                )}
+                {revenueResult && (
+                  <InlineAnalysisCard
+                    result={revenueResult}
+                    loading={revenueLoading}
+                    onRegenerate={runRevenueAnalyse}
+                  />
+                )}
                 <RevenueStreamsContent
                   mp={mp}
                   canEdit={canEdit}
@@ -1605,7 +1724,25 @@ export function FinancialsV2({
                 />
               </AccordionSection>
 
-              <AccordionSection id="v2-section-costs" title="Costs & Overhead" status={s3}>
+              <AccordionSection
+                id="v2-section-costs"
+                title="Costs & Overhead"
+                status={s3}
+                aiActions={[{ kind: "analyse", onClick: runCostsAnalyse, disabled: costsLoading }]}
+              >
+                {costsError && (
+                  <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+                    <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" aria-hidden="true" />
+                    <p className="text-xs text-red-700">{costsError}</p>
+                  </div>
+                )}
+                {costsResult && (
+                  <InlineAnalysisCard
+                    result={costsResult}
+                    loading={costsLoading}
+                    onRegenerate={runCostsAnalyse}
+                  />
+                )}
                 <CostsOverheadContent
                   mp={mp}
                   canEdit={canEdit}
@@ -1633,7 +1770,25 @@ export function FinancialsV2({
                 />
               </AccordionSection>
 
-              <AccordionSection id="v2-section-growth" title="Growth & Ramp" status={s4}>
+              <AccordionSection
+                id="v2-section-growth"
+                title="Growth & Ramp"
+                status={s4}
+                aiActions={[{ kind: "analyse", onClick: runGrowthAnalyse, disabled: growthLoading }]}
+              >
+                {growthError && (
+                  <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+                    <AlertCircle className="size-4 shrink-0 text-red-500 mt-0.5" aria-hidden="true" />
+                    <p className="text-xs text-red-700">{growthError}</p>
+                  </div>
+                )}
+                {growthResult && (
+                  <InlineAnalysisCard
+                    result={growthResult}
+                    loading={growthLoading}
+                    onRegenerate={runGrowthAnalyse}
+                  />
+                )}
                 <GrowthRampContent mp={mp} canEdit={canEdit} onUpdate={onMpUpdate} />
               </AccordionSection>
             </div>

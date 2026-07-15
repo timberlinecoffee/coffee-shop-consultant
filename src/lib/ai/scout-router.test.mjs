@@ -1,7 +1,7 @@
 // TIM-3463: Router unit tests. Plan §9 acceptance item 2 —
 //   "router unit tests cover all lanes for both default-flag-off
 //    (everything Anthropic in prod) and default-flag-on (chat lanes DeepSeek)
-//    behavior." Lane count updated by TIM-3901 (37 lanes).
+//    behavior." Lane count updated by TIM-3884 (42 lanes).
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
@@ -20,8 +20,8 @@ import {
   RESEARCH_AI_MODEL,
 } from "./models.ts"
 
-test("registry has 37 lanes (plan §3 taxonomy + TIM-3885/3887/3888/3901 analyse lanes)", () => {
-  assert.equal(SCOUT_LANES.length, 37)
+test("registry has 42 lanes (plan §3 taxonomy + TIM-3885/3887/3888/3901/3884 analyse lanes)", () => {
+  assert.equal(SCOUT_LANES.length, 42)
 })
 
 test("default-flag-OFF (prod today) → every lane routes to Anthropic", () => {
