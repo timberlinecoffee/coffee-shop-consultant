@@ -27,6 +27,10 @@ export const SCOUT_LANES = [
   "location_area_analysis",
   "location_scorecard_feedback",
   "location_tradeoff",
+  // TIM-3878: Analyse endpoint lanes — structured JSON analysis for Pro users.
+  "analyse_location_property",
+  "analyse_location_shortlist",
+  "analyse_lease_terms",
   // Marketing, hiring, suppliers, concept, financials → DeepSeek.
   "marketing_generate",
   "hiring_improve_jd",
@@ -57,6 +61,10 @@ export const FORCE_ANTHROPIC_LANES = new Set<ScoutLane>([
   "opening_month_generate",
   "document_import_extract",
   "buildout_import",
+  // TIM-3878: Analyse lanes require structured JSON output — Anthropic for reliability.
+  "analyse_location_property",
+  "analyse_location_shortlist",
+  "analyse_lease_terms",
 ])
 
 // Lanes that need Anthropic Sonnet 4.6 specifically — they depend on the
