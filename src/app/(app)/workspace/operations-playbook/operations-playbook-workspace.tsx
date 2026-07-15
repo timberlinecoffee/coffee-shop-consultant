@@ -156,6 +156,7 @@ export function OperationsPlaybookWorkspace({
     "no_subscription" | "paused" | "expired" | null
   >(null);
   const [generating, setGenerating] = useState<GeneratableSection | null>(null);
+  const generateInFlight = useRef(false);
   const [activeView, setActiveView] = useState<OperationsView>("playbook");
 
   const opsTabs: { id: OperationsView; label: string }[] = [
@@ -228,7 +229,8 @@ export function OperationsPlaybookWorkspace({
   );
 
   const handleGenerate = useCallback(async (section: GeneratableSection) => {
-    if (!canEdit || generating) return;
+    if (!canEdit || generating || generateInFlight.current) return;
+    generateInFlight.current = true;
     setGenerating(section);
     try {
       const res = await fetch("/api/workspaces/operations_playbook/generate", {
@@ -243,11 +245,17 @@ export function OperationsPlaybookWorkspace({
       }
       if (!res.ok) return;
       const data = (await res.json()) as { content?: OperationsPlaybookDocument };
-      if (data?.content) setDoc(data.content);
+      if (data?.content) {
+        // Merge only the generated section — preserve client edits to every
+        // other section that may not yet have reached the DB (autosave debounce).
+        const generated = data.content;
+        setDoc((prev) => ({ ...prev, [section]: generated[section] }));
+      }
     } catch {
       // silent — user sees existing content unchanged
     } finally {
       setGenerating(null);
+      generateInFlight.current = false;
     }
   }, [canEdit, generating]);
 
