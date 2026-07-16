@@ -712,7 +712,7 @@ export function BusinessPlanWorkspace({
               estimated_claims?: unknown[];
               consistency_contradictions?: unknown[];
             };
-            const finalText = parsed.text ?? streamingBuf;
+            const finalText = parsed.text || streamingBuf;
             setSections((prev) =>
               prev.map((s) =>
                 s.key === key
@@ -732,6 +732,7 @@ export function BusinessPlanWorkspace({
                   : s,
               ),
             );
+            reader.releaseLock();
             return;
           } else if (eventType === "error") {
             const parsed = JSON.parse(dataLine) as { message?: string };
@@ -765,7 +766,16 @@ export function BusinessPlanWorkspace({
           estimated_claims_json: estimatedClaims,
         }),
       });
-      if (!res.ok) throw new Error("Couldn't save this section. Please try again.");
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(
+          res.status === 402
+            ? "Saving requires a Pro subscription."
+            : res.status === 429
+              ? "Too many requests — wait a moment and try again."
+              : (j.error as string | undefined) ?? "Couldn't save this section. Please try again.",
+        );
+      }
       setSections((prev) =>
         prev.map((s) =>
           s.key !== key
