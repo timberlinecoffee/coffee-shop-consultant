@@ -117,7 +117,10 @@ export function isBpPlaceholderContent(content: string | null | undefined): bool
     content.includes("Complete the Marketing") ||
     content.includes("Complete the Financials workspace") ||
     content.includes("click the text field") ||
-    content.includes("rendered in the exported PDF appendix")
+    content.includes("rendered in the exported PDF appendix") ||
+    // TIM-3876: legacy HEREHEREHERE tokens from stale content or import bugs
+    // Note: (HERE){3,} not HERE{4,} — the token is repeated "HERE" not "HEREEEEE"
+    /(HERE){3,}/i.test(content)
   );
 }
 
