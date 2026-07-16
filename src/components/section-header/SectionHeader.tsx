@@ -94,7 +94,9 @@ export function SectionHeader({
               }}
               disabled={action.disabled}
               aria-label={
-                action.kind === 'analyse'
+                action.label != null
+                  ? `${action.label} for ${title}`
+                  : action.kind === 'analyse'
                   ? `Analyse ${title} with AI`
                   : `Write ${title} with AI`
               }
@@ -105,7 +107,7 @@ export function SectionHeader({
               ) : (
                 <Sparkles size={12} aria-hidden="true" />
               )}
-              {ACTION_LABEL[action.kind]} with AI
+              {action.label ?? `${ACTION_LABEL[action.kind]} with AI`}
             </button>
           ))}
         </div>
