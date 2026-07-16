@@ -7,6 +7,8 @@ export interface AiAction {
   kind: AiActionKind
   onClick: () => void
   disabled?: boolean
+  /** Optional override for the button label (replaces the default "<Kind> with AI" text). */
+  label?: string
 }
 
 /**

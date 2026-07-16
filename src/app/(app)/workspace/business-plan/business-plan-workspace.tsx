@@ -67,6 +67,7 @@ import { stripSourceMarkers } from "@/lib/business-plan/source-markers";
 import {
   BPWriteWithAIModal,
   type BpOtherSectionExcerpt,
+  type ConsistencyContradiction,
   isBpPlaceholderContent,
   type WriteAiApproveExtras,
 } from "@/components/business-plan/BPWriteWithAIModal";
@@ -91,6 +92,36 @@ function bpSeedExcerpt(raw: string): string {
 }
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
+
+// TIM-3927: Inline auto-write state per section. Three phases:
+//   generating  — SSE stream in flight, streamingBuf accumulates tokens
+//   preview     — done event received; user reviews before accepting
+//   committing  — Accept clicked, PATCH in flight
+type AutoWritePhase =
+  | { phase: "generating"; streamingBuf: string }
+  | { phase: "preview"; proposedText: string; estimatedClaims: unknown[]; contradictions: ConsistencyContradiction[] }
+  | { phase: "committing"; proposedText: string; estimatedClaims: unknown[]; contradictions: ConsistencyContradiction[] };
+
+// Private copy of sanitizeContradictions from BPWriteWithAIModal (not exported there).
+function sanitizeAutoWriteContradictions(raw: unknown): ConsistencyContradiction[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((c) => {
+      if (!c || typeof c !== "object") return null;
+      const obj = c as Record<string, unknown>;
+      const claimA = typeof obj.claim_a === "string" ? obj.claim_a : "";
+      const claimB = typeof obj.claim_b === "string" ? obj.claim_b : "";
+      const explanation = typeof obj.explanation === "string" ? obj.explanation : "";
+      if (!claimA || !claimB) return null;
+      const kind = obj.kind;
+      const normalizedKind: ConsistencyContradiction["kind"] =
+        kind === "numerical" || kind === "categorical" || kind === "temporal" || kind === "other"
+          ? kind
+          : "other";
+      return { kind: normalizedKind, claim_a: claimA, claim_b: claimB, explanation };
+    })
+    .filter((c): c is ConsistencyContradiction => c !== null);
+}
 
 type SaveState =
   | { kind: "idle"; lastSavedAt: string | null }
@@ -128,6 +159,8 @@ interface SectionState extends BusinessPlanSectionData {
   isGenerating?: boolean;
   // TIM-3575: archive state is mirrored from DB; optimistically updated.
   isArchived: boolean;
+  // TIM-3927: inline auto-write flow state. null/undefined when idle.
+  autoWrite?: AutoWritePhase | null;
 }
 
 // ── Progressive disclosure helpers ───────────────────────────────────────────
@@ -297,6 +330,8 @@ export function BusinessPlanWorkspace({
   // Mirror of sections used inside async callbacks without stale-closure risk.
   const sectionsRef = useRef(sections);
   useEffect(() => { sectionsRef.current = sections; }, [sections]);
+  // TIM-3927: per-section AbortControllers for inline auto-write SSE streams.
+  const autoWriteAbortRefs = useRef<Map<BusinessPlanSectionKey, AbortController>>(new Map());
 
   // ── Section helpers ────────────────────────────────────────────────────────
 
@@ -588,6 +623,183 @@ export function BusinessPlanWorkspace({
       initialContent: initial,
     });
   }, [canEdit, sections, updateSection]);
+
+  // ── TIM-3927: One-click Auto-Write handlers ────────────────────────────────
+  //
+  // Collapses the TIM-3854 seed-then-generate two-step modal into a single
+  // click. The generate/improve routes already fetch workspace data from the
+  // DB server-side, so we go straight to SSE — no seed-context prefetch.
+
+  const handleAutoWriteSection = useCallback(async (key: BusinessPlanSectionKey) => {
+    if (!canEdit) return;
+    // Abort any existing stream for this key before starting fresh.
+    autoWriteAbortRefs.current.get(key)?.abort();
+    const abort = new AbortController();
+    autoWriteAbortRefs.current.set(key, abort);
+
+    // Expand so the inline state card is visible, then enter generating phase.
+    setSections((prev) =>
+      prev.map((s) =>
+        s.key === key
+          ? { ...s, isExpanded: true, autoWrite: { phase: "generating", streamingBuf: "" } }
+          : s,
+      ),
+    );
+
+    try {
+      const section = sectionsRef.current.find((s) => s.key === key);
+      if (!section) return;
+      const raw = section.isEditing
+        ? section.editBuffer
+        : (section.userContent ?? section.autoContent ?? "");
+      const useImprove = !isBpPlaceholderContent(raw) && raw.trim().length > 0;
+      const url = useImprove ? "/api/business-plan/improve" : "/api/business-plan/generate";
+      const body: Record<string, unknown> = useImprove
+        ? { sectionKey: key, sectionTitle: section.title, currentContent: raw, shopName }
+        : { sectionKey: key };
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: abort.signal,
+      });
+
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+        throw new Error(
+          res.status === 402
+            ? "Auto-Write requires a Pro subscription."
+            : res.status === 429
+              ? "Too many requests — wait a moment and try again."
+              : (j.error as string | undefined) ?? "Generation failed. Please try again.",
+        );
+      }
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = "";
+      let streamingBuf = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (abort.signal.aborted) return;
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const chunks = sseBuffer.split("\n\n");
+        sseBuffer = chunks.pop() ?? "";
+        for (const chunk of chunks) {
+          const lines = chunk.split("\n");
+          let eventType = "";
+          let dataLine = "";
+          for (const line of lines) {
+            if (line.startsWith("event: ")) eventType = line.slice(7).trim();
+            if (line.startsWith("data: ")) dataLine = line.slice(6).trim();
+          }
+          if (!dataLine) continue;
+          if (eventType === "text") {
+            const parsed = JSON.parse(dataLine) as { text: string };
+            streamingBuf += parsed.text;
+            const snap = streamingBuf;
+            setSections((prev) =>
+              prev.map((s) =>
+                s.key === key ? { ...s, autoWrite: { phase: "generating", streamingBuf: snap } } : s,
+              ),
+            );
+          } else if (eventType === "done") {
+            const parsed = JSON.parse(dataLine) as {
+              text: string;
+              estimated_claims?: unknown[];
+              consistency_contradictions?: unknown[];
+            };
+            const finalText = parsed.text ?? streamingBuf;
+            setSections((prev) =>
+              prev.map((s) =>
+                s.key === key
+                  ? {
+                      ...s,
+                      autoWrite: {
+                        phase: "preview",
+                        proposedText: finalText,
+                        estimatedClaims: Array.isArray(parsed.estimated_claims)
+                          ? parsed.estimated_claims
+                          : [],
+                        contradictions: sanitizeAutoWriteContradictions(
+                          parsed.consistency_contradictions,
+                        ),
+                      },
+                    }
+                  : s,
+              ),
+            );
+            return;
+          } else if (eventType === "error") {
+            const parsed = JSON.parse(dataLine) as { message?: string };
+            throw new Error(parsed.message ?? "Generation failed. Please try again.");
+          }
+        }
+      }
+    } catch (err: unknown) {
+      if (abort.signal.aborted) return;
+      console.error("[auto-write]", err);
+      updateSection(key, { autoWrite: null });
+      setGlobalError(
+        err instanceof Error ? err.message : "Could not generate this section. Try again.",
+      );
+    }
+  }, [canEdit, updateSection, shopName]);
+
+  const handleAutoWriteAccept = useCallback(async (key: BusinessPlanSectionKey) => {
+    const section = sectionsRef.current.find((s) => s.key === key);
+    if (!section?.autoWrite || section.autoWrite.phase === "generating") return;
+    const { proposedText, estimatedClaims, contradictions } = section.autoWrite;
+    updateSection(key, {
+      autoWrite: { phase: "committing", proposedText, estimatedClaims, contradictions },
+    });
+    try {
+      const res = await fetch(`/api/business-plan/sections/${key}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_content: proposedText,
+          estimated_claims_json: estimatedClaims,
+        }),
+      });
+      if (!res.ok) throw new Error("Couldn't save this section. Please try again.");
+      setSections((prev) =>
+        prev.map((s) =>
+          s.key !== key
+            ? s
+            : { ...s, userContent: proposedText, editBuffer: proposedText, isEditing: false, autoWrite: null },
+        ),
+      );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    } catch (err: unknown) {
+      // Revert to preview on failure.
+      updateSection(key, {
+        autoWrite: { phase: "preview", proposedText, estimatedClaims, contradictions },
+      });
+      setGlobalError(
+        err instanceof Error ? err.message : "Could not save. Try again.",
+      );
+    }
+  }, [updateSection]);
+
+  const handleAutoWriteRegenerate = useCallback((key: BusinessPlanSectionKey) => {
+    void handleAutoWriteSection(key);
+  }, [handleAutoWriteSection]);
+
+  const handleAutoWriteEdit = useCallback((key: BusinessPlanSectionKey) => {
+    const section = sectionsRef.current.find((s) => s.key === key);
+    if (!section?.autoWrite || section.autoWrite.phase === "generating") return;
+    const { proposedText } = section.autoWrite;
+    updateSection(key, { autoWrite: null, isEditing: true, editBuffer: proposedText });
+  }, [updateSection]);
+
+  const handleAutoWriteCancel = useCallback((key: BusinessPlanSectionKey) => {
+    autoWriteAbortRefs.current.get(key)?.abort();
+    updateSection(key, { autoWrite: null });
+  }, [updateSection]);
 
   // ── PDF export / print ──────────────────────────────────────────────────────
 
@@ -1364,6 +1576,12 @@ export function BusinessPlanWorkspace({
               bpFpAnalyseLoading={bpFpAnalyseLoading}
               bpFpAnalyseError={bpFpAnalyseError}
               bpFpAnalyseActiveKey={bpFpAnalyseActiveKey}
+              // TIM-3927: one-click auto-write.
+              onAutoWriteSection={canEdit ? handleAutoWriteSection : undefined}
+              onAutoWriteAccept={handleAutoWriteAccept}
+              onAutoWriteRegenerate={handleAutoWriteRegenerate}
+              onAutoWriteEdit={handleAutoWriteEdit}
+              onAutoWriteCancel={handleAutoWriteCancel}
             />
           </SortableContext>
         </DndContext>
@@ -1502,6 +1720,12 @@ interface BpFlatSectionListProps {
   bpFpAnalyseLoading?: boolean;
   bpFpAnalyseError?: string;
   bpFpAnalyseActiveKey?: BusinessPlanSectionKey | null;
+  // TIM-3927: one-click auto-write callbacks.
+  onAutoWriteSection?: (key: BusinessPlanSectionKey) => void;
+  onAutoWriteAccept?: (key: BusinessPlanSectionKey) => void;
+  onAutoWriteRegenerate?: (key: BusinessPlanSectionKey) => void;
+  onAutoWriteEdit?: (key: BusinessPlanSectionKey) => void;
+  onAutoWriteCancel?: (key: BusinessPlanSectionKey) => void;
 }
 
 function BpFlatSectionList(props: BpFlatSectionListProps) {
@@ -1596,11 +1820,21 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
                 // TIM-3672: Write with AI now surfaces on collapsed cards too.
                 // Auto-expand on click so the eventual AI review modal + saved
                 // content anchor visually to the section the user acted on.
+                // TIM-3927: this callback is now the "Customize Sources" path
+                // (opens BPWriteWithAIModal). The main button uses onAutoWrite.
                 if (!section.isExpanded) props.onToggleExpand(section.key, section.isExpanded);
                 if (hasRealContent) props.onImprove(section.key);
                 else props.onGenerateExec(section.key);
               }
             : undefined;
+          // TIM-3927: new collapsed single-click flow.
+          const onAutoWrite =
+            props.canEdit && props.onAutoWriteSection
+              ? () => {
+                  if (!section.isExpanded) props.onToggleExpand(section.key, section.isExpanded);
+                  props.onAutoWriteSection!(section.key);
+                }
+              : undefined;
           const sectionMeta = sectionMetaByKey.get(section.key);
           // TIM-3893: Wire Analyse button for Financial Plan sections.
           const isFinancialPlan = sectionMeta?.groupKey === "financial-plan";
@@ -1637,6 +1871,28 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
                 }
                 onResetToAuto={() => props.onResetToAuto(section.key)}
                 onWriteWithAi={onWriteWithAi}
+                onAutoWriteSection={onAutoWrite}
+                autoWriteState={section.autoWrite ?? null}
+                onAutoWriteAccept={
+                  props.onAutoWriteAccept
+                    ? () => props.onAutoWriteAccept!(section.key)
+                    : undefined
+                }
+                onAutoWriteRegenerate={
+                  props.onAutoWriteRegenerate
+                    ? () => props.onAutoWriteRegenerate!(section.key)
+                    : undefined
+                }
+                onAutoWriteEdit={
+                  props.onAutoWriteEdit
+                    ? () => props.onAutoWriteEdit!(section.key)
+                    : undefined
+                }
+                onAutoWriteCancel={
+                  props.onAutoWriteCancel
+                    ? () => props.onAutoWriteCancel!(section.key)
+                    : undefined
+                }
                 onAnalyse={onAnalyse}
                 analyseResult={isActiveAnalyse ? props.bpFpAnalyseResult : null}
                 analyseLoading={isActiveAnalyse ? props.bpFpAnalyseLoading : false}
@@ -2006,7 +2262,15 @@ interface SectionCardProps {
   onEditSave: () => void;
   onEditCancel: () => void;
   onResetToAuto: () => void;
+  /** TIM-3927: becomes "Customize Sources" link (opens BPWriteWithAIModal). */
   onWriteWithAi?: () => void;
+  /** TIM-3927: main "Auto-Write This Section" button — collapses seed flow. */
+  onAutoWriteSection?: () => void;
+  autoWriteState?: AutoWritePhase | null;
+  onAutoWriteAccept?: () => void;
+  onAutoWriteRegenerate?: () => void;
+  onAutoWriteEdit?: () => void;
+  onAutoWriteCancel?: () => void;
   // TIM-3893: Analyse-with-AI for Financial Plan sections.
   onAnalyse?: () => void;
   analyseResult?: AnalyseResponse | null;
@@ -2060,6 +2324,12 @@ function SectionCard({
   onEditCancel,
   onResetToAuto,
   onWriteWithAi,
+  onAutoWriteSection,
+  autoWriteState,
+  onAutoWriteAccept,
+  onAutoWriteRegenerate,
+  onAutoWriteEdit,
+  onAutoWriteCancel,
   onAnalyse,
   analyseResult,
   analyseLoading,
@@ -2232,7 +2502,16 @@ function SectionCard({
               ...(onAnalyse != null
                 ? [{ kind: "analyse" as const, onClick: onAnalyse, disabled: analyseLoading ?? false }]
                 : []),
-              ...(onWriteWithAi != null
+              // TIM-3927: auto-write is the primary write action; falls back to
+              // the modal (onWriteWithAi) when onAutoWriteSection is absent.
+              ...(onAutoWriteSection != null
+                ? [{
+                    kind: "write" as const,
+                    label: "Auto-Write This Section",
+                    onClick: onAutoWriteSection,
+                    disabled: !canEdit || isStreaming || autoWriteState != null,
+                  }]
+                : onWriteWithAi != null
                 ? [{ kind: "write" as const, onClick: onWriteWithAi, disabled: !canEdit || isStreaming }]
                 : []),
             ] satisfies AiAction[]}
@@ -2244,12 +2523,22 @@ function SectionCard({
             the title — expanded chevron has p-0.5 (≈20px), collapsed is plain
             (16px); inner gap is gap-2 sm:gap-3. */}
         {section.isExpanded ? (
-          <div className="flex items-center gap-2 mt-1 pl-7 sm:pl-8">
+          <div className="flex items-center gap-2 mt-1 pl-7 sm:pl-8 flex-wrap">
             <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
             {hasUserOverride && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
                 Edited
               </span>
+            )}
+            {/* TIM-3927: Customize Sources — advanced path, link-styled */}
+            {onWriteWithAi && canEdit && !isStreaming && !autoWriteState && (
+              <button
+                type="button"
+                onClick={onWriteWithAi}
+                className="text-xs text-[var(--teal)] hover:underline focus-visible:outline-none"
+              >
+                Customize Sources
+              </button>
             )}
           </div>
         ) : (
@@ -2275,11 +2564,21 @@ function SectionCard({
       {/* Body */}
       {section.isExpanded && (
         <div className="px-5 pb-5">
+          {/* TIM-3927: Inline auto-write card — takes visual priority when present. */}
+          {autoWriteState && onAutoWriteAccept && onAutoWriteRegenerate && onAutoWriteEdit && onAutoWriteCancel && (
+            <AutoWriteInlineCard
+              state={autoWriteState}
+              onAccept={onAutoWriteAccept}
+              onRegenerate={onAutoWriteRegenerate}
+              onEdit={onAutoWriteEdit}
+              onCancel={onAutoWriteCancel}
+            />
+          )}
           {/* TIM-3893: Analyse-with-AI result card for Financial Plan sections. */}
-          {analyseError && (
+          {!autoWriteState && analyseError && (
             <p className="text-xs text-red-600 mb-3">{analyseError}</p>
           )}
-          {analyseResult && (
+          {!autoWriteState && analyseResult && (
             <div className="mb-4">
               <InlineAnalysisCard
                 result={analyseResult}
@@ -2289,7 +2588,7 @@ function SectionCard({
             </div>
           )}
           {/* TIM-3112: multi-shop example panel — matches Concept workspace styling exactly */}
-          {openExample && bpExamples.length > 0 && (() => {
+          {!autoWriteState && openExample && bpExamples.length > 0 && (() => {
             const ex = bpExamples[exampleIdx % Math.max(bpExamples.length, 1)];
             if (!ex) return null;
             return (
@@ -2339,7 +2638,7 @@ function SectionCard({
             );
           })()}
 
-          <div className="border-t border-[var(--neutral-cool-150)] pt-4">
+          {!autoWriteState && <div className="border-t border-[var(--neutral-cool-150)] pt-4">
             {isStreaming && !section.editBuffer && (
               <div className="flex items-center gap-2 mb-3" role="status">
                 <div className="flex gap-1" aria-hidden="true">
@@ -2394,13 +2693,104 @@ function SectionCard({
                 {displayContent && !isPlaceholder ? (
                   <MarkdownContent content={displayContent} />
                 ) : (
-                  <span className="text-[var(--dark-grey)] italic text-sm">No content yet. Use Write with AI to generate this section.</span>
+                  <span className="text-[var(--dark-grey)] italic text-sm">No content yet. Use Auto-Write to generate this section.</span>
                 )}
               </div>
             )}
-          </div>
+          </div>}
         </div>
       )}
+      </div>
+    </div>
+  );
+}
+
+// ── TIM-3927: AutoWriteInlineCard ─────────────────────────────────────────────
+// Renders inside an expanded SectionCard body when autoWriteState is set.
+// Generating phase: loading copy + streaming preview + Cancel.
+// Preview / committing phase: full proposed text + 4 action buttons.
+
+function AutoWriteInlineCard({
+  state,
+  onAccept,
+  onRegenerate,
+  onEdit,
+  onCancel,
+}: {
+  state: AutoWritePhase;
+  onAccept: () => void;
+  onRegenerate: () => void;
+  onEdit: () => void;
+  onCancel: () => void;
+}) {
+  const isCommitting = state.phase === "committing";
+
+  if (state.phase === "generating") {
+    return (
+      <div className="rounded-xl border border-[var(--teal-tint)] bg-[var(--teal)]/[0.03] p-4 mb-4" role="status">
+        <div className="flex items-center gap-2.5">
+          <Loader2 className="w-4 h-4 text-[var(--teal)] animate-spin flex-shrink-0" aria-hidden="true" />
+          <p className="text-xs font-medium text-[var(--teal)]">
+            Pulling data from your workspaces and writing this section…
+          </p>
+        </div>
+        {state.streamingBuf && (
+          <p className="mt-3 text-sm text-[var(--muted-foreground)] leading-relaxed line-clamp-4 border-t border-[var(--teal-tint)] pt-3">
+            {state.streamingBuf}
+          </p>
+        )}
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-[var(--teal-tint)] bg-white p-4 mb-4">
+      <p className="text-xs font-semibold text-[var(--teal)] mb-2">AI draft ready — review before accepting</p>
+      <div className="text-sm text-[var(--foreground)] leading-relaxed max-h-48 overflow-y-auto mb-4 whitespace-pre-wrap border border-[var(--border)] rounded-lg p-3 bg-[var(--neutral-cool-50)]">
+        {state.proposedText}
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          disabled={isCommitting}
+          onClick={onAccept}
+          className="px-3 py-1.5 rounded-lg bg-[var(--teal)] text-white text-xs font-medium hover:bg-[var(--teal-850,var(--teal))] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isCommitting ? "Saving…" : "Accept"}
+        </button>
+        <button
+          type="button"
+          disabled={isCommitting}
+          onClick={onRegenerate}
+          className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--neutral-cool-50)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Regenerate
+        </button>
+        <button
+          type="button"
+          disabled={isCommitting}
+          onClick={onEdit}
+          className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--neutral-cool-50)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          disabled={isCommitting}
+          onClick={onCancel}
+          className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors ml-1 disabled:opacity-50"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   );
