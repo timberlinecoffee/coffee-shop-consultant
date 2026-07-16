@@ -2764,7 +2764,7 @@ function AutoWriteInlineCard({
 
   return (
     <div className="rounded-xl border border-[var(--teal-tint)] bg-white p-4 mb-4">
-      <p className="text-xs font-semibold text-[var(--teal)] mb-2">AI draft ready — review before accepting</p>
+      <p className="text-xs font-semibold text-[var(--teal)] mb-2">AI draft ready. Review before accepting.</p>
       <div className="text-sm text-[var(--foreground)] leading-relaxed max-h-48 overflow-y-auto mb-4 whitespace-pre-wrap border border-[var(--border)] rounded-lg p-3 bg-[var(--neutral-cool-50)]">
         {state.proposedText}
       </div>
