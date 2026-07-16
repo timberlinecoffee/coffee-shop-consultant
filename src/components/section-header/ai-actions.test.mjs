@@ -109,3 +109,54 @@ test('analyse action stripped when analyseButtonEnabled=false', () => {
   assert.equal(result.length, 1)
   assert.equal(result[0].kind, 'write')
 })
+
+// ── TIM-3950: regenerate kind ordering ────────────────────────────────────────
+
+test('aiActions=[write, regenerate] resolves in order', () => {
+  const result = resolveAiActions(
+    [{ kind: 'write', onClick: () => {} }, { kind: 'regenerate', onClick: () => {} }],
+    undefined,
+    true,
+  )
+  assert.equal(result.length, 2)
+  assert.equal(result[0].kind, 'write')
+  assert.equal(result[1].kind, 'regenerate')
+})
+
+test('aiActions=[analyse, write, regenerate] resolves all three in order', () => {
+  const result = resolveAiActions(
+    [
+      { kind: 'analyse', onClick: () => {} },
+      { kind: 'write', onClick: () => {} },
+      { kind: 'regenerate', onClick: () => {} },
+    ],
+    undefined,
+    true,
+  )
+  assert.equal(result.length, 3)
+  assert.equal(result[0].kind, 'analyse')
+  assert.equal(result[1].kind, 'write')
+  assert.equal(result[2].kind, 'regenerate')
+})
+
+test('assertAiActionsOrder throws when regenerate precedes write', () => {
+  assert.throws(
+    () =>
+      assertAiActionsOrder([
+        { kind: 'regenerate', onClick: () => {} },
+        { kind: 'write', onClick: () => {} },
+      ]),
+    /order violation/,
+  )
+})
+
+test('assertAiActionsOrder throws when regenerate precedes analyse', () => {
+  assert.throws(
+    () =>
+      assertAiActionsOrder([
+        { kind: 'regenerate', onClick: () => {} },
+        { kind: 'analyse', onClick: () => {} },
+      ]),
+    /order violation/,
+  )
+})

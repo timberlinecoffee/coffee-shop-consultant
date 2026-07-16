@@ -5,8 +5,13 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, Pencil, Eye, EyeOff, RotateCcw, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
+import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, Pencil, Eye, EyeOff, RotateCcw, MoreVertical, Archive, ArchiveRestore, Undo2, X } from "lucide-react";
 import { SectionHeader, type AiAction } from "@/components/section-header";
+// TIM-3950: Two-button split flag. Default-ON. When TRUE, each BP section
+// exposes [Write with AI] (opens modal) + [Regenerate with AI] (warn + undo)
+// in the SectionHeader slot. When FALSE, we fall back to the TIM-3927 single-
+// button "Auto-Write This Section" + inline preview flow.
+import { BP_AI_SPLIT } from "@/lib/bp-ai-split";
 import { InlineAnalysisCard } from "@/components/ai-analyse/InlineAnalysisCard";
 import type { AnalyseResponse } from "@/app/api/ai/analyse/[sectionKind]/route";
 import { CollapseButton } from "@/components/ui/CollapseButton";
@@ -332,6 +337,24 @@ export function BusinessPlanWorkspace({
   useEffect(() => { sectionsRef.current = sections; }, [sections]);
   // TIM-3927: per-section AbortControllers for inline auto-write SSE streams.
   const autoWriteAbortRefs = useRef<Map<BusinessPlanSectionKey, AbortController>>(new Map());
+
+  // TIM-3950: Regenerate-with-warning target. When set, RegenerateWarningDialog
+  // opens. Null when no warning is pending. The warning is skipped when the
+  // section is currently empty — see handleRegenerateClick.
+  const [regenerateWarningKey, setRegenerateWarningKey] = useState<BusinessPlanSectionKey | null>(null);
+  // TIM-3950: Undo toast state after a successful Regenerate. Holds the pre-
+  // regenerate content so a single click restores it. Auto-clears after 15s.
+  const [undoToast, setUndoToast] = useState<{
+    key: BusinessPlanSectionKey;
+    previousContent: string | null;
+    sectionTitle: string;
+  } | null>(null);
+  const undoToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (undoToastTimerRef.current) clearTimeout(undoToastTimerRef.current);
+    };
+  }, []);
 
   // ── Section helpers ────────────────────────────────────────────────────────
 
@@ -810,6 +833,236 @@ export function BusinessPlanWorkspace({
     autoWriteAbortRefs.current.get(key)?.abort();
     updateSection(key, { autoWrite: null });
   }, [updateSection]);
+
+  // ── TIM-3950: Regenerate-with-AI (warning + undo) ─────────────────────────
+  //
+  // Two-button split flow — the destructive "Regenerate with AI" path. On
+  // click:
+  //   1. If the section has real content, open a confirmation dialog first.
+  //   2. On confirm (or immediately if the section is empty), stream a fresh
+  //      generation from workspace data (same route as TIM-3927 Auto-Write).
+  //   3. On done, snapshot the pre-regenerate content, PATCH the new content,
+  //      and surface an Undo toast for 15s.
+  //   4. Undo restores the snapshot in a single PATCH.
+  //
+  // The intermediate "Accept preview" step from TIM-3927 is intentionally
+  // omitted here — the board directive (TIM-3949) makes Regenerate a fast,
+  // one-click flow protected by warn-before + undo-after. The gated iterative
+  // path lives in Write-with-AI (BPWriteWithAIModal).
+
+  const scheduleUndoToastClear = useCallback(() => {
+    if (undoToastTimerRef.current) clearTimeout(undoToastTimerRef.current);
+    undoToastTimerRef.current = setTimeout(() => {
+      setUndoToast(null);
+      undoToastTimerRef.current = null;
+    }, 15_000);
+  }, []);
+
+  const patchSectionContent = useCallback(async (
+    key: BusinessPlanSectionKey,
+    userContent: string | null,
+    estimatedClaims: unknown[] | null,
+  ) => {
+    const body: Record<string, unknown> = { user_content: userContent };
+    if (estimatedClaims != null) body.estimated_claims_json = estimatedClaims;
+    const res = await fetch(`/api/business-plan/sections/${key}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(
+        res.status === 402
+          ? "Saving requires a Pro subscription."
+          : res.status === 429
+            ? "Too many requests — wait a moment and try again."
+            : (j.error as string | undefined) ?? "Couldn't save this section. Please try again.",
+      );
+    }
+  }, []);
+
+  const runRegenerateSectionStream = useCallback(async (key: BusinessPlanSectionKey) => {
+    if (!canEdit) return;
+    autoWriteAbortRefs.current.get(key)?.abort();
+    const abort = new AbortController();
+    autoWriteAbortRefs.current.set(key, abort);
+
+    // Snapshot BEFORE overwriting so Undo can restore even if the section
+    // state advances during the SSE stream.
+    const preSection = sectionsRef.current.find((s) => s.key === key);
+    if (!preSection) return;
+    const previousContent = preSection.userContent;
+    const previousTitle = preSection.title;
+
+    setSections((prev) =>
+      prev.map((s) =>
+        s.key === key
+          ? { ...s, isExpanded: true, autoWrite: { phase: "generating", streamingBuf: "" } }
+          : s,
+      ),
+    );
+
+    try {
+      const res = await fetch("/api/business-plan/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sectionKey: key }),
+        signal: abort.signal,
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+        throw new Error(
+          res.status === 402
+            ? "Regenerate requires a Pro subscription."
+            : res.status === 429
+              ? "Too many requests — wait a moment and try again."
+              : (j.error as string | undefined) ?? "Regeneration failed. Please try again.",
+        );
+      }
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = "";
+      let streamingBuf = "";
+      let finalText = "";
+      let finalClaims: unknown[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (abort.signal.aborted) return;
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const chunks = sseBuffer.split("\n\n");
+        sseBuffer = chunks.pop() ?? "";
+        for (const chunk of chunks) {
+          const lines = chunk.split("\n");
+          let eventType = "";
+          let dataLine = "";
+          for (const line of lines) {
+            if (line.startsWith("event: ")) eventType = line.slice(7).trim();
+            if (line.startsWith("data: ")) dataLine = line.slice(6).trim();
+          }
+          if (!dataLine) continue;
+          if (eventType === "text") {
+            const parsed = JSON.parse(dataLine) as { text: string };
+            streamingBuf += parsed.text;
+            const snap = streamingBuf;
+            setSections((prev) =>
+              prev.map((s) =>
+                s.key === key ? { ...s, autoWrite: { phase: "generating", streamingBuf: snap } } : s,
+              ),
+            );
+          } else if (eventType === "done") {
+            const parsed = JSON.parse(dataLine) as {
+              text: string;
+              estimated_claims?: unknown[];
+            };
+            finalText = parsed.text || streamingBuf;
+            finalClaims = Array.isArray(parsed.estimated_claims) ? parsed.estimated_claims : [];
+            reader.releaseLock();
+            break;
+          } else if (eventType === "error") {
+            const parsed = JSON.parse(dataLine) as { message?: string };
+            throw new Error(parsed.message ?? "Regeneration failed. Please try again.");
+          }
+        }
+        if (finalText) break;
+      }
+
+      if (!finalText) throw new Error("Regeneration ended without a draft. Please try again.");
+
+      // Commit + swap the section content in a single beat, then surface the
+      // undo toast. Failure to PATCH reverts the streaming card so the user
+      // can retry rather than losing the draft silently.
+      await patchSectionContent(key, finalText, finalClaims);
+      setSections((prev) =>
+        prev.map((s) =>
+          s.key !== key
+            ? s
+            : { ...s, userContent: finalText, editBuffer: finalText, isEditing: false, autoWrite: null },
+        ),
+      );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+      setUndoToast({ key, previousContent, sectionTitle: previousTitle });
+      scheduleUndoToastClear();
+    } catch (err: unknown) {
+      if (abort.signal.aborted) return;
+      console.error("[regenerate]", err);
+      updateSection(key, { autoWrite: null });
+      setGlobalError(
+        err instanceof Error ? err.message : "Could not regenerate this section. Try again.",
+      );
+    }
+  }, [canEdit, patchSectionContent, scheduleUndoToastClear, updateSection]);
+
+  const handleRegenerateClick = useCallback((key: BusinessPlanSectionKey) => {
+    if (!canEdit) return;
+    const section = sectionsRef.current.find((s) => s.key === key);
+    if (!section) return;
+    const raw = section.isEditing
+      ? section.editBuffer
+      : (section.userContent ?? section.autoContent ?? "");
+    // Skip the warning when there's nothing to lose. The placeholder-content
+    // check reuses the same detector as the modal so "Complete the Marketing
+    // workspace" and friends are treated as empty (there is no user work to
+    // protect).
+    const looksEmpty = raw.trim().length === 0 || isBpPlaceholderContent(raw);
+    if (looksEmpty) {
+      void runRegenerateSectionStream(key);
+      return;
+    }
+    setRegenerateWarningKey(key);
+  }, [canEdit, runRegenerateSectionStream]);
+
+  const handleRegenerateConfirm = useCallback((key: BusinessPlanSectionKey) => {
+    setRegenerateWarningKey(null);
+    void runRegenerateSectionStream(key);
+  }, [runRegenerateSectionStream]);
+
+  const handleUndoRegenerate = useCallback(async () => {
+    const toast = undoToast;
+    if (!toast) return;
+    // Clear the toast optimistically so a rapid Undo re-click can't double-
+    // fire the PATCH.
+    setUndoToast(null);
+    if (undoToastTimerRef.current) {
+      clearTimeout(undoToastTimerRef.current);
+      undoToastTimerRef.current = null;
+    }
+    try {
+      await patchSectionContent(toast.key, toast.previousContent, null);
+      setSections((prev) =>
+        prev.map((s) =>
+          s.key !== toast.key
+            ? s
+            : {
+                ...s,
+                userContent: toast.previousContent,
+                editBuffer: toast.previousContent ?? s.autoContent ?? "",
+                isEditing: false,
+              },
+        ),
+      );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    } catch (err: unknown) {
+      // Restore the toast so the user can try again — the previous content is
+      // still recoverable client-side.
+      setUndoToast(toast);
+      scheduleUndoToastClear();
+      setGlobalError(
+        err instanceof Error ? err.message : "Undo failed. Try again.",
+      );
+    }
+  }, [patchSectionContent, scheduleUndoToastClear, undoToast]);
+
+  const handleDismissUndoToast = useCallback(() => {
+    if (undoToastTimerRef.current) {
+      clearTimeout(undoToastTimerRef.current);
+      undoToastTimerRef.current = null;
+    }
+    setUndoToast(null);
+  }, []);
 
   // ── PDF export / print ──────────────────────────────────────────────────────
 
@@ -1312,6 +1565,38 @@ export function BusinessPlanWorkspace({
         otherSectionsForContext={bpOtherSectionsForContext}
       />
     )}
+    {/* TIM-3950: Regenerate-with-AI overwrite warning. Fires before the
+        destructive regenerate stream starts. Skipped for empty sections in
+        handleRegenerateClick — the dialog only opens when there is user
+        content worth protecting. */}
+    {regenerateWarningKey && (() => {
+      const activeKey = regenerateWarningKey;
+      const target = sections.find((s) => s.key === activeKey);
+      if (!target) return null;
+      // handleRegenerateConfirm chains through runRegenerateSectionStream,
+      // which reads sectionsRef.current inside its own useCallback body — the
+      // ref access is deferred until the user clicks Confirm, not evaluated
+      // during this render. The rule's static analysis flags the closure
+      // chain regardless.
+      // eslint-disable-next-line react-hooks/refs
+      const confirm = () => handleRegenerateConfirm(activeKey);
+      return (
+        <RegenerateWarningDialog
+          sectionTitle={target.title}
+          onCancel={() => setRegenerateWarningKey(null)}
+          onConfirm={confirm}
+        />
+      );
+    })()}
+    {/* TIM-3950: Undo-toast surface after a successful Regenerate. Auto-
+        clears after 15s, or immediately on Undo / dismiss. */}
+    {undoToast && (
+      <RegenerateUndoToast
+        sectionTitle={undoToast.sectionTitle}
+        onUndo={() => void handleUndoRegenerate()}
+        onDismiss={handleDismissUndoToast}
+      />
+    )}
     {/* TIM-3576: cover config modal opens before print/export */}
     {coverModalAction && (
       <CoverConfigModal
@@ -1586,12 +1871,14 @@ export function BusinessPlanWorkspace({
               bpFpAnalyseLoading={bpFpAnalyseLoading}
               bpFpAnalyseError={bpFpAnalyseError}
               bpFpAnalyseActiveKey={bpFpAnalyseActiveKey}
-              // TIM-3927: one-click auto-write.
+              // TIM-3927: one-click auto-write (used when BP_AI_SPLIT flag OFF).
               onAutoWriteSection={canEdit ? handleAutoWriteSection : undefined}
               onAutoWriteAccept={handleAutoWriteAccept}
               onAutoWriteRegenerate={handleAutoWriteRegenerate}
               onAutoWriteEdit={handleAutoWriteEdit}
               onAutoWriteCancel={handleAutoWriteCancel}
+              // TIM-3950: Regenerate-with-AI (warn + undo) — flag-ON split path.
+              onRegenerateSection={canEdit ? handleRegenerateClick : undefined}
             />
           </SortableContext>
         </DndContext>
@@ -1736,6 +2023,9 @@ interface BpFlatSectionListProps {
   onAutoWriteRegenerate?: (key: BusinessPlanSectionKey) => void;
   onAutoWriteEdit?: (key: BusinessPlanSectionKey) => void;
   onAutoWriteCancel?: (key: BusinessPlanSectionKey) => void;
+  // TIM-3950: Regenerate with AI (warning + undo, replaces auto-write path
+  // when BP_AI_SPLIT flag is ON).
+  onRegenerateSection?: (key: BusinessPlanSectionKey) => void;
 }
 
 function BpFlatSectionList(props: BpFlatSectionListProps) {
@@ -1837,12 +2127,20 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
                 else props.onGenerateExec(section.key);
               }
             : undefined;
-          // TIM-3927: new collapsed single-click flow.
+          // TIM-3927: new collapsed single-click flow (flag OFF path only).
           const onAutoWrite =
             props.canEdit && props.onAutoWriteSection
               ? () => {
                   if (!section.isExpanded) props.onToggleExpand(section.key, section.isExpanded);
                   props.onAutoWriteSection!(section.key);
+                }
+              : undefined;
+          // TIM-3950: Regenerate-with-AI entry point (flag ON path).
+          const onRegenerate =
+            props.canEdit && props.onRegenerateSection
+              ? () => {
+                  if (!section.isExpanded) props.onToggleExpand(section.key, section.isExpanded);
+                  props.onRegenerateSection!(section.key);
                 }
               : undefined;
           const sectionMeta = sectionMetaByKey.get(section.key);
@@ -1882,6 +2180,7 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
                 onResetToAuto={() => props.onResetToAuto(section.key)}
                 onWriteWithAi={onWriteWithAi}
                 onAutoWriteSection={onAutoWrite}
+                onRegenerateSection={onRegenerate}
                 autoWriteState={section.autoWrite ?? null}
                 onAutoWriteAccept={
                   props.onAutoWriteAccept
@@ -2105,6 +2404,118 @@ function ArchiveConfirmDialog({
   );
 }
 
+// ── TIM-3950: RegenerateWarningDialog ─────────────────────────────────────────
+//
+// Confirmation gate before a destructive Regenerate-with-AI run. Copy is
+// verbatim from the TIM-3950 board directive DoD. Escape dismisses; the
+// Cancel button auto-focuses so an accidental Enter closes rather than
+// confirms. Skipped for empty sections in handleRegenerateClick.
+
+function RegenerateWarningDialog({
+  sectionTitle,
+  onCancel,
+  onConfirm,
+}: {
+  sectionTitle: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onCancel();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="bp-regenerate-warn-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2
+          id="bp-regenerate-warn-title"
+          className="text-base font-semibold text-[var(--foreground)]"
+        >
+          Regenerate {sectionTitle}?
+        </h2>
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+          This will generate a completely new version of this section using
+          data from your workspaces. Your current content will be replaced.
+          Are you sure?
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            autoFocus
+            className="text-sm font-medium text-[var(--neutral-cool-700)] px-4 py-2 rounded-xl border border-[var(--neutral-cool-200)] hover:bg-[var(--neutral-cool-50)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="text-sm font-medium text-white bg-[var(--teal)] px-4 py-2 rounded-xl hover:bg-[var(--teal-dark,var(--teal))] transition-colors"
+          >
+            Yes, Regenerate
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── TIM-3950: RegenerateUndoToast ─────────────────────────────────────────────
+//
+// Bottom-center toast surfaced after a successful Regenerate PATCH. Holds a
+// visible Undo affordance and an X to dismiss. Parent auto-clears at 15s.
+// Visual pattern mirrors project-switcher.tsx (bottom-6 left-1/2 pill, teal
+// bg, X trailing).
+
+function RegenerateUndoToast({
+  sectionTitle,
+  onUndo,
+  onDismiss,
+}: {
+  sectionTitle: string;
+  onUndo: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg max-w-sm text-sm font-medium bg-[var(--teal)] text-white"
+    >
+      <span className="truncate">Regenerated {sectionTitle}.</span>
+      <button
+        type="button"
+        onClick={onUndo}
+        className="inline-flex items-center gap-1.5 text-sm font-semibold underline underline-offset-2 hover:no-underline focus-visible:outline-none"
+      >
+        <Undo2 size={14} aria-hidden="true" />
+        Undo
+      </button>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="text-white/80 hover:text-white focus-visible:outline-none"
+        aria-label="Dismiss"
+      >
+        <X size={14} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
 // ── TIM-3575: ArchivePanel ────────────────────────────────────────────────────
 // Inline collapsible panel at the bottom of the section list (TIM-3579 IA decision).
 // Shows two groups: Archived (with Restore) and Optional (with Add to Plan).
@@ -2272,15 +2683,23 @@ interface SectionCardProps {
   onEditSave: () => void;
   onEditCancel: () => void;
   onResetToAuto: () => void;
-  /** TIM-3927: becomes "Customize Sources" link (opens BPWriteWithAIModal). */
+  /**
+   * TIM-3927: link-styled "Customize Sources" in sub-header when flag OFF.
+   * TIM-3950: primary "Write with AI" SectionHeader button when flag ON.
+   * Both open BPWriteWithAIModal (guided, non-destructive).
+   */
   onWriteWithAi?: () => void;
-  /** TIM-3927: main "Auto-Write This Section" button — collapses seed flow. */
+  /** TIM-3927: main "Auto-Write This Section" button — collapsed seed flow.
+   *  Present only when BP_AI_SPLIT flag is OFF. */
   onAutoWriteSection?: () => void;
   autoWriteState?: AutoWritePhase | null;
   onAutoWriteAccept?: () => void;
   onAutoWriteRegenerate?: () => void;
   onAutoWriteEdit?: () => void;
   onAutoWriteCancel?: () => void;
+  /** TIM-3950: Regenerate-with-AI (warning + undo). Present only when
+   *  BP_AI_SPLIT flag is ON. */
+  onRegenerateSection?: () => void;
   // TIM-3893: Analyse-with-AI for Financial Plan sections.
   onAnalyse?: () => void;
   analyseResult?: AnalyseResponse | null;
@@ -2335,6 +2754,7 @@ function SectionCard({
   onResetToAuto,
   onWriteWithAi,
   onAutoWriteSection,
+  onRegenerateSection,
   autoWriteState,
   onAutoWriteAccept,
   onAutoWriteRegenerate,
@@ -2512,9 +2932,29 @@ function SectionCard({
               ...(onAnalyse != null
                 ? [{ kind: "analyse" as const, onClick: onAnalyse, disabled: analyseLoading ?? false }]
                 : []),
-              // TIM-3927: auto-write is the primary write action; falls back to
-              // the modal (onWriteWithAi) when onAutoWriteSection is absent.
-              ...(onAutoWriteSection != null
+              // TIM-3950: Two-button split (BP_AI_SPLIT flag ON) — [Write with
+              // AI] primary opens the guided modal; [Regenerate with AI]
+              // secondary is the destructive warn-then-undo path. When the
+              // flag is OFF, fall back to the TIM-3927 single "Auto-Write"
+              // button + Customize Sources link (rendered in the sub-header).
+              ...(BP_AI_SPLIT
+                ? [
+                    ...(onWriteWithAi != null
+                      ? [{
+                          kind: "write" as const,
+                          onClick: onWriteWithAi,
+                          disabled: !canEdit || isStreaming || autoWriteState != null,
+                        }]
+                      : []),
+                    ...(onRegenerateSection != null
+                      ? [{
+                          kind: "regenerate" as const,
+                          onClick: onRegenerateSection,
+                          disabled: !canEdit || isStreaming || autoWriteState != null,
+                        }]
+                      : []),
+                  ]
+                : onAutoWriteSection != null
                 ? [{
                     kind: "write" as const,
                     label: "Auto-Write This Section",
@@ -2540,8 +2980,11 @@ function SectionCard({
                 Edited
               </span>
             )}
-            {/* TIM-3927: Customize Sources — advanced path, link-styled */}
-            {onWriteWithAi && canEdit && !isStreaming && !autoWriteState && (
+            {/* TIM-3927: Customize Sources — advanced path, link-styled.
+                TIM-3950: only shown when flag OFF; when flag is ON the
+                SectionHeader's primary "Write with AI" button IS this path,
+                so surfacing a duplicate link would be redundant. */}
+            {!BP_AI_SPLIT && onWriteWithAi && canEdit && !isStreaming && !autoWriteState && (
               <button
                 type="button"
                 onClick={onWriteWithAi}
@@ -2703,7 +3146,11 @@ function SectionCard({
                 {displayContent && !isPlaceholder ? (
                   <MarkdownContent content={displayContent} />
                 ) : (
-                  <span className="text-[var(--dark-grey)] italic text-sm">No content yet. Use Auto-Write to generate this section.</span>
+                  <span className="text-[var(--dark-grey)] italic text-sm">
+                    {BP_AI_SPLIT
+                      ? "No content yet. Use Write with AI or Regenerate with AI to draft this section."
+                      : "No content yet. Use Auto-Write to generate this section."}
+                  </span>
                 )}
               </div>
             )}

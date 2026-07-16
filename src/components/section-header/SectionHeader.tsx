@@ -1,24 +1,31 @@
 'use client'
 
 // TIM-3855 (2026-07-14): Canon amendment. TIM-3300 said "Write with AI is the
-// ONLY right-side element." Board directive on TIM-3855 formally overrides that
-// and adds a second AI action, "Analyse with AI". The right-side action slot is
-// now a BOUNDED list from {analyse, write}, in that visual order when both are
-// present. Do NOT canon-fix this back — the amendment is the new baseline.
-// Do NOT add a third action kind without a new board directive.
+// ONLY right-side element." Board directive on TIM-3855 formally overrode that
+// and added "Analyse with AI".
+//
+// TIM-3950 (2026-07-16): Canon extension. Board directive TIM-3949/TIM-3950
+// authorizes a third action kind, "Regenerate with AI", scoped to Business
+// Plan sections. The right-side action slot is now a BOUNDED list from
+// {analyse, write, regenerate}, in that visual order when multiple are
+// present. Do NOT canon-fix back — the amendment is the new baseline.
+// Do NOT add a fourth action kind without a new board directive.
 //
 // TIM-3304: Canonical sub-section header for every Groundwork workspace panel.
-// Locked visual structure: [Title] [Help (?)] ─────────────── [Analyse] [Write]
+// Locked visual structure:
+//   [Title] [Help (?)] ─────────────── [Analyse] [Write] [Regenerate]
 //
 // Constraints (hard):
 //   - Help (?) is anchored immediately right of the title — never floats right.
-//   - The right-side element is a BOUNDED list: only 'analyse' and 'write'.
-//     No gear, eye, save, or any other action slot. Extra right-side actions
-//     are the regression vector TIM-3300 called out; resist adding more kinds.
+//   - The right-side element is a BOUNDED list: only 'analyse', 'write', and
+//     'regenerate'. No gear, eye, save, or any other action slot. Extra
+//     right-side actions are the regression vector TIM-3300 called out;
+//     resist adding more kinds.
 //   - Token-only styling (TIM-2760 v2 tokens). No new hex values or px values.
 //   - Analyse button controlled by NEXT_PUBLIC_AI_ANALYSE_BUTTON flag (TIM-3869).
+//   - BP two-button split controlled by NEXT_PUBLIC_BP_AI_SPLIT flag (TIM-3950).
 
-import { ScanSearch, Sparkles } from 'lucide-react'
+import { RefreshCw, ScanSearch, Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { SectionHelp } from '@/components/ui/section-help'
 import { AI_ANALYSE_BUTTON } from '@/lib/ai-analyse-button'
@@ -31,9 +38,9 @@ export interface SectionHeaderProps {
   /** Body content for the help popover. Omit to suppress the (?) icon. */
   helpContent?: ReactNode
   /** Ordered list of AI actions. Rendered left-to-right in the order given.
-   *  When both are present, order MUST be [{kind:'analyse'}, {kind:'write'}]
-   *  so the visual order is [Analyse] [Write]. Enforced with a runtime assert
-   *  in non-production environments. */
+   *  When multiple are present, order MUST be [analyse?, write?, regenerate?]
+   *  so the visual order is [Analyse] [Write] [Regenerate]. Enforced with a
+   *  runtime assert in non-production environments. */
   aiActions?: AiAction[]
   /** @deprecated Use aiActions instead. Kept as a shim during Phase 2 rollout.
    *  If both aiActions and onWriteWithAi are given, aiActions wins. */
@@ -53,6 +60,19 @@ export interface SectionHeaderProps {
 const ACTION_LABEL: Record<AiAction['kind'], string> = {
   analyse: 'Analyse',
   write: 'Write',
+  regenerate: 'Regenerate',
+}
+
+// TIM-3950: 'regenerate' is visually secondary (ghost — no border) to keep
+// 'write' as the primary iterative call-to-action. 'analyse' and 'write'
+// keep the teal-border pill from the pre-TIM-3950 canon.
+function actionButtonClasses(kind: AiAction['kind']): string {
+  const base =
+    'inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+  if (kind === 'regenerate') {
+    return `${base} text-[var(--muted-foreground)] hover:text-[var(--foreground)] px-2 py-1 rounded-xl`
+  }
+  return `${base} text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5`
 }
 
 export function SectionHeader({
@@ -98,12 +118,16 @@ export function SectionHeader({
                   ? `${action.label} for ${title}`
                   : action.kind === 'analyse'
                   ? `Analyse ${title} with AI`
+                  : action.kind === 'regenerate'
+                  ? `Regenerate ${title} with AI`
                   : `Write ${title} with AI`
               }
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--teal)] border border-[var(--teal-tint)] rounded-xl px-3 py-1 hover:bg-[var(--teal)]/5 transition-colors whitespace-nowrap flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={actionButtonClasses(action.kind)}
             >
               {action.kind === 'analyse' ? (
                 <ScanSearch size={12} aria-hidden="true" />
+              ) : action.kind === 'regenerate' ? (
+                <RefreshCw size={12} aria-hidden="true" />
               ) : (
                 <Sparkles size={12} aria-hidden="true" />
               )}
