@@ -64,9 +64,11 @@ export interface SeedBlockView {
 // TIM-3854: mirror of formatSeedBlocksAsText from the server module — again,
 // kept client-local to avoid pulling server code into the client bundle.
 // Exported so TIM-3957 exec-summary Regenerate can reuse without duplication.
+export const SEED_CONTEXT_HEADER = "Context from your workspaces (edit or remove any lines you don't want the AI to use):";
+
 export function formatBlocksAsSeedText(blocks: SeedBlockView[]): string {
   if (blocks.length === 0) return "";
-  const header = "Context from your workspaces (edit or remove any lines you don't want the AI to use):";
+  const header = SEED_CONTEXT_HEADER;
   const rendered = blocks.map((b) => {
     const heading = b.heading ?? `FROM ${b.label.toUpperCase()} WORKSPACE:`;
     if (b.isEmpty) {

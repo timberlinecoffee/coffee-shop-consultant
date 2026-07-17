@@ -76,6 +76,7 @@ import {
   type SeedBlockView,
   formatBlocksAsSeedText,
   isBpPlaceholderContent,
+  SEED_CONTEXT_HEADER,
   type WriteAiApproveExtras,
 } from "@/components/business-plan/BPWriteWithAIModal";
 
@@ -1012,7 +1013,7 @@ export function BusinessPlanWorkspace({
         // the founder edits the textarea. The /improve system prompt has no rule
         // to dismiss it, so remove it here to keep currentContent clean.
         const rawSeedText = formatBlocksAsSeedText(blocks);
-        const SEED_HEADER = "Context from your workspaces (edit or remove any lines you don't want the AI to use):\n\n";
+        const SEED_HEADER = SEED_CONTEXT_HEADER + "\n\n";
         const seedText = rawSeedText.startsWith(SEED_HEADER) ? rawSeedText.slice(SEED_HEADER.length) : rawSeedText;
 
         if (!seedText || blocks.every((b) => b.isEmpty)) {
@@ -1096,7 +1097,12 @@ export function BusinessPlanWorkspace({
               estimated_claims?: unknown[];
             };
             finalText = parsed.text || streamingBuf;
-            finalClaims = Array.isArray(parsed.estimated_claims) ? parsed.estimated_claims : [];
+            // Only set when the endpoint actually returned claims (/generate does,
+            // /improve never does). Leaving finalClaims undefined tells
+            // patchSectionContent to leave estimated_claims_json intact.
+            if (parsed.estimated_claims !== undefined) {
+              finalClaims = Array.isArray(parsed.estimated_claims) ? parsed.estimated_claims : [];
+            }
             reader.releaseLock();
             doneReceived = true;
             break;
