@@ -124,6 +124,23 @@ The reopen comment contains the exact `gh pr create` / `git merge` command. Run 
 - **`scripts/safe-delete-branch.sh`** — wraps `git branch -d`; refuses delete if branch has unmerged commits (TIM-987).
 <!-- END:pillar1-pillar4-docs -->
 
+<!-- BEGIN:service-identity-verify -->
+# Service identities: verify secrets are written post-accept (TIM-2895 Move 3 / TIM-3966)
+
+Any Service-Identity (SI) parent issue that asks the board to paste a value into `/TIM/settings/secrets` MUST run a live DB probe against `company_secrets` after the confirmation is accepted and BEFORE the SI parent is closed. Do not close on acceptance alone — TIM-2963 hit a 4-cycle accept-without-execute pattern where the board accepted but the row never landed, and there was no post-accept check to catch it.
+
+Probe: [`scripts/verify-secret-written.sh`](scripts/verify-secret-written.sh) `<company_id> <secret_name>` — hits `company_secrets` via `psql "$SUPABASE_DB_URL"`, exits 0 with `verified: <id>` on hit, exits 4 on miss. DSN is redacted from any error output.
+
+Flow on the SI parent:
+
+1. Board accepts the `request_confirmation` card. Do NOT PATCH the SI parent to `done` yet.
+2. Run `scripts/verify-secret-written.sh <company_id> <secret_name>` with `SUPABASE_DB_URL` set to the Paperclip embedded pg DSN (weekly-rotated — see the board secrets store).
+3. Hit (exit 0) → PATCH SI parent to `done` and include the probe's `verified: <id>` line in the completion comment.
+4. Miss (exit 4) → keep SI parent open, file a fresh `request_confirmation` naming the exact `/TIM/settings/secrets` paste path and the secret name. Do not accept-and-hope.
+
+Do not remove or bypass the probe on cost/latency grounds — a single `psql` round-trip is the cheapest guard against a silent-fail loop.
+<!-- END:service-identity-verify -->
+
 <!-- BEGIN:standing-approvals -->
 # Standing approvals — self-apply, don't file board cards (TIM-2894)
 
