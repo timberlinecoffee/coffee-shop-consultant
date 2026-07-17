@@ -460,9 +460,9 @@ function HiringLawsPanel({
         )}
       </div>
 
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
-        <p className="text-xs font-semibold text-amber-800 mb-1">General Guidance Only</p>
-        <p className="text-xs text-amber-700 leading-relaxed">
+      <div className="rounded-xl border border-[var(--warning-amber-2)] bg-[var(--warning-bg)] px-5 py-4">
+        <p className="text-xs font-semibold text-[var(--warning-darker)] mb-1">General Guidance Only</p>
+        <p className="text-xs text-[var(--warning-dark)] leading-relaxed">
           Not legal advice. Requirements and rates change frequently. Verify current obligations with a licensed professional in your jurisdiction before acting.
         </p>
       </div>
@@ -2904,6 +2904,8 @@ function RoleCompetencyEvaluationSection({
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(
     staffFiles.find((s) => s.role_id === role.id)?.id ?? staffFiles[0]?.id ?? null,
   );
+  const [aiAssistCompetencies, setAiAssistCompetencies] = useState(false);
+  const { openAIReviewModal: openCompetenciesAIReviewModal, AIReviewModalNode: CompetenciesAIReviewModalNode } = useAIReviewModal();
 
   async function addCompetency() {
     const optimistic: StaffCompetency = {
@@ -3015,7 +3017,7 @@ function RoleCompetencyEvaluationSection({
       <SectionHeader
         title="Competency Evaluation"
         helpContent="Define skills and score staff members against them. Scores are 1–5."
-        aiActions={canEdit ? [{ kind: "write" as const, label: "Suggest", onClick: addCompetency }] : []}
+        aiActions={canEdit ? [{ kind: "write" as const, label: "Suggest", onClick: () => setAiAssistCompetencies(true) }] : []}
         className="mb-0"
       />
 
@@ -3185,6 +3187,22 @@ function RoleCompetencyEvaluationSection({
           </div>
         </div>
       )}
+
+      {aiAssistCompetencies && (
+        <AIAssistCallout
+          open={true}
+          onClose={() => setAiAssistCompetencies(false)}
+          fieldLabel="Competency Skills"
+          moduleLabel="Hiring & Onboarding"
+          fieldKey="competencies"
+          workspaceKey="hiring"
+          planId={planId}
+          currentValue={competencies.map((c) => c.skill).join(", ")}
+          onApply={() => setAiAssistCompetencies(false)}
+          openAIReviewModal={openCompetenciesAIReviewModal}
+        />
+      )}
+      {CompetenciesAIReviewModalNode}
     </section>
   );
 }
