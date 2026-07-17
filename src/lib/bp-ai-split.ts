@@ -18,4 +18,4 @@
  * explicitly "false". Baked at build time.
  */
 export const BP_AI_SPLIT: boolean =
-  process.env.NEXT_PUBLIC_BP_AI_SPLIT !== 'false'
+  (process.env.NEXT_PUBLIC_BP_AI_SPLIT ?? '').toLowerCase().trim() !== 'false'

@@ -367,6 +367,16 @@ export function BusinessPlanWorkspace({
     };
   }, []);
 
+  // TIM-3954: Abort all in-flight regenerate streams on unmount to prevent
+  // setSections/setUndoToasts firing on an unmounted component.
+  useEffect(() => {
+    const refs = autoWriteAbortRefs.current;
+    return () => {
+      refs.forEach((ctrl) => ctrl.abort());
+      refs.clear();
+    };
+  }, []);
+
   // ── Section helpers ────────────────────────────────────────────────────────
 
   const updateSection = useCallback((key: BusinessPlanSectionKey, patch: Partial<SectionState>) => {
@@ -969,6 +979,7 @@ export function BusinessPlanWorkspace({
       let streamingBuf = "";
       let finalText = "";
       let finalClaims: unknown[] = [];
+      let doneReceived = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -1003,21 +1014,46 @@ export function BusinessPlanWorkspace({
             finalText = parsed.text || streamingBuf;
             finalClaims = Array.isArray(parsed.estimated_claims) ? parsed.estimated_claims : [];
             reader.releaseLock();
+            doneReceived = true;
             break;
           } else if (eventType === "error") {
             const parsed = JSON.parse(dataLine) as { message?: string };
             throw new Error(parsed.message ?? "Regeneration failed. Please try again.");
           }
         }
-        if (finalText) break;
+        if (doneReceived) break;
       }
 
       if (!finalText) throw new Error("Regeneration ended without a draft. Please try again.");
 
       // Commit + swap the section content in a single beat, then surface the
-      // undo toast. If the PATCH fails the streaming card is cleared and the
-      // draft is dropped — user retries via the Regenerate button.
-      await patchSectionContent(key, finalText, finalClaims);
+      // undo toast. If the PATCH fails, restore the draft to preview so the
+      // user can retry without burning another AI credit.
+      try {
+        await patchSectionContent(key, finalText, finalClaims);
+      } catch (patchErr: unknown) {
+        if (abort.signal.aborted) return;
+        console.error("[regenerate/patch]", patchErr);
+        setSections((prev) =>
+          prev.map((s) =>
+            s.key !== key
+              ? s
+              : {
+                  ...s,
+                  autoWrite: {
+                    phase: "preview",
+                    proposedText: finalText,
+                    estimatedClaims: finalClaims,
+                    contradictions: [],
+                  },
+                },
+          ),
+        );
+        setGlobalError(
+          patchErr instanceof Error ? patchErr.message : "Could not save. Accept the preview to retry.",
+        );
+        return;
+      }
       setSections((prev) =>
         prev.map((s) =>
           s.key !== key
@@ -1055,11 +1091,11 @@ export function BusinessPlanWorkspace({
     if (!section) return;
     const raw = section.isEditing
       ? section.editBuffer
-      : (section.userContent ?? section.autoContent ?? "");
-    // Skip the warning when there's nothing to lose. The placeholder-content
-    // check reuses the same detector as the modal so "Complete the Marketing
-    // workspace" and friends are treated as empty (there is no user work to
-    // protect).
+      : (section.userContent ?? "");
+    // Skip the warning when there's nothing to lose. Guard on userContent only
+    // (not autoContent): a section the founder has never typed into has no
+    // user work to protect, so falling back to autoContent would trigger a
+    // false warning on workspace-generated narratives.
     const looksEmpty = raw.trim().length === 0 || isBpPlaceholderContent(raw);
     if (looksEmpty) {
       void runRegenerateSectionStream(key);
@@ -1942,6 +1978,8 @@ export function BusinessPlanWorkspace({
               onAutoWriteCancel={handleAutoWriteCancel}
               // TIM-3950: Regenerate-with-AI (warn + undo) — flag-ON split path.
               onRegenerateSection={canEdit ? handleRegenerateClick : undefined}
+              // TIM-3954: disable header Regenerate while the Write-with-AI modal is open for this section.
+              bpWriteAiSectionKey={bpWriteAiTarget?.kind === "standard" ? bpWriteAiTarget.sectionKey : null}
             />
           </SortableContext>
         </DndContext>
@@ -2089,6 +2127,9 @@ interface BpFlatSectionListProps {
   // TIM-3950: Regenerate with AI (warning + undo, replaces auto-write path
   // when BP_AI_SPLIT flag is ON).
   onRegenerateSection?: (key: BusinessPlanSectionKey) => void;
+  // TIM-3954: The standard section key currently open in BPWriteWithAIModal.
+  // Disables the header Regenerate for that section to prevent two parallel writes.
+  bpWriteAiSectionKey?: BusinessPlanSectionKey | null;
 }
 
 function BpFlatSectionList(props: BpFlatSectionListProps) {
@@ -2199,8 +2240,11 @@ function BpFlatSectionList(props: BpFlatSectionListProps) {
                 }
               : undefined;
           // TIM-3950: Regenerate-with-AI entry point (flag ON path).
+          // TIM-3954: suppress when the Write-with-AI modal is open for this
+          // section to prevent two parallel writes racing on the same section.
+          const modalOpenForThisSection = props.bpWriteAiSectionKey === section.key;
           const onRegenerate =
-            props.canEdit && props.onRegenerateSection
+            props.canEdit && props.onRegenerateSection && !modalOpenForThisSection
               ? () => {
                   if (!section.isExpanded) props.onToggleExpand(section.key, section.isExpanded);
                   props.onRegenerateSection!(section.key);
