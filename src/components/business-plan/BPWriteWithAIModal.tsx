@@ -191,6 +191,7 @@ export function BPWriteWithAIModal({
   }, []);
 
   async function handleGenerate() {
+    if (step !== "input" && step !== "preview") return;
     setError(null);
     setStreamingBuf("");
     setProposedText(null);
@@ -769,7 +770,7 @@ export function BPWriteWithAIModal({
                 onClick={() => void handleGenerate()}
                 className="text-sm font-semibold text-[var(--foreground)] border border-[var(--gray-750)] px-4 py-2 rounded-lg hover:bg-[var(--neutral-cool-100)] transition-colors"
               >
-                Regenerate
+                Try Again
               </button>
               <button
                 type="button"
