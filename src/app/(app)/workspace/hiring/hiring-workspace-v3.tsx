@@ -62,11 +62,15 @@ import {
   type PlanHiringSettings,
   type HiringRequirementSet,
   type HiringCountry,
+  type CandidateStatus,
   DEFAULT_ONBOARDING_TASKS,
   PHASE_LABELS,
   PHASE_ORDER,
   HIRING_COUNTRY_OPTIONS,
+  CANDIDATE_STATUS_CONFIG,
+  CANDIDATE_STATUS_ORDER,
 } from "@/lib/hiring";
+import { HIRING_REVAMP_V3_OVERRIDE_COOKIE } from "@/lib/hiring-revamp-v3";
 import {
   type MinWageInfo,
   formatHourlyWage,
@@ -88,6 +92,7 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { SectionHeader } from "@/components/section-header";
 import { SectionHelp } from "@/components/ui/section-help";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
@@ -623,6 +628,10 @@ export function HiringWorkspaceV3(props: Props) {
   const [onboardingTasks, setOnboardingTasks] = useState<OnboardingTask[]>(
     props.initialOnboardingTasks,
   );
+  const [competencies, setCompetencies] = useState<StaffCompetency[]>(props.initialCompetencies);
+  const [staffFiles, setStaffFiles] = useState<StaffFile[]>(props.initialStaffFiles);
+  const [evaluations, setEvaluations] = useState<CompetencyEvaluation[]>(props.initialCompetencyEvals);
+  const [candidates, setCandidates] = useState<InterviewCandidate[]>(props.initialCandidates);
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(
     props.initialRoles[0]?.id ?? null,
   );
@@ -632,6 +641,9 @@ export function HiringWorkspaceV3(props: Props) {
   const [addingRole, setAddingRole] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [aiAssistRoles, setAiAssistRoles] = useState(false);
+  const [savedAt] = useState(() => new Date().toISOString());
+  const { openAIReviewModal: openRolesAIReviewModal, AIReviewModalNode: RolesAIReviewModalNode } = useAIReviewModal();
 
   const selectedRole = useMemo(
     () => roles.find((r) => r.id === selectedRoleId) ?? null,
@@ -718,6 +730,15 @@ export function HiringWorkspaceV3(props: Props) {
             {props.canEdit && (
               <WorkspaceActionButton
                 variant="secondary"
+                onClick={() => setAiAssistRoles(true)}
+              >
+                <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} />
+                Suggest with AI
+              </WorkspaceActionButton>
+            )}
+            {props.canEdit && (
+              <WorkspaceActionButton
+                variant="secondary"
                 onClick={() => setAddingRole(true)}
               >
                 <Plus size={WORKSPACE_ACTION_ICON_SIZE} />
@@ -728,6 +749,13 @@ export function HiringWorkspaceV3(props: Props) {
               workspaceKey="hiring"
               focusLabel="hiring plan"
               hasContent={roles.length > 0}
+            />
+            <SaveStatusAndButton
+              saving={false}
+              savedAt={savedAt}
+              unsaved={false}
+              canEdit={props.canEdit}
+              onSave={() => {}}
             />
           </>
         }
@@ -814,14 +842,24 @@ export function HiringWorkspaceV3(props: Props) {
               </li>
             )}
           </ul>
+          {/* Revert toggle — lets users flip back to v1 during rollout window */}
+          <HiringRevertV3Toggle />
         </nav>
 
         <section className="min-w-0">
           {selectedView === "general" ? (
-            <HiringLawsPanel
-              initialSettings={props.initialHiringSettings}
-              initialRequirementSets={props.initialRequirementSets}
-            />
+            <div className="space-y-6">
+              <HiringLawsPanel
+                initialSettings={props.initialHiringSettings}
+                initialRequirementSets={props.initialRequirementSets}
+              />
+              <InterviewCandidatesSection
+                planId={props.planId}
+                canEdit={props.canEdit}
+                candidates={candidates}
+                onCandidatesChange={setCandidates}
+              />
+            </div>
           ) : selectedRole ? (
             <RolePageV3
               role={selectedRole}
@@ -835,6 +873,12 @@ export function HiringWorkspaceV3(props: Props) {
               onboardingTasks={onboardingTasks}
               onOnboardingInstancesChange={setOnboardingInstances}
               onOnboardingTasksChange={setOnboardingTasks}
+              competencies={competencies}
+              staffFiles={staffFiles}
+              evaluations={evaluations}
+              onCompetenciesChange={setCompetencies}
+              onStaffFilesChange={setStaffFiles}
+              onEvaluationsChange={setEvaluations}
               onUpdateRole={updateSelectedRole}
               onDeleteRole={() => setDeleteConfirmId(selectedRole.id)}
             />
@@ -853,6 +897,22 @@ export function HiringWorkspaceV3(props: Props) {
           onCancel={() => setDeleteConfirmId(null)}
         />
       )}
+
+      {aiAssistRoles && (
+        <AIAssistCallout
+          open={true}
+          onClose={() => setAiAssistRoles(false)}
+          fieldLabel="Hiring Roles"
+          moduleLabel="Hiring & Onboarding"
+          fieldKey="roles"
+          workspaceKey="hiring"
+          planId={props.planId}
+          currentValue={roles.map((r) => r.role_title).join(", ")}
+          onApply={() => setAiAssistRoles(false)}
+          openAIReviewModal={openRolesAIReviewModal}
+        />
+      )}
+      {RolesAIReviewModalNode}
     </div>
   );
 }
@@ -871,6 +931,12 @@ type RolePageProps = {
   onboardingTasks: OnboardingTask[];
   onOnboardingInstancesChange: (next: OnboardingPlanInstance[] | ((prev: OnboardingPlanInstance[]) => OnboardingPlanInstance[])) => void;
   onOnboardingTasksChange: (next: OnboardingTask[] | ((prev: OnboardingTask[]) => OnboardingTask[])) => void;
+  competencies: StaffCompetency[];
+  staffFiles: StaffFile[];
+  evaluations: CompetencyEvaluation[];
+  onCompetenciesChange: (next: StaffCompetency[]) => void;
+  onStaffFilesChange: (next: StaffFile[]) => void;
+  onEvaluationsChange: (next: CompetencyEvaluation[]) => void;
   onUpdateRole: (patch: Partial<OrgRole>) => void;
   onDeleteRole: () => void;
 };
@@ -929,6 +995,29 @@ function RolePageV3(props: RolePageProps) {
         </AccordionV3>
         <AccordionV3 id="competency" title="Competency forms" subtitle="Staff skill check-ins">
           <RoleCompetencyFormsSection role={role} planId={props.planId} canEdit={props.canEdit} />
+        </AccordionV3>
+        <AccordionV3 id="competency-eval" title="Competency evaluation" subtitle="Staff skills framework and scores">
+          <RoleCompetencyEvaluationSection
+            role={role}
+            planId={props.planId}
+            canEdit={props.canEdit}
+            competencies={props.competencies}
+            staffFiles={props.staffFiles}
+            evaluations={props.evaluations}
+            onCompetenciesChange={props.onCompetenciesChange}
+            onStaffFilesChange={props.onStaffFilesChange}
+            onEvaluationsChange={props.onEvaluationsChange}
+          />
+        </AccordionV3>
+        <AccordionV3 id="training" title="Training plan" subtitle="Development gaps and training roadmap">
+          <RoleTrainingPlanSection
+            role={role}
+            planId={props.planId}
+            canEdit={props.canEdit}
+            competencies={props.competencies}
+            staffFiles={props.staffFiles}
+            evaluations={props.evaluations}
+          />
         </AccordionV3>
         <AccordionV3 id="onboarding" title="Onboarding plan" subtitle="First 90 days task list">
           <RoleOnboardingSection
@@ -1427,6 +1516,8 @@ function RoleInterviewQuestionsSection({
   const [roleScorecards, setRoleScorecards] = useState<InterviewScorecard[]>([]);
   const [selectedScorecardId, setSelectedScorecardId] = useState<string | null>(null);
   const [loadingScorecards, setLoadingScorecards] = useState(false);
+  const [aiAssistQuestions, setAiAssistQuestions] = useState(false);
+  const { openAIReviewModal: openQuestionsAIReviewModal, AIReviewModalNode: QuestionsAIReviewModalNode } = useAIReviewModal();
 
   useEffect(() => {
     setLoadingScorecards(true);
@@ -1495,6 +1586,13 @@ function RoleInterviewQuestionsSection({
 
   return (
     <section className="px-4 py-4 space-y-4">
+      <SectionHeader
+        title="Interview Questions"
+        helpContent="Template questions and weights for this scorecard."
+        aiActions={canEdit ? [{ kind: "write" as const, label: "Suggest", onClick: () => setAiAssistQuestions(true) }] : []}
+        className="mb-0"
+      />
+
       {roleScorecards.length > 0 && (
         <div>
           <label className={labelCls}>Scorecard variant</label>
@@ -1517,10 +1615,7 @@ function RoleInterviewQuestionsSection({
 
       <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
         <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Interview Questions</p>
-            <SectionHelp title="Interview Questions">Template questions and weights for this scorecard.</SectionHelp>
-          </div>
+          <p className="text-sm font-semibold text-[var(--foreground)]">Questions</p>
           {canEdit && (
             <button
               type="button"
@@ -1587,6 +1682,22 @@ function RoleInterviewQuestionsSection({
           </div>
         )}
       </div>
+
+      {aiAssistQuestions && (
+        <AIAssistCallout
+          open={true}
+          onClose={() => setAiAssistQuestions(false)}
+          fieldLabel="Interview Questions"
+          moduleLabel="Hiring & Onboarding"
+          fieldKey="interview-questions"
+          workspaceKey="hiring"
+          planId={planId}
+          currentValue={questions.filter((q) => q.role_id === role.id).map((q) => q.prompt).join("\n")}
+          onApply={() => setAiAssistQuestions(false)}
+          openAIReviewModal={openQuestionsAIReviewModal}
+        />
+      )}
+      {QuestionsAIReviewModalNode}
     </section>
   );
 }
@@ -1823,6 +1934,8 @@ function RoleCompetencyFormsSection({
   const [loaded, setLoaded] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [aiAssistForms, setAiAssistForms] = useState(false);
+  const { openAIReviewModal: openFormsAIReviewModal, AIReviewModalNode: FormsAIReviewModalNode } = useAIReviewModal();
 
   useEffect(() => {
     if (loaded || loading) return;
@@ -1866,7 +1979,11 @@ function RoleCompetencyFormsSection({
   return (
     <section className="px-4 py-4">
       <div className="flex items-center justify-between mb-3">
-        <SectionHeader title="Competency Forms" className="mb-0" />
+        <SectionHeader
+          title="Competency Forms"
+          aiActions={canEdit ? [{ kind: "write" as const, label: "Suggest", onClick: () => setAiAssistForms(true) }] : []}
+          className="mb-0"
+        />
         {canEdit && (
           <button
             type="button"
@@ -1936,6 +2053,22 @@ function RoleCompetencyFormsSection({
           ))}
         </div>
       )}
+
+      {aiAssistForms && (
+        <AIAssistCallout
+          open={true}
+          onClose={() => setAiAssistForms(false)}
+          fieldLabel="Competency Forms"
+          moduleLabel="Hiring & Onboarding"
+          fieldKey="competency-forms"
+          workspaceKey="hiring"
+          planId={planId}
+          currentValue={forms.map((f) => f.name).join(", ")}
+          onApply={() => setAiAssistForms(false)}
+          openAIReviewModal={openFormsAIReviewModal}
+        />
+      )}
+      {FormsAIReviewModalNode}
     </section>
   );
 }
@@ -2687,5 +2820,616 @@ function RoleNavRowV3({
         </>
       )}
     </li>
+  );
+}
+
+// ── HiringRevertV3Toggle — sidebar toggle to opt out of v3 ───────────────────
+
+function HiringRevertV3Toggle() {
+  const [enabled, setEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  async function toggle() {
+    if (saving) return;
+    const next = !enabled;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/account/hiring-revamp-v3", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setEnabled(next);
+      window.location.reload();
+    } catch {
+      // swallow
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="px-4 py-3 border-t border-[var(--border)]">
+      <div className="flex items-center justify-between gap-2">
+        <label className="text-[11px] text-[var(--muted-foreground)] cursor-pointer select-none">
+          New UI (v3)
+        </label>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          disabled={saving}
+          onClick={toggle}
+          title={enabled ? "Revert to classic UI" : "Use new UI"}
+          className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors disabled:opacity-50 cursor-pointer ${
+            enabled ? "bg-[var(--teal)]" : "bg-[var(--border)]"
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+              enabled ? "translate-x-4" : "translate-x-0"
+            }`}
+          />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── RoleCompetencyEvaluationSection — competency framework + per-staff eval ──
+
+function RoleCompetencyEvaluationSection({
+  role,
+  planId,
+  canEdit,
+  competencies,
+  staffFiles,
+  evaluations,
+  onCompetenciesChange,
+  onStaffFilesChange,
+  onEvaluationsChange,
+}: {
+  role: OrgRole;
+  planId: string;
+  canEdit: boolean;
+  competencies: StaffCompetency[];
+  staffFiles: StaffFile[];
+  evaluations: CompetencyEvaluation[];
+  onCompetenciesChange: (next: StaffCompetency[]) => void;
+  onStaffFilesChange: (next: StaffFile[]) => void;
+  onEvaluationsChange: (next: CompetencyEvaluation[]) => void;
+}) {
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(
+    staffFiles.find((s) => s.role_id === role.id)?.id ?? staffFiles[0]?.id ?? null,
+  );
+
+  async function addCompetency() {
+    const optimistic: StaffCompetency = {
+      id: makeLocalId(),
+      plan_id: planId,
+      skill: "",
+      rubric: "",
+      required_for_role: role.role_title || null,
+      form_template_id: null,
+      weight: 1,
+      order_index: competencies.length,
+    };
+    onCompetenciesChange([...competencies, optimistic]);
+    const res = await fetch(`/api/workspaces/hiring/competencies?planId=${planId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        plan_id: planId,
+        skill: "",
+        rubric: "",
+        required_for_role: role.role_title || null,
+        weight: 1,
+        order_index: competencies.length,
+      }),
+    });
+    if (res.ok) {
+      const created = (await res.json()) as StaffCompetency;
+      onCompetenciesChange(competencies.map((c) => (c.id === optimistic.id ? created : c)));
+    } else {
+      onCompetenciesChange(competencies.filter((c) => c.id !== optimistic.id));
+    }
+  }
+
+  async function updateCompetency(id: string, patch: Partial<StaffCompetency>) {
+    onCompetenciesChange(competencies.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+    await fetch(`/api/workspaces/hiring/competencies?planId=${planId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...patch }),
+    });
+  }
+
+  async function deleteCompetency(id: string) {
+    const prev = competencies;
+    onCompetenciesChange(competencies.filter((c) => c.id !== id));
+    const res = await fetch(`/api/workspaces/hiring/competencies?planId=${planId}&id=${id}`, { method: "DELETE" });
+    if (!res.ok) onCompetenciesChange(prev);
+  }
+
+  async function addStaffFile() {
+    const optimistic: StaffFile = {
+      id: makeLocalId(),
+      plan_id: planId,
+      name: "",
+      hire_date: null,
+      role_id: role.id,
+      notes: null,
+    };
+    onStaffFilesChange([...staffFiles, optimistic]);
+    setSelectedStaffId(optimistic.id);
+    const res = await fetch(`/api/workspaces/hiring/staff?planId=${planId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan_id: planId, name: "", role_id: role.id }),
+    });
+    if (res.ok) {
+      const created = (await res.json()) as StaffFile;
+      onStaffFilesChange(staffFiles.map((s) => (s.id === optimistic.id ? created : s)));
+      setSelectedStaffId(created.id);
+    } else {
+      onStaffFilesChange(staffFiles.filter((s) => s.id !== optimistic.id));
+    }
+  }
+
+  async function updateStaffFile(id: string, patch: Partial<StaffFile>) {
+    onStaffFilesChange(staffFiles.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+    await fetch(`/api/workspaces/hiring/staff?planId=${planId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...patch }),
+    });
+  }
+
+  async function upsertEvaluation(staffFileId: string, competencyId: string, score: number) {
+    const now = new Date().toISOString();
+    const existing = evaluations.find(
+      (e) => e.staff_file_id === staffFileId && e.competency_id === competencyId,
+    );
+    const updated: CompetencyEvaluation = existing
+      ? { ...existing, score, evaluated_at: now }
+      : { id: makeLocalId(), staff_file_id: staffFileId, competency_id: competencyId, score, notes: null, evaluated_at: now };
+    onEvaluationsChange(
+      existing
+        ? evaluations.map((e) => (e.staff_file_id === staffFileId && e.competency_id === competencyId ? updated : e))
+        : [...evaluations, updated],
+    );
+    await fetch(`/api/workspaces/hiring/evaluations?planId=${planId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ staff_file_id: staffFileId, competency_id: competencyId, score, notes: null }),
+    });
+  }
+
+  const roleStaff = staffFiles.filter((s) => s.role_id === role.id || s.role_id === null);
+  const selectedStaff = roleStaff.find((s) => s.id === selectedStaffId) ?? null;
+
+  return (
+    <section className="px-4 py-4 space-y-4">
+      <SectionHeader
+        title="Competency Evaluation"
+        helpContent="Define skills and score staff members against them. Scores are 1–5."
+        aiActions={canEdit ? [{ kind: "write" as const, label: "Suggest", onClick: addCompetency }] : []}
+        className="mb-0"
+      />
+
+      {/* Competency framework */}
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Competency Framework</p>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={addCompetency}
+              className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)]"
+            >
+              <Plus size={13} /> Add skill
+            </button>
+          )}
+        </div>
+        {competencies.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-sm text-[var(--dark-grey)]">No competencies defined. Add skills above.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-[var(--neutral-cool-100)]">
+            {competencies.sort((a, b) => a.order_index - b.order_index).map((comp) => (
+              <div key={comp.id} className="px-4 py-3 flex items-start gap-3">
+                <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    className={inputCls}
+                    value={comp.skill}
+                    onChange={(e) => updateCompetency(comp.id, { skill: e.target.value })}
+                    placeholder="Skill name"
+                    disabled={!canEdit}
+                  />
+                  <input
+                    className={`${inputCls} sm:col-span-1`}
+                    value={comp.rubric}
+                    onChange={(e) => updateCompetency(comp.id, { rubric: e.target.value })}
+                    placeholder="Rubric (what score means)"
+                    disabled={!canEdit}
+                  />
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-[var(--muted-foreground)]">Wt</span>
+                      <select
+                        className="text-xs border border-[var(--border-medium)] rounded px-1 py-1.5 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)]"
+                        value={comp.weight}
+                        onChange={(e) => updateCompetency(comp.id, { weight: parseInt(e.target.value, 10) })}
+                        disabled={!canEdit}
+                      >
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => deleteCompetency(comp.id)}
+                        className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1 ml-auto"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Staff evaluation */}
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Staff Evaluations</p>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={addStaffFile}
+              className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)]"
+            >
+              <Plus size={13} /> Add staff
+            </button>
+          )}
+        </div>
+
+        {roleStaff.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-sm text-[var(--dark-grey)]">No staff added yet.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-[var(--neutral-cool-100)]">
+            {roleStaff.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSelectedStaffId(s.id)}
+                className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${
+                  selectedStaffId === s.id ? "bg-[var(--teal-tint-500)]" : "hover:bg-[var(--background)]"
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[var(--foreground)] truncate">{s.name || "Unnamed staff"}</p>
+                  {s.hire_date && (
+                    <p className="text-[10px] text-[var(--muted-foreground)]">
+                      Hired {new Date(`${s.hire_date}T12:00:00`).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                    </p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {selectedStaff && competencies.length > 0 && (
+        <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                className="flex-1 text-sm font-medium border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus-visible:outline-none py-0.5 bg-transparent"
+                value={selectedStaff.name}
+                onChange={(e) => updateStaffFile(selectedStaff.id, { name: e.target.value })}
+                placeholder="Staff name"
+                disabled={!canEdit}
+              />
+              <input
+                className="text-xs border border-[var(--border-medium)] rounded px-2 py-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)]"
+                type="date"
+                value={selectedStaff.hire_date ?? ""}
+                onChange={(e) => updateStaffFile(selectedStaff.id, { hire_date: e.target.value || null })}
+                disabled={!canEdit}
+                title="Hire date"
+              />
+            </div>
+            <p className="text-xs text-[var(--muted-foreground)]">Score each skill 1–5. Blank = not yet evaluated.</p>
+          </div>
+          <div className="divide-y divide-[var(--neutral-cool-100)]">
+            {competencies.sort((a, b) => a.order_index - b.order_index).map((comp) => {
+              const ev = evaluations.find((e) => e.staff_file_id === selectedStaff.id && e.competency_id === comp.id);
+              return (
+                <div key={comp.id} className="px-4 py-3 flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-[var(--foreground)] truncate">{comp.skill || "Unnamed skill"}</p>
+                    {comp.rubric && <p className="text-[10px] text-[var(--muted-foreground)] truncate">{comp.rubric}</p>}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        disabled={!canEdit}
+                        onClick={() => upsertEvaluation(selectedStaff.id, comp.id, n)}
+                        className={`w-7 h-7 rounded-full text-xs font-semibold transition-colors ${
+                          ev?.score === n
+                            ? "bg-[var(--teal)] text-white"
+                            : "bg-[var(--neutral-cool-100)] text-[var(--dark-grey)] hover:bg-[var(--teal-tint-500)] hover:text-[var(--teal)]"
+                        } disabled:cursor-default`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ── RoleTrainingPlanSection — training roadmap based on evaluation gaps ───────
+
+function RoleTrainingPlanSection({
+  role,
+  planId,
+  canEdit,
+  competencies,
+  staffFiles,
+  evaluations,
+}: {
+  role: OrgRole;
+  planId: string;
+  canEdit: boolean;
+  competencies: StaffCompetency[];
+  staffFiles: StaffFile[];
+  evaluations: CompetencyEvaluation[];
+}) {
+  const roleStaff = staffFiles.filter((s) => s.role_id === role.id || s.role_id === null);
+
+  const trainingNeeds = useMemo(() => {
+    return roleStaff.flatMap((staff) => {
+      const gaps = competencies
+        .filter((comp) => {
+          const ev = evaluations.find((e) => e.staff_file_id === staff.id && e.competency_id === comp.id);
+          return !ev || ev.score < 3;
+        })
+        .map((comp) => {
+          const ev = evaluations.find((e) => e.staff_file_id === staff.id && e.competency_id === comp.id);
+          return { competency: comp, score: ev?.score ?? null };
+        });
+      return gaps.map((gap) => ({ staff, ...gap }));
+    });
+  }, [roleStaff, competencies, evaluations]);
+
+  if (competencies.length === 0 || roleStaff.length === 0) {
+    return (
+      <section className="px-4 py-4">
+        <p className="text-sm text-[var(--dark-grey)]">
+          Add staff and define competencies in the Competency Evaluation section above to generate a training plan.
+        </p>
+      </section>
+    );
+  }
+
+  if (trainingNeeds.length === 0) {
+    return (
+      <section className="px-4 py-4">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--teal-tint-500)] px-5 py-4">
+          <p className="text-sm font-semibold text-[var(--teal)]">All staff meet competency thresholds.</p>
+          <p className="text-xs text-[var(--teal)] mt-1">No training gaps detected (all scores ≥ 3).</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="px-4 py-4 space-y-4">
+      <SectionHeader
+        title="Training Plan"
+        helpContent="Staff members with competency scores below 3 are listed here as training priorities."
+        className="mb-0"
+      />
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--border)]">
+          <p className="text-xs text-[var(--muted-foreground)]">
+            {trainingNeeds.length} gap{trainingNeeds.length !== 1 ? "s" : ""} identified (score &lt; 3)
+          </p>
+        </div>
+        <div className="divide-y divide-[var(--neutral-cool-100)]">
+          {trainingNeeds.map(({ staff, competency, score }, i) => (
+            <div key={`${staff.id}-${competency.id}-${i}`} className="px-4 py-3 flex items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[var(--foreground)] truncate">
+                  {staff.name || "Unnamed staff"} — {competency.skill || "Unnamed skill"}
+                </p>
+                {competency.rubric && (
+                  <p className="text-[10px] text-[var(--muted-foreground)] truncate">{competency.rubric}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <span
+                  className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    score === null
+                      ? "bg-[var(--neutral-cool-100)] text-[var(--dark-grey)]"
+                      : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  {score === null ? "Not evaluated" : `Score: ${score}`}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── InterviewCandidatesSection — cross-role candidate list (General view) ─────
+
+function InterviewCandidatesSection({
+  planId,
+  canEdit,
+  candidates,
+  onCandidatesChange,
+}: {
+  planId: string;
+  canEdit: boolean;
+  candidates: InterviewCandidate[];
+  onCandidatesChange: (next: InterviewCandidate[]) => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+
+  async function addCandidate() {
+    const name = newName.trim();
+    setAdding(false);
+    setNewName("");
+    if (!name) return;
+    const res = await fetch(`/api/workspaces/hiring/candidates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, status: "applied", position: candidates.length }),
+    });
+    if (res.ok) {
+      const created = (await res.json()) as InterviewCandidate;
+      onCandidatesChange([...candidates, created]);
+    }
+  }
+
+  async function updateCandidate(id: string, patch: Partial<InterviewCandidate>) {
+    onCandidatesChange(candidates.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+    await fetch(`/api/workspaces/hiring/candidates`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...patch }),
+    });
+  }
+
+  async function deleteCandidate(id: string) {
+    const prev = candidates;
+    onCandidatesChange(candidates.filter((c) => c.id !== id));
+    const res = await fetch(`/api/workspaces/hiring/candidates?id=${id}`, { method: "DELETE" });
+    if (!res.ok) onCandidatesChange(prev);
+  }
+
+  return (
+    <div className="space-y-5">
+      <SectionHeader
+        title="Interview Candidates"
+        helpContent="Cross-role candidate pipeline. Track all applicants across your hiring plan."
+        className="mb-0"
+      />
+      <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
+          <p className="text-sm font-semibold text-[var(--foreground)]">All Candidates</p>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--teal-dark)]"
+            >
+              <Plus size={13} /> Add candidate
+            </button>
+          )}
+        </div>
+
+        {adding && (
+          <div className="px-4 py-3 border-b border-[var(--border)] bg-[var(--background)] flex items-center gap-2">
+            <input
+              autoFocus
+              className={inputCls + " flex-1"}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addCandidate();
+                if (e.key === "Escape") { setAdding(false); setNewName(""); }
+              }}
+              placeholder="Candidate name"
+            />
+            <button
+              type="button"
+              onClick={addCandidate}
+              className="text-xs font-semibold bg-[var(--teal)] text-white px-3 py-1.5 rounded-lg hover:bg-[var(--teal-dark)]"
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAdding(false); setNewName(""); }}
+              className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {candidates.length === 0 && !adding ? (
+          <div className="py-8 text-center">
+            <p className="text-sm text-[var(--dark-grey)]">No candidates yet. Add one above.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-[var(--neutral-cool-100)]">
+            {candidates.map((c) => (
+              <div key={c.id} className="px-4 py-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <input
+                    className="w-full text-sm text-[var(--foreground)] bg-transparent border-b border-transparent hover:border-[var(--border-medium)] focus:border-[var(--teal)] focus-visible:outline-none py-0.5 disabled:hover:border-transparent"
+                    value={c.name}
+                    onChange={(e) => updateCandidate(c.id, { name: e.target.value })}
+                    placeholder="Name"
+                    disabled={!canEdit}
+                  />
+                  {c.contact && (
+                    <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5 truncate">{c.contact}</p>
+                  )}
+                </div>
+                <select
+                  className="text-xs border border-[var(--border-medium)] rounded-lg px-2 py-1 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] bg-white disabled:opacity-60"
+                  value={c.status}
+                  onChange={(e) => updateCandidate(c.id, { status: e.target.value as CandidateStatus })}
+                  disabled={!canEdit}
+                >
+                  {CANDIDATE_STATUS_ORDER.map((s) => (
+                    <option key={s} value={s}>{CANDIDATE_STATUS_CONFIG[s].label}</option>
+                  ))}
+                </select>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => deleteCandidate(c.id)}
+                    className="text-[var(--dark-grey)] hover:text-[var(--error)] p-1 shrink-0"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
