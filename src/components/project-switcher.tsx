@@ -14,6 +14,7 @@ import { ChevronDown, Plus, Lock, X, Trash2 } from "lucide-react";
 import { CollapseButton } from "@/components/ui/CollapseButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Toast as TealToast } from "@/components/ui/toast";
 import { ProUpgradePrompt } from "@/components/pro-upgrade-prompt";
 import { OnboardingFlow } from "@/app/onboarding/onboarding-flow";
 
@@ -43,12 +44,6 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
   const [interviewProjectId, setInterviewProjectId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // TIM-2915: dismiss toast after 4s. Re-set on every new toast.
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   const refetchProjects = useCallback(async () => {
     try {
@@ -266,24 +261,15 @@ export function ProjectSwitcher({ isPro }: ProjectSwitcherProps) {
 
       {toast && (
         <div
-          role="status"
           data-testid="project-switcher-toast"
-          aria-live="polite"
-          className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg max-w-sm text-sm font-medium ${
-            toast.kind === "success"
-              ? "bg-[var(--teal)] text-white"
-              : "bg-red-600 text-white"
-          }`}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]"
         >
-          <span>{toast.message}</span>
-          <button
-            type="button"
-            onClick={() => setToast(null)}
-            className="text-white/80 hover:text-white focus-visible:outline-none"
-            aria-label="Dismiss"
-          >
-            <X size={14} aria-hidden="true" />
-          </button>
+          <TealToast
+            variant={toast.kind}
+            message={toast.message}
+            onDismiss={() => setToast(null)}
+            autoClearMs={4000}
+          />
         </div>
       )}
     </div>

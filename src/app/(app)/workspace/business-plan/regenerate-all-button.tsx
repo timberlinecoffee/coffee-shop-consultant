@@ -27,6 +27,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { Sparkles, ShieldAlert } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   WorkspaceActionButton,
   WORKSPACE_ACTION_ICON_SIZE,
@@ -614,13 +615,62 @@ export function RegenerateAllButton({
         />
       )}
 
-      {phase === "confirming" && pending && (
-        <RegenerateAllConfirmDialog
-          estimate={pending.estimate}
-          onCancel={handleCancelConfirm}
-          onConfirm={handleConfirm}
-        />
-      )}
+      {phase === "confirming" && pending && (() => {
+        const { estimate } = pending;
+        const isBetaWaived = estimate.billing_mode === "beta_waiver";
+        const insufficient = !isBetaWaived && estimate.credits_remaining < estimate.estimated_credits;
+        return (
+          <ConfirmDialog
+            title="Regenerate the full business plan?"
+            body={
+              <div className="space-y-3">
+                <p className="text-sm text-[var(--foreground)] leading-relaxed">
+                  All {estimate.sections.length} sections will be regenerated from your current
+                  platform data. You will review each draft before anything saves.
+                </p>
+                <div className="rounded-lg bg-[var(--neutral-cool-50)] border border-[var(--neutral-cool-150)] px-3 py-2.5 text-xs text-[var(--foreground)]">
+                  {isBetaWaived ? (
+                    <span>Beta waiver active: no credits will be charged.</span>
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span>Estimated cost</span>
+                        <span className="font-semibold">
+                          {estimate.estimated_credits} credit{estimate.estimated_credits === 1 ? "" : "s"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[var(--muted-foreground)] mt-0.5">
+                        <span>Credits remaining</span>
+                        <span>{estimate.credits_remaining}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {insufficient && (
+                  <div className="rounded-lg bg-[var(--warning-bg-3,#fff7ed)] border border-[var(--warning-bg,#fed7aa)] px-3 py-2 text-xs text-[var(--warning-dark,#9a3412)]">
+                    You do not have enough credits for a full regenerate. Some later sections may
+                    fail with an out-of-credits error.
+                  </div>
+                )}
+                {estimate.sparse_sections.length > 0 && (
+                  <div className="rounded-lg bg-[var(--neutral-cool-50)] border border-[var(--neutral-cool-150)] px-3 py-2 text-xs text-[var(--muted-foreground)]">
+                    {estimate.sparse_sections.length} of {estimate.sections.length} sections may be
+                    generic because their source workspaces are sparse:{" "}
+                    <span className="text-[var(--foreground)]">
+                      {estimate.sparse_sections.map((s) => s.title).join(", ")}
+                    </span>
+                    . You can cancel and fill those first.
+                  </div>
+                )}
+              </div>
+            }
+            confirmLabel="Regenerate All"
+            onCancel={handleCancelConfirm}
+            onConfirm={handleConfirm}
+            maxWidth="md"
+          />
+        );
+      })()}
 
       {phase === "stalled" && (
         <RegenerateAllStalledDialog
@@ -730,93 +780,6 @@ function RegenerateAllPreflightDialog({ report, onFixFirst, onGenerateAnyway, on
               Fix These First
             </button>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface ConfirmProps {
-  estimate: EstimatePayload;
-  onCancel: () => void;
-  onConfirm: () => void;
-}
-
-function RegenerateAllConfirmDialog({ estimate, onCancel, onConfirm }: ConfirmProps) {
-  const isBetaWaived = estimate.billing_mode === "beta_waiver";
-  const insufficient = !isBetaWaived && estimate.credits_remaining < estimate.estimated_credits;
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="regen-all-title"
-    >
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl border border-[var(--border)]">
-        <div className="px-5 py-4 border-b border-[var(--neutral-cool-150)]">
-          <h2 id="regen-all-title" className="text-base font-semibold text-[var(--foreground)]">
-            Regenerate the full business plan?
-          </h2>
-        </div>
-        <div className="px-5 py-4 space-y-3">
-          <p className="text-sm text-[var(--foreground)] leading-relaxed">
-            All {estimate.sections.length} sections will be regenerated from your current
-            platform data. You will review each draft before anything saves.
-          </p>
-
-          <div className="rounded-lg bg-[var(--neutral-cool-50)] border border-[var(--neutral-cool-150)] px-3 py-2.5 text-xs text-[var(--foreground)]">
-            {isBetaWaived ? (
-              <span>Beta waiver active: no credits will be charged.</span>
-            ) : (
-              <>
-                <div className="flex justify-between">
-                  <span>Estimated cost</span>
-                  <span className="font-semibold">
-                    {estimate.estimated_credits} credit{estimate.estimated_credits === 1 ? "" : "s"}
-                  </span>
-                </div>
-                <div className="flex justify-between text-[var(--muted-foreground)] mt-0.5">
-                  <span>Credits remaining</span>
-                  <span>{estimate.credits_remaining}</span>
-                </div>
-              </>
-            )}
-          </div>
-
-          {insufficient && (
-            <div className="rounded-lg bg-[var(--warning-bg-3,#fff7ed)] border border-[var(--warning-bg,#fed7aa)] px-3 py-2 text-xs text-[var(--warning-dark,#9a3412)]">
-              You do not have enough credits for a full regenerate. Some later sections may
-              fail with an out-of-credits error.
-            </div>
-          )}
-
-          {estimate.sparse_sections.length > 0 && (
-            <div className="rounded-lg bg-[var(--neutral-cool-50)] border border-[var(--neutral-cool-150)] px-3 py-2 text-xs text-[var(--muted-foreground)]">
-              {estimate.sparse_sections.length} of {estimate.sections.length} sections may be
-              generic because their source workspaces are sparse:{" "}
-              <span className="text-[var(--foreground)]">
-                {estimate.sparse_sections.map((s) => s.title).join(", ")}
-              </span>
-              . You can cancel and fill those first.
-            </div>
-          )}
-        </div>
-        <div className="px-5 py-3 border-t border-[var(--neutral-cool-150)] flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-3 py-1.5 rounded-lg border border-[var(--gray-750)] text-[var(--gray-1150)] text-xs font-semibold hover:bg-[var(--neutral-cool-100)] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="px-3 py-1.5 rounded-lg bg-[var(--teal)] text-white text-xs font-semibold hover:bg-[var(--teal-deep)] transition-colors"
-          >
-            Regenerate All
-          </button>
         </div>
       </div>
     </div>
