@@ -342,17 +342,28 @@ export function BusinessPlanWorkspace({
   // opens. Null when no warning is pending. The warning is skipped when the
   // section is currently empty — see handleRegenerateClick.
   const [regenerateWarningKey, setRegenerateWarningKey] = useState<BusinessPlanSectionKey | null>(null);
-  // TIM-3950: Undo toast state after a successful Regenerate. Holds the pre-
-  // regenerate content so a single click restores it. Auto-clears after 15s.
-  const [undoToast, setUndoToast] = useState<{
-    key: BusinessPlanSectionKey;
-    previousContent: string | null;
+  // TIM-3950 review-fix: Per-section undo toasts, keyed by section key so a
+  // second Regenerate on a DIFFERENT section never overwrites the first
+  // section's undo affordance. Each entry captures both the pre-regenerate
+  // saved userContent AND the in-flight editBuffer (with `wasEditing`) so
+  // Undo can restore an unsaved edit that would otherwise be silently lost.
+  interface UndoToastEntry {
+    previousUserContent: string | null;
+    previousEditBuffer: string;
+    wasEditing: boolean;
     sectionTitle: string;
-  } | null>(null);
-  const undoToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  }
+  const [undoToasts, setUndoToasts] = useState<Map<BusinessPlanSectionKey, UndoToastEntry>>(
+    () => new Map(),
+  );
+  const undoToastTimersRef = useRef<Map<BusinessPlanSectionKey, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
   useEffect(() => {
+    const timers = undoToastTimersRef.current;
     return () => {
-      if (undoToastTimerRef.current) clearTimeout(undoToastTimerRef.current);
+      timers.forEach((id) => clearTimeout(id));
+      timers.clear();
     };
   }, []);
 
@@ -850,21 +861,47 @@ export function BusinessPlanWorkspace({
   // one-click flow protected by warn-before + undo-after. The gated iterative
   // path lives in Write-with-AI (BPWriteWithAIModal).
 
-  const scheduleUndoToastClear = useCallback(() => {
-    if (undoToastTimerRef.current) clearTimeout(undoToastTimerRef.current);
-    undoToastTimerRef.current = setTimeout(() => {
-      setUndoToast(null);
-      undoToastTimerRef.current = null;
-    }, 15_000);
+  const clearUndoToastFor = useCallback((key: BusinessPlanSectionKey) => {
+    const t = undoToastTimersRef.current.get(key);
+    if (t) {
+      clearTimeout(t);
+      undoToastTimersRef.current.delete(key);
+    }
+    setUndoToasts((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Map(prev);
+      next.delete(key);
+      return next;
+    });
   }, []);
 
+  const scheduleUndoToastClearFor = useCallback((key: BusinessPlanSectionKey) => {
+    const existing = undoToastTimersRef.current.get(key);
+    if (existing) clearTimeout(existing);
+    const id = setTimeout(() => {
+      undoToastTimersRef.current.delete(key);
+      setUndoToasts((prev) => {
+        if (!prev.has(key)) return prev;
+        const next = new Map(prev);
+        next.delete(key);
+        return next;
+      });
+    }, 15_000);
+    undoToastTimersRef.current.set(key, id);
+  }, []);
+
+  // TIM-3950 review-fix: `estimatedClaims === undefined` means "leave the DB
+  // column unchanged"; passing an array (including `[]`) overwrites it. Undo
+  // passes `[]` to explicitly clear the claims that the discarded regenerate
+  // wrote, otherwise the reverted content would be paired with stale claims
+  // (TIM-2342 export-gate would then surface phantom items).
   const patchSectionContent = useCallback(async (
     key: BusinessPlanSectionKey,
     userContent: string | null,
-    estimatedClaims: unknown[] | null,
+    estimatedClaims: unknown[] | undefined,
   ) => {
     const body: Record<string, unknown> = { user_content: userContent };
-    if (estimatedClaims != null) body.estimated_claims_json = estimatedClaims;
+    if (estimatedClaims !== undefined) body.estimated_claims_json = estimatedClaims;
     const res = await fetch(`/api/business-plan/sections/${key}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -876,7 +913,7 @@ export function BusinessPlanWorkspace({
         res.status === 402
           ? "Saving requires a Pro subscription."
           : res.status === 429
-            ? "Too many requests — wait a moment and try again."
+            ? "Too many requests. Wait a moment and try again."
             : (j.error as string | undefined) ?? "Couldn't save this section. Please try again.",
       );
     }
@@ -889,10 +926,15 @@ export function BusinessPlanWorkspace({
     autoWriteAbortRefs.current.set(key, abort);
 
     // Snapshot BEFORE overwriting so Undo can restore even if the section
-    // state advances during the SSE stream.
+    // state advances during the SSE stream. TIM-3950 review-fix: capture the
+    // in-flight editBuffer and isEditing too, otherwise a mid-edit user's
+    // unsaved edits (which handleRegenerateClick's warning check DID read)
+    // become unrecoverable — Undo would restore the last SAVED value only.
     const preSection = sectionsRef.current.find((s) => s.key === key);
     if (!preSection) return;
-    const previousContent = preSection.userContent;
+    const previousUserContent = preSection.userContent;
+    const previousEditBuffer = preSection.editBuffer;
+    const wasEditing = preSection.isEditing;
     const previousTitle = preSection.title;
 
     setSections((prev) =>
@@ -916,7 +958,7 @@ export function BusinessPlanWorkspace({
           res.status === 402
             ? "Regenerate requires a Pro subscription."
             : res.status === 429
-              ? "Too many requests — wait a moment and try again."
+              ? "Too many requests. Wait a moment and try again."
               : (j.error as string | undefined) ?? "Regeneration failed. Please try again.",
         );
       }
@@ -973,8 +1015,8 @@ export function BusinessPlanWorkspace({
       if (!finalText) throw new Error("Regeneration ended without a draft. Please try again.");
 
       // Commit + swap the section content in a single beat, then surface the
-      // undo toast. Failure to PATCH reverts the streaming card so the user
-      // can retry rather than losing the draft silently.
+      // undo toast. If the PATCH fails the streaming card is cleared and the
+      // draft is dropped — user retries via the Regenerate button.
       await patchSectionContent(key, finalText, finalClaims);
       setSections((prev) =>
         prev.map((s) =>
@@ -984,8 +1026,19 @@ export function BusinessPlanWorkspace({
         ),
       );
       setSaveState({ kind: "saved", at: new Date().toISOString() });
-      setUndoToast({ key, previousContent, sectionTitle: previousTitle });
-      scheduleUndoToastClear();
+      // Replace any prior undo entry for THIS section only. A pending undo on
+      // a different section is unaffected (per-key timer and map entry).
+      setUndoToasts((prev) => {
+        const next = new Map(prev);
+        next.set(key, {
+          previousUserContent,
+          previousEditBuffer,
+          wasEditing,
+          sectionTitle: previousTitle,
+        });
+        return next;
+      });
+      scheduleUndoToastClearFor(key);
     } catch (err: unknown) {
       if (abort.signal.aborted) return;
       console.error("[regenerate]", err);
@@ -994,7 +1047,7 @@ export function BusinessPlanWorkspace({
         err instanceof Error ? err.message : "Could not regenerate this section. Try again.",
       );
     }
-  }, [canEdit, patchSectionContent, scheduleUndoToastClear, updateSection]);
+  }, [canEdit, patchSectionContent, scheduleUndoToastClearFor, updateSection]);
 
   const handleRegenerateClick = useCallback((key: BusinessPlanSectionKey) => {
     if (!canEdit) return;
@@ -1020,49 +1073,51 @@ export function BusinessPlanWorkspace({
     void runRegenerateSectionStream(key);
   }, [runRegenerateSectionStream]);
 
-  const handleUndoRegenerate = useCallback(async () => {
-    const toast = undoToast;
-    if (!toast) return;
-    // Clear the toast optimistically so a rapid Undo re-click can't double-
-    // fire the PATCH.
-    setUndoToast(null);
-    if (undoToastTimerRef.current) {
-      clearTimeout(undoToastTimerRef.current);
-      undoToastTimerRef.current = null;
-    }
+  const handleUndoRegenerate = useCallback(async (key: BusinessPlanSectionKey) => {
+    const entry = undoToasts.get(key);
+    if (!entry) return;
+    // Clear this section's toast + timer optimistically so a rapid Undo
+    // re-click can't double-fire the PATCH. Other sections' entries stay.
+    clearUndoToastFor(key);
     try {
-      await patchSectionContent(toast.key, toast.previousContent, null);
+      // TIM-3950 review-fix: pass `[]` to clear estimated_claims_json — the
+      // discarded regenerate's claims are stale against the reverted content.
+      await patchSectionContent(key, entry.previousUserContent, []);
       setSections((prev) =>
         prev.map((s) =>
-          s.key !== toast.key
+          s.key !== key
             ? s
             : {
                 ...s,
-                userContent: toast.previousContent,
-                editBuffer: toast.previousContent ?? s.autoContent ?? "",
-                isEditing: false,
+                userContent: entry.previousUserContent,
+                // Restore the exact editBuffer + isEditing state the user
+                // was in at Regenerate-click time (protects unsaved edits).
+                editBuffer: entry.wasEditing
+                  ? entry.previousEditBuffer
+                  : (entry.previousUserContent ?? s.autoContent ?? ""),
+                isEditing: entry.wasEditing,
               },
         ),
       );
       setSaveState({ kind: "saved", at: new Date().toISOString() });
     } catch (err: unknown) {
-      // Restore the toast so the user can try again — the previous content is
-      // still recoverable client-side.
-      setUndoToast(toast);
-      scheduleUndoToastClear();
+      // Restore the toast so the user can try again — the snapshot is still
+      // recoverable client-side.
+      setUndoToasts((prev) => {
+        const next = new Map(prev);
+        next.set(key, entry);
+        return next;
+      });
+      scheduleUndoToastClearFor(key);
       setGlobalError(
         err instanceof Error ? err.message : "Undo failed. Try again.",
       );
     }
-  }, [patchSectionContent, scheduleUndoToastClear, undoToast]);
+  }, [clearUndoToastFor, patchSectionContent, scheduleUndoToastClearFor, undoToasts]);
 
-  const handleDismissUndoToast = useCallback(() => {
-    if (undoToastTimerRef.current) {
-      clearTimeout(undoToastTimerRef.current);
-      undoToastTimerRef.current = null;
-    }
-    setUndoToast(null);
-  }, []);
+  const handleDismissUndoToast = useCallback((key: BusinessPlanSectionKey) => {
+    clearUndoToastFor(key);
+  }, [clearUndoToastFor]);
 
   // ── PDF export / print ──────────────────────────────────────────────────────
 
@@ -1589,13 +1644,21 @@ export function BusinessPlanWorkspace({
       );
     })()}
     {/* TIM-3950: Undo-toast surface after a successful Regenerate. Auto-
-        clears after 15s, or immediately on Undo / dismiss. */}
-    {undoToast && (
-      <RegenerateUndoToast
-        sectionTitle={undoToast.sectionTitle}
-        onUndo={() => void handleUndoRegenerate()}
-        onDismiss={handleDismissUndoToast}
-      />
+        clears each entry after 15s, or immediately on Undo / dismiss. Stacks
+        vertically so concurrent regenerates on different sections each keep
+        their own Undo affordance. */}
+    {undoToasts.size > 0 && (
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col-reverse items-center gap-2 pointer-events-none">
+        {Array.from(undoToasts.entries()).map(([key, entry]) => (
+          <div key={key} className="pointer-events-auto">
+            <RegenerateUndoToast
+              sectionTitle={entry.sectionTitle}
+              onUndo={() => void handleUndoRegenerate(key)}
+              onDismiss={() => handleDismissUndoToast(key)}
+            />
+          </div>
+        ))}
+      </div>
     )}
     {/* TIM-3576: cover config modal opens before print/export */}
     {coverModalAction && (
@@ -2475,10 +2538,11 @@ function RegenerateWarningDialog({
 
 // ── TIM-3950: RegenerateUndoToast ─────────────────────────────────────────────
 //
-// Bottom-center toast surfaced after a successful Regenerate PATCH. Holds a
-// visible Undo affordance and an X to dismiss. Parent auto-clears at 15s.
-// Visual pattern mirrors project-switcher.tsx (bottom-6 left-1/2 pill, teal
-// bg, X trailing).
+// Toast pill surfaced after a successful Regenerate PATCH. Holds a visible
+// Undo affordance and an X to dismiss. Parent auto-clears at 15s. Parent
+// owns positioning + z-index so multiple pending toasts stack (TIM-3950
+// review-fix — was a single-slot state that lost prior undos).
+// Visual pattern mirrors project-switcher.tsx (teal pill, X trailing).
 
 function RegenerateUndoToast({
   sectionTitle,
@@ -2493,7 +2557,7 @@ function RegenerateUndoToast({
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg max-w-sm text-sm font-medium bg-[var(--teal)] text-white"
+      className="flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg max-w-sm text-sm font-medium bg-[var(--teal)] text-white"
     >
       <span className="truncate">Regenerated {sectionTitle}.</span>
       <button

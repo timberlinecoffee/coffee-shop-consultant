@@ -776,7 +776,7 @@ export function BPWriteWithAIModal({
                 onClick={handleReject}
                 className="text-sm font-semibold text-[var(--foreground)] border border-[var(--gray-750)] px-4 py-2 rounded-lg hover:bg-[var(--neutral-cool-100)] transition-colors"
               >
-                Edit instructions
+                Edit Instructions
               </button>
               <button
                 type="button"
