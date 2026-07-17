@@ -337,6 +337,10 @@ export function BusinessPlanWorkspace({
   // Mirror of sections used inside async callbacks without stale-closure risk.
   const sectionsRef = useRef(sections);
   useEffect(() => { sectionsRef.current = sections; }, [sections]);
+  // Mirror of customSections — used by runRegenerateSectionStream exec-summary
+  // seed path (TIM-3957) so custom-section content is included in the context.
+  const customSectionsRef = useRef(customSections);
+  useEffect(() => { customSectionsRef.current = customSections; }, [customSections]);
   // TIM-3927: per-section AbortControllers for inline auto-write SSE streams.
   const autoWriteAbortRefs = useRef<Map<BusinessPlanSectionKey, AbortController>>(new Map());
 
@@ -967,8 +971,9 @@ export function BusinessPlanWorkspace({
       let genBody: Record<string, unknown>;
 
       if (key === "executive-summary") {
-        // 1. Collect cross-section excerpts from local UI state (includes
-        //    unsaved edits — userContent first, autoContent fallback).
+        // 1. Collect cross-section excerpts from local UI state — saved content
+        //    (userContent first, autoContent fallback), matching the pattern used
+        //    by bpOtherSectionsForContext. Mid-edit buffers are not read here.
         const bpSectionExcerpts: BpOtherSectionExcerpt[] = [];
         for (const s of sectionsRef.current) {
           if (s.key === "executive-summary" || s.isArchived) continue;
@@ -977,6 +982,16 @@ export function BusinessPlanWorkspace({
           const excerpt = bpSeedExcerpt(raw);
           if (!excerpt) continue;
           bpSectionExcerpts.push({ title: s.title, excerpt });
+        }
+
+        // Also include custom sections — mirrors bpOtherSectionsForContext (line 1634).
+        for (const cs of customSectionsRef.current) {
+          if (cs.isArchived) continue;
+          const raw = cs.userContent ?? "";
+          if (!raw.trim().length || isBpPlaceholderContent(raw)) continue;
+          const excerpt = bpSeedExcerpt(raw);
+          if (!excerpt) continue;
+          bpSectionExcerpts.push({ title: cs.title, excerpt });
         }
 
         // 2. Fetch seed-context (workspace blocks + other BP section excerpts).
@@ -991,7 +1006,14 @@ export function BusinessPlanWorkspace({
           throw new Error((j.error as string | undefined) ?? "Could not load workspace context. Please try again.");
         }
         const { blocks } = (await seedRes.json()) as { blocks: SeedBlockView[] };
-        const seedText = formatBlocksAsSeedText(blocks);
+        // Strip the human-facing textarea header before passing to /improve.
+        // formatBlocksAsSeedText prepends "Context from your workspaces (edit or
+        // remove any lines you don't want the AI to use):" for the modal where
+        // the founder edits the textarea. The /improve system prompt has no rule
+        // to dismiss it, so remove it here to keep currentContent clean.
+        const rawSeedText = formatBlocksAsSeedText(blocks);
+        const SEED_HEADER = "Context from your workspaces (edit or remove any lines you don't want the AI to use):\n\n";
+        const seedText = rawSeedText.startsWith(SEED_HEADER) ? rawSeedText.slice(SEED_HEADER.length) : rawSeedText;
 
         if (!seedText || blocks.every((b) => b.isEmpty)) {
           // No workspace content yet — fall back to /generate so the section
@@ -1036,7 +1058,11 @@ export function BusinessPlanWorkspace({
       let sseBuffer = "";
       let streamingBuf = "";
       let finalText = "";
-      let finalClaims: unknown[] = [];
+      // TIM-3957: undefined means "leave estimated_claims_json column intact"
+      // (patchSectionContent skips the key when undefined). /improve does not
+      // return estimated_claims, so we must not zero the column; /generate sets
+      // this from its done event. See patchSectionContent comment at line 905.
+      let finalClaims: unknown[] | undefined;
       let doneReceived = false;
 
       while (true) {
@@ -1101,7 +1127,7 @@ export function BusinessPlanWorkspace({
                   autoWrite: {
                     phase: "preview",
                     proposedText: finalText,
-                    estimatedClaims: finalClaims,
+                    estimatedClaims: finalClaims ?? [],
                     contradictions: [],
                   },
                 },
