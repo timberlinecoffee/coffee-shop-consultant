@@ -502,7 +502,7 @@ export function BPWriteWithAIModal({
               <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                 {step === "input" && "Edit the draft and tell the AI how to improve it."}
                 {step === "generating" && "Writing..."}
-                {step === "preview" && "Review the draft. Approve to merge, or reject to revise."}
+                {step === "preview" && "Review the draft. Accept to merge, or regenerate / edit instructions."}
                 {step === "committing" && "Saving..."}
                 {step === "done" && "Merged."}
               </p>
@@ -699,8 +699,8 @@ export function BPWriteWithAIModal({
               )}
 
               <p className="text-xs text-[var(--muted-foreground)]">
-                Approve to merge this into <span className="font-semibold">{sectionTitle}</span>. Reject to
-                tweak the instructions and try again.
+                Accept to merge this into <span className="font-semibold">{sectionTitle}</span>. Nothing
+                changes until you accept.
               </p>
             </div>
           )}
@@ -756,21 +756,42 @@ export function BPWriteWithAIModal({
           </div>
         )}
 
+        {/* TIM-3950 DoD: preview exposes four distinct actions matching the
+            board spec — Accept (replaces content), Regenerate (re-run same
+            instructions), Edit Instructions (refine + retry), Cancel (close
+            with no changes). Accept remains the only path that mutates the
+            section; the other three keep the section untouched. */}
         {step === "preview" && (
-          <div className="px-6 py-4 border-t border-[var(--border)] flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={handleReject}
-              className="text-sm font-semibold text-[var(--foreground)] border border-[var(--gray-750)] px-4 py-2 rounded-lg hover:bg-[var(--neutral-cool-100)] transition-colors"
-            >
-              Reject and revise
-            </button>
+          <div className="px-6 py-4 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => void handleGenerate()}
+                className="text-sm font-semibold text-[var(--foreground)] border border-[var(--gray-750)] px-4 py-2 rounded-lg hover:bg-[var(--neutral-cool-100)] transition-colors"
+              >
+                Regenerate
+              </button>
+              <button
+                type="button"
+                onClick={handleReject}
+                className="text-sm font-semibold text-[var(--foreground)] border border-[var(--gray-750)] px-4 py-2 rounded-lg hover:bg-[var(--neutral-cool-100)] transition-colors"
+              >
+                Edit Instructions
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => void handleApprove()}
               className="text-sm font-semibold bg-[var(--teal)] text-white px-6 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
             >
-              Approve and merge
+              Accept
             </button>
           </div>
         )}
