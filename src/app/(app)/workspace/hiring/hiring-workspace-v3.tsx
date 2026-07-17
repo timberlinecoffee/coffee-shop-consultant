@@ -2252,7 +2252,7 @@ function RoleOnboardingSection({
 
   async function deleteInstance(id: string) {
     const snapshotInstances = instances;
-    const snapshotTasks = onboardingTasks;
+    const snapshotTasks = tasks;
     onInstancesChange((prev) => prev.filter((i) => i.id !== id));
     onTasksChange((prev) => prev.filter((t) => t.instance_id !== id));
     if (selectedId === id) setSelectedId(roleInstances.find((i) => i.id !== id)?.id ?? null);
