@@ -11,8 +11,13 @@ import {
   getHiringRevampSetting,
   resolveHiringRevamp,
 } from "@/lib/hiring-revamp";
+import {
+  HIRING_REVAMP_V3_OVERRIDE_COOKIE,
+  resolveHiringRevampV3,
+} from "@/lib/hiring-revamp-v3";
 import { HiringWorkspace } from "./hiring-workspace";
 import { HiringWorkspaceV2 } from "./hiring-workspace-v2";
+import { HiringWorkspaceV3 } from "./hiring-workspace-v3";
 import type {
   OrgRole,
   InterviewCandidate,
@@ -183,7 +188,16 @@ export default async function HiringWorkspacePage() {
     overrideCookie: cookieStore.get(HIRING_REVAMP_OVERRIDE_COOKIE)?.value,
     mirrorCookie: cookieStore.get(HIRING_REVAMP_COOKIE)?.value,
   });
-  const Workspace = hiringRevamp ? HiringWorkspaceV2 : HiringWorkspace;
+  // TIM-3953: v3 check — env flag + per-session cookie override.
+  // v3 on → HiringWorkspaceV3; v3 off → fall through to existing v2/v1 dispatch.
+  const hiringRevampV3 = resolveHiringRevampV3({
+    overrideCookie: cookieStore.get(HIRING_REVAMP_V3_OVERRIDE_COOKIE)?.value,
+  });
+  const Workspace = hiringRevampV3
+    ? HiringWorkspaceV3
+    : hiringRevamp
+    ? HiringWorkspaceV2
+    : HiringWorkspace;
 
   return (
     <Workspace
