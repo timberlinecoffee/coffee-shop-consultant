@@ -73,6 +73,8 @@ import {
   BPWriteWithAIModal,
   type BpOtherSectionExcerpt,
   type ConsistencyContradiction,
+  type SeedBlockView,
+  formatBlocksAsSeedText,
   isBpPlaceholderContent,
   type WriteAiApproveExtras,
 } from "@/components/business-plan/BPWriteWithAIModal";
@@ -956,10 +958,66 @@ export function BusinessPlanWorkspace({
     );
 
     try {
-      const res = await fetch("/api/business-plan/generate", {
+      // TIM-3957: Executive Summary Regenerate routes through seed-context +
+      // /improve so unsaved edits in other BP sections are reflected in the
+      // regenerated summary. All other sections continue to use /generate
+      // (workspace-snapshot synthesis) — the correct path for non-summary
+      // sections that don't need cross-BP-section context.
+      let genUrl: string;
+      let genBody: Record<string, unknown>;
+
+      if (key === "executive-summary") {
+        // 1. Collect cross-section excerpts from local UI state (includes
+        //    unsaved edits — userContent first, autoContent fallback).
+        const bpSectionExcerpts: BpOtherSectionExcerpt[] = [];
+        for (const s of sectionsRef.current) {
+          if (s.key === "executive-summary" || s.isArchived) continue;
+          const raw = (s.userContent && s.userContent.trim().length > 0 ? s.userContent : s.autoContent) ?? "";
+          if (!raw.trim().length || isBpPlaceholderContent(raw)) continue;
+          const excerpt = bpSeedExcerpt(raw);
+          if (!excerpt) continue;
+          bpSectionExcerpts.push({ title: s.title, excerpt });
+        }
+
+        // 2. Fetch seed-context (workspace blocks + other BP section excerpts).
+        const seedRes = await fetch("/api/business-plan/seed-context", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sectionKey: key, bpSectionExcerpts }),
+          signal: abort.signal,
+        });
+        if (!seedRes.ok) {
+          const j = (await seedRes.json().catch(() => ({}))) as Record<string, unknown>;
+          throw new Error((j.error as string | undefined) ?? "Could not load workspace context. Please try again.");
+        }
+        const { blocks } = (await seedRes.json()) as { blocks: SeedBlockView[] };
+        const seedText = formatBlocksAsSeedText(blocks);
+
+        if (!seedText || blocks.every((b) => b.isEmpty)) {
+          // No workspace content yet — fall back to /generate so the section
+          // still regenerates rather than silently failing.
+          genUrl = "/api/business-plan/generate";
+          genBody = { sectionKey: key };
+        } else {
+          // 3. Call /improve with the seed text as currentContent — same path
+          //    the Write-with-AI modal uses after "Seed from other sections".
+          genUrl = "/api/business-plan/improve";
+          genBody = {
+            sectionKey: key,
+            sectionTitle: preSection.title,
+            currentContent: seedText,
+            shopName,
+          };
+        }
+      } else {
+        genUrl = "/api/business-plan/generate";
+        genBody = { sectionKey: key };
+      }
+
+      const res = await fetch(genUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sectionKey: key }),
+        body: JSON.stringify(genBody),
         signal: abort.signal,
       });
       if (!res.ok) {
@@ -1083,7 +1141,7 @@ export function BusinessPlanWorkspace({
         err instanceof Error ? err.message : "Could not regenerate this section. Try again.",
       );
     }
-  }, [canEdit, patchSectionContent, scheduleUndoToastClearFor, updateSection]);
+  }, [canEdit, patchSectionContent, scheduleUndoToastClearFor, shopName, updateSection]);
 
   const handleRegenerateClick = useCallback((key: BusinessPlanSectionKey) => {
     if (!canEdit) return;

@@ -51,7 +51,8 @@ export interface BpOtherSectionExcerpt {
 // here (not imported) because this file is a client component and pulling in
 // the server-side module would drag @supabase/supabase-js into the client
 // bundle. The wire format is stable and validated by the endpoint.
-interface SeedBlockView {
+// Exported so runRegenerateSectionStream (TIM-3957) can share the formatter.
+export interface SeedBlockView {
   id: string;
   label: string;
   heading?: string;
@@ -62,7 +63,8 @@ interface SeedBlockView {
 
 // TIM-3854: mirror of formatSeedBlocksAsText from the server module — again,
 // kept client-local to avoid pulling server code into the client bundle.
-function formatBlocksAsSeedText(blocks: SeedBlockView[]): string {
+// Exported so TIM-3957 exec-summary Regenerate can reuse without duplication.
+export function formatBlocksAsSeedText(blocks: SeedBlockView[]): string {
   if (blocks.length === 0) return "";
   const header = "Context from your workspaces (edit or remove any lines you don't want the AI to use):";
   const rendered = blocks.map((b) => {
