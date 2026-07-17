@@ -704,14 +704,16 @@ export function HiringWorkspaceV3(props: Props) {
   const confirmDelete = useCallback(
     async (id: string) => {
       if (!props.canEdit) return;
+      let res: Response;
       try {
-        await fetch(`/api/workspaces/hiring/roles?planId=${props.planId}&id=${id}`, {
+        res = await fetch(`/api/workspaces/hiring/roles?planId=${props.planId}&id=${id}`, {
           method: "DELETE",
         });
       } catch {
         setDeleteConfirmId(null);
         return;
       }
+      if (!res.ok) { setDeleteConfirmId(null); return; }
       setRoles((prev) => prev.filter((r) => r.id !== id));
       setSelectedRoleId((prev) => (prev === id ? null : prev));
       setDeleteConfirmId(null);
@@ -862,6 +864,7 @@ export function HiringWorkspaceV3(props: Props) {
             </div>
           ) : selectedRole ? (
             <RolePageV3
+              key={selectedRole.id}
               role={selectedRole}
               roles={roles}
               planId={props.planId}
@@ -1784,13 +1787,19 @@ function RoleScorecardSection({
   }
 
   async function deleteScorecard(id: string) {
+    const snapshot = scorecards;
     const next = scorecards.filter((s) => s.id !== id);
     setScorecards(next);
+    const prevSelectedId = selectedScorecardId;
     if (selectedScorecardId === id) {
       const fallback = next.find((s) => s.is_default) ?? next[0] ?? null;
       setSelectedScorecardId(fallback?.id ?? null);
     }
-    await fetch(`/api/workspaces/hiring/scorecards?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/workspaces/hiring/scorecards?id=${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setScorecards(snapshot);
+      setSelectedScorecardId(prevSelectedId);
+    }
   }
 
   return (
@@ -2242,12 +2251,16 @@ function RoleOnboardingSection({
   }
 
   async function deleteInstance(id: string) {
-    const snapshot = instances;
+    const snapshotInstances = instances;
+    const snapshotTasks = onboardingTasks;
     onInstancesChange((prev) => prev.filter((i) => i.id !== id));
     onTasksChange((prev) => prev.filter((t) => t.instance_id !== id));
     if (selectedId === id) setSelectedId(roleInstances.find((i) => i.id !== id)?.id ?? null);
     const res = await fetch(`/api/workspaces/hiring/onboarding?planId=${planId}&id=${id}`, { method: "DELETE" });
-    if (!res.ok) onInstancesChange(snapshot);
+    if (!res.ok) {
+      onInstancesChange(snapshotInstances);
+      onTasksChange(snapshotTasks);
+    }
   }
 
   return (
@@ -2628,7 +2641,7 @@ function HiringRoleNavV3({
     const reordered = [...flatNodes];
     const fromIdx = reordered.findIndex((n) => n.role.id === id);
     const [moved] = reordered.splice(fromIdx, 1);
-    reordered.splice(overIdx > fromIdx ? overIdx : overIdx, 0, moved);
+    reordered.splice(overIdx > fromIdx ? overIdx - 1 : overIdx, 0, moved);
 
     const batch: Array<{ id: string; parent_role_id: string | null; order_index: number }> = [];
     let i = 0;
