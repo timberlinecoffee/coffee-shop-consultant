@@ -181,6 +181,10 @@ export function BPWriteWithAIModal({
   // the "done → close" timer against a stale onClose captured from the prior
   // render.
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // TIM-3956: synchronous guard against double-submit. setStep("generating")
+  // is async (React batch), so a stale-closure double-click passes the step
+  // guard before re-render. A ref update is visible immediately.
+  const generatingRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -191,7 +195,9 @@ export function BPWriteWithAIModal({
   }, []);
 
   async function handleGenerate() {
-    if (step !== "input" && step !== "preview") return;
+    if (generatingRef.current) return;
+    generatingRef.current = true;
+    if (step !== "input" && step !== "preview") { generatingRef.current = false; return; }
     setError(null);
     setStreamingBuf("");
     setProposedText(null);
@@ -332,6 +338,8 @@ export function BPWriteWithAIModal({
       if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Generation failed. Please try again.");
       setStep("input");
+    } finally {
+      generatingRef.current = false;
     }
   }
 
