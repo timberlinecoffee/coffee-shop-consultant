@@ -5,7 +5,9 @@
 // TIM-1315: adds worked example reference panel per section.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, Pencil, Eye, EyeOff, RotateCcw, MoreVertical, Archive, ArchiveRestore, Undo2, X } from "lucide-react";
+import { FileText, Download, ChevronDown, ChevronUp, Loader2, Plus, Trash2, Pencil, Eye, EyeOff, RotateCcw, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Toast } from "@/components/ui/toast";
 import { SectionHeader, type AiAction } from "@/components/section-header";
 // TIM-3950: Two-button split flag. Default-ON. When TRUE, each BP section
 // exposes [Write with AI] (opens modal) + [Regenerate with AI] (warn + undo)
@@ -1672,10 +1674,19 @@ export function BusinessPlanWorkspace({
       // eslint-disable-next-line react-hooks/refs
       const confirm = () => handleRegenerateConfirm(activeKey);
       return (
-        <RegenerateWarningDialog
-          sectionTitle={target.title}
+        <ConfirmDialog
+          title={`Regenerate ${target.title}?`}
+          body={
+            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+              This will generate a completely new version of this section using
+              data from your workspaces. Your current content will be replaced.
+              Are you sure?
+            </p>
+          }
+          confirmLabel="Yes, Regenerate"
           onCancel={() => setRegenerateWarningKey(null)}
           onConfirm={confirm}
+          maxWidth="md"
         />
       );
     })()}
@@ -1687,9 +1698,11 @@ export function BusinessPlanWorkspace({
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col-reverse items-center gap-2 pointer-events-none">
         {Array.from(undoToasts.entries()).map(([key, entry]) => (
           <div key={key} className="pointer-events-auto">
-            <RegenerateUndoToast
-              sectionTitle={entry.sectionTitle}
-              onUndo={() => void handleUndoRegenerate(key)}
+            <Toast
+              variant="undo"
+              message={`Regenerated ${entry.sectionTitle}.`}
+              actionLabel="Undo"
+              onAction={() => void handleUndoRegenerate(key)}
               onDismiss={() => handleDismissUndoToast(key)}
             />
           </div>
@@ -2049,8 +2062,15 @@ export function BusinessPlanWorkspace({
 
         {/* TIM-3575: Archive confirm dialog. */}
         {archiveConfirmTarget && (
-          <ArchiveConfirmDialog
-            title={archiveConfirmTarget.title}
+          <ConfirmDialog
+            title="Archive this section?"
+            body={
+              <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+                This won&rsquo;t appear in your exported plan, but you can bring it back from the archived list anytime.
+              </p>
+            }
+            confirmLabel="Archive"
+            destructive
             onCancel={() => setArchiveConfirmTarget(null)}
             onConfirm={() => {
               if (archiveConfirmTarget.type === "standard") {
@@ -2450,176 +2470,6 @@ function ResetOrderConfirmationModal({
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ── TIM-3575: ArchiveConfirmDialog ────────────────────────────────────────────
-
-function ArchiveConfirmDialog({
-  title,
-  onCancel,
-  onConfirm,
-}: {
-  title: string;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="bp-archive-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onCancel}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="bp-archive-title" className="text-base font-semibold text-[var(--foreground)]">Archive this section?</h2>
-        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-          This won&rsquo;t appear in your exported plan, but you can bring it back from the archived list anytime.
-        </p>
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            autoFocus
-            className="text-sm font-medium text-[var(--neutral-cool-700)] px-4 py-2 rounded-xl border border-[var(--neutral-cool-200)] hover:bg-[var(--neutral-cool-50)] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="text-sm font-medium text-white bg-[var(--foreground)] px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
-          >
-            Archive
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── TIM-3950: RegenerateWarningDialog ─────────────────────────────────────────
-//
-// Confirmation gate before a destructive Regenerate-with-AI run. Copy is
-// verbatim from the TIM-3950 board directive DoD. Escape dismisses; the
-// Cancel button auto-focuses so an accidental Enter closes rather than
-// confirms. Skipped for empty sections in handleRegenerateClick.
-
-function RegenerateWarningDialog({
-  sectionTitle,
-  onCancel,
-  onConfirm,
-}: {
-  sectionTitle: string;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="bp-regenerate-warn-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
-      onClick={onCancel}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2
-          id="bp-regenerate-warn-title"
-          className="text-base font-semibold text-[var(--foreground)]"
-        >
-          Regenerate {sectionTitle}?
-        </h2>
-        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
-          This will generate a completely new version of this section using
-          data from your workspaces. Your current content will be replaced.
-          Are you sure?
-        </p>
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            autoFocus
-            className="text-sm font-medium text-[var(--neutral-cool-700)] px-4 py-2 rounded-xl border border-[var(--neutral-cool-200)] hover:bg-[var(--neutral-cool-50)] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="text-sm font-medium text-white bg-[var(--teal)] px-4 py-2 rounded-xl hover:bg-[var(--teal-dark,var(--teal))] transition-colors"
-          >
-            Yes, Regenerate
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── TIM-3950: RegenerateUndoToast ─────────────────────────────────────────────
-//
-// Toast pill surfaced after a successful Regenerate PATCH. Holds a visible
-// Undo affordance and an X to dismiss. Parent auto-clears at 15s. Parent
-// owns positioning + z-index so multiple pending toasts stack (TIM-3950
-// review-fix — was a single-slot state that lost prior undos).
-// Visual pattern mirrors project-switcher.tsx (teal pill, X trailing).
-
-function RegenerateUndoToast({
-  sectionTitle,
-  onUndo,
-  onDismiss,
-}: {
-  sectionTitle: string;
-  onUndo: () => void;
-  onDismiss: () => void;
-}) {
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg max-w-sm text-sm font-medium bg-[var(--teal)] text-white"
-    >
-      <span className="truncate">Regenerated {sectionTitle}.</span>
-      <button
-        type="button"
-        onClick={onUndo}
-        className="inline-flex items-center gap-1.5 text-sm font-semibold underline underline-offset-2 hover:no-underline focus-visible:outline-none"
-      >
-        <Undo2 size={14} aria-hidden="true" />
-        Undo
-      </button>
-      <button
-        type="button"
-        onClick={onDismiss}
-        className="text-white/80 hover:text-white focus-visible:outline-none"
-        aria-label="Dismiss"
-      >
-        <X size={14} aria-hidden="true" />
-      </button>
     </div>
   );
 }

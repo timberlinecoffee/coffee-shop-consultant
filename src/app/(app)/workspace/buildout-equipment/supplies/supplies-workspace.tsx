@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Package, X, Eye } from "lucide-react";
+import { Toast } from "@/components/ui/toast";
 import { formatCurrencyAmount } from "@/lib/currency";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
@@ -53,48 +54,17 @@ function InventoryRedirectToast() {
   if (!visible) return null;
 
   return (
-    <div
-      role="status"
-      data-testid="inventory-redirect-toast"
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[var(--teal)] text-white px-4 py-3 rounded-xl shadow-lg max-w-sm"
-    >
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
-      <p className="text-sm font-medium flex-1">
-        Inventory is now tracked inside Buildout &amp; Equipment.
-      </p>
-      <button
-        type="button"
-        onClick={() => setVisible(false)}
-        className="text-white/80 hover:text-white"
-        aria-label="Dismiss"
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
+    <div data-testid="inventory-redirect-toast" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+      <Toast
+        variant="success"
+        message="Inventory is now tracked inside Buildout & Equipment."
+        onDismiss={() => setVisible(false)}
+        icon={
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        }
+      />
     </div>
   );
 }

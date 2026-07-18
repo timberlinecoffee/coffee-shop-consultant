@@ -20,6 +20,7 @@ import {
   CheckCircle, Circle, Minus,
 } from "lucide-react";
 import { CollapseButton } from "@/components/ui/CollapseButton";
+import { Toast } from "@/components/ui/toast";
 import { LaunchPlanSubNav } from "@/components/launch-plan/LaunchPlanSubNav";
 import {
   WorkspaceSubNav,
@@ -161,38 +162,6 @@ function formatDate(iso: string | null): string {
 function isStale(lastGeneratedAt: string | null, sourcesUpdatedAt: string | null): boolean {
   if (!lastGeneratedAt || !sourcesUpdatedAt) return false;
   return new Date(sourcesUpdatedAt) > new Date(lastGeneratedAt);
-}
-
-// ── Toast ────────────────────────────────────────────────────────────────────
-
-function Toast({
-  type,
-  message,
-  onDismiss,
-}: {
-  type: "success" | "error";
-  message: string;
-  onDismiss: () => void;
-}) {
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={`fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium ${
-        type === "success" ? "bg-[var(--teal)] text-white" : "bg-red-600 text-white"
-      }`}
-    >
-      <span>{message}</span>
-      <button
-        type="button"
-        onClick={onDismiss}
-        aria-label="Dismiss"
-        className="ml-1 opacity-70 hover:opacity-100 transition-opacity"
-      >
-        <X size={14} />
-      </button>
-    </div>
-  );
 }
 
 // ── AccordionSection (TIM-2778: v2 pattern, mirrors FinancialsV2) ─────────────
@@ -1693,11 +1662,13 @@ export function OpeningMonthPlanWorkspace({
 
       {/* Toast */}
       {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.msg}
-          onDismiss={() => setToast(null)}
-        />
+        <div className="fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <Toast
+            variant={toast.type}
+            message={toast.msg}
+            onDismiss={() => setToast(null)}
+          />
+        </div>
       )}
     </div>
     </>
