@@ -289,8 +289,8 @@ export async function POST(request: NextRequest) {
     }
     raw = scoutResult.text
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "AI tradeoff failed."
-    return Response.json({ error: msg }, { status: 502 })
+    console.error("[tradeoff] error:", err)
+    return Response.json({ error: "Tradeoff analysis failed. Please try again." }, { status: 502 })
   }
 
   const parsed = safeParseJson(raw)

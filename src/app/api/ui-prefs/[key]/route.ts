@@ -43,6 +43,6 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       { onConflict: "user_id,pref_key" }
     );
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) { console.error("[ui-prefs] DB error:", error); return Response.json({ error: "Something went wrong. Please try again." }, { status: 500 }); }
   return Response.json({ ok: true });
 }

@@ -104,7 +104,8 @@ export async function POST(request: NextRequest) {
     .upsert({ plan_id: plan.id, logo_path: storagePath, updated_at: new Date().toISOString() }, { onConflict: "plan_id" })
 
   if (dbError) {
-    return Response.json({ error: dbError.message }, { status: 500 })
+    console.error("[brand/logo] DB error:", dbError)
+    return Response.json({ error: "Failed to save logo. Please try again." }, { status: 500 })
   }
 
   return Response.json({ logo_path: storagePath })
@@ -130,7 +131,7 @@ export async function DELETE() {
     .from("brand_config")
     .upsert({ plan_id: plan.id, logo_path: null, updated_at: new Date().toISOString() }, { onConflict: "plan_id" })
 
-  if (error) return Response.json({ error: error.message }, { status: 500 })
+  if (error) { console.error("[brand/logo/DELETE] DB error:", error); return Response.json({ error: "Failed to remove logo. Please try again." }, { status: 500 }) }
 
   return Response.json({ ok: true })
 }

@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     .order("last_message_at", { ascending: false, nullsFirst: false })
     .limit(200)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) { console.error("[copilot/threads] DB error:", error); return NextResponse.json({ error: "Failed to load threads." }, { status: 500 }) }
 
   const threads: ThreadListItem[] = ((data ?? []) as ThreadRow[])
     .filter(

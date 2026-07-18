@@ -168,7 +168,7 @@ Return ONLY valid JSON — no markdown, no explanation:
   } catch (err) {
     console.error("AI describe error:", err);
     return Response.json(
-      { error: err instanceof Error ? err.message : "AI generation failed" },
+      { error: "AI generation failed. Please try again." },
       { status: 500 }
     );
   }

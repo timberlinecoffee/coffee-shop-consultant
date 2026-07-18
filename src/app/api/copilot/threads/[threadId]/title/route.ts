@@ -74,7 +74,7 @@ export async function POST(
     .eq("thread_id", threadId)
     .maybeSingle()
 
-  if (lookupError) return NextResponse.json({ error: lookupError.message }, { status: 500 })
+  if (lookupError) { console.error("[threads/title] DB lookup error:", lookupError); return NextResponse.json({ error: "Failed to load thread." }, { status: 500 }) }
   if (!existing) return NextResponse.json({ error: "Thread not found" }, { status: 404 })
 
   // Idempotent: if a real title is already set, return it.
@@ -99,8 +99,8 @@ export async function POST(
     })
     rawTitle = result.text
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Title generation failed."
-    return NextResponse.json({ error: message }, { status: 502 })
+    console.error("[threads/title] AI error:", err)
+    return NextResponse.json({ error: "Title generation failed. Please try again." }, { status: 502 })
   }
 
   const title = normalizeAIOutput(clampToWords(rawTitle, MAX_WORDS))
@@ -111,7 +111,7 @@ export async function POST(
     .update({ title })
     .eq("id", existing.id)
 
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+  if (updateError) { console.error("[threads/title] DB update error:", updateError); return NextResponse.json({ error: "Failed to save title." }, { status: 500 }) }
 
   return NextResponse.json({ title, regenerated: true })
 }

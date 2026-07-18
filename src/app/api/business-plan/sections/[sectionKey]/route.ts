@@ -89,7 +89,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       { onConflict: "plan_id,section_key" }
     );
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) { console.error("[route] DB error:", error); return Response.json({ error: "Something went wrong. Please try again." }, { status: 500 }); }
 
   return Response.json({ ok: true });
 }
