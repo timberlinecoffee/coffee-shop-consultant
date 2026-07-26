@@ -45,6 +45,27 @@ test("/landing bypasses ONLY when ?code or ?error is present (TIM-2327)", () => 
   assert.equal(isAuthFlowPath("/landing", ["ref"]), false);
 });
 
+// Board directive 2026-07-26 (onboarding brief §1A): the MINTING end of the
+// handshake. TIM-3339 moved OAuth initiation server-side, so this route emits
+// the PKCE verifier as Set-Cookie. If the proxy runs getUser() on it, a stale
+// refresh token wipes the verifier inside the same request that created it.
+test("/api/auth/google/start bypasses regardless of query (PKCE verifier mint)", () => {
+  assert.equal(isAuthFlowPath("/api/auth/google/start", []), true);
+  assert.equal(isAuthFlowPath("/api/auth/google/start", ["foo"]), true);
+  assert.equal(isAuthFlowPath("/api/auth/google/start", ["code"]), true);
+});
+
+test("only the exact start path bypasses — neighbours still go through auth", () => {
+  // Guard against a future `startsWith` refactor quietly widening the bypass
+  // across the whole /api/auth namespace.
+  assert.equal(isAuthFlowPath("/api/auth/google/start/", []), false);
+  assert.equal(isAuthFlowPath("/api/auth/google/start/extra", []), false);
+  assert.equal(isAuthFlowPath("/api/auth/google", []), false);
+  assert.equal(isAuthFlowPath("/api/auth/google/starter", []), false);
+  assert.equal(isAuthFlowPath("/api/auth", []), false);
+  assert.equal(isAuthFlowPath("/api/auth/callback", []), false);
+});
+
 test("other paths never bypass even with ?code= or ?error=", () => {
   // The bypass is only for routes that participate in the OAuth handshake.
   // Random pages with stray ?code= must still go through normal auth.
