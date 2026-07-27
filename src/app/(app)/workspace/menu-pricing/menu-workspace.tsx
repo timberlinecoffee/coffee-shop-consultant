@@ -4488,7 +4488,19 @@ export function MenuWorkspace({
         ],
         context: { workspace: "Menu & Pricing", section: item.name },
         onApply: async (accepted) => {
-          const steps = JSON.parse(accepted[0].finalValue) as string[];
+          // Defence in depth. The review modal's structured form editor now
+          // always emits parseable JSON (src/lib/structured-value.ts), but a
+          // bare JSON.parse here used to throw inside the apply handler and
+          // surface the raw SyntaxError text to the user. Fail with copy a
+          // first-time cafe owner can act on instead.
+          let steps: string[];
+          try {
+            const parsed: unknown = JSON.parse(accepted[0].finalValue);
+            if (!Array.isArray(parsed)) throw new Error("not a list");
+            steps = parsed.map((s) => String(s).trim()).filter(Boolean);
+          } catch {
+            throw new Error("Those preparation steps could not be saved. Please try again.");
+          }
           const patchRes = await fetch("/api/workspaces/menu-pricing/items", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },

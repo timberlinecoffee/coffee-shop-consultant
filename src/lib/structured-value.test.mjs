@@ -6,11 +6,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   EMPTY_CELL,
+  buildEditModel,
   buildStructuredDiff,
   buildStructuredList,
   deriveKeys,
   formatCellValue,
   humanizeKey,
+  serializeEditModel,
   toItems,
 } from "./structured-value.ts";
 
@@ -151,6 +153,62 @@ test("diff of identical values marks everything unchanged", () => {
 test("diff from empty to populated marks every row added", () => {
   const { rows } = buildStructuredDiff("[]", JSON.stringify([{ name: "Cups" }]));
   assert.deepEqual(rows.map((r) => r.kind), ["added"]);
+});
+
+// ── Edit model (brief §1C: form editors, never raw text fields) ─────────────
+
+test("scalar list edits as one text box per row", () => {
+  const model = buildEditModel(JSON.stringify(["Grind Beans", "Tamp Evenly"]));
+  assert.equal(model.scalar, true);
+  assert.deepEqual(model.rows, [["Grind Beans"], ["Tamp Evenly"]]);
+  assert.equal(serializeEditModel(model, [["Grind Beans"], ["Tamp Evenly"], ["Pull Shot"]]),
+    JSON.stringify(["Grind Beans", "Tamp Evenly", "Pull Shot"]));
+});
+
+test("object list edits as one labelled field per key", () => {
+  const model = buildEditModel(JSON.stringify([{ name: "Cups", unit_cost: 0.12 }]));
+  assert.equal(model.scalar, false);
+  assert.deepEqual(model.keys, ["name", "unit_cost"]);
+  assert.deepEqual(model.labels, ["Name", "Unit Cost"]);
+  assert.deepEqual(model.types, ["string", "number"]);
+  assert.deepEqual(model.rows, [["Cups", "0.12"]]);
+});
+
+test("numbers survive the round trip as numbers, not strings", () => {
+  const model = buildEditModel(JSON.stringify([{ name: "Cups", unit_cost: 0.12 }]));
+  const out = JSON.parse(serializeEditModel(model, [["Cups", "0.15"]]));
+  assert.equal(out[0].unit_cost, 0.15);
+  assert.equal(typeof out[0].unit_cost, "number");
+});
+
+test("a non-numeric entry in a number field is preserved, not zeroed", () => {
+  const model = buildEditModel(JSON.stringify([{ cost: 1 }]));
+  assert.equal(JSON.parse(serializeEditModel(model, [["TBD"]]))[0].cost, "TBD");
+});
+
+test("booleans round trip through Yes / No", () => {
+  const model = buildEditModel(JSON.stringify([{ name: "Cups", in_stock: true }]));
+  assert.deepEqual(model.rows, [["Cups", "Yes"]]);
+  assert.equal(JSON.parse(serializeEditModel(model, [["Cups", "No"]]))[0].in_stock, false);
+});
+
+test("fully blank rows are dropped so an unused add-row never pollutes the save", () => {
+  const model = buildEditModel(JSON.stringify([{ name: "Cups" }]));
+  assert.deepEqual(JSON.parse(serializeEditModel(model, [["Cups"], [""], ["  "]])), [{ name: "Cups" }]);
+  assert.deepEqual(JSON.parse(serializeEditModel(buildEditModel("[]"), [[""]])), []);
+});
+
+test("serializeEditModel always emits parseable JSON (menu-workspace does a bare JSON.parse)", () => {
+  const model = buildEditModel(JSON.stringify(["a"]));
+  for (const rows of [[['{"broken": ']], [["]]]"]], [['quote " inside']], [[""]]]) {
+    assert.doesNotThrow(() => JSON.parse(serializeEditModel(model, rows)));
+  }
+});
+
+test("empty cells are omitted rather than written as null", () => {
+  const model = buildEditModel(JSON.stringify([{ name: "Cups", notes: "12oz" }]));
+  const out = JSON.parse(serializeEditModel(model, [["Cups", ""]]));
+  assert.deepEqual(out, [{ name: "Cups" }]);
 });
 
 // ── Headings ────────────────────────────────────────────────────────────────

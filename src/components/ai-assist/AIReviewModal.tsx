@@ -18,8 +18,11 @@ import { parseFactValue } from "@/lib/cross-workspace-sync";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
 import {
   EMPTY_CELL,
+  buildEditModel,
   buildStructuredDiff,
   buildStructuredList,
+  serializeEditModel,
+  type StructuredEditModel,
   type StructuredTableModel,
 } from "@/lib/structured-value";
 import { ALLOWED_UNITS } from "@/lib/recipe-suggest";
@@ -454,6 +457,99 @@ function StructuredDiff({ original, proposed }: { original: string; proposed: st
   return <StructuredTable {...model} />;
 }
 
+/**
+ * Generic form editor for structured suggestions that are not recipes.
+ *
+ * Onboarding brief §1C: "Edit mode uses form-based editors with add/remove row
+ * buttons, never raw text fields." Before this, Edit on a suppliers /
+ * opening-month / prep-steps suggestion dropped the raw JSON into a textarea
+ * and passed whatever the user typed to onApply. menu-workspace.tsx:4491 then
+ * ran a bare JSON.parse on it, so one stray comma threw inside the handler.
+ *
+ * The model is derived once from the incoming value; serializeEditModel always
+ * emits parseable JSON, so the apply path can no longer be handed a broken
+ * string by a user who is not expected to know what a bracket is.
+ */
+function StructuredFormEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const model = useMemo(() => buildEditModel(value), [value]);
+  const [rows, setRows] = useState<string[][]>(() =>
+    model.rows.length > 0 ? model.rows : [blankRow(model)],
+  );
+
+  const commit = useCallback(
+    (next: string[][]) => {
+      setRows(next);
+      onChange(serializeEditModel(model, next));
+    },
+    [model, onChange],
+  );
+
+  const setCell = (rowIndex: number, colIndex: number, cell: string) =>
+    commit(rows.map((r, i) => (i === rowIndex ? r.map((c, j) => (j === colIndex ? cell : c)) : r)));
+
+  const colCount = model.scalar ? 1 : model.keys.length;
+
+  return (
+    <div className="space-y-2">
+      {rows.map((row, rowIndex) => (
+        <div
+          key={rowIndex}
+          className="flex flex-col gap-2 sm:flex-row sm:items-end rounded-lg border border-[var(--border)] p-2"
+        >
+          {Array.from({ length: colCount }, (_, colIndex) => (
+            <label key={colIndex} className="flex-1 min-w-0 block">
+              {!model.scalar && (
+                <span className="block text-[11px] font-medium text-[var(--dark-grey)] mb-0.5">
+                  {model.labels[colIndex]}
+                </span>
+              )}
+              <input
+                type="text"
+                inputMode={model.types[colIndex] === "number" ? "decimal" : undefined}
+                value={row[colIndex] ?? ""}
+                onChange={(e) => setCell(rowIndex, colIndex, e.target.value)}
+                aria-label={
+                  model.scalar
+                    ? `Item ${rowIndex + 1}`
+                    : `${model.labels[colIndex]}, row ${rowIndex + 1}`
+                }
+                className="w-full border border-[var(--border)] rounded-lg px-2 py-1.5 text-sm min-h-[44px] focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
+              />
+            </label>
+          ))}
+          <button
+            type="button"
+            onClick={() => commit(rows.length > 1 ? rows.filter((_, i) => i !== rowIndex) : [blankRow(model)])}
+            aria-label={`Remove row ${rowIndex + 1}`}
+            className="shrink-0 inline-flex items-center justify-center gap-1 min-h-[44px] min-w-[44px] px-2 rounded-lg border border-[var(--border)] text-xs text-[var(--dark-grey)] hover:bg-[var(--background)]"
+          >
+            <X size={14} aria-hidden="true" />
+            <span className="sm:hidden">Remove</span>
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => commit([...rows, blankRow(model)])}
+        className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-lg border border-[var(--teal-tint)] text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5"
+      >
+        <Plus size={14} aria-hidden="true" />
+        Add row
+      </button>
+    </div>
+  );
+}
+
+function blankRow(model: StructuredEditModel): string[] {
+  return model.scalar ? [""] : model.keys.map(() => "");
+}
+
 // Form-based editor for structured recipe ingredient lists (Rule 3: server
 // validates fields on the apply route; the form just produces valid JSON).
 
@@ -696,10 +792,16 @@ function ChangeCard({
       {isEditing && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide">
-            {sug.isRecipeLines ? "Edit Ingredients" : "Editing Suggested Text"}
+            {sug.isRecipeLines
+              ? "Edit Ingredients"
+              : sug.isStructured
+              ? "Edit Items"
+              : "Editing Suggested Text"}
           </p>
           {sug.isRecipeLines ? (
             <IngredientFormEditor value={cardState.editedValue} onChange={onEditChange} />
+          ) : sug.isStructured ? (
+            <StructuredFormEditor value={cardState.editedValue} onChange={onEditChange} />
           ) : (
             <textarea
               ref={textareaRef}
