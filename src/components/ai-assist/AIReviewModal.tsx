@@ -16,6 +16,12 @@ import {
 } from "@/lib/cross-workspace-apply";
 import { parseFactValue } from "@/lib/cross-workspace-sync";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
+import {
+  EMPTY_CELL,
+  buildStructuredDiff,
+  buildStructuredList,
+  type StructuredTableModel,
+} from "@/lib/structured-value";
 import { ALLOWED_UNITS } from "@/lib/recipe-suggest";
 
 // ── Public types ────────────────────────────────────────────────────────────
@@ -352,60 +358,100 @@ function IngredientDiff({ original, proposed }: { original: string; proposed: st
 // Generic structured diff — fallback for isStructured: true suggestions that are
 // NOT recipe lines (prep steps, supplier lists, milestones, cross-suite figures).
 // The ingredient-specific path requires isRecipeLines: true.
-function StructuredDiff({ original, proposed }: { original: string; proposed: string }) {
-  let origRows: string[] = [];
-  let propRows: string[] = [];
-  try { origRows = (JSON.parse(original) as unknown[]).map((r) => JSON.stringify(r)); } catch { origRows = original.split("\n").filter(Boolean); }
-  try { propRows = (JSON.parse(proposed) as unknown[]).map((r) => JSON.stringify(r)); } catch { propRows = proposed.split("\n").filter(Boolean); }
+// ── Structured value rendering ──────────────────────────────────────────────
+// Board directive 2026-07-26 (Cowork onboarding brief §1C, and §3 rule 7: "No
+// user of this platform should ever see JSON, arrays, brackets, curly braces,
+// or raw data structures anywhere, under any circumstances").
+//
+// The previous implementation stringified each row and then called
+// Object.values() on the re-parsed result. For an array of OBJECTS that
+// happened to look table-shaped. For an array of STRINGS it did not:
+// parseRow() returned the string itself, and Object.values("Grind beans")
+// returns ["G","r","i","n","d", ...]. Menu & Pricing preparation steps are
+// exactly that shape (menu-workspace.tsx passes JSON.stringify(currentSteps)
+// with isStructured: true), so every prep step rendered as its first four
+// letters in four separate cells, in both the Current and Suggested columns.
+//
+// It also silently dropped every column past the fourth, printed
+// "[object Object]" for any nested value, and emitted no header row — so the
+// user could not tell which column was which.
+//
+// TIM-3864 swept raw error strings out of the API layer but touched no .tsx;
+// this is the display half of the same rule.
 
-  const origSet = new Set(origRows);
-  const propSet = new Set(propRows);
-
-  const allRows = [
-    ...propRows.filter((r) => !origSet.has(r)).map((r) => ({ row: r, kind: "added" as const })),
-    ...origRows.filter((r) => !propSet.has(r)).map((r) => ({ row: r, kind: "removed" as const })),
-    ...propRows.filter((r) => origSet.has(r)).map((r) => ({ row: r, kind: "unchanged" as const })),
-  ];
-
-  function parseRow(raw: string): Record<string, string> {
-    try { return JSON.parse(raw) as Record<string, string>; } catch { return { value: raw }; }
+function StructuredTable({ columns, rows }: StructuredTableModel) {
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-lg border border-[var(--border)] px-3 py-2">
+        <p className="text-sm text-[var(--dark-grey)]"><em>Empty</em></p>
+      </div>
+    );
   }
-
+  const colCount = Math.max(1, columns.length);
   return (
     <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
       <table className="w-full text-xs">
+        {columns.length > 0 && (
+          <thead>
+            <tr className="bg-[var(--background)]">
+              {columns.map((col) => (
+                <th
+                  key={col}
+                  scope="col"
+                  className="px-3 py-2 text-left font-semibold text-[var(--dark-grey)] border-b border-[var(--border)] whitespace-nowrap"
+                >
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+        )}
         <tbody>
-          {allRows.map(({ row, kind }, i) => {
-            const parsed = parseRow(row);
-            const cells = Object.values(parsed).slice(0, 4);
-            return (
-              <tr
-                key={i}
-                className={
-                  kind === "added"
-                    ? "bg-[var(--teal-tint-500)]"
-                    : kind === "removed"
-                    ? "bg-red-50"
-                    : "bg-white"
-                }
-              >
-                {cells.map((cell, j) => (
-                  <td
-                    key={j}
-                    className={`px-3 py-2 border-b border-[var(--border)] ${
-                      kind === "removed" ? "line-through text-[var(--dark-grey)]" : "text-[var(--foreground)]"
-                    }`}
-                  >
-                    {String(cell ?? "")}
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
+          {rows.map((row, i) => (
+            <tr
+              key={`${row.kind}-${row.signature}-${i}`}
+              className={
+                row.kind === "added"
+                  ? "bg-[var(--teal-tint-500)]"
+                  : row.kind === "removed"
+                  ? "bg-red-50"
+                  : "bg-white"
+              }
+            >
+              {Array.from({ length: colCount }, (_, j) => (
+                <td
+                  key={j}
+                  className={`px-3 py-2 border-b border-[var(--border)] align-top ${
+                    row.kind === "removed"
+                      ? "line-through text-[var(--dark-grey)]"
+                      : "text-[var(--foreground)]"
+                  }`}
+                >
+                  {row.cells[j] ?? EMPTY_CELL}
+                </td>
+              ))}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
   );
+}
+
+/**
+ * Current-state rendering. The old code called StructuredDiff with `original`
+ * as BOTH arguments, so every row scored "unchanged" and the column rendered
+ * as an unlabelled all-white table — a diff of a thing against itself. The
+ * Current column is not a diff; it is just the data as it stands today.
+ */
+function StructuredList({ value }: { value: string }) {
+  const model = useMemo(() => buildStructuredList(value), [value]);
+  return <StructuredTable {...model} />;
+}
+
+function StructuredDiff({ original, proposed }: { original: string; proposed: string }) {
+  const model = useMemo(() => buildStructuredDiff(original, proposed), [original, proposed]);
+  return <StructuredTable {...model} />;
 }
 
 // Form-based editor for structured recipe ingredient lists (Rule 3: server
@@ -587,7 +633,7 @@ function ChangeCard({
               {sug.isRecipeLines ? (
                 <IngredientTable value={sug.originalValue} />
               ) : sug.isStructured ? (
-                <StructuredDiff original={sug.originalValue} proposed={sug.originalValue} />
+                <StructuredList value={sug.originalValue} />
               ) : (
                 <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2">
                   <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
@@ -619,7 +665,7 @@ function ChangeCard({
               {sug.isRecipeLines ? (
                 <IngredientTable value={sug.originalValue} />
               ) : sug.isStructured ? (
-                <StructuredDiff original={sug.originalValue} proposed={sug.originalValue} />
+                <StructuredList value={sug.originalValue} />
               ) : (
                 <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2.5 min-h-[60px]">
                   <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
