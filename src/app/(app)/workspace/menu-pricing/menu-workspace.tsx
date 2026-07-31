@@ -1809,10 +1809,10 @@ function CostOfGoodsTabContent({
             variant="primary"
             onClick={onSuggestPrice}
             disabled={priceLoading || effectiveCogs <= 0}
-            title={effectiveCogs <= 0 ? "Add a recipe or manual COGS first" : "Suggest a retail price"}
+            title={effectiveCogs <= 0 ? "Add a recipe or manual COGS first" : "Suggest a retail price with AI"}
           >
             <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} />
-            {priceLoading ? "Thinking…" : "Suggest retail price"}
+            {priceLoading ? "Thinking…" : "Suggest retail price with AI"}
           </WorkspaceActionButton>
         </section>
       )}
@@ -2781,12 +2781,12 @@ function MenuTab(props: MenuTabProps) {
     <div className="space-y-4">
       {/* TIM-3150: "Not sure where to start?" card — converted to DismissibleCallout
           (persisted per-user preference via platform.dismissed-callouts pref key).
-          The "Suggest menu items" CTA moved to the workspace top-right action cluster. */}
+          The "Suggest menu items with AI" CTA moved to the workspace top-right action cluster. */}
       {canEdit && (
         <DismissibleCallout
           calloutKey="menu-pricing.not-sure-where-to-start"
           heading="Not sure where to start?"
-          subcopy="Get menu ideas that fit your concept and location. Use the Suggest menu items button above."
+          subcopy="Get menu ideas that fit your concept and location. Use the Suggest menu items with AI button above."
         />
       )}
 
@@ -4672,7 +4672,7 @@ export function MenuWorkspace({
     {AIReviewModalNode}
     <div className="bg-[var(--background)] min-h-screen">
       <div className="w-full px-4 sm:px-6 pt-8 pb-16">
-        {/* TIM-3150: canonical WorkspaceHeader with Suggest menu items in action cluster.
+        {/* TIM-3150: canonical WorkspaceHeader with Suggest menu items with AI in action cluster.
             TIM-3296: Print Recipe Cards added as a secondary action — opens the
             printable recipe card page in a new tab. */}
         <WorkspaceHeader
@@ -4700,11 +4700,11 @@ export function MenuWorkspace({
                 <WorkspaceActionButton
                   variant="primary"
                   onClick={suggestMenuItems}
-                  aria-label="Suggest menu items"
+                  aria-label="Suggest menu items with AI"
                   title="Get AI-suggested menu items based on your concept"
                 >
                   <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                  Suggest menu items
+                  Suggest menu items with AI
                 </WorkspaceActionButton>
               )}
               <SaveStatusAndButton

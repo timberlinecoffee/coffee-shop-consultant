@@ -9,16 +9,21 @@
 // Plan sections. The right-side action slot is now a BOUNDED list from
 // {analyse, write, regenerate}, in that visual order when multiple are
 // present. Do NOT canon-fix back — the amendment is the new baseline.
-// Do NOT add a fourth action kind without a new board directive.
+//
+// D-001 (board ruling, 2026-07-26): this IS the directive the line above
+// required. A fourth kind, 'suggest', is authorized and leads the order:
+// [Suggest] [Analyse] [Write] [Regenerate]. Do NOT add a fifth without a new
+// ruling. See ai-actions.ts for the derived order assertion.
 //
 // TIM-3304: Canonical sub-section header for every Groundwork workspace panel.
 // Locked visual structure:
-//   [Title] [Help (?)] ─────────────── [Analyse] [Write] [Regenerate]
+//   [Title] [Help (?)] ────── [Suggest] [Analyse] [Write] [Regenerate]
 //
 // Constraints (hard):
 //   - Help (?) is anchored immediately right of the title — never floats right.
-//   - The right-side element is a BOUNDED list: only 'analyse', 'write', and
-//     'regenerate'. No gear, eye, save, or any other action slot. Extra
+//   - The right-side element is a BOUNDED list: only 'suggest', 'analyse',
+//     'write', and 'regenerate'. No gear, eye, save, or any other action
+//     slot. Extra
 //     right-side actions are the regression vector TIM-3300 called out;
 //     resist adding more kinds.
 //   - Token-only styling (TIM-2760 v2 tokens). No new hex values or px values.
@@ -58,6 +63,7 @@ export interface SectionHeaderProps {
 }
 
 const ACTION_LABEL: Record<AiAction['kind'], string> = {
+  suggest: 'Suggest',
   analyse: 'Analyse',
   write: 'Write',
   regenerate: 'Regenerate',
@@ -120,6 +126,8 @@ export function SectionHeader({
                   ? `Analyse ${title} with AI`
                   : action.kind === 'regenerate'
                   ? `Regenerate ${title} with AI`
+                  : action.kind === 'suggest'
+                  ? `Suggest ${title} with AI`
                   : `Write ${title} with AI`
               }
               className={actionButtonClasses(action.kind)}

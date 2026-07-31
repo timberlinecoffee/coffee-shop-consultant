@@ -1819,7 +1819,7 @@ function ProjectionsTab({
               className="text-xs font-semibold bg-[var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-60 shrink-0"
             >
               {assessmentStatus === "loading"
-                ? "Analyzing..."
+                ? "Analysing…"
                 : localAssessment
                 ? "Refresh"
                 : "Generate assessment"}
