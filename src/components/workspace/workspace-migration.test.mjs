@@ -42,6 +42,13 @@ const MIGRATED = [
     progress: "count",
   },
   {
+    // List-shaped like Location & Lease (D-011). No emphasised button: gear is
+    // added per station, and each station carries its own add control.
+    name: "Buildout & Equipment",
+    file: "src/app/(app)/workspace/buildout-equipment/buildout-workspace.tsx",
+    progress: "count",
+  },
+  {
     // The live Financials surface. financials-workspace.tsx still holds a v1
     // header behind the ui_revamp_v2 flag, which defaults to v2 — that
     // fallback migrates with the flag's removal, not before.
@@ -164,4 +171,19 @@ test("Financials states its blocking notices in one band, not two amber stripes"
     /<ConflictNoticeBadge \/>/,
     "the standalone badge row is what the band replaced"
   );
+});
+
+test("Buildout & Equipment no longer emphasises the AI action", () => {
+  // One of the three screens Trent named when he ruled D-010. "Write with AI"
+  // was the filled button; it is now a menu row. Pin both halves — gone from
+  // the emphasised slot, still present in the menu.
+  const src = read(
+    "src/app/(app)/workspace/buildout-equipment/buildout-workspace.tsx"
+  );
+  assert.doesNotMatch(
+    src,
+    /primaryAction=/,
+    "this screen has no honest single next action, so the slot stays empty"
+  );
+  assert.match(src, /label="Write with AI"/, "moved, not removed");
 });
