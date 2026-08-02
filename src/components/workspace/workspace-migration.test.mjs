@@ -73,6 +73,11 @@ const MIGRATED = [
     progress: "count",
   },
   {
+    name: "Hiring & Onboarding",
+    file: "src/app/(app)/workspace/hiring/hiring-workspace-v3.tsx",
+    progress: "count",
+  },
+  {
     // The live Financials surface. financials-workspace.tsx still holds a v1
     // header behind the ui_revamp_v2 flag, which defaults to v2 — that
     // fallback migrates with the flag's removal, not before.
@@ -277,4 +282,15 @@ test("Launch Plan offers Scout on every sub-page, not just one", () => {
     /showMilestones &&/,
     "the Scout slot must not be gated on which sub-page is open"
   );
+});
+
+test("Hiring emphasises adding a role, not the AI suggestion", () => {
+  // Two equal-weight buttons meant the screen expressed no opinion about which
+  // to reach for. Deciding what you need comes before asking a machine to
+  // guess it.
+  const src = read("src/app/(app)/workspace/hiring/hiring-workspace-v3.tsx");
+  const primary = src.slice(src.indexOf("primaryAction={"), src.indexOf("overflow={"));
+  assert.match(primary, /Add role/);
+  assert.doesNotMatch(primary, /Sparkles/, "the AI action is not the emphasised one");
+  assert.match(src, /label="Suggest roles with AI"/, "moved, not removed");
 });
