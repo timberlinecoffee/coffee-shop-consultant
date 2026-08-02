@@ -25,11 +25,16 @@ import { UI_REVAMP_V3 } from "@/lib/ui-revamp-v3";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { SectionHeader } from "@/components/section-header";
-import {
-  WorkspaceActionButton,
-  WORKSPACE_ACTION_ICON_SIZE,
-} from "@/components/workspace/WorkspaceActionButton";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
+import {
+  WorkspaceActionMenu,
+  WorkspaceActionMenuItem,
+} from "@/components/workspace/WorkspaceActionMenu";
+import {
+  WorkspaceNextStepButton,
+  scrollToStep,
+} from "@/components/workspace/WorkspaceNextStepButton";
+import { nextStep, stepsProgress } from "@/components/workspace/next-step";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { InlineAnalysisCard, type AnalyseResponse } from "@/components/ai-analyse/InlineAnalysisCard";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
@@ -172,6 +177,11 @@ export function MarketingWorkspace({
   initialTrialMessagesUsed,
 }: Props) {
   const [doc, setDoc] = useState<MarketingDocument>(initialDoc);
+  // TIM-4108: which sections are expanded. Held here rather than inside each
+  // section so the header can open one. First section starts open, as before.
+  const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({
+    [MARKETING_SECTION_KEYS[0]]: true,
+  });
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [paywallReason, setPaywallReason] = useState<
@@ -445,45 +455,86 @@ export function MarketingWorkspace({
     return Boolean(s);
   });
 
+  // TIM-4108 (UX Phase 3): one list of steps feeds BOTH the progress line and
+  // the emphasised button, so the number at the top and the thing the button
+  // points at can never disagree.
+  const steps = MARKETING_SECTION_KEYS.map((key) => ({
+    id: key,
+    label: MARKETING_SECTION_LABELS[key],
+    done: getMarketingSectionStatus(doc, key) === "complete",
+  }));
+  const next = nextStep(steps);
+
+  const goToStep = useCallback((id: string) => {
+    setOpenSteps((prev) => ({ ...prev, [id]: true }));
+    // Open first, then scroll — otherwise we scroll to a collapsed strip and
+    // the section expands underneath the viewport.
+    requestAnimationFrame(() => scrollToStep(id));
+  }, []);
+
   return (
     <>
       {AIReviewModalNode}
       <div className="bg-[var(--background)] min-h-screen">
         <div className="w-full px-4 sm:px-6 pt-8 pb-16">
           {/* TIM-1894: canonical WorkspaceHeader — description in the left column
-              under the title, SaveIndicator + Print action top-right, matching
-              ops-playbook and Financials. */}
+              under the title, action cluster top-right, matching ops-playbook
+              and Financials.
+              TIM-4108 (UX Phase 3): migrated off the free-form `actions` prop
+              onto the structural slots. The order below is no longer this
+              screen's decision — the header component fixes it. Marketing is
+              the first workspace through, so this is the shape the other ten
+              follow. */}
           <WorkspaceHeader
             Icon={Megaphone}
             title="Marketing"
             description="Plan the story, channels, and milestones that get the right people through the door. This is your plan, in your own words."
-            actions={
-              <>
-                {/* TIM-2382: Scout-as-hub primary entry point for AI generation. */}
-                <AskScoutButton
-                  workspaceKey="marketing"
-                  focusLabel="marketing plan"
-                  hasContent={hasContent}
-                />
-                {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
-                <WorkspaceActionButton
-                  className="hidden sm:flex"
-                  onClick={() =>
-                    window.open(
-                      "/workspace/marketing/print",
-                      "_blank",
-                      "noopener,noreferrer",
-                    )
-                  }
-                  aria-label="Print view"
-                  title="Open a print-friendly view of your marketing plan"
-                >
-                  <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                  <span>Print view</span>
-                </WorkspaceActionButton>
-                <SaveStatusAndButton saving={saving} savedAt={savedAt} unsaved={false} canEdit={canEdit} onSave={handleManualSave} />
-              </>
+            scout={
+              /* TIM-2382: Scout entry point. Never emphasised — help is always
+                 available, but it is not the next thing to do. */
+              <AskScoutButton
+                workspaceKey="marketing"
+                focusLabel="marketing plan"
+                hasContent={hasContent}
+              />
             }
+            primaryAction={
+              next ? (
+                <WorkspaceNextStepButton step={next} onGo={goToStep} />
+              ) : undefined
+            }
+            overflow={
+              /* Printing moves into the ⋯ menu and takes the platform-wide
+                 name. It used to read "Print view" here and something else on
+                 the next screen (TIM-4106). `hideAdvisor` because Scout above
+                 already offers the same help — two AI doors, one room. */
+              <WorkspaceActionMenu hideAdvisor>
+                {({ closeMenu }) => (
+                  <WorkspaceActionMenuItem
+                    Icon={Printer}
+                    label="Print document"
+                    onClick={() => {
+                      window.open(
+                        "/workspace/marketing/print",
+                        "_blank",
+                        "noopener,noreferrer",
+                      );
+                      closeMenu();
+                    }}
+                  />
+                )}
+              </WorkspaceActionMenu>
+            }
+            save={
+              <SaveStatusAndButton
+                saving={saving}
+                savedAt={savedAt}
+                unsaved={false}
+                canEdit={canEdit}
+                onSave={handleManualSave}
+              />
+            }
+            progress={stepsProgress(steps)}
           />
 
           {/* TIM-2777: accordion layout — replaces max-w-3xl tab-based pattern */}
@@ -528,7 +579,11 @@ export function MarketingWorkspace({
                   key={key}
                   title={label}
                   status={status}
-                  defaultOpen={i === 0}
+                  stepId={key}
+                  open={openSteps[key] ?? false}
+                  onOpenChange={(o) =>
+                    setOpenSteps((prev) => ({ ...prev, [key]: o }))
+                  }
                 >
                   {body}
                 </AccordionSection>
