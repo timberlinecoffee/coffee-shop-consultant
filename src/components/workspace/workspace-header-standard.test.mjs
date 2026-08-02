@@ -114,3 +114,35 @@ test("progress and the alert band render below the title row, in that order", ()
 test("the header still renders through one element with the canonical spacing", () => {
   assert.match(header, /className \?\? "mb-6"/);
 });
+
+// ── The generated document is the one place "sections" is right ─────────────
+
+test("the Business Plan reviews sections, and says so", () => {
+  // T1-D reserved "sections" for parts of a generated document. Business Plan
+  // IS that document, so this is the one screen where the word is correct —
+  // and it gets its own closed variant precisely so the word cannot leak back
+  // into screens where it meant nothing.
+  const v = progressView({ kind: "sections", done: 5, total: 12 });
+  assert.equal(v.label, "5 of 12 sections reviewed");
+  assert.equal(v.pct, 42);
+  assert.equal(v.showBar, true, "the section list is fixed, so a bar is honest");
+});
+
+test("a document with no sections says so rather than drawing an empty bar", () => {
+  const v = progressView({ kind: "sections", done: 0, total: 0 });
+  assert.equal(v.label, "No sections yet");
+  assert.equal(v.showBar, false);
+  assert.equal(v.pct, null);
+});
+
+test("the vocabulary stays closed at three shapes", () => {
+  // steps | sections | count. A fourth would mean a screen invented its own
+  // unit again, which is the drift this whole batch removed.
+  const src = readFileSync(new URL("./workspace-progress.ts", import.meta.url), "utf8");
+  const kinds = [...src.matchAll(/kind: "(\w+)"/g)].map((m) => m[1]);
+  assert.deepEqual([...new Set(kinds)].sort(), ["count", "sections", "steps"]);
+});
+
+test("reviewed sections are clamped like everything else", () => {
+  assert.equal(progressView({ kind: "sections", done: 99, total: 12 }).pct, 100);
+});

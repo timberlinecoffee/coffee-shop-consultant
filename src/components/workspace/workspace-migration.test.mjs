@@ -78,6 +78,13 @@ const MIGRATED = [
     progress: "count",
   },
   {
+    // The generated document — the one screen where "sections" is the right
+    // word, and the one place the `sections` progress kind may be used.
+    name: "Business Plan",
+    file: "src/app/(app)/workspace/business-plan/business-plan-workspace.tsx",
+    progress: "sections",
+  },
+  {
     // The live Financials surface. financials-workspace.tsx still holds a v1
     // header behind the ui_revamp_v2 flag, which defaults to v2 — that
     // fallback migrates with the flag's removal, not before.
@@ -108,6 +115,11 @@ for (const ws of MIGRATED) {
       assert.ok(
         /stepsProgress\(/.test(src),
         `${ws.name} must count steps from the same list its button walks`
+      );
+    } else if (ws.progress === "sections") {
+      assert.ok(
+        /kind: "sections"/.test(src),
+        `${ws.name} is the generated document, so it reviews sections`
       );
     } else {
       assert.ok(
@@ -293,4 +305,29 @@ test("Hiring emphasises adding a role, not the AI suggestion", () => {
   assert.match(primary, /Add role/);
   assert.doesNotMatch(primary, /Sparkles/, "the AI action is not the emphasised one");
   assert.match(src, /label="Suggest roles with AI"/, "moved, not removed");
+});
+
+
+test("only the Business Plan uses the sections progress kind", () => {
+  // T1-D reserved "sections" for parts of a generated document. Exactly one
+  // workspace IS that document. If a second screen starts calling its parts
+  // sections, the ambiguity T1-D removed is back.
+  const users = MIGRATED.filter((ws) => /kind: "sections"/.test(code(ws.file)));
+  assert.deepEqual(users.map((w) => w.name), ["Business Plan"]);
+});
+
+test("Business Plan's count and its emphasised button read the same test", () => {
+  // Both come from one derived list, so the number at the top and the section
+  // the button opens cannot disagree.
+  const src = read("src/app/(app)/workspace/business-plan/business-plan-workspace.tsx");
+  assert.match(src, /const reviewedSteps = sections\.map/);
+  assert.match(src, /reviewedCount = reviewedSteps\.filter\(\(s\) => s\.done\)\.length/);
+  assert.match(src, /nextUnreviewed = nextStep\(reviewedSteps\)/);
+});
+
+test("Expand all is a menu row, not a bare link in the action cluster", () => {
+  // It was the only control on any workspace that looked like body text.
+  const src = read("src/app/(app)/workspace/business-plan/business-plan-workspace.tsx");
+  assert.match(src, /label=\{allExpanded \? "Collapse all sections" : "Expand all sections"\}/);
+  assert.doesNotMatch(src, /underline underline-offset-2 cursor-pointer/);
 });

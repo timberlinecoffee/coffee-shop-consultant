@@ -11,6 +11,16 @@
 //            "steps"; "sections" means parts of a generated document and
 //            "workspaces" is Home's unit. Do not reintroduce either here.
 //
+//   sections — the workspace IS a generated document, and the owner reviews
+//            its parts. Renders "5 of 12 sections reviewed" plus a bar.
+//            Exactly one workspace qualifies: Business Plan. T1-D reserved the
+//            word "sections" for parts of a generated document, so this is the
+//            one place it is correct — and giving it its own closed variant is
+//            what stops "sections" leaking back into screens where it means
+//            nothing (the ambiguity T1-D removed).
+//            A bar is honest here: the section list is fixed, so the
+//            denominator does not move under the owner.
+//
 //   count  — the workspace is a LIST you add to, not a path you walk.
 //            Location & Lease and Suppliers are the cases: you shortlist
 //            candidate sites or vendors, and there is no "done".
@@ -25,6 +35,7 @@
 
 export type WorkspaceProgress =
   | { kind: "steps"; done: number; total: number }
+  | { kind: "sections"; done: number; total: number }
   | { kind: "count"; text: string };
 
 export interface ProgressView {
@@ -43,15 +54,22 @@ export function progressView(progress: WorkspaceProgress): ProgressView {
 
   const total = Math.max(0, Math.floor(progress.total));
   const done = Math.min(Math.max(0, Math.floor(progress.done)), total);
+  const isDocument = progress.kind === "sections";
 
-  // A workspace that reports zero steps has nothing to say. Showing
-  // "0 of 0 steps done" and an empty bar reads as broken rather than empty.
+  // A workspace that reports nothing has nothing to say. Showing "0 of 0" and
+  // an empty bar reads as broken rather than empty.
   if (total === 0) {
-    return { label: "No steps yet", pct: null, showBar: false };
+    return {
+      label: isDocument ? "No sections yet" : "No steps yet",
+      pct: null,
+      showBar: false,
+    };
   }
 
   return {
-    label: `${done} of ${total} steps done`,
+    label: isDocument
+      ? `${done} of ${total} sections reviewed`
+      : `${done} of ${total} steps done`,
     pct: Math.round((done / total) * 100),
     showBar: true,
   };

@@ -56,6 +56,11 @@ import { FinancialDocumentsPanel, type FinancialDocumentState } from "./financia
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import {
+  WorkspaceNextStepButton,
+  scrollToStep,
+} from "@/components/workspace/WorkspaceNextStepButton";
+import { nextStep } from "@/components/workspace/next-step";
+import {
   WorkspaceActionMenu,
   WorkspaceActionMenuItem,
 } from "@/components/workspace/WorkspaceActionMenu";
@@ -66,7 +71,6 @@ import { RegenerateAllButton } from "./regenerate-all-button";
 import { ExportGateModal, type ValidationReport } from "./export-gate-modal";
 import { PreGenerateChecklist, type PreGenerateChecklistItem } from "./pre-generate-checklist";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
-import { useUiRevamp } from "@/hooks/useUiRevamp";
 import type { AuditReport } from "@/lib/business-plan/audit";
 import { stripSourceMarkers } from "@/lib/business-plan/source-markers";
 import {
@@ -312,9 +316,21 @@ export function BusinessPlanWorkspace({
   // still calls /api/business-plan/audit (`runPreflightAudit` below).
 
   const { promoteOnEdit } = useWorkspaceStatus();
-  const uiRevamp = useUiRevamp();
   // Auto-promote not_started → in_progress once any section has user content.
   const hasContent = sections.some((s) => s.userContent || s.autoContent);
+
+  // TIM-4108 (UX Phase 3): "reviewed" means the owner has put their own words
+  // to a section. Every section arrives pre-filled from the other workspaces,
+  // so reading it and making it theirs IS the work on this screen — and the
+  // count and the emphasised button are derived from the same test, so they
+  // cannot point at different sections.
+  const reviewedSteps = sections.map((s) => ({
+    id: s.key,
+    label: s.title,
+    done: Boolean(s.userContent && s.userContent.trim().length > 0),
+  }));
+  const reviewedCount = reviewedSteps.filter((s) => s.done).length;
+  const nextUnreviewed = nextStep(reviewedSteps);
   useEffect(() => {
     if (hasContent) promoteOnEdit("business_plan");
   }, [hasContent, promoteOnEdit]);
@@ -1544,7 +1560,6 @@ export function BusinessPlanWorkspace({
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  const visibleCount = sections.filter((s) => s.isVisible).length;
   const allExpanded = sections.every((s) => s.isExpanded);
 
   // TIM-3672 follow-up (board comment db265403 on 2026-07-08): compute the
@@ -1731,127 +1746,120 @@ export function BusinessPlanWorkspace({
           Icon={FileText}
           title="Business Plan"
           description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI."
-          actions={
-            <>
-              <button
-                onClick={() => setSections((prev) => prev.map((s) => ({ ...s, isExpanded: !allExpanded })))}
-                className="text-sm text-[var(--muted-foreground)] hover:text-foreground underline underline-offset-2 cursor-pointer"
-              >
-                {allExpanded ? "Collapse All" : "Expand All"}
-              </button>
-              {/* TIM-2382: Scout-as-hub — top-level AskScoutButton on the
-                  Business Plan workspace replaces the legacy auto-apply
-                  Generate/Improve flow. Suggestions route through chat +
-                  AIReviewModal ([[feedback_ai_never_auto_apply]]). */}
-              <AskScoutButton
-                workspaceKey="business_plan"
-                focusLabel="business plan"
-                hasContent={hasContent}
-              />
-              {/* TIM-2416: the standalone "Check Plan" header CTA was removed.
-                  Plan Quality Check now lives in the AI companion (Check mode)
-                  reachable from every workspace via the floating affordance.
-                  The hamburger keeps Export PDF, Print Business Plan, and
-                  Regenerate all as before. */}
-              {/* TIM-3556: hideAdvisor — the header-level AskScoutButton above
-                  already opens the same copilot drawer, so the shared menu's
-                  default "Open Advisor" row would duplicate that action. */}
-              <WorkspaceActionMenu hideAdvisor>
-                {({ closeMenu }) => (
-                  <>
-                    <WorkspaceActionMenuItem
-                      Icon={Download}
-                      label={isExportingPdf || isValidating ? "Checking..." : "Export PDF"}
-                      disabled={isExportingPdf || isValidating || !canEdit}
-                      onClick={() => {
-                        closeMenu();
-                        handleExportPdf();
-                      }}
-                    />
-                    <WorkspaceActionMenuItem
-                      Icon={FileText}
-                      label={isPrintingPdf || isValidating ? "Checking..." : "Print Business Plan"}
-                      disabled={isPrintingPdf || isValidating || !canEdit}
-                      onClick={() => {
-                        closeMenu();
-                        handlePrintPlan();
-                      }}
-                    />
-                    <RegenerateAllButton
-                      renderAs="menuitem"
-                      closeMenu={closeMenu}
-                      disabled={!canEdit || streamingKey !== null}
-                      // TIM-3490: iterate in effective (persisted) order so
-                      // the regen prompt context block reflects the user's
-                      // reorder. resolveSectionOrder filtered to standard
-                      // section keys only; custom sections are not part of
-                      // the regenerate-all flow.
-                      getCurrentSections={() => orderedSectionsForAi}
-                      openAIReviewModal={openAIReviewModal}
-                      openProgressOverlay={openProgressOverlay}
-                      updateProgressOverlay={updateProgressOverlay}
-                      closeProgressOverlay={closeProgressOverlay}
-                      onSectionApplied={(key, finalValue) => {
-                        setSections((prev) =>
-                          prev.map((s) =>
-                            s.key === key ? { ...s, userContent: finalValue } : s,
-                          ),
-                        );
-                      }}
-                      onError={(msg) => setGlobalError(msg)}
-                      runPreflightAudit={runPreflightAudit}
-                      onFixFirst={handlePreflightFixFirst}
-                    />
-                  </>
-                )}
-              </WorkspaceActionMenu>
-              <SaveStatusAndButton
-                saving={saveState.kind === "saving"}
-                savedAt={saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null}
-                unsaved={saveState.kind === "dirty"}
-                error={saveState.kind === "error" ? saveState.message : null}
-                canEdit={canEdit}
-                onSave={handleManualSave}
-              />
-            </>
+          scout={
+            /* TIM-2382: Scout-as-hub — replaces the legacy auto-apply
+               Generate/Improve flow. Suggestions route through chat +
+               AIReviewModal ([[feedback_ai_never_auto_apply]]). */
+            <AskScoutButton
+              workspaceKey="business_plan"
+              focusLabel="business plan"
+              hasContent={hasContent}
+            />
           }
+          primaryAction={
+            /* TIM-4108 (UX Phase 3): the next section the owner has not put
+               their own words to. Every section arrives pre-filled from the
+               other workspaces, so "reviewed" here means the owner has read it
+               and made it theirs — which is the actual work on this screen. */
+            nextUnreviewed ? (
+              <WorkspaceNextStepButton
+                step={nextUnreviewed}
+                onGo={(key) => {
+                  setSections((prev) =>
+                    prev.map((s) =>
+                      s.key === key ? { ...s, isExpanded: true } : s,
+                    ),
+                  );
+                  requestAnimationFrame(() => scrollToStep(key));
+                }}
+              />
+            ) : undefined
+          }
+          overflow={
+            /* TIM-3556: hideAdvisor — the Scout button above already opens the
+               same drawer, so the menu's default "Open Advisor" row would
+               duplicate it.
+               TIM-4108: Expand/Collapse All was a bare underlined link sitting
+               in the action cluster — the only control on any workspace that
+               looked like body text. It is a view toggle, so it belongs with
+               the other view toggles, in the menu. */
+            <WorkspaceActionMenu hideAdvisor>
+              {({ closeMenu }) => (
+                <>
+                  <WorkspaceActionMenuItem
+                    Icon={allExpanded ? ChevronUp : ChevronDown}
+                    label={allExpanded ? "Collapse all sections" : "Expand all sections"}
+                    onClick={() => {
+                      closeMenu();
+                      setSections((prev) =>
+                        prev.map((s) => ({ ...s, isExpanded: !allExpanded })),
+                      );
+                    }}
+                  />
+                  <WorkspaceActionMenuItem
+                    Icon={Download}
+                    label={isExportingPdf || isValidating ? "Checking..." : "Export PDF"}
+                    disabled={isExportingPdf || isValidating || !canEdit}
+                    onClick={() => {
+                      closeMenu();
+                      handleExportPdf();
+                    }}
+                  />
+                  <WorkspaceActionMenuItem
+                    Icon={FileText}
+                    label={isPrintingPdf || isValidating ? "Checking..." : "Print Business Plan"}
+                    disabled={isPrintingPdf || isValidating || !canEdit}
+                    onClick={() => {
+                      closeMenu();
+                      handlePrintPlan();
+                    }}
+                  />
+                  <RegenerateAllButton
+                    renderAs="menuitem"
+                    closeMenu={closeMenu}
+                    disabled={!canEdit || streamingKey !== null}
+                    getCurrentSections={() => orderedSectionsForAi}
+                    openAIReviewModal={openAIReviewModal}
+                    openProgressOverlay={openProgressOverlay}
+                    updateProgressOverlay={updateProgressOverlay}
+                    closeProgressOverlay={closeProgressOverlay}
+                    onSectionApplied={(key, finalValue) => {
+                      setSections((prev) =>
+                        prev.map((s) =>
+                          s.key === key ? { ...s, userContent: finalValue } : s,
+                        ),
+                      );
+                    }}
+                    onError={(msg) => setGlobalError(msg)}
+                    runPreflightAudit={runPreflightAudit}
+                    onFixFirst={handlePreflightFixFirst}
+                  />
+                </>
+              )}
+            </WorkspaceActionMenu>
+          }
+          save={
+            <SaveStatusAndButton
+              saving={saveState.kind === "saving"}
+              savedAt={saveState.kind === "saved" ? saveState.at : saveState.kind === "idle" ? saveState.lastSavedAt : null}
+              unsaved={saveState.kind === "dirty"}
+              error={saveState.kind === "error" ? saveState.message : null}
+              canEdit={canEdit}
+              onSave={handleManualSave}
+            />
+          }
+          progress={{
+            kind: "sections",
+            done: reviewedCount,
+            total: sections.length,
+          }}
         />
 
-        {/* TIM-2785: v2 chrome — progress bar mirrors concept workspace pattern
-            (TIM-2784). v1 path keeps the plain text count; v2 adds a teal
-            fill bar showing reviewed sections (userContent present) vs total. */}
-        {uiRevamp ? (
-          (() => {
-            const reviewedCount = sections.filter((s) => s.userContent && s.userContent.trim().length > 0).length;
-            const pct = sections.length > 0 ? Math.round((reviewedCount / sections.length) * 100) : 0;
-            return (
-              <div className="mb-6 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-[var(--muted-foreground)]">
-                    {shopName ? <>{shopName} — </> : null}
-                    {reviewedCount} of {sections.length} sections reviewed
-                  </span>
-                  <span className="text-xs font-semibold text-[var(--teal)]">{pct}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-[var(--teal)] transition-all duration-300"
-                    style={{ width: `${pct}%` }}
-                    role="progressbar"
-                    aria-valuenow={reviewedCount}
-                    aria-valuemin={0}
-                    aria-valuemax={sections.length}
-                    aria-label="Business plan completion"
-                  />
-                </div>
-              </div>
-            );
-          })()
-        ) : (
-          <p className="text-xs text-[var(--neutral-cool-600)] mb-6">
-            {visibleCount} of {sections.length} sections visible
-          </p>
-        )}
+        {/* TIM-4108 (UX Phase 3): the bespoke progress duo is gone. Where the
+            owner is up to renders in the header now, in the same place as every
+            other workspace — and this is the one screen where the word
+            "sections" is correct, because this workspace IS the generated
+            document T1-D reserved that word for. */}
 
         {/* TIM-2466: pre-generate checklist. Renders only when at least one
             source workspace (Concept, Menu & Pricing, Marketing, Hiring) is
@@ -2375,8 +2383,11 @@ function SortableCardRow({
     <div
       ref={setNodeRef}
       style={liftStyle}
-      id={`bp-section-${id}`}
-      className="group flex items-stretch gap-1.5 sm:gap-2"
+      // TIM-4108 (UX Phase 3): the shared step anchor, so the header's
+      // emphasised button can scroll to the section it names using the same
+      // scheme every other workspace uses.
+      id={`step-${id}`}
+      className="group flex items-stretch gap-1.5 sm:gap-2 scroll-mt-24"
     >
       {canEdit && (
         <SortableHandle
