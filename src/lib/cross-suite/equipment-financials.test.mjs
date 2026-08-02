@@ -178,19 +178,33 @@ test("audit-mapping.ts registers src:capex_equipment_mismatch → equipment_mism
   );
 });
 
-test("cross-suite-resolver route.ts wires detectEquipmentMismatch", () => {
-  // Resolver route must import + invoke the detector and dispatch the
-  // financials:startup:equipment_cents apply path. Drift here breaks the
-  // GET → modal → POST round trip.
+test("shared detector module wires detectEquipmentMismatch", () => {
+  // TIM-4101 (T1-A): the detector wiring moved out of the resolver route into
+  // src/lib/cross-suite/detect.ts so the Home dashboard runs the same pass.
+  // The GET → modal → POST round trip still depends on it, so keep guarding it
+  // — just at its new home.
+  const detect = readFileSync(
+    new URL("./detect.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(detect, /detectEquipmentMismatch/, "shared module must import detector");
+  assert.match(
+    detect,
+    /buildoutGridTotalCents/,
+    "shared module must compute grid total before invoking detector",
+  );
+});
+
+test("cross-suite-resolver route.ts still runs the shared detectors and applies equipment_cents", () => {
   const src = readFileSync(
     new URL("../../app/api/copilot/cross-suite-resolver/route.ts", import.meta.url),
     "utf8",
   );
-  assert.match(src, /detectEquipmentMismatch/, "route must import detector");
+  // The route no longer owns the detectors, but it must still invoke them.
   assert.match(
     src,
-    /buildoutGridTotalCents/,
-    "route must compute grid total before invoking detector",
+    /detectCrossSuiteConflicts/,
+    "route must run the shared cross-suite detector pass",
   );
   assert.match(
     src,
