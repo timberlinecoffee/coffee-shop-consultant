@@ -92,6 +92,11 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import {
+  WorkspaceActionMenu,
+  WorkspaceActionMenuItem,
+} from "@/components/workspace/WorkspaceActionMenu";
+import { hiringProgress } from "@/components/hiring/hiring-progress";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 // TIM-4105: a screen may only claim "Saved" if a server accepted the write.
 // This workspace previously hardcoded saving={false} unsaved={false} and froze
@@ -784,43 +789,62 @@ export function HiringWorkspaceV3(props: Props) {
         Icon={Users}
         title="Hiring & Onboarding"
         description="Roles, interview questions, scorecards, competency forms, and onboarding plans."
-        actions={
-          <>
-            {props.canEdit && (
-              <WorkspaceActionButton
-                variant="secondary"
-                onClick={() => setAiAssistRoles(true)}
-              >
-                <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} />
-                Suggest with AI
-              </WorkspaceActionButton>
-            )}
-            {props.canEdit && (
-              <WorkspaceActionButton
-                variant="secondary"
-                onClick={() => setAddingRole(true)}
-              >
-                <Plus size={WORKSPACE_ACTION_ICON_SIZE} />
-                Add role
-              </WorkspaceActionButton>
-            )}
-            <AskScoutButton
-              workspaceKey="hiring"
-              focusLabel="hiring plan"
-              hasContent={roles.length > 0}
-            />
-            {/* TIM-4105: real state, and a Save button that genuinely retries
-                the write that failed. The three literals that used to be here
-                (saving={false} unsaved={false} onSave={() => {}}) meant the
-                screen could never report a problem and could never recover
-                from one. */}
-            <SaveStatusAndButton
-              {...toIndicatorView(saveState)}
-              canEdit={props.canEdit}
-              onSave={retrySave}
-            />
-          </>
+        scout={
+          /* Scout used to sit AFTER the two action buttons here — the only
+             screen that ordered it that way. The slot decides now. */
+          <AskScoutButton
+            workspaceKey="hiring"
+            focusLabel="hiring plan"
+            hasContent={roles.length > 0}
+          />
         }
+        primaryAction={
+          /* TIM-4108 (UX Phase 3): "Add role" and "Suggest with AI" were two
+             equal-weight buttons, so the screen expressed no opinion about
+             which to reach for. Deciding what you need comes before asking a
+             machine to guess it, so the real action takes the emphasis and the
+             AI one moves into the menu (D-010). */
+          props.canEdit ? (
+            <WorkspaceActionButton
+              variant="primary"
+              onClick={() => setAddingRole(true)}
+            >
+              <Plus size={WORKSPACE_ACTION_ICON_SIZE} />
+              Add role
+            </WorkspaceActionButton>
+          ) : undefined
+        }
+        overflow={
+          props.canEdit ? (
+            <WorkspaceActionMenu hideAdvisor>
+              {({ closeMenu }) => (
+                <WorkspaceActionMenuItem
+                  Icon={Sparkles}
+                  label="Suggest roles with AI"
+                  onClick={() => {
+                    closeMenu();
+                    setAiAssistRoles(true);
+                  }}
+                />
+              )}
+            </WorkspaceActionMenu>
+          ) : undefined
+        }
+        save={
+          /* TIM-4105: real state, and a Save button that genuinely retries the
+             write that failed. The three literals that used to be here
+             (saving={false} unsaved={false} onSave={() => {}}) meant the screen
+             could never report a problem and could never recover from one. */
+          <SaveStatusAndButton
+            {...toIndicatorView(saveState)}
+            canEdit={props.canEdit}
+            onSave={retrySave}
+          />
+        }
+        progress={hiringProgress({
+          roles: roles.length,
+          candidates: candidates.length,
+        })}
       />
 
       {/* 220px sidebar grid — matches Suppliers canonical layout */}
