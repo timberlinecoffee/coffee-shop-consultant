@@ -19,6 +19,17 @@ import type {
   AuditFinding,
 } from "@/lib/business-plan/audit";
 import { getActivePlanId } from "@/lib/plan-context";
+// TIM-4101 (T1-A): Home runs the same live cross-suite detectors the
+// in-workspace conflict badge runs, so the two screens cannot disagree.
+import { detectCrossSuiteConflicts } from "@/lib/cross-suite/detect";
+import type { CrossSuiteConflict } from "@/lib/cross-suite/types";
+import {
+  crossSuiteToConflict as toConflictItem,
+  deriveConflictCheckState as deriveCheckState,
+  hrefForAuditWorkspace,
+  type ConflictItem,
+  type ConflictCheckState,
+} from "./conflict-merge";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -58,13 +69,15 @@ export interface ActivityItem {
   href: string | null;
 }
 
-export interface ConflictItem {
-  id: string;
-  sectionLabel: string;
-  description: string;
-  suggestion: string;
-  href: string | null;
-}
+// TIM-4101 (T1-A): conflict shaping + the three-state health rule live in
+// conflict-merge.ts so they stay pure and unit-testable. Re-exported here so
+// existing importers of ConflictItem keep working unchanged.
+export type {
+  ConflictItem,
+  ConflictSource,
+  ConflictCheckState,
+} from "./conflict-merge";
+export { crossSuiteToConflict, deriveConflictCheckState } from "./conflict-merge";
 
 export interface NextWorkspace {
   href: string;
@@ -87,6 +100,9 @@ export interface PlanOverview {
   activity: ActivityItem[];
   conflicts: ConflictItem[];
   lastConflictCheckAt: string | null;
+  // TIM-4101 (T1-A): single value the health card switches on, so no caller
+  // has to re-derive "is this plan actually known-good?" from three fields.
+  conflictCheckState: ConflictCheckState;
   nextWorkspace: NextWorkspace | null;
   // TIM-2593: top 3 context-aware nudges for Home v2.
   nudges: NudgeItem[];
@@ -225,24 +241,11 @@ function findingToConflict(finding: AuditFinding): ConflictItem | null {
     description,
     suggestion,
     href,
+    workspace: sectionLabel,
+    source: "plan_sections",
   };
 }
 
-const AUDIT_WORKSPACE_HREF: Record<string, string> = {
-  "financials": "/workspace/financials",
-  "real-estate": "/workspace/location-lease",
-  "labor": "/workspace/hiring",
-  "hiring": "/workspace/hiring",
-  "buildout-equipment": "/workspace/buildout-equipment",
-  "menu-pricing": "/workspace/menu-pricing",
-  "launch-plan": "/workspace/launch-plan",
-  "business-plan": "/workspace/business-plan",
-  "location-lease": "/workspace/location-lease",
-};
-
-function hrefForAuditWorkspace(workspace: string): string | null {
-  return AUDIT_WORKSPACE_HREF[workspace] ?? null;
-}
 
 // TIM-2593: ranked nudge specs — first 3 whose workspace is not complete.
 const NUDGE_SPECS: Array<{
@@ -312,9 +315,17 @@ export async function loadPlanOverview(
   let statusRows: CountedStatusRow[] = [];
   let cachedReport: AuditReport | null = null;
   let lastConflictCheckAt: string | null = null;
+  // TIM-4101 (T1-A): live cross-suite pass. crossSuiteOk stays false if the
+  // pass throws, which downgrades the health card to "unchecked" rather than
+  // letting a failed check masquerade as a clean bill of health.
+  let crossSuiteConflicts: CrossSuiteConflict[] = [];
+  let crossSuiteOk = false;
 
   if (planId) {
-    const [{ data: rows }, { data: cacheRow }] = await Promise.all([
+    // TIM-4101 (T1-A): the live cross-suite pass runs alongside the existing
+    // reads, not after them, so surfacing the second conflict system does not
+    // add a serial round trip to Home's time-to-first-byte.
+    const [{ data: rows }, { data: cacheRow }, crossSuite] = await Promise.all([
       supabase
         .from("workspace_status")
         .select("component_key, status, updated_at")
@@ -327,7 +338,21 @@ export async function loadPlanOverview(
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      // Isolated catch so a detector failure degrades the health card honestly
+      // instead of taking the whole dashboard into the TIM-2470 zero-state.
+      detectCrossSuiteConflicts(supabase, planId)
+        .then((list) => ({ ok: true as const, list }))
+        .catch((err: unknown) => {
+          console.error("[plan-overview] cross-suite conflict pass failed", {
+            planId,
+            err,
+          });
+          return { ok: false as const, list: [] as CrossSuiteConflict[] };
+        }),
     ]);
+
+    crossSuiteConflicts = crossSuite.list;
+    crossSuiteOk = crossSuite.ok;
 
     statusRows = (rows ?? []) as CountedStatusRow[];
     for (const row of statusRows) {
@@ -374,7 +399,18 @@ export async function loadPlanOverview(
     );
   })();
 
-  const conflicts = buildConflicts(cachedReport);
+  // TIM-4101 (T1-A): one merged list. Cross-suite conflicts lead because they
+  // are live and always name two concrete screens; cached section findings
+  // follow. deriveHealth therefore sees BOTH systems, which is what makes it
+  // impossible for Home to say "looks good" while a workspace badge is amber.
+  const conflicts = [
+    ...crossSuiteConflicts.map(toConflictItem),
+    ...buildConflicts(cachedReport),
+  ].slice(0, 20);
+  const conflictCheckState: ConflictCheckState = deriveCheckState(
+    conflicts.length,
+    crossSuiteOk || lastConflictCheckAt !== null
+  );
   const health = deriveHealth(
     conflicts.length > 0,
     inProgress,
@@ -413,6 +449,7 @@ export async function loadPlanOverview(
     activity,
     conflicts,
     lastConflictCheckAt,
+    conflictCheckState,
     nextWorkspace,
     nudges,
   };
