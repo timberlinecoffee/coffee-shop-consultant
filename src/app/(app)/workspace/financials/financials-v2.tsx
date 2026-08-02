@@ -14,7 +14,15 @@ import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceActionMenu, WorkspaceActionMenuItem } from "@/components/workspace/WorkspaceActionMenu";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
-import { ConflictNoticeBadge } from "@/components/cross-suite/ConflictNoticeBadge";
+// TIM-4108 (UX Phase 3): the conflict pill moved out of its own row and into
+// the header's amber band, so this screen reads the resolver directly instead
+// of mounting the standalone badge.
+import { useCrossSuiteConflictResolver } from "@/components/cross-suite/useCrossSuiteConflictResolver";
+import {
+  WorkspaceNextStepButton,
+  scrollToStep,
+} from "@/components/workspace/WorkspaceNextStepButton";
+import { nextStep, stepsProgress } from "@/components/workspace/next-step";
 import { PLTab } from "./tabs/pl-tab";
 import { BalanceSheetTab } from "./tabs/balance-sheet-tab";
 import { CashFlowTab } from "./tabs/cash-flow-tab";
@@ -62,7 +70,6 @@ import {
 import {
   deriveBreakEvenStatus,
   BREAK_EVEN_BLOCKED_WORKSPACE_COPY,
-  type BreakEvenBlockedReason,
 } from "@/lib/dashboard/metric-status";
 import type { CritiqueResult } from "@/lib/financials";
 import type { MinWageInfo } from "@/lib/wages/minimum-wage";
@@ -237,8 +244,18 @@ function StatusBadge({ status }: { status: SectionStatus }) {
 // ── AccordionSection ──────────────────────────────────────────────────────────
 
 // TIM-3488: `id` lets the guided tour open this section before spotlighting a
-// field inside it. The matching event name is dispatched by FinancialsV2's
-// onExpandSection handler.
+// field inside it.
+//
+// TIM-4108 (UX Phase 3): the header's emphasised button opens sections the same
+// way, so the event is no longer tour-only and no longer named as though it is.
+// One channel, two callers — the alternative was a second mechanism doing the
+// identical thing, which is how a screen ends up with two ideas of "open".
+const SECTION_OPEN_EVENT = "financials-v2-open-section";
+
+function openSection(id: string) {
+  window.dispatchEvent(new CustomEvent(SECTION_OPEN_EVENT, { detail: { id } }));
+}
+
 function AccordionSection({
   id,
   title,
@@ -260,12 +277,20 @@ function AccordionSection({
       const detail = (e as CustomEvent<{ id?: string }>).detail;
       if (detail?.id === id) setOpen(true);
     }
-    window.addEventListener("financials-v2-tour-expand", onExpand as EventListener);
-    return () => window.removeEventListener("financials-v2-tour-expand", onExpand as EventListener);
+    window.addEventListener(SECTION_OPEN_EVENT, onExpand as EventListener);
+    return () => window.removeEventListener(SECTION_OPEN_EVENT, onExpand as EventListener);
   }, [id]);
 
   return (
-    <div id={id} className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+    <div
+      // TIM-4108 (UX Phase 3): the wrapper carries the shared `step-<id>`
+      // anchor so the header's emphasised button can scroll to the step it
+      // names, using the same scheme every other workspace uses. The bare
+      // `id` was decorative — nothing linked to it — while `${id}-content`
+      // is still what aria-controls points at.
+      id={id ? `step-${id}` : undefined}
+      className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden scroll-mt-24"
+    >
       {/* TIM-3869: outer element changed from <button> to <div> to prevent nested
           interactive elements when Phase 3+4 aiAction buttons are added inside
           SectionHeader (nested <button> is invalid HTML and causes click propagation
@@ -296,50 +321,11 @@ function AccordionSection({
   );
 }
 
-// ── Progress bar ──────────────────────────────────────────────────────────────
-
-function InputsProgressBar({
-  statuses,
-  blockedReason,
-}: {
-  statuses: SectionStatus[];
-  // TIM-4102 (T1-C): why break-even will not resolve, if it will not. The
-  // count above is already corrected for this; this line explains the gap so
-  // the owner is not left wondering why a section they filled in went back to
-  // in-progress.
-  blockedReason?: BreakEvenBlockedReason | null;
-}) {
-  const complete = statuses.filter((s) => s === "complete").length;
-  const pct = Math.round((complete / statuses.length) * 100);
-  return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs font-medium text-[var(--muted-foreground)]">
-          Input completion
-        </span>
-        <span className="text-xs font-semibold text-[var(--teal)]">
-          {complete} of {statuses.length} steps done
-        </span>
-      </div>
-      <div className="h-2 rounded-full bg-[var(--border)] overflow-hidden">
-        <div
-          className="h-full rounded-full bg-[var(--teal)] transition-all duration-300"
-          style={{ width: `${pct}%` }}
-          role="progressbar"
-          aria-valuenow={pct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        />
-      </div>
-      {blockedReason && (
-        <p className="mt-2 text-xs text-[var(--muted-foreground)]">
-          Your break-even point can&apos;t be worked out yet because{" "}
-          {BREAK_EVEN_BLOCKED_WORKSPACE_COPY[blockedReason]}.
-        </p>
-      )}
-    </div>
-  );
-}
+// TIM-4108 (UX Phase 3): the in-page progress bar is gone. Where the owner is
+// up to now renders in the header, from the same list of steps that decides
+// where the emphasised button points. The break-even explanation that used to
+// hang off the bottom of this bar moved into the header's amber band, which is
+// where blocking notices live on every screen.
 
 // ── Section-status derivers ───────────────────────────────────────────────────
 
@@ -1492,6 +1478,17 @@ export function FinancialsV2({
     isV2Report(urlReport) ? urlReport : "pl",
   );
 
+  // TIM-4108: conflicts render in the header's amber band now. Reading the
+  // resolver here rather than mounting ConflictNoticeBadge lets the band stay
+  // absent when there is nothing to say — an empty amber stripe on every load
+  // would be worse than the separate row it replaced.
+  const {
+    conflictCount,
+    openResolver,
+    ResolverNode,
+    AIReviewModalNode: ConflictReviewNode,
+  } = useCrossSuiteConflictResolver();
+
   // TIM-3851: mirror the selected tab/report into the URL so each sub-nav
   // entry has a stable, shareable route. `history.replaceState` keeps this
   // out of the Next.js router (no re-render, no data refetch).
@@ -1511,9 +1508,7 @@ export function FinancialsV2({
   // TIM-3488: open the v2 AccordionSection that owns the spotlighted field
   // before the GuidedTour measures it.
   const expandTourSection = useCallback((sectionId: string) => {
-    window.dispatchEvent(
-      new CustomEvent("financials-v2-tour-expand", { detail: { id: sectionId } }),
-    );
+    openSection(sectionId);
   }, []);
   const fiscalYearStartMonth = mp.fiscal_year_start_month ?? 1;
   const currencyCode = mp.currency_code ?? "USD";
@@ -1561,12 +1556,57 @@ export function FinancialsV2({
   );
   const s3 = demote(getCostsOverheadStatus(mp), blockedReason === "no_fixed_costs");
   const s4 = getGrowthRampStatus(mp);
-  const statuses: SectionStatus[] = [s1, s2, s3, s4];
 
   const tabs: { id: V2Tab; label: string; badge?: number }[] = [
     { id: "inputs", label: "Inputs" },
     { id: "reports", label: "Reports" },
   ];
+
+  // TIM-4108 (UX Phase 3): one list of steps feeds BOTH the progress line and
+  // the emphasised button, in the order an owner should walk them.
+  const steps = [
+    { id: "v2-section-daily-traffic", label: "Daily Traffic & Schedule", done: s1 === "complete" },
+    { id: "v2-section-revenue", label: "Revenue Streams", done: s2 === "complete" },
+    { id: "v2-section-costs", label: "Costs & Overhead", done: s3 === "complete" },
+    { id: "v2-section-growth", label: "Growth & Ramp", done: s4 === "complete" },
+  ];
+  const next = nextStep(steps);
+  const nothingStarted = steps.every((s) => !s.done);
+
+  const goToStep = (id: string) => {
+    // The sections only exist on the Inputs tab, so a button pressed while
+    // reading the Reports has to bring the owner back first.
+    setActiveTab("inputs");
+    openSection(id);
+    requestAnimationFrame(() => scrollToStep(id));
+  };
+
+  // TIM-4108: the header's amber band. Two things can want it, and both are
+  // the same kind of thing — something standing between the owner and a
+  // trustworthy forecast. They stack in one band rather than becoming two
+  // separate amber stripes, which is what this screen had before.
+  const alertBand =
+    conflictCount > 0 || blockedReason ? (
+      <div className="flex flex-col gap-2">
+        {conflictCount > 0 && (
+          <button
+            type="button"
+            onClick={() => openResolver(0)}
+            className="self-start font-medium underline underline-offset-2 hover:no-underline"
+          >
+            {conflictCount === 1
+              ? "Resolve plan conflict"
+              : `Resolve ${conflictCount} plan conflicts`}
+          </button>
+        )}
+        {blockedReason && (
+          <p>
+            Your break-even point can&apos;t be worked out yet because{" "}
+            {BREAK_EVEN_BLOCKED_WORKSPACE_COPY[blockedReason]}.
+          </p>
+        )}
+      </div>
+    ) : undefined;
 
   const lastSavedAt =
     saveState.kind === "saved" ? (saveState.at ?? null) : saveState.kind === "idle" ? (saveState.lastSavedAt ?? null) : null;
@@ -1578,62 +1618,93 @@ export function FinancialsV2({
           Icon={BarChart2}
           title="Financials"
           description="Plan your startup costs, forecast revenue, and project Year 1–5 performance."
-          actions={
-            <>
-              {/* TIM-3676: shared Scout entry point, matches Business Plan / Marketing / Hiring / Ops Playbook. */}
-              <AskScoutButton
-                workspaceKey="financials"
-                focusLabel="financials"
-                hasContent
-              />
-              {canEdit && (
-                <WorkspaceActionButton
-                  variant="primary"
-                  onClick={onOpenWizard}
-                  aria-label="Guided setup"
-                  title="Walk through your forecast inputs step by step"
-                >
-                  <Compass size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                  <span>Guided setup</span>
-                </WorkspaceActionButton>
-              )}
-              <WorkspaceActionMenu>
-                {({ closeMenu }) => (
-                  <>
-                    <WorkspaceActionMenuItem
-                      Icon={FileDown}
-                      label="Export PDF"
-                      onClick={() => {
-                        closeMenu();
-                        window.location.assign("/api/workspaces/financials/export/pdf");
-                      }}
-                    />
-                    <WorkspaceActionMenuItem
-                      Icon={Sheet}
-                      label="Export Excel"
-                      onClick={() => {
-                        closeMenu();
-                        window.location.assign("/api/workspaces/financials/export/xlsx");
-                      }}
-                    />
-                  </>
-                )}
-              </WorkspaceActionMenu>
-              <SaveStatusAndButton
-                saving={saveState.kind === "saving"}
-                savedAt={saveState.kind === "saved" ? (saveState.at ?? null) : lastSavedAt}
-                error={saveState.kind === "error" ? (saveState.message ?? null) : null}
-                unsaved={saveState.kind === "dirty"}
-                canEdit={canEdit}
-                onSave={onManualSave}
-              />
-            </>
+          scout={
+            /* TIM-3676: shared Scout entry point. Never emphasised. */
+            <AskScoutButton
+              workspaceKey="financials"
+              focusLabel="financials"
+              hasContent
+            />
           }
+          primaryAction={
+            /* TIM-4108 (UX Phase 3), Trent's call 2026-08-02.
+               Financials is the one screen where the guided walkthrough is
+               genuinely the next real thing to do — on a blank forecast,
+               "Continue with Daily Traffic & Schedule" drops a first-time
+               owner into a wall of numbers with no idea which matter. So the
+               wizard holds the slot until ANY section is filled, and then
+               steps aside for the ordinary next-step button. It is an
+               exception to D-010 in content, not in shape: the emphasised
+               button is still the next real thing to do, and still not the
+               AI action. */
+            canEdit && nothingStarted ? (
+              <WorkspaceActionButton
+                variant="primary"
+                onClick={onOpenWizard}
+                title="Walk through your forecast inputs step by step"
+              >
+                <Compass size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                <span>Start with the guided setup</span>
+              </WorkspaceActionButton>
+            ) : next ? (
+              <WorkspaceNextStepButton step={next} onGo={goToStep} />
+            ) : undefined
+          }
+          overflow={
+            /* `hideAdvisor` because Scout above already offers the same help.
+               The guided setup joins the menu once it stops being the
+               emphasised action — moved, never removed. */
+            <WorkspaceActionMenu hideAdvisor>
+              {({ closeMenu }) => (
+                <>
+                  {canEdit && !nothingStarted && (
+                    <WorkspaceActionMenuItem
+                      Icon={Compass}
+                      label="Guided setup"
+                      onClick={() => {
+                        closeMenu();
+                        onOpenWizard();
+                      }}
+                    />
+                  )}
+                  <WorkspaceActionMenuItem
+                    Icon={FileDown}
+                    label="Export PDF"
+                    onClick={() => {
+                      closeMenu();
+                      window.location.assign("/api/workspaces/financials/export/pdf");
+                    }}
+                  />
+                  <WorkspaceActionMenuItem
+                    Icon={Sheet}
+                    label="Export Excel"
+                    onClick={() => {
+                      closeMenu();
+                      window.location.assign("/api/workspaces/financials/export/xlsx");
+                    }}
+                  />
+                </>
+              )}
+            </WorkspaceActionMenu>
+          }
+          save={
+            <SaveStatusAndButton
+              saving={saveState.kind === "saving"}
+              savedAt={saveState.kind === "saved" ? (saveState.at ?? null) : lastSavedAt}
+              error={saveState.kind === "error" ? (saveState.message ?? null) : null}
+              unsaved={saveState.kind === "dirty"}
+              canEdit={canEdit}
+              onSave={onManualSave}
+            />
+          }
+          progress={stepsProgress(steps)}
+          alert={alertBand}
         />
 
-        <div className="mb-4">
-          <ConflictNoticeBadge />
-        </div>
+        {/* The resolver's own modals. They mount whether or not there is
+            anything to resolve; only the amber band above is conditional. */}
+        {ResolverNode}
+        {ConflictReviewNode}
 
         <div className="mb-5">
           <WorkspaceSubNav
@@ -1648,7 +1719,6 @@ export function FinancialsV2({
         {/* ── Inputs tab ────────────────────────────────────────────────────── */}
         {activeTab === "inputs" && (
           <div>
-            <InputsProgressBar statuses={statuses} blockedReason={blockedReason} />
             <div className="space-y-3">
               <AccordionSection id="v2-section-daily-traffic" title="Daily Traffic & Schedule" status={s1} defaultOpen>
                 <DailyTrafficContent mp={mp} canEdit={canEdit} onUpdate={onMpUpdate} />

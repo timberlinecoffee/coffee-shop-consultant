@@ -41,6 +41,14 @@ const MIGRATED = [
     file: "src/app/(app)/workspace/location-lease/location-lease-client.tsx",
     progress: "count",
   },
+  {
+    // The live Financials surface. financials-workspace.tsx still holds a v1
+    // header behind the ui_revamp_v2 flag, which defaults to v2 — that
+    // fallback migrates with the flag's removal, not before.
+    name: "Financials",
+    file: "src/app/(app)/workspace/financials/financials-v2.tsx",
+    progress: "steps",
+  },
 ];
 
 for (const ws of MIGRATED) {
@@ -108,4 +116,52 @@ test("opening a section from outside it did not break the plain accordion", () =
   const src = read("src/components/ui/AccordionSection.tsx");
   assert.match(src, /const controlled = openProp !== undefined/);
   assert.match(src, /controlled \? openProp : openState/);
+});
+
+// ── The one documented exception ───────────────────────────────────────
+
+test("Financials only lets the wizard hold the emphasised slot while empty", () => {
+  // Trent's call 2026-08-02: on a blank forecast the guided walkthrough IS the
+  // next real thing to do, because "Continue with Daily Traffic & Schedule"
+  // drops a first-time owner into a wall of numbers. The moment any section is
+  // filled it steps aside. Pin both halves — an exception that quietly grew
+  // into "the wizard is always the primary action" would undo D-010 on the
+  // screen that needed it most.
+  const src = read("src/app/(app)/workspace/financials/financials-v2.tsx");
+  assert.match(
+    src,
+    /canEdit && nothingStarted \? \(/,
+    "the wizard must be gated on nothing being started yet"
+  );
+  assert.match(
+    src,
+    /nothingStarted = steps\.every\(\(s\) => !s\.done\)/,
+    "'nothing started' must mean no step is done, not some looser test"
+  );
+  assert.match(
+    src,
+    /WorkspaceNextStepButton/,
+    "once underway it must fall through to the ordinary next-step button"
+  );
+});
+
+test("Financials keeps the guided setup reachable after it stops being primary", () => {
+  // Moved, never removed. A beginner tool that hides its walkthrough the
+  // moment you type one number is worse than one that never had it.
+  const src = read("src/app/(app)/workspace/financials/financials-v2.tsx");
+  assert.match(src, /label="Guided setup"/);
+});
+
+test("Financials states its blocking notices in one band, not two amber stripes", () => {
+  // The conflict pill used to sit in its own row under the header while the
+  // break-even explanation hung off the progress bar. Both are the same kind
+  // of thing — something between the owner and a forecast they can trust.
+  const src = read("src/app/(app)/workspace/financials/financials-v2.tsx");
+  assert.match(src, /alert=\{alertBand\}/);
+  assert.match(src, /conflictCount > 0 \|\| blockedReason/);
+  assert.doesNotMatch(
+    src,
+    /<ConflictNoticeBadge \/>/,
+    "the standalone badge row is what the band replaced"
+  );
 });
