@@ -11,6 +11,8 @@ import {
   deriveBreakEvenStatus,
   deriveRunwayStatus,
   deriveRevenueStatus,
+  showsRevenueRamp,
+  rampExplanation,
   BREAK_EVEN_BLOCKED_COPY,
   BREAK_EVEN_BLOCKED_WORKSPACE_COPY,
   RUNWAY_BLOCKED_COPY,
@@ -167,6 +169,75 @@ test("runway needs both funding and monthly costs", () => {
 test("zero projected revenue is a missing input, not a measurement", () => {
   assert.equal(deriveRevenueStatus({ monthlyRevenueCents: 0 }).reason, "no_revenue");
   assert.equal(deriveRevenueStatus({ monthlyRevenueCents: 2_366_000 }).ok, true);
+});
+
+// ── Revenue ramp (T1-B) ──────────────────────────────────────────────────────
+
+test("the spec's own example shows both figures", () => {
+  // $23,660 first month vs $78,700 up to speed — the ~3x gap that made the
+  // product look broken when only one number was ever visible at a time.
+  assert.equal(
+    showsRevenueRamp({
+      firstMonthCents: 2_366_000,
+      matureCents: 7_870_000,
+      rampMonths: 6,
+    }),
+    true
+  );
+});
+
+test("a plan with no ramp shows one clean figure, not a false distinction", () => {
+  assert.equal(
+    showsRevenueRamp({
+      firstMonthCents: 7_870_000,
+      matureCents: 7_870_000,
+      rampMonths: 0,
+    }),
+    false
+  );
+});
+
+test("a gap too small to see is not worth two numbers", () => {
+  // 2% apart. Splitting this into "first month" and "up to speed" would make
+  // the owner hunt for a difference that does not matter.
+  assert.equal(
+    showsRevenueRamp({
+      firstMonthCents: 7_713_000,
+      matureCents: 7_870_000,
+      rampMonths: 3,
+    }),
+    false
+  );
+  // 5% is the threshold and does show.
+  assert.equal(
+    showsRevenueRamp({
+      firstMonthCents: 7_476_500,
+      matureCents: 7_870_000,
+      rampMonths: 3,
+    }),
+    true
+  );
+});
+
+test("no ramp treatment when there is no revenue to compare", () => {
+  assert.equal(
+    showsRevenueRamp({ firstMonthCents: 0, matureCents: 0, rampMonths: 6 }),
+    false
+  );
+  assert.equal(
+    showsRevenueRamp({ firstMonthCents: 0, matureCents: 7_870_000, rampMonths: 6 }),
+    false
+  );
+});
+
+test("the ramp explanation names the owner's own assumption and pluralises", () => {
+  const six = rampExplanation(6);
+  assert.match(six, /6 months/);
+  // It must explain WHY, not merely label the two figures — the difference
+  // between a caption and the thing that teaches a first-time owner something.
+  assert.match(six, /take time to fill/);
+  assert.match(rampExplanation(1), /1 month\b/);
+  assert.doesNotMatch(rampExplanation(1), /1 months/);
 });
 
 // ── Copy ─────────────────────────────────────────────────────────────────────
