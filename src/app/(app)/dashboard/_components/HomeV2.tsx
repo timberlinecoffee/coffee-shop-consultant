@@ -7,8 +7,12 @@
 //   --background, --foreground, --card, --muted, --muted-foreground, --border.
 
 import Link from "next/link";
-import { ShieldCheck, AlertTriangle, ArrowRight, TrendingUp } from "lucide-react";
-import type { PlanOverview, ConflictItem } from "@/lib/dashboard/plan-overview";
+import { ShieldCheck, AlertTriangle, ArrowRight, TrendingUp, HelpCircle } from "lucide-react";
+import type {
+  PlanOverview,
+  ConflictItem,
+  ConflictCheckState,
+} from "@/lib/dashboard/plan-overview";
 import type { FinancialSnapshot } from "@/lib/dashboard/financial-snapshot";
 import { formatCurrencyAmount } from "@/lib/currency";
 
@@ -68,8 +72,28 @@ function ProgressRing({ pct }: { pct: number }) {
 
 // ── Plan Badge ────────────────────────────────────────────────────────────────
 
-function PlanBadge({ conflicts, lastCheckedAt }: { conflicts: ConflictItem[]; lastCheckedAt: string | null }) {
-  if (conflicts.length > 0) {
+// TIM-4101 (T1-A): three states, not two.
+//
+// Before this change the card had exactly one non-conflict branch, painted
+// green, and it rendered whether or not a check had ever run — so an
+// unchecked plan was presented as a healthy plan. It also only ever saw the
+// cached business-plan section findings, so Home could show "Your plan looks
+// good" at the same moment Financials showed an amber "Resolve plan conflict"
+// badge. `conflicts` now carries BOTH detectors and `state` distinguishes
+// "we checked and it is clean" from "we have not checked".
+function PlanBadge({
+  conflicts,
+  state,
+}: {
+  conflicts: ConflictItem[];
+  state: ConflictCheckState;
+}) {
+  if (state === "conflicts" && conflicts.length > 0) {
+    const first = conflicts[0];
+    // Name the destination when every conflict points at the same screen;
+    // otherwise stay generic rather than pointing at one of several.
+    const workspaces = Array.from(new Set(conflicts.map((c) => c.workspace)));
+    const destination = workspaces.length === 1 ? workspaces[0] : null;
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
         <div className="flex items-start gap-3">
@@ -81,16 +105,39 @@ function PlanBadge({ conflicts, lastCheckedAt }: { conflicts: ConflictItem[]; la
               {conflicts.length} plan {conflicts.length === 1 ? "conflict" : "conflicts"} found
             </p>
             <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-              Open a conflicting section to resolve it.
+              {destination
+                ? `Two parts of your plan disagree. Open ${destination} to sort it out.`
+                : "Two parts of your plan disagree. Open the screens below to sort it out."}
             </p>
-            {conflicts[0]?.href && (
+            {first?.href && (
               <Link
-                href={conflicts[0].href}
+                href={first.href}
                 className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:underline"
               >
-                Review conflicts <ArrowRight size={11} aria-hidden="true" />
+                {`Go to ${first.workspace}`} <ArrowRight size={11} aria-hidden="true" />
               </Link>
             )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "unchecked") {
+    return (
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[var(--muted)] flex items-center justify-center flex-shrink-0">
+            <HelpCircle size={16} className="text-[var(--muted-foreground)]" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[var(--foreground)]">
+              We haven&apos;t checked your plan for conflicts yet.
+            </p>
+            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+              Fill in a few more sections and we&apos;ll start cross-checking your
+              numbers against each other.
+            </p>
           </div>
         </div>
       </div>
@@ -108,9 +155,7 @@ function PlanBadge({ conflicts, lastCheckedAt }: { conflicts: ConflictItem[]; la
             Your plan looks good
           </p>
           <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-            {lastCheckedAt
-              ? "No conflicts detected in your plan sections."
-              : "Run a conflict check when you have more sections filled in."}
+            Your numbers agree with each other everywhere we checked.
           </p>
         </div>
       </div>
@@ -262,7 +307,7 @@ interface HomeV2Props {
 }
 
 export function HomeV2({ firstName, overview, snapshot }: HomeV2Props) {
-  const { counts, conflicts, lastConflictCheckAt, nudges } = overview;
+  const { counts, conflicts, conflictCheckState, nudges } = overview;
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -285,10 +330,7 @@ export function HomeV2({ firstName, overview, snapshot }: HomeV2Props) {
               {counts.completed} of {counts.total} sections complete
             </p>
           </div>
-          <PlanBadge
-            conflicts={conflicts}
-            lastCheckedAt={lastConflictCheckAt}
-          />
+          <PlanBadge conflicts={conflicts} state={conflictCheckState} />
         </div>
 
         {/* Row 2: 3 nudge cards */}
