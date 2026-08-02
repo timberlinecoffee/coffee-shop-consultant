@@ -17,6 +17,7 @@ import {
   loadPlanOverview,
   type ActivityItem,
   type ConflictItem,
+  type ConflictCheckState,
   type HealthState,
   type PlanOverview,
   type NextWorkspace,
@@ -199,10 +200,15 @@ export default async function DashboardPage() {
           ) : (
             <GettingStartedCard />
           )}
-          {(overview.counts.completed + overview.counts.inProgress >= 2) && (
+          {/* TIM-4101 (T1-A): also render whenever a conflict actually exists.
+              Cross-suite conflicts can fire before two workspaces are marked
+              started, and hiding a known conflict behind a progress gate is
+              the same "screens disagree" failure this issue is about. */}
+          {(overview.counts.completed + overview.counts.inProgress >= 2 ||
+            overview.conflicts.length > 0) && (
             <PlanConflictsCard
               conflicts={overview.conflicts}
-              lastCheckedAt={overview.lastConflictCheckAt}
+              checkState={overview.conflictCheckState}
             />
           )}
         </div>
@@ -247,6 +253,9 @@ function emptyOverview(): PlanOverview {
     activity: [],
     conflicts: [],
     lastConflictCheckAt: null,
+    // TIM-4101 (T1-A): if the overview load threw we do not know the plan is
+    // clean, so the health card must render neutral, never the green all-clear.
+    conflictCheckState: "unchecked",
     nextWorkspace: { href: "/workspace/concept", label: "Concept", blurb: "Shape your shop's identity, story, and what sets it apart." },
     nudges: [
       { href: "/workspace/concept",    label: "Concept",    copy: "Define your shop concept",   workspaceKey: "concept"    },
@@ -494,29 +503,40 @@ function activityIconColor(kind: ActivityItem["kind"]): string {
 
 function PlanConflictsCard({
   conflicts,
-  lastCheckedAt,
+  checkState,
 }: {
   conflicts: ConflictItem[];
-  lastCheckedAt: string | null;
+  // TIM-4101 (T1-A): same three-state rule Home v2 uses — an unchecked plan
+  // is not a clean plan, so it does not get the reassuring green treatment.
+  checkState: ConflictCheckState;
 }) {
   if (conflicts.length === 0) {
+    const checked = checkState === "clean";
     return (
       <div className="rounded-xl border border-[var(--border)] bg-white p-5">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[var(--sage)]/10 flex items-center justify-center flex-shrink-0">
+          <div
+            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              checked ? "bg-[var(--sage)]/10" : "bg-[var(--muted)]"
+            }`}
+          >
             <ShieldCheck
               size={16}
-              className="text-[var(--sage)]"
+              className={
+                checked ? "text-[var(--sage)]" : "text-[var(--muted-foreground)]"
+              }
               aria-hidden="true"
             />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-[var(--foreground)]">
-              {lastCheckedAt ? "No conflicts found" : "Run a conflict check"}
+              {checked
+                ? "No conflicts found"
+                : "We haven't checked your plan for conflicts yet"}
             </p>
             <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-              {lastCheckedAt
-                ? "Your plan sections are consistent with each other."
+              {checked
+                ? "Your numbers agree with each other everywhere we checked."
                 : "Use the Refresh button above to check your plan for internal contradictions."}
             </p>
           </div>
