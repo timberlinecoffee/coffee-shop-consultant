@@ -1,0 +1,123 @@
+diff --git a/src/app/(app)/workspace/menu-pricing/menu-workspace.tsx b/src/app/(app)/workspace/menu-pricing/menu-workspace.tsx
+index cf023e69..1ad8b7f1 100644
+--- a/src/app/(app)/workspace/menu-pricing/menu-workspace.tsx
++++ b/src/app/(app)/workspace/menu-pricing/menu-workspace.tsx
+@@ -51,6 +51,11 @@ import { Illustration } from "@/components/illustrations/Illustration";
+ import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
+ import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+ import { AskScoutButton } from "@/components/workspace/AskScoutButton";
++import {
++  WorkspaceActionMenu,
++  WorkspaceActionMenuItem,
++} from "@/components/workspace/WorkspaceActionMenu";
++import { menuProgress } from "@/components/menu/menu-progress";
+ import { WorkspaceActionButton, WORKSPACE_ACTION_ICON_SIZE } from "@/components/workspace/WorkspaceActionButton";
+ import { ItemPhotoUpload } from "./ItemPhotoUpload";
+ import { TABLE_CELL_TEXT } from "@/lib/workspace-table";
+@@ -4691,43 +4696,71 @@ export function MenuWorkspace({
+           Icon={Utensils}
+           title="Menu & Pricing"
+           description="Build your menu, add recipe ingredients to compute COGS, and get AI-suggested retail prices."
+-          actions={
+-            <>
+-              {/* TIM-3676: shared Scout entry point, matches Business Plan / Marketing / Hiring / Ops Playbook. */}
+-              <AskScoutButton
+-                workspaceKey="menu_pricing"
+-                focusLabel="menu and pricing"
+-                hasContent={items.length > 0}
+-              />
+-              <WorkspaceActionButton
+-                variant="secondary"
+-                onClick={() => window.open("/workspace/menu-pricing/print", "_blank", "noopener,noreferrer")}
+-                aria-label="Print recipe cards"
+-                title="Open a print-friendly view of all recipe cards"
+-              >
+-                <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+-                Print recipe cards
+-              </WorkspaceActionButton>
+-              {canEdit && (
+-                <WorkspaceActionButton
+-                  variant="primary"
+-                  onClick={suggestMenuItems}
+-                  aria-label="Suggest menu items with AI"
+-                  title="Get AI-suggested menu items based on your concept"
+-                >
+-                  <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+-                  Suggest menu items with AI
+-                </WorkspaceActionButton>
++          scout={
++            /* TIM-3676: shared Scout entry point. Never emphasised. */
++            <AskScoutButton
++              workspaceKey="menu_pricing"
++              focusLabel="menu and pricing"
++              hasContent={items.length > 0}
++            />
++          }
++          overflow={
++            /* TIM-4108 (UX Phase 3): "Suggest menu items with AI" was the
++               emphasised button here — the last of the three screens Trent
++               named when he ruled that the loud button must be the next REAL
++               thing to do (D-010). It moves into the menu, unchanged.
++
++               No emphasised button on this screen: menu items are added inside
++               a category, and every category already carries its own add row.
++               A header button would have to pick a category on the owner's
++               behalf, which is a worse answer than no button.
++
++               "Print recipe cards" keeps its own name rather than becoming
++               "Print document" — it prints something DIFFERENT from the page
++               you are looking at, and Phase 1's rule was that only buttons
++               printing the current page share the one name. */
++            <WorkspaceActionMenu hideAdvisor>
++              {({ closeMenu }) => (
++                <>
++                  {canEdit && (
++                    <WorkspaceActionMenuItem
++                      Icon={Sparkles}
++                      label="Suggest menu items with AI"
++                      onClick={() => {
++                        closeMenu();
++                        suggestMenuItems();
++                      }}
++                    />
++                  )}
++                  <WorkspaceActionMenuItem
++                    Icon={Printer}
++                    label="Print recipe cards"
++                    onClick={() => {
++                      closeMenu();
++                      window.open(
++                        "/workspace/menu-pricing/print",
++                        "_blank",
++                        "noopener,noreferrer",
++                      );
++                    }}
++                  />
++                </>
+               )}
+-              <SaveStatusAndButton
+-                saving={mutationSaving}
+-                savedAt={mutationSavedAt}
+-                unsaved={false}
+-                canEdit={true}
+-                onSave={confirmSaved}
+-              />
+-            </>
++            </WorkspaceActionMenu>
++          }
++          save={
++            <SaveStatusAndButton
++              saving={mutationSaving}
++              savedAt={mutationSavedAt}
++              unsaved={false}
++              canEdit={true}
++              onSave={confirmSaved}
++            />
+           }
++          progress={menuProgress({
++            items: items.length,
++            categories: categories.length,
++          })}
+         />
+ 
+         {/* Tab nav — canonical WorkspaceSubNav (TIM-1793).
