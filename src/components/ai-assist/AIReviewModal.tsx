@@ -16,6 +16,15 @@ import {
 } from "@/lib/cross-workspace-apply";
 import { parseFactValue } from "@/lib/cross-workspace-sync";
 import { stripFindingTags } from "@/lib/business-plan/sanitize-finding-text";
+import {
+  EMPTY_CELL,
+  buildEditModel,
+  buildStructuredDiff,
+  buildStructuredList,
+  serializeEditModel,
+  type StructuredEditModel,
+  type StructuredTableModel,
+} from "@/lib/structured-value";
 import { ALLOWED_UNITS } from "@/lib/recipe-suggest";
 
 // ── Public types ────────────────────────────────────────────────────────────
@@ -352,60 +361,193 @@ function IngredientDiff({ original, proposed }: { original: string; proposed: st
 // Generic structured diff — fallback for isStructured: true suggestions that are
 // NOT recipe lines (prep steps, supplier lists, milestones, cross-suite figures).
 // The ingredient-specific path requires isRecipeLines: true.
-function StructuredDiff({ original, proposed }: { original: string; proposed: string }) {
-  let origRows: string[] = [];
-  let propRows: string[] = [];
-  try { origRows = (JSON.parse(original) as unknown[]).map((r) => JSON.stringify(r)); } catch { origRows = original.split("\n").filter(Boolean); }
-  try { propRows = (JSON.parse(proposed) as unknown[]).map((r) => JSON.stringify(r)); } catch { propRows = proposed.split("\n").filter(Boolean); }
+// ── Structured value rendering ──────────────────────────────────────────────
+// Board directive 2026-07-26 (Cowork onboarding brief §1C, and §3 rule 7: "No
+// user of this platform should ever see JSON, arrays, brackets, curly braces,
+// or raw data structures anywhere, under any circumstances").
+//
+// The previous implementation stringified each row and then called
+// Object.values() on the re-parsed result. For an array of OBJECTS that
+// happened to look table-shaped. For an array of STRINGS it did not:
+// parseRow() returned the string itself, and Object.values("Grind beans")
+// returns ["G","r","i","n","d", ...]. Menu & Pricing preparation steps are
+// exactly that shape (menu-workspace.tsx passes JSON.stringify(currentSteps)
+// with isStructured: true), so every prep step rendered as its first four
+// letters in four separate cells, in both the Current and Suggested columns.
+//
+// It also silently dropped every column past the fourth, printed
+// "[object Object]" for any nested value, and emitted no header row — so the
+// user could not tell which column was which.
+//
+// TIM-3864 swept raw error strings out of the API layer but touched no .tsx;
+// this is the display half of the same rule.
 
-  const origSet = new Set(origRows);
-  const propSet = new Set(propRows);
-
-  const allRows = [
-    ...propRows.filter((r) => !origSet.has(r)).map((r) => ({ row: r, kind: "added" as const })),
-    ...origRows.filter((r) => !propSet.has(r)).map((r) => ({ row: r, kind: "removed" as const })),
-    ...propRows.filter((r) => origSet.has(r)).map((r) => ({ row: r, kind: "unchanged" as const })),
-  ];
-
-  function parseRow(raw: string): Record<string, string> {
-    try { return JSON.parse(raw) as Record<string, string>; } catch { return { value: raw }; }
+function StructuredTable({ columns, rows }: StructuredTableModel) {
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-lg border border-[var(--border)] px-3 py-2">
+        <p className="text-sm text-[var(--dark-grey)]"><em>Empty</em></p>
+      </div>
+    );
   }
-
+  const colCount = Math.max(1, columns.length);
   return (
     <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
       <table className="w-full text-xs">
+        {columns.length > 0 && (
+          <thead>
+            <tr className="bg-[var(--background)]">
+              {columns.map((col) => (
+                <th
+                  key={col}
+                  scope="col"
+                  className="px-3 py-2 text-left font-semibold text-[var(--dark-grey)] border-b border-[var(--border)] whitespace-nowrap"
+                >
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+        )}
         <tbody>
-          {allRows.map(({ row, kind }, i) => {
-            const parsed = parseRow(row);
-            const cells = Object.values(parsed).slice(0, 4);
-            return (
-              <tr
-                key={i}
-                className={
-                  kind === "added"
-                    ? "bg-[var(--teal-tint-500)]"
-                    : kind === "removed"
-                    ? "bg-red-50"
-                    : "bg-white"
-                }
-              >
-                {cells.map((cell, j) => (
-                  <td
-                    key={j}
-                    className={`px-3 py-2 border-b border-[var(--border)] ${
-                      kind === "removed" ? "line-through text-[var(--dark-grey)]" : "text-[var(--foreground)]"
-                    }`}
-                  >
-                    {String(cell ?? "")}
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
+          {rows.map((row, i) => (
+            <tr
+              key={`${row.kind}-${row.signature}-${i}`}
+              className={
+                row.kind === "added"
+                  ? "bg-[var(--teal-tint-500)]"
+                  : row.kind === "removed"
+                  ? "bg-red-50"
+                  : "bg-white"
+              }
+            >
+              {Array.from({ length: colCount }, (_, j) => (
+                <td
+                  key={j}
+                  className={`px-3 py-2 border-b border-[var(--border)] align-top ${
+                    row.kind === "removed"
+                      ? "line-through text-[var(--dark-grey)]"
+                      : "text-[var(--foreground)]"
+                  }`}
+                >
+                  {row.cells[j] ?? EMPTY_CELL}
+                </td>
+              ))}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
   );
+}
+
+/**
+ * Current-state rendering. The old code called StructuredDiff with `original`
+ * as BOTH arguments, so every row scored "unchanged" and the column rendered
+ * as an unlabelled all-white table — a diff of a thing against itself. The
+ * Current column is not a diff; it is just the data as it stands today.
+ */
+function StructuredList({ value }: { value: string }) {
+  const model = useMemo(() => buildStructuredList(value), [value]);
+  return <StructuredTable {...model} />;
+}
+
+function StructuredDiff({ original, proposed }: { original: string; proposed: string }) {
+  const model = useMemo(() => buildStructuredDiff(original, proposed), [original, proposed]);
+  return <StructuredTable {...model} />;
+}
+
+/**
+ * Generic form editor for structured suggestions that are not recipes.
+ *
+ * Onboarding brief §1C: "Edit mode uses form-based editors with add/remove row
+ * buttons, never raw text fields." Before this, Edit on a suppliers /
+ * opening-month / prep-steps suggestion dropped the raw JSON into a textarea
+ * and passed whatever the user typed to onApply. menu-workspace.tsx:4491 then
+ * ran a bare JSON.parse on it, so one stray comma threw inside the handler.
+ *
+ * The model is derived once from the incoming value; serializeEditModel always
+ * emits parseable JSON, so the apply path can no longer be handed a broken
+ * string by a user who is not expected to know what a bracket is.
+ */
+function StructuredFormEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const model = useMemo(() => buildEditModel(value), [value]);
+  const [rows, setRows] = useState<string[][]>(() =>
+    model.rows.length > 0 ? model.rows : [blankRow(model)],
+  );
+
+  const commit = useCallback(
+    (next: string[][]) => {
+      setRows(next);
+      onChange(serializeEditModel(model, next));
+    },
+    [model, onChange],
+  );
+
+  const setCell = (rowIndex: number, colIndex: number, cell: string) =>
+    commit(rows.map((r, i) => (i === rowIndex ? r.map((c, j) => (j === colIndex ? cell : c)) : r)));
+
+  const colCount = model.scalar ? 1 : model.keys.length;
+
+  return (
+    <div className="space-y-2">
+      {rows.map((row, rowIndex) => (
+        <div
+          key={rowIndex}
+          className="flex flex-col gap-2 sm:flex-row sm:items-end rounded-lg border border-[var(--border)] p-2"
+        >
+          {Array.from({ length: colCount }, (_, colIndex) => (
+            <label key={colIndex} className="flex-1 min-w-0 block">
+              {!model.scalar && (
+                <span className="block text-[11px] font-medium text-[var(--dark-grey)] mb-0.5">
+                  {model.labels[colIndex]}
+                </span>
+              )}
+              <input
+                type="text"
+                inputMode={model.types[colIndex] === "number" ? "decimal" : undefined}
+                value={row[colIndex] ?? ""}
+                onChange={(e) => setCell(rowIndex, colIndex, e.target.value)}
+                aria-label={
+                  model.scalar
+                    ? `Item ${rowIndex + 1}`
+                    : `${model.labels[colIndex]}, row ${rowIndex + 1}`
+                }
+                className="w-full border border-[var(--border)] rounded-lg px-2 py-1.5 text-sm min-h-[44px] focus-visible:outline-none focus:ring-1 focus:ring-[var(--teal)]"
+              />
+            </label>
+          ))}
+          <button
+            type="button"
+            onClick={() => commit(rows.length > 1 ? rows.filter((_, i) => i !== rowIndex) : [blankRow(model)])}
+            aria-label={`Remove row ${rowIndex + 1}`}
+            className="shrink-0 inline-flex items-center justify-center gap-1 min-h-[44px] min-w-[44px] px-2 rounded-lg border border-[var(--border)] text-xs text-[var(--dark-grey)] hover:bg-[var(--background)]"
+          >
+            <X size={14} aria-hidden="true" />
+            <span className="sm:hidden">Remove</span>
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => commit([...rows, blankRow(model)])}
+        className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-lg border border-[var(--teal-tint)] text-xs font-medium text-[var(--teal)] hover:bg-[var(--teal)]/5"
+      >
+        <Plus size={14} aria-hidden="true" />
+        Add row
+      </button>
+    </div>
+  );
+}
+
+function blankRow(model: StructuredEditModel): string[] {
+  return model.scalar ? [""] : model.keys.map(() => "");
 }
 
 // Form-based editor for structured recipe ingredient lists (Rule 3: server
@@ -587,7 +729,7 @@ function ChangeCard({
               {sug.isRecipeLines ? (
                 <IngredientTable value={sug.originalValue} />
               ) : sug.isStructured ? (
-                <StructuredDiff original={sug.originalValue} proposed={sug.originalValue} />
+                <StructuredList value={sug.originalValue} />
               ) : (
                 <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2">
                   <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
@@ -619,7 +761,7 @@ function ChangeCard({
               {sug.isRecipeLines ? (
                 <IngredientTable value={sug.originalValue} />
               ) : sug.isStructured ? (
-                <StructuredDiff original={sug.originalValue} proposed={sug.originalValue} />
+                <StructuredList value={sug.originalValue} />
               ) : (
                 <div className="rounded-lg bg-[var(--background)] border border-[var(--border)] px-3 py-2.5 min-h-[60px]">
                   <p className="text-sm text-[var(--dark-grey)] leading-relaxed whitespace-pre-wrap">
@@ -650,10 +792,16 @@ function ChangeCard({
       {isEditing && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-[var(--teal)] uppercase tracking-wide">
-            {sug.isRecipeLines ? "Edit Ingredients" : "Editing Suggested Text"}
+            {sug.isRecipeLines
+              ? "Edit Ingredients"
+              : sug.isStructured
+              ? "Edit Items"
+              : "Editing Suggested Text"}
           </p>
           {sug.isRecipeLines ? (
             <IngredientFormEditor value={cardState.editedValue} onChange={onEditChange} />
+          ) : sug.isStructured ? (
+            <StructuredFormEditor value={cardState.editedValue} onChange={onEditChange} />
           ) : (
             <textarea
               ref={textareaRef}
