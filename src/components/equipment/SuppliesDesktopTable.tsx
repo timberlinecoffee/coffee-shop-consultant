@@ -47,6 +47,16 @@ function saveCollapsed(v: Record<string, boolean>) {
   } catch { /* ignore */ }
 }
 
+// TIM-4108 (UX Phase 3): this table saves each row for itself, so the page had
+// no save indicator at all — the only workspace without one. It now reports
+// what is actually happening.
+//
+// It reports the WRITE, not the keystroke. `onItemsChange` fires optimistically
+// the moment the owner types, before anything reaches the server; hanging
+// "Saved" off that would be exactly the class of lie the save-honesty work
+// removed. These events fire around the real request.
+export type SuppliesSaveEvent = "pending" | "saving" | "saved" | "failed";
+
 interface Props {
   planId: string;
   canEdit: boolean;
@@ -54,6 +64,13 @@ interface Props {
   sections: ListSection[];
   onItemsChange: (items: SuppliesItem[]) => void;
   currencyCode: string;
+  /** Fired around the real request. Must be a stable callback. */
+  onSaveActivity?: (event: SuppliesSaveEvent) => void;
+  /**
+   * Published so the page's Save button can flush pending edits immediately
+   * instead of waiting out the debounce.
+   */
+  flushRef?: { current: (() => void) | null };
 }
 
 function newBlankItem(
@@ -86,12 +103,16 @@ export function SuppliesDesktopTable({
   sections,
   onItemsChange,
   currencyCode,
+  onSaveActivity,
+  flushRef,
 }: Props) {
   const [editingCell, setEditingCell] = useState<{ rowId: string; key: EditKey } | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const pendingPatches = useRef<Map<string, Partial<SuppliesItem>>>(new Map());
   const creatingRows = useRef<Set<string>>(new Set());
+  // The debounced write for each row, kept so Save can run them immediately.
+  const pendingRuns = useRef<Map<string, () => Promise<void>>>(new Map());
 
   // TIM-3251: inline quick-add row state.
   const [qaName, setQaName] = useState("");
@@ -197,10 +218,15 @@ export function SuppliesDesktopTable({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(patch),
         });
-        if (!res.ok) return;
+        if (!res.ok) return false;
         const updated = (await res.json()) as SuppliesItem;
         onItemsChange(currentItems.map((i) => (i.id === id ? updated : i)));
-      } catch { /* silent — optimistic UI already applied */ }
+        return true;
+      } catch {
+        // The optimistic UI already applied, so the owner sees their edit —
+        // which is exactly why the indicator has to say it did not land.
+        return false;
+      }
     },
     [onItemsChange]
   );
@@ -219,25 +245,58 @@ export function SuppliesDesktopTable({
       if (!canEdit) return;
       const existing = pendingPatches.current.get(id) ?? {};
       pendingPatches.current.set(id, { ...existing, ...patch });
+      onSaveActivity?.("pending");
       const existingTimer = debounceTimers.current.get(id);
       if (existingTimer) clearTimeout(existingTimer);
-      const timer = setTimeout(async () => {
+      const run = async () => {
+        debounceTimers.current.delete(id);
         const accumulated = pendingPatches.current.get(id);
         if (!accumulated) return;
         pendingPatches.current.delete(id);
+        onSaveActivity?.("saving");
         if (id.startsWith("__new_")) {
           const current = currentItems.find((i) => i.id === id);
-          if (!current) return;
+          if (!current) {
+            onSaveActivity?.("failed");
+            return;
+          }
           const created = await createRow(id, { ...current, ...accumulated });
-          if (created) onItemsChange(currentItems.map((i) => (i.id === id ? created : i)));
+          if (created) {
+            onItemsChange(currentItems.map((i) => (i.id === id ? created : i)));
+            onSaveActivity?.("saved");
+          } else {
+            onSaveActivity?.("failed");
+          }
         } else {
-          await patchRow(id, accumulated, currentItems);
+          const ok = await patchRow(id, accumulated, currentItems);
+          onSaveActivity?.(ok ? "saved" : "failed");
         }
+      };
+      pendingRuns.current.set(id, run);
+      const timer = setTimeout(() => {
+        pendingRuns.current.delete(id);
+        void run();
       }, AUTOSAVE_DEBOUNCE_MS);
       debounceTimers.current.set(id, timer);
     },
-    [canEdit, createRow, patchRow, onItemsChange]
+    [canEdit, createRow, patchRow, onItemsChange, onSaveActivity]
   );
+
+  // TIM-4108: the page's Save button flushes everything waiting on a debounce.
+  // Pressing Save should mean "now", not "in 700ms".
+  useEffect(() => {
+    if (!flushRef) return;
+    flushRef.current = () => {
+      for (const timer of debounceTimers.current.values()) clearTimeout(timer);
+      debounceTimers.current.clear();
+      const runs = Array.from(pendingRuns.current.values());
+      pendingRuns.current.clear();
+      for (const run of runs) void run();
+    };
+    return () => {
+      flushRef.current = null;
+    };
+  });
 
   function handleCommit(id: string, key: EditKey, rawValue: unknown) {
     if (!canEdit) return;
@@ -268,7 +327,8 @@ export function SuppliesDesktopTable({
   function deleteSingleRow(id: string) {
     const next = items.filter((i) => i.id !== id);
     onItemsChange(next);
-    deleteRow(id);
+    onSaveActivity?.("saving");
+    void deleteRow(id).then(() => onSaveActivity?.("saved"));
   }
 
   // TIM-3251: inline quick-add commit. Uses latestItemsRef so rapid Enter-Enter
