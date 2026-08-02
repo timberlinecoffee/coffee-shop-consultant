@@ -119,7 +119,10 @@ export function WorkspaceActionMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={open ? menuId : undefined}
-        className="flex items-center justify-center rounded-lg border border-[var(--teal)]/30 text-[var(--teal)] p-1.5 hover:bg-[var(--teal)]/5 transition-colors"
+        // TIM-4109: the ⋯ trigger is part of the action cluster, so it takes the
+        // same fully-rounded shape. A square ⋯ beside four pills is the kind of
+        // small mismatch that reads as sloppiness rather than as a choice.
+        className="flex items-center justify-center rounded-full border border-[var(--teal)]/30 text-[var(--teal)] p-1.5 hover:bg-[var(--teal)]/5 transition-colors"
       >
         <MoreHorizontal size={16} aria-hidden="true" />
       </button>
