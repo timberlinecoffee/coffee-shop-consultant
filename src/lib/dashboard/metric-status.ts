@@ -150,3 +150,44 @@ export const REVENUE_BLOCKED_COPY: Record<RevenueBlockedReason, string> = {
   no_revenue: "Add how many customers you expect each day to see this.",
   compute_failed: "We couldn't calculate this. Try re-saving your Financials.",
 };
+
+// ── Revenue ramp (TIM-4103 / T1-B) ───────────────────────────────────────────
+//
+// Home showed month 1 of the ramp. Financials showed mature daily sales. On a
+// typical plan those are roughly three times apart, and NEITHER SCREEN SAID SO
+// — both numbers were correct, and together they read as a bug.
+//
+// This is not a maths problem, it is a labelling one. Showing both figures
+// side by side, named, turns the product's most confusing contradiction into
+// the thing a first-time owner most needs to understand: a new shop does not
+// open at full trade, and the ramp is the plan, not a mistake.
+
+export interface RevenueRamp {
+  // Month 1 of the projection, with the ramp multiplier applied.
+  firstMonthCents: number;
+  // The first month after the ramp finishes — the growth factor there is
+  // exactly 1.0, so this is "full trade, before any growth". Taken from the
+  // same projection rows as the first-month figure; nothing is recomputed.
+  matureCents: number;
+  rampMonths: number;
+}
+
+// Only worth two numbers when there is genuinely a ramp and the gap is visible.
+// A plan with no ramp, or a 2% difference, is better served by one clean figure
+// than by a distinction the owner has to squint at.
+const RAMP_VISIBLE_THRESHOLD = 0.05;
+
+export function showsRevenueRamp(r: RevenueRamp): boolean {
+  if (r.rampMonths <= 0) return false;
+  if (r.firstMonthCents <= 0 || r.matureCents <= 0) return false;
+  const gap = Math.abs(r.matureCents - r.firstMonthCents) / r.matureCents;
+  return gap >= RAMP_VISIBLE_THRESHOLD;
+}
+
+// The teaching line. Deliberately explains WHY rather than just labelling the
+// two figures: the ramp is a deliberate assumption the owner can change, not a
+// quirk of our arithmetic.
+export function rampExplanation(rampMonths: number): string {
+  const months = rampMonths === 1 ? "month" : "months";
+  return `New shops take time to fill. Your plan assumes ${rampMonths} ${months} of building up to full trade — that ramp is why these two numbers differ.`;
+}
