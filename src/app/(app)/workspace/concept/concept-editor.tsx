@@ -25,16 +25,22 @@ import { MobileExpandableTextarea } from "@/components/ui/mobile-expandable-text
 import { SectionHeader } from "@/components/section-header/SectionHeader";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
-import { useUiRevamp } from "@/hooks/useUiRevamp";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import {
-  WorkspaceActionButton,
-  WORKSPACE_ACTION_ICON_SIZE,
-} from "@/components/workspace/WorkspaceActionButton";
+  WorkspaceActionMenu,
+  WorkspaceActionMenuItem,
+} from "@/components/workspace/WorkspaceActionMenu";
+import {
+  WorkspaceNextStepButton,
+  scrollToStep,
+} from "@/components/workspace/WorkspaceNextStepButton";
+import { nextStep, stepsProgress } from "@/components/workspace/next-step";
 import {
   CONCEPT_COMPONENTS_V2,
   resolveConceptComponents,
   getConceptV2Progress,
+  getConceptV2Steps,
   isConceptV2Complete,
   type ConceptComponentId,
   type ConceptCompetitor,
@@ -108,7 +114,6 @@ export function ConceptWorkspace({
   const latestDocRef = useRef<ConceptDocumentV2>(initialDoc);
 
   const { promoteOnEdit, setStatus, statusByKey } = useWorkspaceStatus();
-  const uiRevamp = useUiRevamp();
   const router = useRouter();
 
   // TIM-2858: lift unified review modal to the parent so it survives the
@@ -143,6 +148,19 @@ export function ConceptWorkspace({
     }
   }, [complete, statusByKey, setStatus]);
   const shopName = doc.components.shop_identity.content.trim();
+
+  // TIM-4108 (UX Phase 3): one list of steps feeds BOTH the progress line and
+  // the emphasised button, so the count at the top and the card the button
+  // points at can never disagree. Deferrable cards nobody has filled in are
+  // skipped by getConceptV2Steps — the same rule the progress count uses.
+  const steps = getConceptV2Steps(doc, resolvedComponents);
+  const next = nextStep(steps);
+
+  const goToStep = useCallback((id: string) => {
+    // Every card is always visible on this screen, so there is nothing to
+    // expand first — just take the owner to it.
+    scrollToStep(id);
+  }, []);
 
   const lastSavedAt =
     saveState.kind === "saved"
@@ -325,71 +343,68 @@ export function ConceptWorkspace({
           Icon={Lightbulb}
           title="Concept"
           description="Shape the identity of your shop. Every other workspace builds on this."
-          actions={
-            <>
-              {/* TIM-2897: top-level "Improve with Scout" removed — per-field
-                  "Write with AI" controls (AIAssistCallout) on each card are
-                  the canonical AI surface on Concept now. */}
-              {/* TIM-2455: Print document moved from the page footer into the
-                  canonical chrome action cluster. With a single secondary
-                  utility the TIM-2413 0/1-threshold rule keeps it inline (no
-                  hamburger needed); it still sits at the top of the page in
-                  the header band, addressing the board "Print at the TOP" ask
-                  on TIM-2451. */}
-              <WorkspaceActionButton
-                onClick={() => router.push("/workspace/concept/print")}
-                aria-label="Print document"
-                title="Open the printable concept brief"
-              >
-                <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span>Print document</span>
-              </WorkspaceActionButton>
-              {/* TIM-2455: SaveStatusAndButton — adds the missing canonical
-                  auto-save indicator + manual Save button (board gap items 3
-                  and 4 on TIM-2451). */}
-              <SaveStatusAndButton
-                saving={saveState.kind === "saving"}
-                savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
-                error={saveState.kind === "error" ? saveState.message : null}
-                unsaved={saveState.kind === "dirty"}
-                canEdit={canEdit}
-                onSave={handleManualSave}
-              />
-            </>
+          scout={
+            /* TIM-4108 (UX Phase 3), Trent's call 2026-08-02: "Ask Scout" comes
+               back to Concept.
+
+               TIM-2897 removed it on the reasoning that the per-card "Write
+               with AI" buttons are this screen's canonical AI surface. That
+               reasoning still holds for the CARDS — and those buttons stay
+               exactly as they are. But it left Concept as the one workspace
+               out of eleven with no Scout at all, and the person who notices
+               is the one who just came from Marketing and reached for a button
+               that was not there.
+
+               The two answer different questions: "help me word this field"
+               versus "help me think about this whole thing". */
+            <AskScoutButton
+              workspaceKey="concept"
+              focusLabel="concept"
+              hasContent={progress.filled > 0}
+            />
           }
-        />
-        {uiRevamp ? (
-          progress.total > 0 && (
-            <div className="mb-6 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[var(--muted-foreground)]">
-                  {shopName ? <>{shopName} — </> : null}
-                  {progress.filled} of {progress.total} steps done
-                </span>
-                <span className="text-xs font-semibold text-[var(--teal)]">
-                  {Math.round((progress.filled / progress.total) * 100)}%
-                </span>
-              </div>
-              <div className="h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-[var(--teal)] transition-all duration-300"
-                  style={{ width: `${Math.round((progress.filled / progress.total) * 100)}%` }}
-                  role="progressbar"
-                  aria-valuenow={progress.filled}
-                  aria-valuemin={0}
-                  aria-valuemax={progress.total}
-                  aria-label="Concept completion"
+          primaryAction={
+            next ? (
+              <WorkspaceNextStepButton step={next} onGo={goToStep} />
+            ) : undefined
+          }
+          overflow={
+            /* TIM-2455 moved printing out of the page footer and into the
+               header. TIM-4108 moves it one step further, into the ⋯ menu, so
+               the top-right corner reads the same here as everywhere else.
+               The name was already right. */
+            <WorkspaceActionMenu hideAdvisor>
+              {({ closeMenu }) => (
+                <WorkspaceActionMenuItem
+                  Icon={Printer}
+                  label="Print document"
+                  onClick={() => {
+                    closeMenu();
+                    router.push("/workspace/concept/print");
+                  }}
                 />
-              </div>
-            </div>
-          )
-        ) : (
-          shopName && (
-            <p className="mb-6 text-xs text-[var(--dark-grey)]">
-              {shopName} · {progress.filled} of {progress.total} steps done
-            </p>
-          )
-        )}
+              )}
+            </WorkspaceActionMenu>
+          }
+          save={
+            /* TIM-2455: the canonical auto-save indicator + manual Save. */
+            <SaveStatusAndButton
+              saving={saveState.kind === "saving"}
+              savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
+              error={saveState.kind === "error" ? saveState.message : null}
+              unsaved={saveState.kind === "dirty"}
+              canEdit={canEdit}
+              onSave={handleManualSave}
+            />
+          }
+          progress={steps.length > 0 ? stepsProgress(steps) : undefined}
+        />
+        {/* TIM-4108 (UX Phase 3): the bespoke progress duo is gone. Where the
+            owner is up to renders in the header, in the same words and the same
+            place as every other workspace, from the same list of steps the
+            emphasised button walks. The shop name that used to prefix it moved
+            out — the title already says Concept, and the header is not the
+            place to repeat what the owner just typed into the first card. */}
 
         {/* Read-only banner */}
         {!canEdit && (
@@ -437,7 +452,10 @@ export function ConceptWorkspace({
             return (
               <div
                 key={meta.id}
-                className="group rounded-xl border border-[var(--border)] bg-white transition-all duration-200 overflow-hidden focus-within:ring-1 focus-within:ring-[var(--teal)]/30"
+                // TIM-4108: the shared step anchor, so the header's emphasised
+                // button can scroll to the card it names.
+                id={`step-${meta.id}`}
+                className="group scroll-mt-24 rounded-xl border border-[var(--border)] bg-white transition-all duration-200 overflow-hidden focus-within:ring-1 focus-within:ring-[var(--teal)]/30"
               >
                 <div className="px-5 pt-5 pb-4">
                   {/* TIM-3350: canonical SectionHeader replaces Pattern C inline JSX */}

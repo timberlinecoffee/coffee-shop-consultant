@@ -649,6 +649,32 @@ export function isConceptV2Complete(doc: ConceptDocumentV2): boolean {
   );
 }
 
+// TIM-4108 (UX Phase 3): the ordered steps the Concept header walks.
+//
+// Same skip rule as getConceptV2Progress below — a deferrable component that is
+// still empty is not counted and is not offered as "the next thing", because
+// nobody has decided it applies to this shop. Deriving the button and the
+// progress line from one list is the point: before this the header counted one
+// set of things while nothing pointed at which to do next.
+export function getConceptV2Steps(
+  doc: ConceptDocumentV2,
+  components: ReadonlyArray<{ id: ConceptComponentId; label: string }> =
+    CONCEPT_COMPONENTS_V2,
+): { id: string; label: string; done: boolean }[] {
+  const steps: { id: string; label: string; done: boolean }[] = [];
+  for (const meta of components) {
+    const c = doc.components[meta.id];
+    if (!c) continue;
+    if (DEFERRABLE_BY_ID.has(meta.id) && c.content.trim().length === 0) continue;
+    steps.push({
+      id: meta.id,
+      label: meta.label,
+      done: isComponentFilled(meta.id, c, doc),
+    });
+  }
+  return steps;
+}
+
 export function getConceptV2Progress(doc: ConceptDocumentV2): {
   filled: number;
   total: number;
