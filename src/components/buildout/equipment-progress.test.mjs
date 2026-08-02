@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { equipmentProgress } from "./equipment-progress.ts";
+import { equipmentProgress, suppliesProgress } from "./equipment-progress.ts";
 import { progressView } from "../workspace/workspace-progress.ts";
 
 const view = (counts) => progressView(equipmentProgress(counts));
@@ -42,4 +42,35 @@ test("the line never uses the words steps, sections or workspaces", () => {
   // T1-D vocabulary: "steps" belongs to workspaces you walk, "sections" to
   // generated documents. This is a list, so it borrows neither.
   assert.doesNotMatch(view({ items: 9, stations: 3 }).label, /step|section|workspace/i);
+});
+
+// ── Supplies ────────────────────────────────────────────────────────────────
+
+const sup = (counts) => progressView(suppliesProgress(counts));
+
+test("Supplies says categories, never sections", () => {
+  // T1-D settled that "sections" means parts of a generated document. Borrowing
+  // it for a group of cups and lids is the exact ambiguity that change removed
+  // — and the sticky banner on this page said "Sections" for months.
+  const v = sup({ items: 18, categories: 5 });
+  assert.equal(v.label, "18 items · 5 categories");
+  assert.doesNotMatch(v.label, /section|step|workspace/i);
+});
+
+test("Supplies draws no bar either", () => {
+  for (const counts of [
+    { items: 0, categories: 0 },
+    { items: 1, categories: 1 },
+    { items: 40, categories: 6 },
+  ]) {
+    const v = sup(counts);
+    assert.equal(v.showBar, false);
+    assert.equal(v.pct, null);
+  }
+});
+
+test("Supplies handles the singulars and the empty list", () => {
+  assert.equal(sup({ items: 0, categories: 3 }).label, "Nothing on the list yet");
+  assert.equal(sup({ items: 1, categories: 1 }).label, "1 item · 1 category");
+  assert.equal(sup({ items: 4, categories: 0 }).label, "4 items");
 });

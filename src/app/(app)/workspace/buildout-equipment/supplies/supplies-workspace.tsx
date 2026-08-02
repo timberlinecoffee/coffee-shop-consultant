@@ -6,7 +6,7 @@
 // SectionedListGrid) but lives as a sibling page to the Equipment page and
 // promotes the shared "buildout_equipment" status.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Package, X, Eye } from "lucide-react";
 import { formatCurrencyAmount } from "@/lib/currency";
@@ -18,11 +18,15 @@ import { EquipmentSuppliesSubNav } from "@/components/buildout/EquipmentSupplies
 import { useUiRevamp } from "@/hooks/useUiRevamp";
 import { SuppliesMobileV2 } from "@/components/equipment/SuppliesMobileV2";
 import { SuppliesDesktopTable } from "@/components/equipment/SuppliesDesktopTable";
-import {
-  WorkspaceActionButton,
-  WORKSPACE_ACTION_ICON_SIZE,
-} from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { AskScoutButton } from "@/components/workspace/AskScoutButton";
+import {
+  WorkspaceActionMenu,
+  WorkspaceActionMenuItem,
+} from "@/components/workspace/WorkspaceActionMenu";
+import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
+import { suppliesProgress } from "@/components/buildout/equipment-progress";
+import type { SuppliesSaveEvent } from "@/components/equipment/SuppliesDesktopTable";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
 
@@ -171,9 +175,7 @@ export function SuppliesWorkspace({
   const [supplies, setSupplies] = useState<SuppliesItem[]>(initialSupplies);
   const [sections, setSections] = useState<ListSection[]>(initialSections);
   const [paywallOpen, setPaywallOpen] = useState(false);
-  const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
   const [showAiMarkings, setShowAiMarkings] = useState(true);
-  const viewOptionsRef = useRef<HTMLDivElement>(null);
 
   const { promoteOnEdit } = useWorkspaceStatus();
   // TIM-1458: editing supplies promotes the shared Equipment & Supplies suite.
@@ -196,16 +198,10 @@ export function SuppliesWorkspace({
     void loadViewPrefs();
   }, []);
 
-  useEffect(() => {
-    if (!viewOptionsOpen) return;
-    function handler(e: MouseEvent) {
-      if (viewOptionsRef.current && !viewOptionsRef.current.contains(e.target as Node)) {
-        setViewOptionsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [viewOptionsOpen]);
+  // TIM-4108: the hand-rolled view dropdown and its outside-click handling are
+  // gone. The toggle lives in the shared ⋯ menu now, which already handles
+  // outside clicks, Escape, and arrow-key navigation — none of which this
+  // bespoke copy did.
 
   function toggleAiMarkings() {
     const next = !showAiMarkings;
@@ -251,6 +247,48 @@ export function SuppliesWorkspace({
   const sectionCount = suppliesSections.length;
   const itemCount = activeSupplies.length;
 
+  // TIM-4108 (UX Phase 3): this page had no save indicator, because each row
+  // saves itself and there was nothing page-level to report. It has one now,
+  // driven by the real writes rather than by keystrokes — the table fires these
+  // around the request, not when the owner types.
+  const [saveState, setSaveState] = useState<{
+    saving: boolean;
+    savedAt: string | null;
+    unsaved: boolean;
+    error: string | null;
+  }>({ saving: false, savedAt: null, unsaved: false, error: null });
+
+  const handleSaveActivity = useCallback((event: SuppliesSaveEvent) => {
+    setSaveState((prev) => {
+      switch (event) {
+        case "pending":
+          return { ...prev, unsaved: true, error: null };
+        case "saving":
+          return { ...prev, saving: true, error: null };
+        case "saved":
+          return {
+            saving: false,
+            savedAt: new Date().toISOString(),
+            unsaved: false,
+            error: null,
+          };
+        case "failed":
+          // The row still shows the owner's edit, which is exactly why this has
+          // to say so rather than quietly settling on "Saved".
+          return {
+            ...prev,
+            saving: false,
+            unsaved: true,
+            error: "Could not save that change.",
+          };
+      }
+    });
+  }, []);
+
+  // Lets the Save button flush pending edits immediately instead of waiting out
+  // the debounce. Pressing Save should mean now.
+  const flushRef = useRef<(() => void) | null>(null);
+
   return (
     <div className="bg-[var(--background)] min-h-screen">
       {showInventoryToast && <InventoryRedirectToast />}
@@ -265,7 +303,7 @@ export function SuppliesWorkspace({
               <>
                 <div className="h-9 w-px bg-[var(--border)]" aria-hidden="true" />
                 <div>
-                  <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Sections</p>
+                  <p className="text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Categories</p>
                   <p className="text-sm font-semibold text-[var(--foreground)]">{sectionCount}</p>
                 </div>
               </>
@@ -290,36 +328,53 @@ export function SuppliesWorkspace({
           Icon={Package}
           title="Equipment & Supplies"
           description="Plan the consumables you'll buy for opening day: cups, lids, dairy, beans, syrups, and cleaning supplies. Vendors live in Suppliers & Vendors."
-          actions={
-            <div className="relative" ref={viewOptionsRef}>
-            {/* TIM-1846: canonical WorkspaceActionButton chrome (was a hand-rolled
-                button); active state keeps the teal tint when a view filter is on. */}
-            {/* TIM-2395: labels render at every viewport (icon-only default reverted). */}
-            <WorkspaceActionButton
-              onClick={() => setViewOptionsOpen((o) => !o)}
-              className={!showAiMarkings ? "bg-[var(--teal)]/5" : ""}
-              aria-label="View options"
-              title="View options"
-            >
-              <Eye size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              <span>View</span>
-            </WorkspaceActionButton>
-            {viewOptionsOpen && (
-              <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[var(--border)] rounded-xl shadow-lg py-1.5 min-w-[210px]">
-                <p className="px-3 py-1 text-[10px] font-semibold text-[var(--dark-grey)] uppercase tracking-wide">Show in workspace</p>
-                <label className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-[var(--background)] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="accent-[var(--teal)] cursor-pointer shrink-0"
-                    checked={showAiMarkings}
-                    onChange={toggleAiMarkings}
-                  />
-                  <span className="text-xs text-[var(--foreground)]">AI markings</span>
-                </label>
-              </div>
-            )}
-          </div>
+          scout={
+            /* TIM-4108, Trent's call 2026-08-02: Supplies had no Scout at all.
+               It was the only workspace without one, which made it the only
+               place a first-time owner could not ask for help from the header
+               they had learned everywhere else. */
+            <AskScoutButton
+              workspaceKey="buildout_equipment"
+              focusLabel="supplies list"
+              hasContent={itemCount > 0}
+            />
           }
+          overflow={
+            /* The view filter was a hand-rolled dropdown living where the
+               action cluster goes. It is a low-frequency toggle, so it belongs
+               in the ⋯ menu with the other view toggles on the Equipment tab —
+               same control, same place, on both pages of this suite.
+
+               Like Equipment, this page has NO emphasised button: supplies are
+               added per category, and each category carries its own add row. */
+            <WorkspaceActionMenu hideAdvisor>
+              {({ closeMenu }) => (
+                <WorkspaceActionMenuItem
+                  Icon={Eye}
+                  label="Show AI markings"
+                  checked={showAiMarkings}
+                  onClick={() => {
+                    toggleAiMarkings();
+                    closeMenu();
+                  }}
+                />
+              )}
+            </WorkspaceActionMenu>
+          }
+          save={
+            <SaveStatusAndButton
+              saving={saveState.saving}
+              savedAt={saveState.savedAt}
+              unsaved={saveState.unsaved}
+              error={saveState.error}
+              canEdit={canEdit}
+              onSave={() => flushRef.current?.()}
+            />
+          }
+          progress={suppliesProgress({
+            items: itemCount,
+            categories: sectionCount,
+          })}
         />
 
         <EquipmentSuppliesSubNav active="supplies" />
@@ -348,6 +403,8 @@ export function SuppliesWorkspace({
                 sections={suppliesSections}
                 onItemsChange={handleSuppliesChange}
                 currencyCode={initialCurrencyCode}
+                onSaveActivity={handleSaveActivity}
+                flushRef={flushRef}
               />
             </div>
           </>
