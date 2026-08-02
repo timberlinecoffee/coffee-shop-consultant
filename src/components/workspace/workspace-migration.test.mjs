@@ -49,6 +49,13 @@ const MIGRATED = [
     progress: "count",
   },
   {
+    // Count rather than a bar (D-011) even though the categories give it a real
+    // denominator — see supplier-progress.ts for why.
+    name: "Suppliers",
+    file: "src/app/(app)/workspace/suppliers/suppliers-workspace.tsx",
+    progress: "count",
+  },
+  {
     // The live Financials surface. financials-workspace.tsx still holds a v1
     // header behind the ui_revamp_v2 flag, which defaults to v2 — that
     // fallback migrates with the flag's removal, not before.
@@ -186,4 +193,14 @@ test("Buildout & Equipment no longer emphasises the AI action", () => {
     "this screen has no honest single next action, so the slot stays empty"
   );
   assert.match(src, /label="Write with AI"/, "moved, not removed");
+});
+
+test("Suppliers emphasises adding a vendor, not the AI suggestion", () => {
+  // Both sat side by side in the old cluster with equal weight. D-010 says the
+  // real action wins the emphasis and the AI one moves into the menu.
+  const src = read("src/app/(app)/workspace/suppliers/suppliers-workspace.tsx");
+  const primary = src.slice(src.indexOf("primaryAction={"), src.indexOf("overflow={"));
+  assert.match(primary, /Add vendor/);
+  assert.doesNotMatch(primary, /Sparkles|with AI/, "the AI action is not the emphasised one");
+  assert.match(src, /Suggest vendors with AI/, "moved, not removed");
 });

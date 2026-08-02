@@ -28,6 +28,11 @@ import {
 } from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
+import {
+  WorkspaceActionMenu,
+  WorkspaceActionMenuItem,
+} from "@/components/workspace/WorkspaceActionMenu";
+import { supplierProgress } from "@/components/suppliers/supplier-progress";
 import { SectionHeader } from "@/components/section-header";
 import { useMutationStatus } from "@/hooks/use-mutation-status";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
@@ -593,54 +598,74 @@ export function SuppliersWorkspace({
           Icon={Truck}
           title="Suppliers & Vendors"
           description="Shortlist vendors in each category, compare them side-by-side, and lock in the one you choose. Choices land in your concept brief."
-          actions={
-            <>
-              {chosenCount > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-[var(--teal)]">{chosenCount}</span>
-                  <span className="text-xs text-[var(--muted-foreground)]">
-                    of {totalCategories} {totalCategories === 1 ? "category" : "categories"} chosen
-                  </span>
-                </div>
-              )}
-              {uiRevampV3 && (
-                <>
-                  <WorkspaceActionButton
-                    onClick={() => handleSeed(activeCategory, activeRows.length > 0 ? "append" : "replace")}
-                    disabled={!canEdit || seedingCategory === activeCategory}
-                    title={activeRows.length > 0 ? "Generate more AI-suggested vendors" : "Generate AI suggestions"}
-                  >
-                    <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                    {seedingCategory === activeCategory
-                      ? "Generating..."
-                      : activeRows.length > 0
-                        ? "Suggest more vendors with AI"
-                        : "Suggest vendors with AI"}
-                  </WorkspaceActionButton>
-                  <WorkspaceActionButton
-                    onClick={() => handleAddRow(activeCategory)}
-                    disabled={!canEdit}
-                  >
-                    <Plus size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                    Add vendor
-                  </WorkspaceActionButton>
-                </>
-              )}
-              {/* TIM-3676: shared Scout entry point, matches Business Plan / Marketing / Hiring / Ops Playbook. */}
-              <AskScoutButton
-                workspaceKey="suppliers"
-                focusLabel="supplier and vendor plan"
-                hasContent={chosenCount > 0}
-              />
-              <SaveStatusAndButton
-                saving={mutationSaving}
-                savedAt={mutationSavedAt}
-                unsaved={false}
-                canEdit={true}
-                onSave={confirmSaved}
-              />
-            </>
+          scout={
+            /* TIM-3676: shared Scout entry point. Never emphasised. */
+            <AskScoutButton
+              workspaceKey="suppliers"
+              focusLabel="supplier and vendor plan"
+              hasContent={chosenCount > 0}
+            />
           }
+          primaryAction={
+            /* TIM-4108 (UX Phase 3): adding a vendor to the category you are
+               looking at is the next real thing to do here, so it takes the
+               emphasised slot from the AI suggestion that used to sit beside
+               it (D-010). */
+            uiRevampV3 ? (
+              <WorkspaceActionButton
+                variant="primary"
+                onClick={() => handleAddRow(activeCategory)}
+                disabled={!canEdit}
+              >
+                <Plus size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
+                Add vendor
+              </WorkspaceActionButton>
+            ) : undefined
+          }
+          overflow={
+            /* The AI suggestion moves into the menu. Its label still adapts to
+               whether the category already has candidates — that is a real
+               difference in what the action does (append vs fill an empty
+               category), not a button renaming itself for no reason, which is
+               what TIM-4106 fixed on the Scout button. */
+            uiRevampV3 ? (
+              <WorkspaceActionMenu hideAdvisor>
+                {({ closeMenu }) => (
+                  <WorkspaceActionMenuItem
+                    Icon={Sparkles}
+                    disabled={!canEdit || seedingCategory === activeCategory}
+                    label={
+                      seedingCategory === activeCategory
+                        ? "Generating…"
+                        : activeRows.length > 0
+                          ? "Suggest more vendors with AI"
+                          : "Suggest vendors with AI"
+                    }
+                    onClick={() => {
+                      closeMenu();
+                      handleSeed(
+                        activeCategory,
+                        activeRows.length > 0 ? "append" : "replace",
+                      );
+                    }}
+                  />
+                )}
+              </WorkspaceActionMenu>
+            ) : undefined
+          }
+          save={
+            <SaveStatusAndButton
+              saving={mutationSaving}
+              savedAt={mutationSavedAt}
+              unsaved={false}
+              canEdit={true}
+              onSave={confirmSaved}
+            />
+          }
+          progress={supplierProgress({
+            chosen: chosenCount,
+            categories: totalCategories,
+          })}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6">
