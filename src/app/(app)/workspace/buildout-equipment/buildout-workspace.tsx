@@ -25,12 +25,9 @@ import { WriteWithAIModal } from "@/components/buildout/WriteWithAIModal";
 import { EquipmentSuppliesSubNav } from "@/components/buildout/EquipmentSuppliesSubNav";
 // TIM-2481 (F12): buildout grid vs Financials equipment line reconciliation pill.
 import { EquipmentReconciliationBanner } from "@/components/cross-suite/EquipmentReconciliationBanner";
-import {
-  WorkspaceActionButton,
-  WORKSPACE_ACTION_ICON_SIZE,
-} from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
+import { equipmentProgress } from "@/components/buildout/equipment-progress";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import {
   WorkspaceActionMenu,
@@ -392,93 +389,117 @@ export function BuildoutEquipmentWorkspace({
           Icon={Wrench}
           title="Equipment & Supplies"
           description="Plan the gear that goes on the bar: espresso machines, grinders, fridges, furniture, and fixtures. Opening-day consumables live on the Supplies page."
-          actions={
-            <>
-            {/* TIM-3676: shared Scout entry point, matches Business Plan / Marketing / Hiring / Ops Playbook. */}
+          scout={
+            /* TIM-3676: shared Scout entry point. Never emphasised. */
             <AskScoutButton
               workspaceKey="buildout_equipment"
               focusLabel="equipment and supplies plan"
               hasContent={activeEquipment.length > 0}
             />
-            {/* TIM-2413: primary hero CTA + SaveStatusAndButton stay outside;
-                secondary utilities (Manage Stations, Import, View options)
-                live inside the hamburger. */}
-            {canEdit && (
-            <WorkspaceActionButton variant="primary" onClick={() => setWriteWithAIOpen(true)} aria-label="Write with AI" title="Generate your equipment list with AI">
-              <Sparkles size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-              <span>Write with AI</span>
-            </WorkspaceActionButton>
-          )}
-          <WorkspaceActionMenu>
-            {({ closeMenu }) => (
-              <>
-                {canEdit && (
+          }
+          overflow={
+            /* TIM-4108 (UX Phase 3): "Write with AI" was the emphasised button
+               here — one of the three screens Trent named when he ruled that
+               the loud button must be the next REAL thing to do, not the AI
+               action (D-010). It moves into the menu, unchanged and one click
+               away. Nothing is taken from anyone; it just stops being the
+               first thing a first-time owner reaches for.
+
+               This screen gets NO emphasised button, because it does not have
+               one honest candidate: equipment is added per station, and each
+               station already carries its own "Add … item" control right where
+               the owner is looking. A header button would either duplicate
+               those or invent a station on the owner's behalf. An empty slot
+               is better than a loud wrong answer. */
+            <WorkspaceActionMenu hideAdvisor>
+              {({ closeMenu }) => (
+                <>
+                  {canEdit && (
+                    <WorkspaceActionMenuItem
+                      Icon={Sparkles}
+                      label="Write with AI"
+                      onClick={() => {
+                        closeMenu();
+                        setWriteWithAIOpen(true);
+                      }}
+                    />
+                  )}
+                  {canEdit && (
+                    <WorkspaceActionMenuItem
+                      Icon={Settings2}
+                      label="Manage stations"
+                      onClick={() => {
+                        closeMenu();
+                        setSettingsOpen(true);
+                      }}
+                    />
+                  )}
+                  {canEdit && (
+                    <WorkspaceActionMenuItem
+                      Icon={FileSpreadsheet}
+                      label="Import from spreadsheet"
+                      onClick={() => {
+                        closeMenu();
+                        setImportOpen(true);
+                      }}
+                    />
+                  )}
                   <WorkspaceActionMenuItem
-                    Icon={Settings2}
-                    label="Manage stations"
-                    onClick={() => {
-                      closeMenu();
-                      setSettingsOpen(true);
-                    }}
+                    Icon={Eye}
+                    label="Show recommendations"
+                    checked={showRecommendations}
+                    onClick={toggleRecommendations}
                   />
-                )}
-                {canEdit && (
                   <WorkspaceActionMenuItem
-                    Icon={FileSpreadsheet}
-                    label="Import from spreadsheet"
-                    onClick={() => {
-                      closeMenu();
-                      setImportOpen(true);
-                    }}
+                    Icon={Eye}
+                    label="Show AI markings"
+                    checked={showAiMarkings}
+                    onClick={toggleAiMarkings}
                   />
-                )}
-                <WorkspaceActionMenuItem
-                  Icon={Eye}
-                  label="Show recommendations"
-                  checked={showRecommendations}
-                  onClick={toggleRecommendations}
-                />
-                <WorkspaceActionMenuItem
-                  Icon={Eye}
-                  label="Show AI markings"
-                  checked={showAiMarkings}
-                  onClick={toggleAiMarkings}
-                />
-              </>
-            )}
-          </WorkspaceActionMenu>
-          {/* TIM-1937: SaveStatusAndButton renders the saved-status text +
-              Save as one adjacent unit at the END of the action cluster. */}
-          <SaveStatusAndButton
-            saving={saveState.kind === "saving"}
-            savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
-            error={saveState.kind === "error" ? saveState.message : null}
-            unsaved={saveState.kind === "dirty"}
-            canEdit={canEdit}
-            onSave={handleManualSave}
-          />
-            </>
+                </>
+              )}
+            </WorkspaceActionMenu>
+          }
+          save={
+            /* TIM-1937: status text and Save stay one adjacent unit. */
+            <SaveStatusAndButton
+              saving={saveState.kind === "saving"}
+              savedAt={saveState.kind === "saved" ? saveState.at : lastSavedAt}
+              error={saveState.kind === "error" ? saveState.message : null}
+              unsaved={saveState.kind === "dirty"}
+              canEdit={canEdit}
+              onSave={handleManualSave}
+            />
+          }
+          progress={equipmentProgress({
+            items: activeEquipment.length,
+            stations: equipmentSections.length,
+          })}
+          alert={
+            /* TIM-4108: the "your concept or menu has changed" notice was its
+               own amber box below the header. It is a blocking notice, so it
+               belongs in the one amber band every screen uses. */
+            showReviewBanner ? (
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium">Your concept or menu has changed</p>
+                  <p className="mt-0.5">
+                    Review your equipment list to make sure it still reflects
+                    your plan.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReviewDismissed(true)}
+                  className="shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+                  aria-label="Dismiss"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : undefined
           }
         />
-
-        {showReviewBanner && (
-          <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-amber-800">Your concept or menu has changed</p>
-              <p className="text-xs text-amber-600 mt-0.5">
-                Review your equipment list to make sure it still reflects your plan.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setReviewDismissed(true)}
-              className="text-amber-400 hover:text-amber-600 transition-colors shrink-0"
-              aria-label="Dismiss"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
 
         {/* TIM-1458/TIM-1793: canonical pill sub-nav, left-aligned under header. */}
         <EquipmentSuppliesSubNav active="equipment" />
