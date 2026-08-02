@@ -48,8 +48,15 @@
 //   • `overflow` is the ⋯ menu: printing, exporting, guided tours, resets.
 //   • `save` is a SaveStatusAndButton so the status text always sits directly
 //     left of the Save button, per TIM-1937.
-//   • `progress` and `alert` render BELOW the title row, in that order, so the
-//     rhythm is identical on every screen.
+//   • `progress`, `teach` and `alert` render BELOW the title row, in that
+//     order, so the rhythm is identical on every screen.
+//
+// TIM-4112 (UX Phase 4): `teach` is the teaching line — one sentence saying why
+// the thing in front of the owner matters to a coffee shop. It sits directly
+// under progress because the two answer the questions people actually arrive
+// with, in the order they arrive: "where am I" then "why does this matter".
+// The alert band stays last: it is amber and loud enough to find on its own,
+// and putting a warning above a lesson makes every visit feel like a telling-off.
 //
 // `actions` is the pre-Phase-2 escape hatch and is DEPRECATED. It renders the
 // cluster verbatim, which is exactly the freedom that caused the drift.
@@ -97,6 +104,11 @@ type WorkspaceHeaderProps = {
 
   /** Where the owner is up to. Renders below the title row. */
   progress?: WorkspaceProgress;
+  /**
+   * One sentence on why this matters to a coffee shop — never what a control
+   * does. Comes from `teaching.ts`, which guards the difference.
+   */
+  teach?: string;
   /** One amber band, below progress. Conflicts and blocking notices. */
   alert?: ReactNode;
 
@@ -119,6 +131,7 @@ export function WorkspaceHeader({
   overflow,
   save,
   progress,
+  teach,
   alert,
   actions,
   className,
@@ -167,6 +180,12 @@ export function WorkspaceHeader({
       </header>
 
       {progress ? <WorkspaceProgressLine progress={progress} /> : null}
+
+      {teach ? (
+        <p className="mt-3 text-sm text-[var(--muted-foreground)] leading-relaxed max-w-[68ch]">
+          {teach}
+        </p>
+      ) : null}
 
       {alert ? (
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-2.5 text-sm text-amber-900">
