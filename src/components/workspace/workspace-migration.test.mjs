@@ -56,6 +56,11 @@ const MIGRATED = [
     progress: "count",
   },
   {
+    name: "Concept",
+    file: "src/app/(app)/workspace/concept/concept-editor.tsx",
+    progress: "steps",
+  },
+  {
     // The live Financials surface. financials-workspace.tsx still holds a v1
     // header behind the ui_revamp_v2 flag, which defaults to v2 — that
     // fallback migrates with the flag's removal, not before.
@@ -203,4 +208,14 @@ test("Suppliers emphasises adding a vendor, not the AI suggestion", () => {
   assert.match(primary, /Add vendor/);
   assert.doesNotMatch(primary, /Sparkles|with AI/, "the AI action is not the emphasised one");
   assert.match(src, /Suggest vendors with AI/, "moved, not removed");
+});
+
+test("Concept has Ask Scout back, without losing its per-card AI", () => {
+  // Trent's call 2026-08-02. TIM-2897 removed the top-level Scout on the
+  // reasoning that the per-card "Write with AI" buttons are Concept's AI
+  // surface. That reasoning still holds for the CARDS — so both must be
+  // present. Concept was the one workspace out of eleven with no Scout at all.
+  const src = read("src/app/(app)/workspace/concept/concept-editor.tsx");
+  assert.match(src, /<AskScoutButton/, "Concept must offer Scout like every other screen");
+  assert.match(src, /onWriteWithAi=/, "the per-card AI buttons must survive it");
 });
