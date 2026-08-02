@@ -827,7 +827,7 @@ function AiFeedbackPanel({
         {canUse && (
           <Button size="sm" onClick={requestFeedback} disabled={loading} className="shrink-0">
             <Sparkles className="size-3.5 mr-1.5" />
-            {loading ? 'Analyzing…' : finalText ? 'Refresh' : 'Get AI Feedback'}
+            {loading ? 'Analysing…' : finalText ? 'Refresh' : 'Get AI Feedback'}
           </Button>
         )}
       </div>

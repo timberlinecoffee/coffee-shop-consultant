@@ -1592,7 +1592,7 @@ function RoleInterviewQuestionsSection({
       <SectionHeader
         title="Interview Questions"
         helpContent="Template questions and weights for this scorecard."
-        aiActions={canEdit ? [{ kind: "write" as const, label: "Suggest", onClick: () => setAiAssistQuestions(true) }] : []}
+        aiActions={canEdit ? [{ kind: "suggest" as const, label: "Suggest questions with AI", onClick: () => setAiAssistQuestions(true) }] : []}
         className="mb-0"
       />
 
@@ -1990,7 +1990,7 @@ function RoleCompetencyFormsSection({
       <div className="flex items-center justify-between mb-3">
         <SectionHeader
           title="Competency Forms"
-          aiActions={canEdit ? [{ kind: "write" as const, label: "Suggest", onClick: () => setAiAssistForms(true) }] : []}
+          aiActions={canEdit ? [{ kind: "suggest" as const, label: "Suggest forms with AI", onClick: () => setAiAssistForms(true) }] : []}
           className="mb-0"
         />
         {canEdit && (
@@ -3030,7 +3030,7 @@ function RoleCompetencyEvaluationSection({
       <SectionHeader
         title="Competency Evaluation"
         helpContent="Define skills and score staff members against them. Scores are 1–5."
-        aiActions={canEdit ? [{ kind: "write" as const, label: "Suggest", onClick: () => setAiAssistCompetencies(true) }] : []}
+        aiActions={canEdit ? [{ kind: "suggest" as const, label: "Suggest competencies with AI", onClick: () => setAiAssistCompetencies(true) }] : []}
         className="mb-0"
       />
 

@@ -7,7 +7,7 @@
 //
 // TIM-1414:
 //   1. Container bounded to workspace width (was overflowing right of viewport).
-//   2. Persistent "Suggest more vendors" button at the top of every list.
+//   2. Persistent "Suggest more vendors with AI" button at the top of every list.
 //   3. Equipment-parity table: drag-to-reorder column headers + resizable
 //      columns (localStorage-persisted), GripHorizontal/Vertical visual cues.
 //   4. Custom categories — inline "+ Add category" at the bottom of the
@@ -614,8 +614,8 @@ export function SuppliersWorkspace({
                     {seedingCategory === activeCategory
                       ? "Generating..."
                       : activeRows.length > 0
-                        ? "Suggest more"
-                        : "Suggest vendors"}
+                        ? "Suggest more vendors with AI"
+                        : "Suggest vendors with AI"}
                   </WorkspaceActionButton>
                   <WorkspaceActionButton
                     onClick={() => handleAddRow(activeCategory)}
@@ -808,8 +808,8 @@ export function SuppliersWorkspace({
                         {seedingCategory === activeCategory
                           ? "Generating..."
                           : activeRows.length > 0
-                            ? "Suggest more"
-                            : "Suggest vendors"}
+                            ? "Suggest more vendors with AI"
+                            : "Suggest vendors with AI"}
                       </WorkspaceActionButton>
                       <WorkspaceActionButton
                         onClick={() => handleAddRow(activeCategory)}

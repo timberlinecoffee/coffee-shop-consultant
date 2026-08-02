@@ -4,10 +4,32 @@
 // TIM-3950 canon extension (board directive TIM-3949): the right-side action
 // slot on Business Plan sections now supports three kinds — {analyse, write,
 // regenerate} — in that visual order when multiple are present. 'regenerate'
-// is scoped to Business Plan sections today. Do NOT add a fourth kind without
-// a new board directive.
+// is scoped to Business Plan sections today.
+//
+// D-001 canon extension (board ruling, 2026-07-26). THIS IS THE DIRECTIVE the
+// TIM-3950 note above required before a fourth kind could be added. 'suggest'
+// becomes a real kind and leads the visual order:
+//
+//     [Suggest] [Analyse] [Write] [Regenerate]
+//
+// Before D-001, three call sites faked it with `{kind:'write', label:'Suggest'}`
+// (hiring-workspace-v3.tsx :1595, :1993, :3033) — a write button wearing a
+// suggest label, invisible to this assertion and to the conformance test.
+// Those now use the real kind. Do NOT add a fifth kind without a new ruling.
 
-export type AiActionKind = 'analyse' | 'write' | 'regenerate'
+export type AiActionKind = 'suggest' | 'analyse' | 'write' | 'regenerate'
+
+/**
+ * Canonical left-to-right order. Index in this array IS the rank; the assertion
+ * below is derived from it, so adding a kind to the type and to this array is
+ * all that a future ruling needs to touch.
+ */
+export const AI_ACTION_ORDER: readonly AiActionKind[] = [
+  'suggest',
+  'analyse',
+  'write',
+  'regenerate',
+] as const
 
 export interface AiAction {
   kind: AiActionKind
@@ -19,31 +41,31 @@ export interface AiAction {
 
 /**
  * Assert the canonical action order when multiple are present:
- * analyse → write → regenerate. Fires in every non-production environment so
- * tests catch ordering bugs without requiring a dev server.
+ * suggest → analyse → write → regenerate. Fires in every non-production
+ * environment so tests catch ordering bugs without requiring a dev server.
+ *
+ * D-001 asked for this to be EXTENDED, not reversed — the pre-existing
+ * analyse → write → regenerate rankings are unchanged; 'suggest' is prepended.
+ * Derived from AI_ACTION_ORDER so the six pairwise rules (four kinds) stay in
+ * sync with the canon automatically instead of by hand.
  */
 export function assertAiActionsOrder(actions: AiAction[]): void {
   if (process.env.NODE_ENV === 'production') return
-  const analyseIdx = actions.findIndex((a) => a.kind === 'analyse')
-  const writeIdx = actions.findIndex((a) => a.kind === 'write')
-  const regenerateIdx = actions.findIndex((a) => a.kind === 'regenerate')
-  if (analyseIdx !== -1 && writeIdx !== -1 && analyseIdx > writeIdx) {
-    throw new Error(
-      '[SectionHeader] aiActions order violation: when analyse and write ' +
-        'are both present, analyse must come first.',
-    )
-  }
-  if (writeIdx !== -1 && regenerateIdx !== -1 && writeIdx > regenerateIdx) {
-    throw new Error(
-      '[SectionHeader] aiActions order violation: when write and regenerate ' +
-        'are both present, write must come first.',
-    )
-  }
-  if (analyseIdx !== -1 && regenerateIdx !== -1 && analyseIdx > regenerateIdx) {
-    throw new Error(
-      '[SectionHeader] aiActions order violation: when analyse and regenerate ' +
-        'are both present, analyse must come first.',
-    )
+  const firstIdx = (kind: AiActionKind) => actions.findIndex((a) => a.kind === kind)
+
+  for (let earlier = 0; earlier < AI_ACTION_ORDER.length; earlier++) {
+    for (let later = earlier + 1; later < AI_ACTION_ORDER.length; later++) {
+      const earlierKind = AI_ACTION_ORDER[earlier]
+      const laterKind = AI_ACTION_ORDER[later]
+      const earlierAt = firstIdx(earlierKind)
+      const laterAt = firstIdx(laterKind)
+      if (earlierAt !== -1 && laterAt !== -1 && earlierAt > laterAt) {
+        throw new Error(
+          `[SectionHeader] aiActions order violation: when ${earlierKind} and ` +
+            `${laterKind} are both present, ${earlierKind} must come first.`,
+        )
+      }
+    }
   }
 }
 

@@ -142,7 +142,7 @@ export function AreaAnalysisPanel({
           </div>
           <Button size="sm" onClick={run} disabled={loading} className="shrink-0">
             <Sparkles className="mr-1.5 size-3.5" />
-            {loading ? 'Analyzing…' : text ? 'Refresh' : 'Analyze The Area'}
+            {loading ? 'Analysing…' : text ? 'Refresh' : 'Analyse The Area'}
           </Button>
         </div>
 

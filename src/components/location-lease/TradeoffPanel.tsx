@@ -460,7 +460,7 @@ export function TradeoffPanel({
               {canUseAI ? (
                 <Button size="sm" onClick={runTradeoff} disabled={tradeoffLoading} className="shrink-0">
                   <Sparkles className="size-3.5 mr-1.5" />
-                  {tradeoffLoading ? 'Analyzing…' : tradeoff ? 'Refresh' : 'Generate Trade-Off'}
+                  {tradeoffLoading ? 'Analysing…' : tradeoff ? 'Refresh' : 'Generate Trade-Off'}
                 </Button>
               ) : (
                 <div className="text-right text-xs text-[var(--neutral-cool-600)]">
