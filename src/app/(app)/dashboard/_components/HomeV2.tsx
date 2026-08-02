@@ -14,6 +14,13 @@ import type {
   ConflictCheckState,
 } from "@/lib/dashboard/plan-overview";
 import type { FinancialSnapshot } from "@/lib/dashboard/financial-snapshot";
+// TIM-4102 (T1-C): plain-language copy for a figure that could not be worked
+// out. Lives beside the derivers so the reason and its wording stay together.
+import {
+  BREAK_EVEN_BLOCKED_COPY,
+  RUNWAY_BLOCKED_COPY,
+  REVENUE_BLOCKED_COPY,
+} from "@/lib/dashboard/metric-status";
 import { formatCurrencyAmount } from "@/lib/currency";
 
 // ── Progress Ring ─────────────────────────────────────────────────────────────
@@ -200,19 +207,33 @@ interface SnapshotMetricProps {
   label: string;
   value: string;
   sub?: string;
+  // TIM-4102 (T1-C): when the figure could not be calculated, we render the
+  // reason in place of the number. Previously these metrics fell back to 0 and
+  // the 0 was drawn as an em dash — an absence with no cause, which owners
+  // read as broken software rather than as a missing input of their own.
+  // A metric is now either a number or a sentence naming the next action.
+  blockedMessage?: string;
 }
 
-function SnapshotMetric({ label, value, sub }: SnapshotMetricProps) {
+function SnapshotMetric({ label, value, sub, blockedMessage }: SnapshotMetricProps) {
   return (
     <div className="flex flex-col gap-0.5">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
         {label}
       </p>
-      <p className="text-xl font-bold text-[var(--foreground)] tabular-nums leading-tight">
-        {value}
-      </p>
-      {sub && (
-        <p className="text-[11px] text-[var(--muted-foreground)]">{sub}</p>
+      {blockedMessage ? (
+        <p className="text-[13px] text-[var(--muted-foreground)] leading-snug mt-0.5">
+          {blockedMessage}
+        </p>
+      ) : (
+        <>
+          <p className="text-xl font-bold text-[var(--foreground)] tabular-nums leading-tight">
+            {value}
+          </p>
+          {sub && (
+            <p className="text-[11px] text-[var(--muted-foreground)]">{sub}</p>
+          )}
+        </>
       )}
     </div>
   );
@@ -242,10 +263,24 @@ function FinancialSnapshotCard({ snapshot }: { snapshot: FinancialSnapshot | nul
   const fmt = (cents: number) =>
     formatCurrencyAmount(Math.round(cents / 100), cc);
 
-  const runwayLabel =
-    snapshot.runwayMonths > 0
-      ? `${snapshot.runwayMonths.toFixed(1)} mo`
-      : "—";
+  // TIM-4102 (T1-C): the loader now hands us the reason a figure is missing,
+  // so nothing here has to infer intent from a zero. Break-even and daily
+  // customers share one reason — they come from the same model, and telling
+  // the owner two different things about one missing input would be worse
+  // than the dash was.
+  const revenueBlocked = snapshot.revenueBlockedReason
+    ? REVENUE_BLOCKED_COPY[snapshot.revenueBlockedReason]
+    : undefined;
+  const breakEvenBlocked = snapshot.breakEvenBlockedReason
+    ? BREAK_EVEN_BLOCKED_COPY[snapshot.breakEvenBlockedReason]
+    : undefined;
+  const runwayBlocked = snapshot.runwayBlockedReason
+    ? RUNWAY_BLOCKED_COPY[snapshot.runwayBlockedReason]
+    : undefined;
+
+  const computeFailed =
+    snapshot.breakEvenBlockedReason === "compute_failed" &&
+    snapshot.revenueBlockedReason === "compute_failed";
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
@@ -263,35 +298,38 @@ function FinancialSnapshotCard({ snapshot }: { snapshot: FinancialSnapshot | nul
           Edit
         </Link>
       </div>
+      {/* Our failure, not the owner's — say so once, up front, rather than
+          repeating the same apology in all four tiles. */}
+      {computeFailed && (
+        <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs text-amber-900">
+          We couldn&apos;t work out your numbers just now. Opening Financials and
+          saving again usually clears it.
+        </p>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
         <SnapshotMetric
           label="Monthly Revenue"
           value={fmt(snapshot.monthlyRevenueCents)}
           sub="projected month 1"
+          blockedMessage={revenueBlocked}
         />
         <SnapshotMetric
           label="Break-Even"
-          value={
-            snapshot.breakEvenRevenueCents > 0 &&
-            isFinite(snapshot.breakEvenRevenueCents)
-              ? fmt(snapshot.breakEvenRevenueCents)
-              : "—"
-          }
+          value={fmt(snapshot.breakEvenRevenueCents)}
           sub="revenue to cover costs"
+          blockedMessage={breakEvenBlocked}
         />
         <SnapshotMetric
           label="Daily Customers"
-          value={
-            snapshot.dailyCustomersNeeded > 0
-              ? snapshot.dailyCustomersNeeded.toString()
-              : "—"
-          }
+          value={snapshot.dailyCustomersNeeded.toString()}
           sub="needed to break even"
+          blockedMessage={breakEvenBlocked}
         />
         <SnapshotMetric
           label="Runway to Open"
-          value={runwayLabel}
+          value={`${snapshot.runwayMonths.toFixed(1)} mo`}
           sub="months of operating cover"
+          blockedMessage={runwayBlocked}
         />
       </div>
     </div>

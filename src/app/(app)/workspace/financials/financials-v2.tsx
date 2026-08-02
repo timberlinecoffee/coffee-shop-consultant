@@ -51,11 +51,19 @@ import {
   defaultStartupCosts,
   computeDayHours,
   computeWeeklyHours,
+  computeBreakEvenModel,
   formatCurrency,
   BASE_REVENUE_LINE_ID,
   manualOverrideCountsByLine,
   fiscalYearMonthLabels,
 } from "@/lib/financial-projection";
+// TIM-4102 (T1-C): the same break-even reasoning Home uses, so the workspace
+// cannot claim its inputs are complete while its outputs will not compute.
+import {
+  deriveBreakEvenStatus,
+  BREAK_EVEN_BLOCKED_WORKSPACE_COPY,
+  type BreakEvenBlockedReason,
+} from "@/lib/dashboard/metric-status";
 import type { CritiqueResult } from "@/lib/financials";
 import type { MinWageInfo } from "@/lib/wages/minimum-wage";
 import type { OpeningRunwayResult } from "@/lib/business-plan/opening-runway";
@@ -290,7 +298,17 @@ function AccordionSection({
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-function InputsProgressBar({ statuses }: { statuses: SectionStatus[] }) {
+function InputsProgressBar({
+  statuses,
+  blockedReason,
+}: {
+  statuses: SectionStatus[];
+  // TIM-4102 (T1-C): why break-even will not resolve, if it will not. The
+  // count above is already corrected for this; this line explains the gap so
+  // the owner is not left wondering why a section they filled in went back to
+  // in-progress.
+  blockedReason?: BreakEvenBlockedReason | null;
+}) {
   const complete = statuses.filter((s) => s === "complete").length;
   const pct = Math.round((complete / statuses.length) * 100);
   return (
@@ -313,6 +331,12 @@ function InputsProgressBar({ statuses }: { statuses: SectionStatus[] }) {
           aria-valuemax={100}
         />
       </div>
+      {blockedReason && (
+        <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+          Your break-even point can&apos;t be worked out yet because{" "}
+          {BREAK_EVEN_BLOCKED_WORKSPACE_COPY[blockedReason]}.
+        </p>
+      )}
     </div>
   );
 }
@@ -1492,9 +1516,45 @@ export function FinancialsV2({
   const overrideCounts = manualOverrideCountsByLine(mp.manual_overrides);
 
   // Section statuses for progress bar
-  const s1 = getDailyTrafficStatus(mp);
-  const s2 = getRevenueStreamsStatus(mp);
-  const s3 = getCostsOverheadStatus(mp);
+  //
+  // TIM-4102 (T1-C): a section is complete when it PRODUCES ITS OUTPUTS, not
+  // when its fields happen to be non-empty. Before this, Financials could
+  // report "4 of 4 sections complete" while its own Break-Even tab showed
+  // nothing computable — the screen congratulating the owner and the screen
+  // failing them were the same screen. We run the same break-even calculation
+  // the Break-Even tab runs, and when it cannot resolve we demote whichever
+  // section owns the missing input back to in-progress.
+  //
+  // Deliberately the exact arguments BreakEvenTab ends up with: `slices`,
+  // `mp.forecast_lines` (what this component passes down as forecastLines) and
+  // `financialInputs.avg_ticket_cents`. If this gate and that tab ever
+  // disagreed we would be back to two screens telling the owner different
+  // things, which is the whole class of bug Tier 1 exists to remove.
+  const breakEvenStatus = deriveBreakEvenStatus({
+    model: computeBreakEvenModel(
+      slices[0],
+      mp.forecast_lines ?? [],
+      financialInputs.avg_ticket_cents
+    ),
+    avgTicketCents: financialInputs.avg_ticket_cents,
+    netRevenueCents: slices[0]?.net_revenue_cents ?? 0,
+  });
+  const blockedReason = breakEvenStatus.ok ? null : breakEvenStatus.reason;
+
+  const demote = (
+    status: SectionStatus,
+    owns: boolean
+  ): SectionStatus => (owns && status === "complete" ? "in_progress" : status);
+
+  // Map each blocking reason to the section that actually owns the fix, so
+  // the demotion points at the right accordion rather than marking everything
+  // incomplete. "compute_failed" is our bug, so no section is demoted for it.
+  const s1 = demote(getDailyTrafficStatus(mp), blockedReason === "no_revenue");
+  const s2 = demote(
+    getRevenueStreamsStatus(mp),
+    blockedReason === "no_avg_ticket" || blockedReason === "no_contribution_margin"
+  );
+  const s3 = demote(getCostsOverheadStatus(mp), blockedReason === "no_fixed_costs");
   const s4 = getGrowthRampStatus(mp);
   const statuses: SectionStatus[] = [s1, s2, s3, s4];
 
@@ -1583,7 +1643,7 @@ export function FinancialsV2({
         {/* ── Inputs tab ────────────────────────────────────────────────────── */}
         {activeTab === "inputs" && (
           <div>
-            <InputsProgressBar statuses={statuses} />
+            <InputsProgressBar statuses={statuses} blockedReason={blockedReason} />
             <div className="space-y-3">
               <AccordionSection id="v2-section-daily-traffic" title="Daily Traffic & Schedule" status={s1} defaultOpen>
                 <DailyTrafficContent mp={mp} canEdit={canEdit} onUpdate={onMpUpdate} />
