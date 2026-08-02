@@ -14,7 +14,7 @@
   --ai-grad-duration: 4s;
   --ai-grad-easing:   ease-in-out;
 
-  --teal: #155e63;
+  --teal: #235596;
   --sage: #76b39d;
   --off-white: #faf9f7;
   --light-grey: #efefef;
@@ -64,17 +64,17 @@
   --surface-warm-300: #f4f9f8;
 
   /* Teal scale (dark hover states, deep backgrounds) */
-  --teal-dark:    #0e4448;
-  --teal-darker:  #0f4a4e;
-  --teal-deep:    #124e52;
-  --teal-deeper:  #2a4a4c;
-  --teal-tint:    #cfe0e1;
-  --teal-tint-50: #f7fafa;
+  --teal-dark:    #193d6d;
+  --teal-darker:  #1c4376;
+  --teal-deep:    #1d477d;
+  --teal-deeper:  #34465e;
+  --teal-tint:    #d7dde6;
+  --teal-tint-50: #f8f9fb;
   --teal-tint-100: #f0f9f9;
-  --teal-tint-200: #e8f4f5;
-  --teal-tint-300: #d5eae8;
-  --teal-tint-400: #e5eef0;
-  --teal-tint-500: #f4f9f8;
+  --teal-tint-200: #eef2f8;
+  --teal-tint-300: #e0e6ef;
+  --teal-tint-400: #e9edf2;
+  --teal-tint-500: #f6f8fa;
 
   /* Status colors */
   --error:       #a13d3d;
@@ -90,43 +90,43 @@
 
   /* Extended color tokens — mapped from workspace component hex values */
   /* Teal family (dark hover / deep backgrounds) */
-  --teal-900: #0d4044;
-  --teal-850: #0e4a4e;
-  --teal-820: #0e4a4f;
-  --teal-800: #0f4548;
-  --teal-700: #114b50;
-  --teal-750: #3d7c84;
-  --teal-medium: #3a8a8f;
-  --teal-accent: #8ab4b7;
-  --teal-accent-2: #9fb4b4;
-  --teal-bg-50: #f0fafa;
+  --teal-900: #183a66;
+  --teal-850: #1c4376;
+  --teal-820: #1c4376;
+  --teal-800: #1a3e6e;
+  --teal-700: #1c4478;
+  --teal-750: #4e75a8;
+  --teal-medium: #5581ba;
+  --teal-accent: #9eaec3;
+  --teal-accent-2: #a8b1bb;
+  --teal-bg-50: #f5f8fc;
   --teal-bg-100: #f3f8f8;
   --teal-bg-200: #f3faf9;
   --teal-bg-300: #eef6f6;
-  --teal-bg-350: #eef6f5;
-  --teal-bg-400: #e4eded;
-  --teal-bg-450: #e4f1f1;
-  --teal-bg-500: #e0eeee;
-  --teal-bg-550: #e0eded;
-  --teal-bg-600: #e0f0f0;
-  --teal-bg-650: #d8e8e8;
-  --teal-bg-700: #d8eeef;
-  --teal-bg-750: #d4e8e9;
-  --teal-bg-800: #d4edea;
-  --teal-bg-850: #d4f0e8;
-  --teal-bg-900: #cce3e5;
-  --teal-bg-950: #b9dada;
-  --teal-bg-light: #b0c8c8;
-  --teal-bg-lighter: #c5dfe0;
-  --teal-bg-lightest: #bfe0d8;
-  --teal-bg-soft: #c8d6d6;
-  --teal-bg-subtle: #eaf4f4;
-  --teal-bg-faint: #f9fcfc;
-  --teal-bg-muted: #f5fbfb;
-  --teal-bg-pale: #f0f7f7;
-  --teal-bg-palest: #e6f4f4;
-  --teal-bg-ultra: #e8f0f0;
-  --teal-bg-deep: #eef0ef;
+  --teal-bg-350: #f2f5f8;
+  --teal-bg-400: #e8ecf0;
+  --teal-bg-450: #ebeff4;
+  --teal-bg-500: #e7ecf2;
+  --teal-bg-550: #e6ebf1;
+  --teal-bg-600: #e8edf4;
+  --teal-bg-650: #e0e5ed;
+  --teal-bg-700: #e3eaf4;
+  --teal-bg-750: #dee5ee;
+  --teal-bg-800: #e1e9f2;
+  --teal-bg-850: #e3ebf5;
+  --teal-bg-900: #d7dfeb;
+  --teal-bg-950: #cad5e3;
+  --teal-bg-light: #bbc4d0;
+  --teal-bg-lighter: #d2dbe7;
+  --teal-bg-lightest: #cfdae8;
+  --teal-bg-soft: #ced4db;
+  --teal-bg-subtle: #eff2f7;
+  --teal-bg-faint: #fbfbfd;
+  --teal-bg-muted: #f8fafc;
+  --teal-bg-pale: #f3f6f9;
+  --teal-bg-palest: #edf2f7;
+  --teal-bg-ultra: #eceff2;
+  --teal-bg-deep: #eff0f1;
 
   /* Sage family */
   --sage-tint: #8DB79D;
@@ -312,8 +312,8 @@
   --warm-surface-3: #f9fcfc;
 
   /* Misc additional tokens */
-  --teal-darkest: #0c3a3d;
-  --teal-bright: #1a7880;
+  --teal-darkest: #16345d;
+  --teal-bright: #2d6dc0;
   --forest-dark: #0F1B11;
   --gray-mid: #5a5a5a;
   --sage-medium: #5d8c7e;
@@ -329,11 +329,11 @@
   --warm-gray-f2: #F2F2EE;
   --neutral-cool-f5: #F5F6F5;
   --neutral-near-white: #FBFBFA;
-  --teal-tint-cfe: #cfe3e3;
-  --teal-bg-d0: #d0e4e5;
-  --teal-bg-e8f: #e8f4f4;
+  --teal-tint-cfe: #d9e0e9;
+  --teal-bg-d0: #dae1ea;
+  --teal-bg-e8f: #eef2f7;
   --amber-bg-f0d: #f0dcb0;
-  --teal-bg-f0f8: #f0f8f8;
+  --teal-bg-f0f8: #f4f7fa;
   --warm-near-white: #f8f9f8;
 }
 
@@ -364,10 +364,10 @@
 
   /* Selected-state on left-rail nav (Settings shell). Tint stays teal-family
      but flips to a dark surface so the pill reads against the dark bg. */
-  --teal-bg-100: #16413f;
-  --teal-bg-200: #14383a;
-  --teal-bg-300: #163e40;
-  --teal-tint-100: #14383a;
+  --teal-bg-100: #203b5f;
+  --teal-bg-200: #1c3452;
+  --teal-bg-300: #1f395b;
+  --teal-tint-100: #1c3452;
 
   /* Graduated surface tokens driving Button secondary/outline hover feedback:
      surface-warm-100 (base) → surface-warm-200 (hover) must be visibly
