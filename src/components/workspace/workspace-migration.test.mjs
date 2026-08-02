@@ -61,6 +61,12 @@ const MIGRATED = [
     progress: "steps",
   },
   {
+    // The other list-shaped page in the Equipment & Supplies suite.
+    name: "Supplies",
+    file: "src/app/(app)/workspace/buildout-equipment/supplies/supplies-workspace.tsx",
+    progress: "count",
+  },
+  {
     // The live Financials surface. financials-workspace.tsx still holds a v1
     // header behind the ui_revamp_v2 flag, which defaults to v2 — that
     // fallback migrates with the flag's removal, not before.
@@ -218,4 +224,35 @@ test("Concept has Ask Scout back, without losing its per-card AI", () => {
   const src = read("src/app/(app)/workspace/concept/concept-editor.tsx");
   assert.match(src, /<AskScoutButton/, "Concept must offer Scout like every other screen");
   assert.match(src, /onWriteWithAi=/, "the per-card AI buttons must survive it");
+});
+
+test("Supplies reports the write, not the keystroke", () => {
+  // Trent's call 2026-08-02 added a save indicator to the one page without
+  // one. The rows here save themselves, and `onItemsChange` fires
+  // optimistically the moment the owner types — hanging "Saved" off that would
+  // be the exact class of lie the save-honesty work removed. The events must
+  // come from around the request.
+  const table = read("src/components/equipment/SuppliesDesktopTable.tsx");
+  assert.match(table, /onSaveActivity\?\.\("saving"\)/);
+  assert.match(table, /onSaveActivity\?\.\("saved"\)/);
+  assert.match(table, /onSaveActivity\?\.\("failed"\)/);
+
+  const page = read(
+    "src/app/(app)/workspace/buildout-equipment/supplies/supplies-workspace.tsx"
+  );
+  assert.match(page, /case "failed":/, "a failed write must reach the indicator");
+  assert.doesNotMatch(
+    page,
+    /onItemsChange=\{[^}]*confirmSaved/,
+    "the indicator must not be driven by the optimistic change callback"
+  );
+});
+
+test("Supplies' Save button means now, not in 700ms", () => {
+  const table = read("src/components/equipment/SuppliesDesktopTable.tsx");
+  assert.match(table, /flushRef\.current = \(\) => \{/);
+  const page = read(
+    "src/app/(app)/workspace/buildout-equipment/supplies/supplies-workspace.tsx"
+  );
+  assert.match(page, /onSave=\{\(\) => flushRef\.current\?\.\(\)\}/);
 });
