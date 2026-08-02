@@ -1,5 +1,9 @@
 "use client";
 
+// TIM-4109: fully rounded. Trent's ruling 2026-08-02, picked from three shapes
+// rendered at real size rather than described. One line here changes every
+// header action on every workspace — which is the whole return on Phase 3.
+//
 // TIM-1793 (board scope addition): canonical workspace-chrome action button.
 // Single source of truth for the size / typography / appearance of every
 // workspace header action (Save, Export, Settings, Guided setup, Manage
@@ -7,7 +11,7 @@
 // platform canon, so the tokens below are locked and must NOT be overridden
 // per workspace — import this component instead of hand-rolling the classes.
 //
-//   size/typography: text-xs font-semibold gap-1.5 px-3 py-1.5 rounded-lg
+//   size/typography: text-xs font-semibold gap-1.5 px-3 py-1.5 rounded-full
 //   secondary (default): teal outline, hover teal/5
 //   primary: solid teal, hover --teal-deep
 //   icons: render at size={12} to match the canon.
@@ -20,7 +24,7 @@ export type WorkspaceActionButtonVariant = "primary" | "secondary";
 export const WORKSPACE_ACTION_ICON_SIZE = 12;
 
 const BASE =
-  "flex items-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50";
+  "flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1.5 transition-colors disabled:opacity-50";
 
 const VARIANT_CLASS: Record<WorkspaceActionButtonVariant, string> = {
   primary: "text-white bg-[var(--teal)] hover:bg-[var(--teal-deep)]",

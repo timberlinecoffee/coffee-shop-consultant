@@ -1,6 +1,15 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
+// TIM-4109: buttons are fully rounded. Trent's ruling 2026-08-02, chosen from
+// three shapes rendered side by side at real size rather than named — the
+// lesson from the teal/blue exchange (D-009) is that shape and colour words
+// mean different things to different people, so we look instead of arguing.
+//
+// The radius lives HERE and in WorkspaceActionButton, and nowhere else. The
+// point of the Phase 3 work was that there is one place to make a change like
+// this; per-screen overrides would give that back.
+
 type Variant = "default" | "outline" | "ghost" | "destructive" | "link" | "secondary"
 type Size = "default" | "xs" | "sm" | "lg" | "icon" | "icon-xs" | "icon-sm" | "icon-lg"
 
@@ -15,7 +24,7 @@ const variantClasses: Record<Variant, string> = {
 
 const sizeClasses: Record<Size, string> = {
   default: "h-8 px-3 text-sm gap-1.5",
-  xs: "h-6 px-2 text-xs rounded-xl gap-1",
+  xs: "h-6 px-2 text-xs gap-1",
   sm: "h-7 px-2.5 text-xs gap-1",
   lg: "h-9 px-4 text-sm gap-2",
   icon: "h-8 w-8 p-0",
@@ -38,7 +47,7 @@ function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center rounded-xl border font-medium transition-colors",
+        "inline-flex items-center justify-center rounded-full border font-medium transition-colors",
         "disabled:opacity-50 disabled:pointer-events-none",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]/50",
         variantClasses[variant],
