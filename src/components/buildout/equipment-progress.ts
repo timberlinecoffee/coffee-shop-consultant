@@ -39,3 +39,24 @@ export function equipmentProgress(counts: EquipmentCounts): WorkspaceProgress {
     text: `${items} ${itemNoun} · ${stations} ${stationNoun}`,
   };
 }
+
+// TIM-4108: the Supplies page, same shape with its own nouns.
+//
+// Deliberately "categories", not "sections". T1-D settled that "sections" means
+// parts of a generated document; borrowing it for a group of cups and lids is
+// the ambiguity that change removed.
+export function suppliesProgress(counts: {
+  items: number;
+  categories: number;
+}): WorkspaceProgress {
+  const items = Math.max(0, Math.floor(counts.items));
+  if (items === 0) return { kind: "count", text: "Nothing on the list yet" };
+
+  const itemNoun = items === 1 ? "item" : "items";
+  const head = `${items} ${itemNoun}`;
+  const categories = Math.max(0, Math.floor(counts.categories));
+  if (categories === 0) return { kind: "count", text: head };
+
+  const catNoun = categories === 1 ? "category" : "categories";
+  return { kind: "count", text: `${head} · ${categories} ${catNoun}` };
+}
