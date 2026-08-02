@@ -20,6 +20,8 @@ import {
   BREAK_EVEN_BLOCKED_COPY,
   RUNWAY_BLOCKED_COPY,
   REVENUE_BLOCKED_COPY,
+  showsRevenueRamp,
+  rampExplanation,
 } from "@/lib/dashboard/metric-status";
 import { formatCurrencyAmount } from "@/lib/currency";
 
@@ -282,6 +284,18 @@ function FinancialSnapshotCard({ snapshot }: { snapshot: FinancialSnapshot | nul
     snapshot.breakEvenBlockedReason === "compute_failed" &&
     snapshot.revenueBlockedReason === "compute_failed";
 
+  // TIM-4103 (T1-B): Home was showing month 1 of the ramp and Financials was
+  // showing mature trade, roughly three times apart, with nothing on either
+  // screen saying they measured different moments. Show both, named. Suppress
+  // entirely when there is no ramp (or the gap is too small to be worth a
+  // distinction) so a simple plan still reads as one clean figure.
+  const ramp = {
+    firstMonthCents: snapshot.monthlyRevenueCents,
+    matureCents: snapshot.matureMonthlyRevenueCents,
+    rampMonths: snapshot.rampMonths,
+  };
+  const showRamp = !revenueBlocked && showsRevenueRamp(ramp);
+
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
       <div className="flex items-center justify-between gap-2 mb-5">
@@ -310,7 +324,11 @@ function FinancialSnapshotCard({ snapshot }: { snapshot: FinancialSnapshot | nul
         <SnapshotMetric
           label="Monthly Revenue"
           value={fmt(snapshot.monthlyRevenueCents)}
-          sub="projected month 1"
+          sub={
+            showRamp
+              ? `first month · ${fmt(snapshot.matureMonthlyRevenueCents)} once you're up to speed`
+              : "projected month 1"
+          }
           blockedMessage={revenueBlocked}
         />
         <SnapshotMetric
@@ -332,6 +350,21 @@ function FinancialSnapshotCard({ snapshot }: { snapshot: FinancialSnapshot | nul
           blockedMessage={runwayBlocked}
         />
       </div>
+      {/* TIM-4103 (T1-B): the teaching line. The gap between these two figures
+          is the single most confusing thing in the product and also the most
+          useful thing to explain — a new shop does not open at full trade, and
+          the ramp is a deliberate assumption the owner can change. */}
+      {showRamp && (
+        <p className="mt-4 pt-4 border-t border-[var(--border)] text-xs text-[var(--muted-foreground)] leading-relaxed">
+          {rampExplanation(snapshot.rampMonths)}{" "}
+          <Link
+            href="/workspace/financials"
+            className="font-semibold text-[var(--teal)] hover:underline"
+          >
+            Adjust your ramp
+          </Link>
+        </p>
+      )}
     </div>
   );
 }
