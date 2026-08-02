@@ -35,6 +35,7 @@ import {
   scrollToStep,
 } from "@/components/workspace/WorkspaceNextStepButton";
 import { nextStep, stepsProgress } from "@/components/workspace/next-step";
+import { teachingLine } from "@/components/workspace/teaching";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
 import { InlineAnalysisCard, type AnalyseResponse } from "@/components/ai-analyse/InlineAnalysisCard";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
@@ -535,6 +536,7 @@ export function MarketingWorkspace({
               />
             }
             progress={stepsProgress(steps)}
+            teach={teachingLine("marketing", next?.id)}
           />
 
           {/* TIM-2777: accordion layout — replaces max-w-3xl tab-based pattern */}

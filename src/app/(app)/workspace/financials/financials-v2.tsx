@@ -23,6 +23,7 @@ import {
   scrollToStep,
 } from "@/components/workspace/WorkspaceNextStepButton";
 import { nextStep, stepsProgress } from "@/components/workspace/next-step";
+import { teachingLine } from "@/components/workspace/teaching";
 import { PLTab } from "./tabs/pl-tab";
 import { BalanceSheetTab } from "./tabs/balance-sheet-tab";
 import { CashFlowTab } from "./tabs/cash-flow-tab";
@@ -1698,6 +1699,7 @@ export function FinancialsV2({
             />
           }
           progress={stepsProgress(steps)}
+          teach={teachingLine("financials", next?.id)}
           alert={alertBand}
         />
 
