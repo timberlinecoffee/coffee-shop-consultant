@@ -27,6 +27,12 @@ import {
 
 export interface FinancialSnapshot {
   monthlyRevenueCents: number;
+  // TIM-4103 (T1-B): revenue once the ramp finishes — the same figure the
+  // Financials workspace implies with its daily sales line. Home showed only
+  // month 1, Financials only the mature number, and nothing said they were
+  // measuring different moments. Both come from the same projection rows.
+  matureMonthlyRevenueCents: number;
+  rampMonths: number;
   breakEvenRevenueCents: number;
   dailyCustomersNeeded: number;
   runwayMonths: number;
@@ -86,6 +92,18 @@ export async function loadFinancialSnapshot(
       return failedSnapshot(currencyCode);
     }
 
+    // TIM-4103 (T1-B): the first month AFTER the ramp. monthRevenueFactor
+    // returns exactly 1.0 there (k = 1 in both simple and custom growth
+    // modes), so it is full trade before any growth is compounded on top —
+    // which is precisely what the Financials daily sales figure describes.
+    // Read straight out of the rows we already have; no second calculation,
+    // so the two figures cannot drift apart.
+    const rampMonths = Math.max(
+      0,
+      Math.min(rows.length - 1, mp.ramp_months ?? 0)
+    );
+    const matureRow = rows[rampMonths] ?? m1;
+
     const avgTicketCents = mp.avg_ticket_cents ?? 750;
     const breakEven = computeBreakEvenModel(
       m1 as unknown as MonthlySlice,
@@ -123,6 +141,8 @@ export async function loadFinancialSnapshot(
 
     return {
       monthlyRevenueCents: m1.revenue_cents,
+      matureMonthlyRevenueCents: matureRow.revenue_cents,
+      rampMonths,
       breakEvenRevenueCents: breakEven?.breakEvenRevenueCents ?? 0,
       dailyCustomersNeeded:
         breakEven && isFinite(breakEven.breakEvenTransactions)
@@ -149,6 +169,8 @@ export async function loadFinancialSnapshot(
 function failedSnapshot(currencyCode: string): FinancialSnapshot {
   return {
     monthlyRevenueCents: 0,
+    matureMonthlyRevenueCents: 0,
+    rampMonths: 0,
     breakEvenRevenueCents: 0,
     dailyCustomersNeeded: 0,
     runwayMonths: 0,
