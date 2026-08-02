@@ -85,6 +85,14 @@ const MIGRATED = [
     progress: "sections",
   },
   {
+    name: "Menu & Pricing",
+    file: "src/app/(app)/workspace/menu-pricing/menu-workspace.tsx",
+    progress: "count",
+    // Prints something DIFFERENT from the page you are looking at, so Phase 1's
+    // rule lets it keep its own descriptive name.
+    ownPrintName: "Print recipe cards",
+  },
+  {
     // The live Financials surface. financials-workspace.tsx still holds a v1
     // header behind the ui_revamp_v2 flag, which defaults to v2 — that
     // fallback migrates with the flag's removal, not before.
@@ -137,6 +145,7 @@ for (const ws of MIGRATED) {
     // "Print view" was this screen's private name for the shared action.
     const src = code(ws.file);
     for (const wording of ["Print view", "Print all", "Print recipe cards"]) {
+      if (wording === ws.ownPrintName) continue;
       assert.ok(
         !src.includes(wording),
         `${ws.name} must say "Print document" like every other screen, not "${wording}"`
@@ -330,4 +339,52 @@ test("Expand all is a menu row, not a bare link in the action cluster", () => {
   const src = read("src/app/(app)/workspace/business-plan/business-plan-workspace.tsx");
   assert.match(src, /label=\{allExpanded \? "Collapse all sections" : "Expand all sections"\}/);
   assert.doesNotMatch(src, /underline underline-offset-2 cursor-pointer/);
+});
+
+test("Menu & Pricing no longer emphasises the AI action", () => {
+  // The last of the three screens Trent named when he ruled D-010.
+  const src = read("src/app/(app)/workspace/menu-pricing/menu-workspace.tsx");
+  assert.doesNotMatch(
+    src,
+    /primaryAction=/,
+    "items are added inside a category, so there is no honest header-level add"
+  );
+  assert.match(src, /label="Suggest menu items with AI"/, "moved, not removed");
+});
+
+test("none of the three AI buttons Trent named is emphasised any more", () => {
+  // The whole point of D-010, checked in one place so it cannot rot screen by
+  // screen. Each label must survive somewhere — moved, never removed — and none
+  // may sit in an emphasised slot. Financials is the documented exception
+  // (D-015): its wizard holds the slot only while the forecast is blank.
+  const screens = [
+    ["src/app/(app)/workspace/menu-pricing/menu-workspace.tsx", "Suggest menu items with AI"],
+    ["src/app/(app)/workspace/buildout-equipment/buildout-workspace.tsx", "Write with AI"],
+    ["src/app/(app)/workspace/financials/financials-v2.tsx", "Guided setup"],
+  ];
+  for (const [file, label] of screens) {
+    const src = read(file);
+    assert.ok(src.includes(label), `${label} must still exist somewhere`);
+    if (label === "Guided setup") continue;
+    const primaryAt = src.indexOf("primaryAction=");
+    if (primaryAt === -1) continue;
+    const slot = src.slice(primaryAt, src.indexOf("overflow=", primaryAt));
+    assert.ok(!slot.includes(label), `${label} must not sit in the emphasised slot`);
+  }
+});
+
+test("the Menu workspace stayed writable", () => {
+  // TIM-4110. This file grew to 192KB, which is past the point where the agent
+  // tooling can write it back in one operation — a 100-line change needed 4,800
+  // correct lines retyped. The tabs were split out along the screen's own
+  // seams. If it creeps back over the line, the next change to it becomes a
+  // transport problem again, so the ceiling is pinned here.
+  const bytes = Buffer.byteLength(
+    read("src/app/(app)/workspace/menu-pricing/menu-workspace.tsx"),
+    "utf8"
+  );
+  assert.ok(
+    bytes < 160_000,
+    `menu-workspace.tsx is ${bytes} bytes; split another tab out before it passes 160KB`
+  );
 });
