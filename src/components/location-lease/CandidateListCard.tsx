@@ -61,6 +61,23 @@ export interface CandidateListCardProps {
   planId: string
   aiCreditsRemaining: number
   subscriptionTier: string
+  /**
+   * TIM-4108 (UX Phase 3): report the counts up so the workspace header can
+   * state them. The header owns "where am I up to" on every screen now, and
+   * the live candidate list lives down here, so it has to travel up.
+   * Must be a stable callback — it is an effect dependency.
+   */
+  onCountsChange?: (counts: {
+    total: number
+    shortlisted: number
+    signed: number
+  }) => void
+  /**
+   * TIM-4108: the header's emphasised button is "Add location", and adding
+   * belongs to this component. The card publishes its add handler here so the
+   * header can fire it without the list state having to move up as well.
+   */
+  addRef?: { current: (() => void) | null }
 }
 
 type ViewMode = 'all' | 'shortlist'
@@ -70,6 +87,8 @@ export function CandidateListCard({
   planId,
   aiCreditsRemaining,
   subscriptionTier,
+  onCountsChange,
+  addRef,
 }: CandidateListCardProps) {
   const [candidates, setCandidates] = useState<Candidate[]>(initialCandidates)
   const [saving, setSaving] = useState<Record<string, boolean>>({})
@@ -101,6 +120,16 @@ export function CandidateListCard({
     return filtered.slice().sort((a, b) => a.position - b.position)
   }, [view, candidates, shortlisted])
 
+  // TIM-4108: publish the counts the header states. Effect rather than a call
+  // inside the mutations, so a candidate arriving by any route is counted.
+  useEffect(() => {
+    onCountsChange?.({
+      total: candidates.length,
+      shortlisted: candidates.filter((c) => c.status === 'shortlisted').length,
+      signed: candidates.filter((c) => c.status === 'signed').length,
+    })
+  }, [candidates, onCountsChange])
+
   // ── Add candidate ────────────────────────────────────────────────────────
 
   async function handleAdd() {
@@ -122,6 +151,19 @@ export function CandidateListCard({
       setAdding(false)
     }
   }
+
+  // TIM-4108: hand the add action to the header's emphasised button. Assigned
+  // on every render so it always closes over current state, and cleared on
+  // unmount so a stale handler cannot outlive this card.
+  useEffect(() => {
+    if (!addRef) return
+    addRef.current = () => {
+      void handleAdd()
+    }
+    return () => {
+      addRef.current = null
+    }
+  })
 
   // ── Archive candidate ────────────────────────────────────────────────────
 
@@ -320,10 +362,13 @@ export function CandidateListCard({
                 <MessageCircle className="size-3.5" />
                 <span className="hidden sm:inline ml-1">{COPILOT_NAME}</span>
               </Button>
-              <Button size="sm" onClick={handleAdd} disabled={adding} aria-label="Add candidate">
-                <Plus className="size-3.5" />
-                <span className="hidden sm:inline ml-1">Add location</span>
-              </Button>
+              {/* TIM-4108 (UX Phase 3): "Add location" moved out of this
+                  toolbar and into the workspace header's one emphasised slot,
+                  where every other screen keeps its main action. Two add
+                  buttons on one screen is the kind of small inconsistency the
+                  owner reads as sloppiness. The empty state below keeps its
+                  own "Add your first location" — that is an invitation on a
+                  blank screen, not a second copy of a toolbar control. */}
             </div>
           </CardAction>
         </CardHeader>

@@ -28,10 +28,18 @@ const MIGRATED = [
   {
     name: "Marketing",
     file: "src/app/(app)/workspace/marketing/marketing-workspace.tsx",
+    progress: "steps",
   },
   {
     name: "Operations Playbook",
     file: "src/app/(app)/workspace/operations-playbook/operations-playbook-workspace.tsx",
+    progress: "steps",
+  },
+  {
+    // List-shaped, so a plain count and no bar (D-011).
+    name: "Location & Lease",
+    file: "src/app/(app)/workspace/location-lease/location-lease-client.tsx",
+    progress: "count",
   },
 ];
 
@@ -47,14 +55,26 @@ for (const ws of MIGRATED) {
     }
   });
 
-  test(`${ws.name} states where the owner is up to`, () => {
+  test(`${ws.name} states where the owner is up to, in the right shape`, () => {
     // Progress appeared on 4 of 11 screens before this batch. Every migrated
-    // screen answers "how far along am I" or it is not migrated.
+    // screen answers "how far along am I" or it is not migrated — and answers
+    // it in the shape that suits it, per D-011.
     const src = code(ws.file);
-    assert.ok(
-      /stepsProgress\(|progress=\{\{\s*kind:/.test(src),
-      `${ws.name} must render a progress line`
-    );
+    if (ws.progress === "steps") {
+      assert.ok(
+        /stepsProgress\(/.test(src),
+        `${ws.name} must count steps from the same list its button walks`
+      );
+    } else {
+      assert.ok(
+        !/stepsProgress\(/.test(src),
+        `${ws.name} is a list you add to, not a path you walk — no step count`
+      );
+      assert.ok(
+        /Progress\(/.test(src),
+        `${ws.name} must still state what the owner has`
+      );
+    }
   });
 
   test(`${ws.name} does not reintroduce its own print wording`, () => {
