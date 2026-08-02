@@ -19,17 +19,21 @@ import {
   Printer,
 } from "lucide-react";
 import { AccordionSection, type SectionStatus } from "@/components/ui/AccordionSection";
-import { UI_REVAMP_V3 } from "@/lib/ui-revamp-v3";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
+import {
+  WorkspaceActionMenu,
+  WorkspaceActionMenuItem,
+} from "@/components/workspace/WorkspaceActionMenu";
+import {
+  WorkspaceNextStepButton,
+  scrollToStep,
+} from "@/components/workspace/WorkspaceNextStepButton";
+import { nextStep, stepsProgress } from "@/components/workspace/next-step";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useWorkspaceStatus } from "@/components/workspace/WorkspaceProgressProvider";
-import {
-  WorkspaceActionButton,
-  WORKSPACE_ACTION_ICON_SIZE,
-} from "@/components/workspace/WorkspaceActionButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { SectionHeader } from "@/components/section-header";
 import {
@@ -64,34 +68,11 @@ function localId() {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-// ── Progress bar ──────────────────────────────────────────────────────────────
-
-function PlaybookProgressBar({ statuses }: { statuses: SectionStatus[] }) {
-  const complete = statuses.filter((s) => s === "complete").length;
-  const pct = Math.round((complete / statuses.length) * 100);
-  return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs font-medium text-[var(--muted-foreground)]">
-          Playbook completion
-        </span>
-        <span className="text-xs font-semibold text-[var(--teal)]">
-          {complete} of {statuses.length} steps done
-        </span>
-      </div>
-      <div className="h-2 rounded-full bg-[var(--border)] overflow-hidden">
-        <div
-          className="h-full rounded-full bg-[var(--teal)] transition-all duration-300"
-          style={{ width: `${pct}%` }}
-          role="progressbar"
-          aria-valuenow={pct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        />
-      </div>
-    </div>
-  );
-}
+// TIM-4108 (UX Phase 3): the local progress bar is gone. Where the owner is up
+// to now renders in the header, from the same list of steps that feeds the one
+// emphasised button, so the count and the button can never disagree. It also
+// means this screen states progress in exactly the shape every other screen
+// does — which was the whole complaint.
 
 // ── Section-status derivers ───────────────────────────────────────────────────
 
@@ -150,6 +131,11 @@ export function OperationsPlaybookWorkspace({
   initialRecipeCards,
 }: Props) {
   const [doc, setDoc] = useState<OperationsPlaybookDocument>(initialDoc);
+  // TIM-4108: which sections are expanded. Held here rather than inside each
+  // section so the header can open one. First section starts open, as before.
+  const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({
+    [OPERATIONS_SECTION_KEYS[0]]: true,
+  });
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [paywallReason, setPaywallReason] = useState<
@@ -232,6 +218,22 @@ export function OperationsPlaybookWorkspace({
     getSectionStatus(doc, key, initialRecipeCards.length),
   );
 
+  // TIM-4108 (UX Phase 3): one list of steps feeds BOTH the progress line and
+  // the emphasised button.
+  const steps = OPERATIONS_SECTION_KEYS.map((key, i) => ({
+    id: key,
+    label: operationsSectionLabel(key),
+    done: statuses[i] === "complete",
+  }));
+  const next = nextStep(steps);
+
+  const goToStep = useCallback((id: string) => {
+    setOpenSteps((prev) => ({ ...prev, [id]: true }));
+    // Open first, then scroll — otherwise we scroll to a collapsed strip and
+    // the section expands underneath the viewport.
+    requestAnimationFrame(() => scrollToStep(id));
+  }, []);
+
   return (
     <>
     <div className="bg-[var(--background)] min-h-screen">
@@ -244,37 +246,54 @@ export function OperationsPlaybookWorkspace({
           Icon={ClipboardList}
           title="Operations Playbook"
           description="Your planning binder: policies, schedules, and templates your team needs before opening day. Edit anything."
-          actions={
-            <>
-              {/* TIM-2382: Scout-as-hub entry point for AI section improvement. */}
-              <AskScoutButton
-                workspaceKey="operations_playbook"
-                focusLabel="operations playbook"
-                hasContent={Object.values(doc).some((v) =>
-                  v && typeof v === "object" && "items" in v
-                    ? (v as { items: unknown[] }).items.length > 0
-                    : false
-                )}
-              />
-              {/* TIM-1937 (board refinement bae7ef73): icon-only collapse <1536px. */}
-              <WorkspaceActionButton
-                className="hidden sm:flex"
-                onClick={() =>
-                  window.open(
-                    "/workspace/operations-playbook/print",
-                    "_blank",
-                    "noopener,noreferrer"
-                  )
-                }
-                aria-label="Print all"
-                title="Open a print-friendly view of your operations playbook"
-              >
-                <Printer size={WORKSPACE_ACTION_ICON_SIZE} aria-hidden="true" />
-                <span>Print all</span>
-              </WorkspaceActionButton>
-              <SaveStatusAndButton saving={saving} savedAt={savedAt} unsaved={false} canEdit={canEdit} onSave={handleManualSave} />
-            </>
+          scout={
+            /* TIM-2382: Scout entry point. Never emphasised. */
+            <AskScoutButton
+              workspaceKey="operations_playbook"
+              focusLabel="operations playbook"
+              hasContent={Object.values(doc).some((v) =>
+                v && typeof v === "object" && "items" in v
+                  ? (v as { items: unknown[] }).items.length > 0
+                  : false
+              )}
+            />
           }
+          primaryAction={
+            next ? (
+              <WorkspaceNextStepButton step={next} onGo={goToStep} />
+            ) : undefined
+          }
+          overflow={
+            /* Printing moves into the ⋯ menu and takes the platform-wide name.
+               It read "Print all" here and "Print view" on Marketing — one
+               action wearing two names (TIM-4106). */
+            <WorkspaceActionMenu hideAdvisor>
+              {({ closeMenu }) => (
+                <WorkspaceActionMenuItem
+                  Icon={Printer}
+                  label="Print document"
+                  onClick={() => {
+                    window.open(
+                      "/workspace/operations-playbook/print",
+                      "_blank",
+                      "noopener,noreferrer"
+                    );
+                    closeMenu();
+                  }}
+                />
+              )}
+            </WorkspaceActionMenu>
+          }
+          save={
+            <SaveStatusAndButton
+              saving={saving}
+              savedAt={savedAt}
+              unsaved={false}
+              canEdit={canEdit}
+              onSave={handleManualSave}
+            />
+          }
+          progress={stepsProgress(steps)}
         />
 
         {/* TIM-2472: top-level view switcher — Playbook */}
@@ -291,7 +310,6 @@ export function OperationsPlaybookWorkspace({
         {/* TIM-2776: accordion layout — replaces sidebar + single-section pattern */}
         {activeView === "playbook" && (
           <div>
-            {UI_REVAMP_V3 && <PlaybookProgressBar statuses={statuses} />}
             <div className="space-y-3">
               {OPERATIONS_SECTION_KEYS.map((key, i) => {
                 const status = statuses[i];
@@ -302,7 +320,11 @@ export function OperationsPlaybookWorkspace({
                     key={key}
                     title={label}
                     status={status}
-                    defaultOpen={i === 0}
+                    stepId={key}
+                    open={openSteps[key] ?? false}
+                    onOpenChange={(o) =>
+                      setOpenSteps((prev) => ({ ...prev, [key]: o }))
+                    }
                   >
                     {(SOP_CATEGORY_KEYS as readonly string[]).includes(key) && (
                       <CategoryEditor
