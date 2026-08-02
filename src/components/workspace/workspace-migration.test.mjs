@@ -67,6 +67,12 @@ const MIGRATED = [
     progress: "count",
   },
   {
+    // Three sub-pages behind one header (overview / milestones / playbook).
+    name: "Launch Plan",
+    file: "src/app/(app)/workspace/opening-month-plan/opening-month-plan-workspace.tsx",
+    progress: "count",
+  },
+  {
     // The live Financials surface. financials-workspace.tsx still holds a v1
     // header behind the ui_revamp_v2 flag, which defaults to v2 — that
     // fallback migrates with the flag's removal, not before.
@@ -255,4 +261,20 @@ test("Supplies' Save button means now, not in 700ms", () => {
     "src/app/(app)/workspace/buildout-equipment/supplies/supplies-workspace.tsx"
   );
   assert.match(page, /onSave=\{\(\) => flushRef\.current\?\.\(\)\}/);
+});
+
+test("Launch Plan offers Scout on every sub-page, not just one", () => {
+  // Scout used to be gated on the Milestones tab, so the same header offered
+  // help on one sub-page and not the next — drift inside a single workspace,
+  // which is the same complaint at smaller scale.
+  const src = read(
+    "src/app/(app)/workspace/opening-month-plan/opening-month-plan-workspace.tsx"
+  );
+  const scout = src.slice(src.indexOf("scout={"), src.indexOf("save={"));
+  assert.match(scout, /<AskScoutButton/);
+  assert.doesNotMatch(
+    scout,
+    /showMilestones &&/,
+    "the Scout slot must not be gated on which sub-page is open"
+  );
 });

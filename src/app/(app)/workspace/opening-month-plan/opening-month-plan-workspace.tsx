@@ -26,6 +26,7 @@ import {
   type WorkspaceSubNavTab,
 } from "@/components/workspace/WorkspaceSubNav";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { launchProgress } from "@/components/launch-plan/launch-progress";
 import { SectionHeader, type AiAction } from "@/components/section-header";
 import { InlineAnalysisCard } from "@/components/ai-analyse/InlineAnalysisCard";
 import type { AnalyseResponse } from "@/components/ai-analyse/InlineAnalysisCard";
@@ -1246,24 +1247,38 @@ export function OpeningMonthPlanWorkspace({
           Icon={headerIcon}
           title={headerTitle}
           description={headerSubtitle}
-          actions={
-            <>
-              {showMilestones && (
-                <AskScoutButton
-                  workspaceKey="opening_month_plan"
-                  focusLabel="launch milestones"
-                  hasContent={hasContent}
-                />
-              )}
-              <SaveStatusAndButton
-                saving={mutationSaving}
-                savedAt={mutationSavedAt}
-                unsaved={false}
-                canEdit={true}
-                onSave={confirmSaved}
-              />
-            </>
+          scout={
+            /* TIM-4108 (UX Phase 3): Scout was gated on the Milestones tab, so
+               the same header offered help on one sub-page and not the next —
+               drift inside a single workspace. It is offered on all three now,
+               with the prompt scoped to whichever list the owner is looking at.
+
+               No emphasised button here, for the same reason as Equipment:
+               milestones are added per track and tasks per week, and each of
+               those already carries its own add row. The AI generate CTA stays
+               in its card below, where it explains itself — it is not the next
+               real thing to do (D-010). */
+            <AskScoutButton
+              workspaceKey="opening_month_plan"
+              focusLabel={coPilotFocusLabel}
+              hasContent={hasContent}
+            />
           }
+          save={
+            <SaveStatusAndButton
+              saving={mutationSaving}
+              savedAt={mutationSavedAt}
+              unsaved={false}
+              canEdit={true}
+              onSave={confirmSaved}
+            />
+          }
+          progress={launchProgress(section ?? "all", {
+            milestones: milestones.length,
+            milestonesDone: milestones.filter((m) => m.status === "done").length,
+            tasks: playbookItems.length,
+            tasksDone: playbookItems.filter((r) => r.status === "done").length,
+          })}
         />
 
         {/* TIM-1634: standard suite sub-nav. Only rendered for split sub-pages;
