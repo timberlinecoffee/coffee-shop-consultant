@@ -42,10 +42,24 @@ function StatusBadge({ status }: { status: SectionStatus }) {
   )
 }
 
+// TIM-4108 (UX Phase 3): a section can now be opened from outside itself, so
+// the header's one emphasised button ("Continue with Channels") can take the
+// owner straight to the step it names. Both new props are OPTIONAL and the
+// uncontrolled behaviour is unchanged when they are absent — existing callers
+// keep working exactly as before.
 export interface AccordionSectionProps {
   title: string
   status?: SectionStatus
   defaultOpen?: boolean
+  /**
+   * Anchor for scrolling. Rendered as id="step-<stepId>" so
+   * `scrollToStep` can find it without every workspace inventing a scheme.
+   */
+  stepId?: string
+  /** Controlled open state. Omit to keep the section's own internal state. */
+  open?: boolean
+  /** Required when `open` is supplied — the section reports its own toggles. */
+  onOpenChange?: (open: boolean) => void
   children: ReactNode
 }
 
@@ -53,14 +67,26 @@ export function AccordionSection({
   title,
   status,
   defaultOpen = false,
+  stepId,
+  open: openProp,
+  onOpenChange,
   children,
 }: AccordionSectionProps) {
-  const [open, setOpen] = useState(defaultOpen)
+  const [openState, setOpen] = useState(defaultOpen)
+  const controlled = openProp !== undefined
+  const open = controlled ? openProp : openState
+  const toggle = () => {
+    if (controlled) onOpenChange?.(!open)
+    else setOpen((o) => !o)
+  }
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+    <div
+      id={stepId ? `step-${stepId}` : undefined}
+      className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden scroll-mt-24"
+    >
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         aria-expanded={open}
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--background)] transition-colors"
       >
