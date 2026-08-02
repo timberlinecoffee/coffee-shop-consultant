@@ -318,7 +318,7 @@ function InputsProgressBar({
           Input completion
         </span>
         <span className="text-xs font-semibold text-[var(--teal)]">
-          {complete} of {statuses.length} sections complete
+          {complete} of {statuses.length} steps done
         </span>
       </div>
       <div className="h-2 rounded-full bg-[var(--border)] overflow-hidden">

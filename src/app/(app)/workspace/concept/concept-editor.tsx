@@ -364,7 +364,7 @@ export function ConceptWorkspace({
               <div className="flex items-center justify-between">
                 <span className="text-xs text-[var(--muted-foreground)]">
                   {shopName ? <>{shopName} — </> : null}
-                  {progress.filled} of {progress.total} sections
+                  {progress.filled} of {progress.total} steps done
                 </span>
                 <span className="text-xs font-semibold text-[var(--teal)]">
                   {Math.round((progress.filled / progress.total) * 100)}%
@@ -386,7 +386,7 @@ export function ConceptWorkspace({
         ) : (
           shopName && (
             <p className="mb-6 text-xs text-[var(--dark-grey)]">
-              {shopName} · {progress.filled} of {progress.total} sections filled
+              {shopName} · {progress.filled} of {progress.total} steps done
             </p>
           )
         )}

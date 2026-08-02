@@ -27,13 +27,23 @@ import { formatCurrencyAmount } from "@/lib/currency";
 
 // ── Progress Ring ─────────────────────────────────────────────────────────────
 
-function ProgressRing({ pct }: { pct: number }) {
+// TIM-4104 (T1-D): the ring said "18% ready" and never said ready for WHAT.
+// It now says "ready to open", and `total` lets the title spell out what 100%
+// actually means — the one question a percentage always invites.
+function ProgressRing({ pct, total }: { pct: number; total: number }) {
   const r = 36;
   const circ = 2 * Math.PI * r; // 226.19...
   const offset = circ * (1 - Math.min(100, Math.max(0, pct)) / 100);
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div
+      className="flex flex-col items-center gap-2"
+      title={
+        total > 0
+          ? `100% means all ${total} workspaces are complete — everything your plan covers before you open.`
+          : undefined
+      }
+    >
       {/* The @keyframes rule starts the dash at the full circumference (empty ring)
           and the inline stroke-dashoffset is the computed target; the browser
           interpolates from "from" to the element's own inline value. */}
@@ -65,13 +75,17 @@ function ProgressRing({ pct }: { pct: number }) {
         </svg>
         <div
           className="absolute inset-0 flex flex-col items-center justify-center"
-          aria-label={`${pct}% plan readiness`}
+          aria-label={
+            total > 0
+              ? `${pct}% ready to open. 100% means all ${total} workspaces are complete.`
+              : `${pct}% ready to open`
+          }
         >
           <span className="text-xl font-bold text-[var(--foreground)] leading-none tabular-nums">
             {pct}%
           </span>
-          <span className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
-            ready
+          <span className="text-[10px] text-[var(--muted-foreground)] mt-0.5 leading-tight">
+            ready to open
           </span>
         </div>
       </div>
@@ -144,8 +158,8 @@ function PlanBadge({
               We haven&apos;t checked your plan for conflicts yet.
             </p>
             <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-              Fill in a few more sections and we&apos;ll start cross-checking your
-              numbers against each other.
+              Fill in a few more workspaces and we&apos;ll start cross-checking
+              your numbers against each other.
             </p>
           </div>
         </div>
@@ -396,9 +410,12 @@ export function HomeV2({ firstName, overview, snapshot }: HomeV2Props) {
         {/* Row 1: readiness ring + plan badge */}
         <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4 items-stretch">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 flex flex-col items-center justify-center gap-3">
-            <ProgressRing pct={counts.completedPct} />
+            <ProgressRing pct={counts.completedPct} total={counts.total} />
+            {/* TIM-4104 (T1-D): "sections" here meant WORKSPACES, while three
+                other screens used the same word for the steps inside one. The
+                left-hand nav has always called these workspaces; say that. */}
             <p className="text-xs text-[var(--muted-foreground)] text-center">
-              {counts.completed} of {counts.total} sections complete
+              {counts.completed} of {counts.total} workspaces complete
             </p>
           </div>
           <PlanBadge conflicts={conflicts} state={conflictCheckState} />
@@ -407,8 +424,12 @@ export function HomeV2({ firstName, overview, snapshot }: HomeV2Props) {
         {/* Row 2: 3 nudge cards */}
         {nudges.length > 0 && (
           <div>
+            {/* TIM-4104 (T1-D): this heading previously used the word "steps".
+                That word now means the units inside a single workspace, and
+                these cards link to whole workspaces — so reusing it here would
+                recreate exactly the ambiguity this change removes. */}
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)] mb-3">
-              Suggested next steps
+              Where to go next
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {nudges.map((n) => (
