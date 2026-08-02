@@ -343,10 +343,10 @@ function NextStepCard({
     return (
       <div className="rounded-xl border border-[var(--teal)]/20 bg-[var(--teal)]/5 p-5">
         <p className="text-sm font-semibold text-[var(--teal)] mb-1">
-          All sections started
+          All workspaces started
         </p>
         <p className="text-xs text-[var(--muted-foreground)]">
-          {started} of {total} plan sections started. Keep going!
+          {started} of {total} plan workspaces started. Keep going!
         </p>
       </div>
     );
@@ -377,7 +377,7 @@ function NextStepCard({
       </Link>
       {planStarted && (
         <p className="text-xs text-[var(--muted-foreground)]">
-          {started} of {total} plan sections started
+          {started} of {total} plan workspaces started
         </p>
       )}
     </div>
