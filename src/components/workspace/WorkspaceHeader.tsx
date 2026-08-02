@@ -52,8 +52,26 @@
 //     rhythm is identical on every screen.
 //
 // `actions` is the pre-Phase-2 escape hatch and is DEPRECATED. It renders the
-// cluster verbatim, which is exactly the freedom that caused the drift. Phase 3
-// migrates each workspace off it; do not add new callers.
+// cluster verbatim, which is exactly the freedom that caused the drift.
+//
+// ── Why it still exists after Phase 3 (TIM-4111) ─────────────────────────────
+//
+// All ELEVEN owner-facing workspaces are off it. It cannot simply be deleted,
+// because five callers remain and none of them is one of the eleven:
+//
+//   • financials-workspace.tsx and hiring-workspace.tsx — the pre-flag surfaces
+//     behind ui_revamp_v2 / v3. Both flags default to the new surface, so these
+//     are code paths nobody sees. They go when the flags go, and spending a
+//     117KB and a 108KB file transport on screens nobody loads is not worth it.
+//   • the three admin/help pages — a different audience with a different job.
+//     The eleven exist to teach a first-time shop owner where they are; an
+//     internal console has no such need, and forcing it into a shape built for
+//     someone else would be consistency for its own sake.
+//
+// So the deprecation is now pinned rather than pending: do not add new callers
+// — workspace-migration.test.mjs holds the exact list above, and a NEW caller
+// fails the build. That is the same guarantee deleting the prop would give,
+// without breaking the screens that legitimately still use it.
 
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";

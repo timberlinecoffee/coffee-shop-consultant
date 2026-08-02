@@ -10,7 +10,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 const read = (rel) =>
   readFileSync(new URL(`../../../${rel}`, import.meta.url), "utf8");
@@ -386,5 +386,50 @@ test("the Menu workspace stayed writable", () => {
   assert.ok(
     bytes < 160_000,
     `menu-workspace.tsx is ${bytes} bytes; split another tab out before it passes 160KB`
+  );
+});
+
+// ── The escape hatch is closed, even though the prop still exists ───────────
+
+test("no NEW screen may use the deprecated free-form action cluster", () => {
+  // TIM-4111. All eleven owner-facing workspaces are off `actions`. The prop
+  // cannot just be deleted, because five callers remain — and none of them is
+  // one of the eleven:
+  //
+  //   • two pre-flag surfaces nobody loads (both flags default to the new one)
+  //   • three admin/help pages, a different audience with a different job
+  //
+  // Pinning the list gives the same guarantee deleting the prop would, without
+  // breaking screens that legitimately still use it. If this test fails, either
+  // a new caller appeared — fix that — or one of these was finally migrated, in
+  // which case delete its line here and enjoy it.
+  const ALLOWED = [
+    "src/app/(app)/workspace/financials/financials-workspace.tsx",
+    "src/app/(app)/workspace/hiring/hiring-workspace.tsx",
+    "src/app/admin/members/[id]/page.tsx",
+    "src/app/admin/members/page.tsx",
+    "src/app/admin/support/page.tsx",
+    "src/app/help/_components/HelpPageHeader.tsx",
+  ];
+
+  const found = [];
+  const walk = (dir, prefix) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const next = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, dir);
+      if (entry.isDirectory()) walk(next, `${prefix}${entry.name}/`);
+      else if (entry.name.endsWith(".tsx")) {
+        const src = readFileSync(next, "utf8");
+        if (src.includes("WorkspaceHeader") && /\bactions=\{/.test(src)) {
+          found.push(`${prefix}${entry.name}`);
+        }
+      }
+    }
+  };
+  walk(new URL("../../app/", import.meta.url), "src/app/");
+
+  assert.deepEqual(
+    found.sort(),
+    [...ALLOWED].sort(),
+    "the free-form cluster is closed to new callers"
   );
 });
