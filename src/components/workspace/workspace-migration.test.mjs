@@ -29,6 +29,10 @@ const MIGRATED = [
     name: "Marketing",
     file: "src/app/(app)/workspace/marketing/marketing-workspace.tsx",
   },
+  {
+    name: "Operations Playbook",
+    file: "src/app/(app)/workspace/operations-playbook/operations-playbook-workspace.tsx",
+  },
 ];
 
 for (const ws of MIGRATED) {
