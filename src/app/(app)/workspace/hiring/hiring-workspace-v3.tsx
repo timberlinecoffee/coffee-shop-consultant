@@ -6,7 +6,7 @@
 // General entry at sidebar index 0. v1 (hiring-workspace.tsx) preserved as
 // revert path. No schema migration.
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -93,6 +93,15 @@ import {
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { SaveStatusAndButton } from "@/components/workspace/SaveStatusAndButton";
+// TIM-4105: a screen may only claim "Saved" if a server accepted the write.
+// This workspace previously hardcoded saving={false} unsaved={false} and froze
+// savedAt at page-load, so it announced a save that had never happened.
+import {
+  IDLE_SAVE_STATE,
+  saveStateReducer,
+  toIndicatorView,
+  type SaveState,
+} from "@/lib/workspace/save-state";
 import { SectionHeader } from "@/components/section-header";
 import { SectionHelp } from "@/components/ui/section-help";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
@@ -642,7 +651,47 @@ export function HiringWorkspaceV3(props: Props) {
   const [newTitle, setNewTitle] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [aiAssistRoles, setAiAssistRoles] = useState(false);
-  const [savedAt] = useState(() => new Date().toISOString());
+  // TIM-4105: was `useState(() => new Date().toISOString())` — a timestamp
+  // minted when the page loaded and never touched again, rendered as
+  // "Saved · 9:14am" whether or not anything had been saved since.
+  const [saveState, setSaveState] = useState<SaveState>(IDLE_SAVE_STATE);
+  // The write that failed, kept so the Save button can genuinely retry it.
+  // Previously onSave was `() => {}` — which also meant the indicator's
+  // "Save Failed — Retry" link did nothing in the one moment it mattered.
+  const retryRef = useRef<(() => Promise<Response>) | null>(null);
+
+  // Runs a write and reports honestly what happened to it. Every role mutation
+  // goes through here so no call site can forget to check the response again.
+  const persist = useCallback(
+    async (run: () => Promise<Response>): Promise<boolean> => {
+      setSaveState((s) => saveStateReducer(s, { type: "start" }));
+      try {
+        const res = await run();
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        retryRef.current = null;
+        setSaveState((s) =>
+          saveStateReducer(s, { type: "success", at: new Date().toISOString() }),
+        );
+        return true;
+      } catch (err) {
+        // Logged as well as shown. The old code discarded this entirely, so a
+        // failing save left no trace anywhere — not on screen, not for us.
+        console.error("[hiring] save failed", err);
+        // Store the request itself, not a closure over `persist` — a closure
+        // would reference `persist` inside its own initialiser.
+        retryRef.current = run;
+        setSaveState((s) => saveStateReducer(s, { type: "failure" }));
+        return false;
+      }
+    },
+    [],
+  );
+
+  const retrySave = useCallback(() => {
+    const pending = retryRef.current;
+    if (!pending) return;
+    void persist(pending);
+  }, [persist]);
   const { openAIReviewModal: openRolesAIReviewModal, AIReviewModalNode: RolesAIReviewModalNode } = useAIReviewModal();
 
   const selectedRole = useMemo(
@@ -659,19 +708,20 @@ export function HiringWorkspaceV3(props: Props) {
     async (patch: Partial<OrgRole>) => {
       if (!selectedRole) return;
       const id = selectedRole.id;
+      // The optimistic update stays even if the write fails: yanking away what
+      // someone just typed is worse than showing it as unsaved. The indicator
+      // is what carries the truth, and Save retries the write.
       setRoles((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
       if (id.startsWith("local_")) return;
-      try {
-        await fetch(`/api/workspaces/hiring/roles?planId=${props.planId}`, {
+      await persist(() =>
+        fetch(`/api/workspaces/hiring/roles?planId=${props.planId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id, ...patch }),
-        });
-      } catch {
-        // swallow — user can refresh
-      }
+        }),
+      );
     },
-    [selectedRole, props.planId],
+    [selectedRole, props.planId, persist],
   );
 
   const addRole = useCallback(async () => {
@@ -681,44 +731,51 @@ export function HiringWorkspaceV3(props: Props) {
       setAddingRole(false);
       return;
     }
-    try {
+    // TIM-4105: the failure used to be swallowed with "input stays open so
+    // user can retry" — but nothing told the owner it had failed, so they had
+    // no reason to retry. The indicator now says so.
+    let created: OrgRole | null = null;
+    const ok = await persist(async () => {
       const res = await fetch(`/api/workspaces/hiring/roles?planId=${props.planId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role_title: trimmed, headcount: 1 }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { data?: OrgRole };
-      if (data.data) {
-        setRoles((prev) => [...prev, data.data!]);
-        setSelectedRoleId(data.data.id);
-        setSelectedView("role");
+      if (res.ok) {
+        const data = (await res.clone().json()) as { data?: OrgRole };
+        created = data.data ?? null;
       }
-    } catch {
-      // swallow — input stays open so user can retry
+      return res;
+    });
+    if (ok && created) {
+      const role = created as OrgRole;
+      setRoles((prev) => [...prev, role]);
+      setSelectedRoleId(role.id);
+      setSelectedView("role");
+      setNewTitle("");
+      setAddingRole(false);
+      return;
     }
-    setNewTitle("");
-    setAddingRole(false);
-  }, [newTitle, props.canEdit, props.planId]);
+    // Keep the typed title in the open input so retrying does not mean
+    // re-typing it.
+  }, [newTitle, props.canEdit, props.planId, persist]);
 
   const confirmDelete = useCallback(
     async (id: string) => {
       if (!props.canEdit) return;
-      let res: Response;
-      try {
-        res = await fetch(`/api/workspaces/hiring/roles?planId=${props.planId}&id=${id}`, {
+      // TIM-4105: a delete that did not happen used to close the dialog
+      // silently, leaving the role on screen with no explanation.
+      const ok = await persist(() =>
+        fetch(`/api/workspaces/hiring/roles?planId=${props.planId}&id=${id}`, {
           method: "DELETE",
-        });
-      } catch {
-        setDeleteConfirmId(null);
-        return;
-      }
-      if (!res.ok) { setDeleteConfirmId(null); return; }
+        }),
+      );
+      setDeleteConfirmId(null);
+      if (!ok) return;
       setRoles((prev) => prev.filter((r) => r.id !== id));
       setSelectedRoleId((prev) => (prev === id ? null : prev));
-      setDeleteConfirmId(null);
     },
-    [props.canEdit, props.planId],
+    [props.canEdit, props.planId, persist],
   );
 
   return (
@@ -752,12 +809,15 @@ export function HiringWorkspaceV3(props: Props) {
               focusLabel="hiring plan"
               hasContent={roles.length > 0}
             />
+            {/* TIM-4105: real state, and a Save button that genuinely retries
+                the write that failed. The three literals that used to be here
+                (saving={false} unsaved={false} onSave={() => {}}) meant the
+                screen could never report a problem and could never recover
+                from one. */}
             <SaveStatusAndButton
-              saving={false}
-              savedAt={savedAt}
-              unsaved={false}
+              {...toIndicatorView(saveState)}
               canEdit={props.canEdit}
-              onSave={() => {}}
+              onSave={retrySave}
             />
           </>
         }
