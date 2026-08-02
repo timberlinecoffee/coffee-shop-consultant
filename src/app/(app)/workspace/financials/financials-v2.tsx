@@ -783,8 +783,13 @@ function RevenueStreamsContent({
 
         {splitOn && avgCustomersPerDay > 0 && (
           <div className="mt-3 rounded-lg border border-[var(--teal-bg-e8f)] bg-[var(--teal-bg-muted)] px-3 py-2.5">
+            {/* TIM-4103 (T1-B): same vocabulary Home uses. This figure is
+                mature trade — customers per day at full capacity, with no ramp
+                multiplier applied. Home's headline is month 1 of the ramp, so
+                on a typical plan these are ~3x apart. Naming the moment on
+                both screens is the whole fix; the maths is untouched. */}
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--teal)] mb-1.5">
-              Avg sales/day (~{avgCustomersPerDay} customers)
+              Avg sales/day once you&apos;re up to speed (~{avgCustomersPerDay} customers)
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               <div>
