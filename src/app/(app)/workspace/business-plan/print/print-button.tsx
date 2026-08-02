@@ -5,17 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 type SectionOption = { key: string; label: string };
 
-export function PrintButton() {
-  return (
-    <button
-      type="button"
-      onClick={() => window.print()}
-      className="inline-block bg-[var(--teal)] text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-[var(--teal-dark)] transition-colors"
-    >
-      Print document
-    </button>
-  );
-}
+// TIM-4106 (UX Phase 1): was a fifth byte-identical copy of the print button.
+// Re-exported from the shared component so all five print routes carry the
+// same label and cannot drift apart again. SectionToggle below is genuinely
+// specific to the business plan and stays here.
+export { PrintDocumentButton as PrintButton } from "@/components/workspace/PrintDocumentButton";
 
 export function SectionToggle({
   sections,
