@@ -219,6 +219,59 @@ function popularityWeight(p: ExpectedPopularity | null | undefined): number {
   return 1
 }
 
+// TIM-4114 (UX Phase 6): the percentage of sales a popularity setting actually
+// implies.
+//
+// Trent, 2026-08-03: "there needs to be an average cost of goods percentage
+// adjusted for the expectation of percentage of beverages that are sold… what
+// percentage of beverages sold do we anticipate will be this particular
+// beverage on average."
+//
+// That number has existed since TIM-1799 — it is what menuItemMixWeight already
+// does — but it was invisible. The owner set Popular / Average / Slow and had
+// no way to know what the maths took that to mean, so the blended cost of goods
+// downstream looked like it came from nowhere.
+//
+// His ruling was to make the implied share visible rather than to ask for a
+// real percentage per item: a first-timer cannot produce thirty numbers that
+// total a hundred, and a half-filled list of them produces a confidently wrong
+// average rather than an obviously empty one. TIM-2491 removed the old numeric
+// `expected_mix_pct` from the weighting for a related reason and that ruling
+// stands — this reads the popularity weights out, it does not reintroduce a
+// second input.
+//
+// Shares are computed over PRICED, unarchived items only, matching the blend in
+// computeMenuBlendedCogsPct exactly. An unpriced item is not yet part of the
+// menu the plan is costing, and counting it would make every other share too
+// small.
+export function menuMixShares(
+  items: ReadonlyArray<BlendedTicketItem> | null | undefined,
+): Map<string, number> {
+  const out = new Map<string, number>()
+  if (!items || items.length === 0) return out
+  const priced = items.filter(
+    (it) => !it.archived && Number(it.price_cents ?? 0) > 0 && it.id
+  )
+  const totalWeight = priced.reduce(
+    (s, it) => s + popularityWeight(it.expected_popularity),
+    0
+  )
+  if (totalWeight <= 0) return out
+  for (const it of priced) {
+    out.set(it.id as string, (popularityWeight(it.expected_popularity) / totalWeight) * 100)
+  }
+  return out
+}
+
+/** One item's implied share of sales, or null when it is not in the blend. */
+export function menuMixSharePct(
+  items: ReadonlyArray<BlendedTicketItem> | null | undefined,
+  itemId: string | null | undefined,
+): number | null {
+  if (!itemId) return null
+  return menuMixShares(items).get(itemId) ?? null
+}
+
 export function blendedTicketCentsFromMenu(
   items: ReadonlyArray<BlendedTicketItem> | null | undefined,
   mix?: ReadonlyMap<string, number> | Record<string, number> | null,
