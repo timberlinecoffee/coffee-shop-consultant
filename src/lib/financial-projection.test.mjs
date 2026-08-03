@@ -448,8 +448,16 @@ test("COGS menu_linked: uses the menu blended pct against the linked stream", ()
     { total_cost_cents: 0, financed_cost_cents: 0 },
     { menu_blended_cogs_pct: 28 }
   );
-  // 28% × $10,000 wholesale = $2,800
-  assert.equal(rows[0].cogs_cents, 280000);
+  // The LINE: 28% × $10,000 wholesale = $2,800 — the menu rate wins over the
+  // line's own 99, which is what this test is here to pin.
+  //
+  // TIM-4114: the BASE now pulls the same 28% instead of the cogs_pct sitting
+  // in the fixture. Setting cogs_pct = 0 used to mean "no base COGS"; it no
+  // longer can, because "the owner left the box empty" and "the owner wants
+  // zero cost of goods" are the same keystrokes, and silently deleting a
+  // shop's entire cost base is the worse of the two readings. Base = 28% ×
+  // $10,000 total revenue = $2,800, so the row carries both.
+  assert.equal(rows[0].cogs_cents, 280000 + 280000);
 });
 
 test("COGS menu_linked falls back to value when menu pct is null", () => {
