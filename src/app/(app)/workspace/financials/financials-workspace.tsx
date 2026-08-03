@@ -46,6 +46,7 @@ import {
   defaultStartupCosts,
   deriveFinancialInputs,
   computeProjections,
+  // TIM-4115: menu-derived Drink / Food / Retail split for the P&L.
   computeMonthlySlices,
   computeDayHours,
   computeWeeklyHours,
@@ -61,6 +62,7 @@ import {
   type MenuCogsCategoryGroup,
   type ApplyForwardRange,
 } from "@/lib/financial-projection";
+import { bucketablesFromCategoryGroups } from "@/lib/menu-cogs-buckets";
 import {
   MenuCogsSyncSection,
   AdditionalCogsSection,
@@ -1936,7 +1938,11 @@ export function FinancialsWorkspace({
   // dependent tab. It was previously a separate useState patched field-by-field in
   // handleMpUpdate, which silently omitted customers_per_day, days_per_week, and the
   // funding-derived loan/equity fields — so those tabs showed stale numbers.
-  const financialInputs = useMemo(() => deriveFinancialInputs(mp), [mp]);
+  // TIM-4115: financialInputs is now derived from the menu as well as the plan,
+  // so the P&L's Drink / Food / Retail cost rows stop being fiction. It is
+  // declared BELOW liveMenuCogsByCategory (a few lines down) rather than here,
+  // because it now depends on it — moving it is the whole reason this line is a
+  // comment instead of the memo it used to be.
   const [activeTab, setActiveTab] = useState<Tab>("forecast");
   const [saveState, setSaveState] = useState<SaveState>({
     kind: "idle",
@@ -1951,6 +1957,20 @@ export function FinancialsWorkspace({
   // TIM-3733: category-grouped menu COGS for the Finance COGS sync section.
   // Seeded from server props so the section is populated on first render.
   const [liveMenuCogsByCategory, setLiveMenuCogsByCategory] = useState<MenuCogsCategoryGroup[]>(menuCogsByCategory);
+
+  // TIM-4115: the Drink / Food / Retail rows on the P&L, derived from the live
+  // menu instead of the six hardcoded literals that used to stand in for it.
+  // Depends on liveMenuCogsByCategory (above) so "Refresh from Menu" moves the
+  // P&L too — a stale split would be the same lie in a newer coat.
+  const menuBucketables = useMemo(
+    () => bucketablesFromCategoryGroups(liveMenuCogsByCategory),
+    [liveMenuCogsByCategory]
+  );
+  const financialInputs = useMemo(
+    () => deriveFinancialInputs(mp, menuBucketables),
+    [mp, menuBucketables]
+  );
+
   const [liveEquipmentItems, setLiveEquipmentItems] = useState<EquipmentItem[]>(initialEquipmentItems);
   const [isRefreshingMenu, setIsRefreshingMenu] = useState(false);
   const [isRefreshingEquipment, setIsRefreshingEquipment] = useState(false);
@@ -2247,7 +2267,9 @@ export function FinancialsWorkspace({
     // spoilage %) are intentionally excluded — they render as line items but are
     // not part of computed operating income, so passing them here would make the
     // P&L sub-lines exceed the operating-expense total.
-    const fi = deriveFinancialInputs(mpForProjection);
+    // TIM-4115: same menu-derived split as the memo above, so the balance-sheet
+    // path and the P&L path cannot disagree about what a drink costs.
+    const fi = deriveFinancialInputs(mpForProjection, menuBucketables);
     const balanceSheetInputs = {
       equipment_cost_cents: fi.equipment_cost_cents,
       buildout_cost_cents: fi.buildout_cost_cents,
@@ -2257,9 +2279,22 @@ export function FinancialsWorkspace({
       initial_inventory_cents: fi.initial_inventory_cents,
       startup_supplies_cents: fi.startup_supplies_cents,
       professional_fees_cents: fi.professional_fees_cents,
+      // TIM-4115: the revenue mix and per-bucket cost rates, now menu-derived.
+      // These were NOT passed before, so computeMonthlySlices fell back to its
+      // own 70/20/10 and 30/35/45 defaults and the P&L printed those on every
+      // plan in the product. They are safe to pass where payment-processing and
+      // spoilage are not: those are costs that would double-count against
+      // operating income, whereas these only ATTRIBUTE an already-computed
+      // total across three display rows.
+      beverage_revenue_pct: fi.beverage_revenue_pct,
+      food_revenue_pct: fi.food_revenue_pct,
+      retail_revenue_pct: fi.retail_revenue_pct,
+      beverage_cogs_pct: fi.beverage_cogs_pct,
+      food_cogs_pct: fi.food_cogs_pct,
+      retail_cogs_pct: fi.retail_cogs_pct,
     };
     return computeMonthlySlices(mpForProjection, equipment, balanceSheetInputs, projectionCtx);
-  }, [mpForProjection, equipment, projectionCtx]);
+  }, [mpForProjection, equipment, projectionCtx, menuBucketables]);
 
   // TIM-2517: opening cash runway during ramp — drives the Startup-tab callout
   // that warns founders when their working-capital + cash buffer cannot absorb
