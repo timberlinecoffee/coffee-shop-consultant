@@ -50,7 +50,7 @@ function StatusChip({ status }: { status: string }) {
       break;
     case "estimated":
       label = "Awaiting confirm";
-      cls = "bg-neutral-200 text-neutral-600";
+      cls = "bg-neutral-200 text-[var(--muted-foreground)]";
       break;
     case "error":
       label = "Error";
@@ -58,15 +58,15 @@ function StatusChip({ status }: { status: string }) {
       break;
     case "archived":
       label = "Archived";
-      cls = "bg-neutral-200 text-neutral-500";
+      cls = "bg-neutral-200 text-[var(--muted-foreground)]";
       break;
     case "cancelled":
       label = "Cancelled";
-      cls = "bg-neutral-200 text-neutral-500";
+      cls = "bg-neutral-200 text-[var(--muted-foreground)]";
       break;
     default:
       label = "Queued";
-      cls = "bg-neutral-200 text-neutral-600";
+      cls = "bg-neutral-200 text-[var(--muted-foreground)]";
   }
   return (
     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${cls}`}>

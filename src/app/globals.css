@@ -38,17 +38,43 @@
   --table-group-header-bg: var(--teal);
   --off-white: #faf9f7;
   --light-grey: #efefef;
-  /* WCAG 1.4.3: #afafaf was 2.8:1. #6b6b6b clears 4.5:1 on both white (5.3:1)
-     and the off-white --background #faf9f7 (5.0:1); #767676 falls to 4.3:1 there. */
-  --dark-grey: #6b6b6b;
+  /* ── TIM-4116 (UX Phase 5): text is teal, not black ────────────────────────
+     Trent, 2026-08-03: "The text is still black or near black or grey. Again,
+     we want that teal text across the platform, both in the header and body
+     text."
+
+     "Again" is the important word. He said this once before — "I don't think I
+     want black font. I think we can go for a blue font across the platform
+     instead" — and it was recorded as D-009: a rejection of black, NOT a
+     request to change the accent. Half right. The accent was correctly left
+     alone; the instruction to move BODY TEXT off near-black was missed
+     entirely, and #1a1a1a stayed. D-009 is corrected here.
+
+     Changing these two tokens moves ~2,000 call sites at once: 1,071 uses of
+     var(--foreground) and 954 of var(--muted-foreground). That is the whole
+     reason this is a five-line change rather than a sweep.
+
+     Contrast, computed rather than assumed (text-colour.test.mjs re-computes
+     it on every run, so lightening the teal for looks fails the build):
+       #155e63 on --background #faf9f7 → 7.09:1   (clears AAA 7:1)
+       #155e63 on --card    #ffffff    → 7.46:1
+       #4d7276 on --background         → 5.01:1   (clears AA 4.5:1)
+       #4d7276 on --card               → 5.27:1
+
+     Hierarchy now comes from weight and size rather than from hue, since
+     headings were already teal. That is the intended result: he asked for both
+     header and body to be teal, so the page reads as one voice. */
+  --dark-grey: #4d7276;
   --background: #faf9f7;
-  --foreground: #1a1a1a;
+  --foreground: #155e63;
   /* Semantic tokens used by component library */
   --card: #ffffff;
-  --card-foreground: #1a1a1a;
+  --card-foreground: #155e63;
   --border: #efefef;
   --muted: #f4f3f1;
-  --muted-foreground: #6b6b6b;
+  /* Secondary copy: a muted teal rather than the old neutral #6b6b6b, so
+     quiet text reads as the same family instead of as a different system. */
+  --muted-foreground: #4d7276;
   --ring: #155e63;
   --destructive: #dc2626;
 
@@ -366,9 +392,14 @@
    /settings, dashboard, and workspace surfaces are legible in dark mode. */
 .dark {
   --background: #0d0d0b;              /* was neutral-950 */
-  --foreground: #faf9f7;              /* was off-white */
+  /* TIM-4116: dark mode inverts, so teal INK would be unreadable here. The
+     teal cast is carried by the light text instead — #dff0f0 rather than the
+     neutral off-white, so the two modes read as the same brand.
+       #dff0f0 on --background #0d0d0b → 16.54:1
+       #dff0f0 on --card       #1c1c18 → 14.54:1 */
+  --foreground: #dff0f0;
   --card: #1c1c18;                    /* was #ffffff */
-  --card-foreground: #faf9f7;
+  --card-foreground: #dff0f0;
   --border: #2e2e28;
   --border-subtle: #2e2e28;
   --border-medium: #4a4a42;
@@ -376,9 +407,11 @@
   /* Kept distinct from --card so hover:bg-[var(--muted)] shows movement
      (SettingsShell nav rail, dashboard section wells). */
   --muted: #24241f;
-  --muted-foreground: #b8b8b0;
+  /* TIM-4116: teal-tinted rather than warm-neutral, matching the light mode's
+     move off grey. #9fbcbe → 9.64:1 on --background, 8.47:1 on --card. */
+  --muted-foreground: #9fbcbe;
 
-  --dark-grey: #b8b8b0;               /* keep 4.5:1 on dark bg */
+  --dark-grey: #9fbcbe;               /* keep 4.5:1 on dark bg */
   --light-grey: #2e2e28;
   --off-white: #1c1c18;
 
