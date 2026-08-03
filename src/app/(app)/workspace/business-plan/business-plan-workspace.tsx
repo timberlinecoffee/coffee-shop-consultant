@@ -1998,3 +1998,408 @@ export function BusinessPlanWorkspace({
             {customSectionError && (
               <div className="mb-3 px-4 py-2 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
                 {customSectionError}
+              </div>
+            )}
+            <button onClick={() => setCustomSectionError(null)} className="ml-3 underline text-xs">
+                  Dismiss
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleAddCustomSection}
+              disabled={isAddingCustomSection}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-[var(--neutral-cool-400)] text-sm font-medium text-[var(--neutral-cool-600)] hover:border-[var(--teal)] hover:text-[var(--teal)] hover:bg-[var(--teal)]/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isAddingCustomSection ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              Add Custom Section
+            </button>
+          </div>
+        )}
+
+        {/* TIM-3490: Reset-to-default order — subtle, end of list per DoD. */}
+        {canEdit && sectionOrder.length > 0 && (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => setShowResetOrderModal(true)}
+              className="text-xs text-[var(--neutral-cool-600)] hover:text-[var(--teal)] underline underline-offset-2 transition-colors"
+            >
+              Reset to default order
+            </button>
+          </div>
+        )}
+
+        {showResetOrderModal && (
+          <ResetOrderConfirmationModal
+            onCancel={() => setShowResetOrderModal(false)}
+            onConfirm={handleResetSectionOrder}
+          />
+        )}
+
+        {/* TIM-3587: Financial Documents panel sits between active sections and Archive. */}
+        <FinancialDocumentsPanel initialDocuments={initialFinancialDocuments} />
+
+        {/* TIM-3575: Archive panel — inline collapsible per TIM-3579 panel IA decision. */}
+        <ArchivePanel
+          sections={sections}
+          customSections={customSections}
+          sectionOrder={sectionOrder}
+          isOpen={archivePanelOpen}
+          onToggle={() => setArchivePanelOpen((v) => !v)}
+          canEdit={canEdit}
+          onRestoreSection={(key) => void restoreSection(key)}
+          onRestoreCustomSection={(id) => void restoreCustomSection(id)}
+          onAddOptional={(key) => void addOptionalSection(key)}
+        />
+
+        {/* TIM-3575: Archive confirm dialog. */}
+        {archiveConfirmTarget && (
+          <ArchiveConfirmDialog
+            title={archiveConfirmTarget.title}
+            onCancel={() => setArchiveConfirmTarget(null)}
+            onConfirm={() => {
+              if (archiveConfirmTarget.type === "standard") {
+                void archiveSection(archiveConfirmTarget.key);
+              } else {
+                void archiveCustomSection(archiveConfirmTarget.id);
+              }
+            }}
+          />
+        )}
+      </div>
+    </div>
+    {/* TIM-2416 — the AI companion mounts inside the Business Plan workspace
+        so Coach/Check/Benchmark are reachable from this view. Defaults to
+        Check mode with whole-plan scope per UX spec §5.
+        TIM-2382 — workspaceKey="business_plan" so suggest_workspace_changes
+        proposals route to the BP section-write path; onApplySuggestions wires
+        the AIReviewModal accept handler back to the workspace state. */}
+    </>
+  );
+}
+
+// ── TIM-3490: Flat sortable section list (replaces SectionTree) ─────────────
+// Renders standard sections + custom sections inline in `order`, with group
+// titles as non-interactive inline dividers above each group's first run.
+// Each card is wrapped in SortableCardRow which exposes the canon grip
+// handle. The DndContext / SortableContext are owned by the parent so the
+// optimistic-update path can stay near the rest of the workspace state.
+
+const CUSTOM_SECTIONS_LABEL = "Custom Sections";
+
+interface BpFlatSectionListProps {
+  order: string[];
+  sections: SectionState[];
+  customSections: CustomSectionState[];
+  canEdit: boolean;
+  streamingKey: BusinessPlanSectionKey | null;
+  onToggleVisibility: (key: BusinessPlanSectionKey, current: boolean) => void;
+  onToggleExpand: (key: BusinessPlanSectionKey, current: boolean) => void;
+  onEditStart: (key: BusinessPlanSectionKey, content: string) => void;
+  onEditChange: (key: BusinessPlanSectionKey, val: string) => void;
+  onEditSave: (key: BusinessPlanSectionKey, buf: string) => void;
+  onEditCancel: (key: BusinessPlanSectionKey, fallback: string) => void;
+  onResetToAuto: (key: BusinessPlanSectionKey) => void;
+  onGenerateExec: (key: BusinessPlanSectionKey) => void;
+  onImprove: (key: BusinessPlanSectionKey) => void;
+  onCustomToggleExpand: (id: string, current: boolean) => void;
+  onCustomToggleVisible: (id: string, current: boolean) => void;
+  onCustomTitleEditStart: (id: string, title: string) => void;
+  onCustomTitleChange: (id: string, val: string) => void;
+  onCustomTitleSave: (id: string, buf: string) => void;
+  onCustomTitleCancel: (id: string, fallback: string) => void;
+  onCustomEditStart: (id: string, content: string) => void;
+  onCustomEditChange: (id: string, val: string) => void;
+  onCustomEditSave: (id: string, buf: string) => void;
+  onCustomEditCancel: (id: string, fallback: string) => void;
+  onCustomDelete: (id: string) => void;
+  onCustomWriteWithAi: (id: string) => void;
+  // TIM-3575: archive callbacks.
+  onArchiveSection: (key: BusinessPlanSectionKey, title: string) => void;
+  onArchiveCustomSection: (id: string, title: string) => void;
+  // TIM-3893: Analyse-with-AI for Financial Plan sections.
+  onBpFinancialPlanAnalyse?: (key: BusinessPlanSectionKey) => void;
+  bpFpAnalyseResult?: AnalyseResponse | null;
+  bpFpAnalyseLoading?: boolean;
+  bpFpAnalyseError?: string;
+  bpFpAnalyseActiveKey?: BusinessPlanSectionKey | null;
+  // TIM-3927: one-click auto-write callbacks.
+  onAutoWriteSection?: (key: BusinessPlanSectionKey) => void;
+  onAutoWriteAccept?: (key: BusinessPlanSectionKey) => void;
+  onAutoWriteRegenerate?: (key: BusinessPlanSectionKey) => void;
+  onAutoWriteEdit?: (key: BusinessPlanSectionKey) => void;
+  onAutoWriteCancel?: (key: BusinessPlanSectionKey) => void;
+  // TIM-3950: Regenerate with AI (warning + undo, replaces auto-write path
+  // when BP_AI_SPLIT flag is ON).
+  onRegenerateSection?: (key: BusinessPlanSectionKey) => void;
+  // TIM-3954: The standard section key currently open in BPWriteWithAIModal.
+  // Disables the header Regenerate for that section to prevent two parallel writes.
+  bpWriteAiSectionKey?: BusinessPlanSectionKey | null;
+}
+
+function BpFlatSectionList(props: BpFlatSectionListProps) {
+  const sectionMetaByKey = useMemo(
+    () => new Map(BUSINESS_PLAN_SECTIONS.map((m) => [m.key, m])),
+    [],
+  );
+  const groupTitleByKey = useMemo(
+    () => new Map(BUSINESS_PLAN_GROUPS.map((g) => [g.key, g.title])),
+    [],
+  );
+  const sectionsByKey = useMemo(
+    () => new Map(props.sections.map((s) => [s.key, s])),
+    [props.sections],
+  );
+  const customSectionsById = useMemo(
+    () => new Map(props.customSections.map((cs) => [cs.id, cs])),
+    [props.customSections],
+  );
+
+  function dividerLabelFor(prev: string | null, current: string): string | null {
+    // What divider (if any) should appear ABOVE `current` given the previous
+    // visible item's identity?
+    const prevMeta = prev != null ? sectionMetaByKey.get(prev as BusinessPlanSectionKey) : undefined;
+    const currentIsCustom = customSectionsById.has(current);
+    const currentMeta = sectionMetaByKey.get(current as BusinessPlanSectionKey);
+    if (currentIsCustom) {
+      const prevWasCustom = prev != null && customSectionsById.has(prev);
+      return prevWasCustom ? null : CUSTOM_SECTIONS_LABEL;
+    }
+    if (!currentMeta) return null;
+    const currentGroup = currentMeta.groupKey;
+    if (currentGroup == null) {
+      // Top-level standalone (Executive Summary). No divider above.
+      return null;
+    }
+    const prevGroup = prevMeta?.groupKey ?? null;
+    // Show the group label when transitioning INTO a new group from a
+    // different group (or from a top-level standalone or custom run).
+    if (prev == null) return groupTitleByKey.get(currentGroup) ?? null;
+    if (prevGroup !== currentGroup) {
+      return groupTitleByKey.get(currentGroup) ?? null;
+    }
+    return null;
+  }
+
+  const items: Array<
+    | { kind: "divider"; key: string; label: string }
+    | { kind: "section"; key: string; section: SectionState }
+    | { kind: "custom"; key: string; section: CustomSectionState }
+  > = [];
+  let prev: string | null = null;
+  for (const id of props.order) {
+    const standard = sectionsByKey.get(id as BusinessPlanSectionKey);
+    const custom = customSectionsById.get(id);
+    if (!standard && !custom) continue;
+    const label = dividerLabelFor(prev, id);
+    if (label) items.push({ kind: "divider", key: `divider-${id}`, label });
+    if (standard) items.push({ kind: "section", key: id, section: standard });
+    else if (custom) items.push({ kind: "custom", key: id, section: custom });
+    prev = id;
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map((item) => {
+        if (item.kind === "divider") {
+          return (
+            <h2
+              key={item.key}
+              className="text-base font-semibold text-[var(--foreground)] tracking-tight px-1 pt-3 pb-1 first:pt-0"
+            >
+              {item.label}
+            </h2>
+          );
+        }
+        if (item.kind === "section") {
+          const section = item.section;
+          const blurb = sectionMetaByKey.get(section.key)?.blurb ?? "";
+          const bpExamples = BP_FIELD_EXAMPLES[section.key as BPFieldExampleKey] ?? [];
+          const displayContent = section.userContent ?? section.autoContent;
+          const hasPlaceholderContent =
+            !displayContent ||
+            displayContent.includes("workspace to populate") ||
+            displayContent.includes("Click Generate") ||
+            displayContent.includes("Complete the other") ||
+            displayContent.includes("Complete the Marketing") ||
+            displayContent.includes("click the text field");
+          const hasRealContent = Boolean(displayContent?.trim()) && !hasPlaceholderContent;
+          const onWriteWithAi = props.canEdit
+            ? () => {
+                // TIM-3672: Write with AI now surfaces on collapsed cards too.
+                // Auto-expand on click so the eventual AI review modal + saved
+                // content anchor visually to the section the user acted on.
+                // TIM-3927: this callback is now the "Customize Sources" path
+                // (opens BPWriteWithAIModal). The main button uses onAutoWrite.
+                if (!section.isExpanded) props.onToggleExpand(section.key, section.isExpanded);
+                if (hasRealContent) props.onImprove(section.key);
+                else props.onGenerateExec(section.key);
+              }
+            : undefined;
+          // TIM-3927: new collapsed single-click flow (flag OFF path only).
+          const onAutoWrite =
+            props.canEdit && props.onAutoWriteSection
+              ? () => {
+                  if (!section.isExpanded) props.onToggleExpand(section.key, section.isExpanded);
+                  props.onAutoWriteSection!(section.key);
+                }
+              : undefined;
+          // TIM-3950: Regenerate-with-AI entry point (flag ON path).
+          // TIM-3954: suppress when the Write-with-AI modal is open for this
+          // section to prevent two parallel writes racing on the same section.
+          const modalOpenForThisSection = props.bpWriteAiSectionKey === section.key;
+          const onRegenerate =
+            props.canEdit && props.onRegenerateSection && !modalOpenForThisSection
+              ? () => {
+                  if (!section.isExpanded) props.onToggleExpand(section.key, section.isExpanded);
+                  props.onRegenerateSection!(section.key);
+                }
+              : undefined;
+          const sectionMeta = sectionMetaByKey.get(section.key);
+          // TIM-3893: Wire Analyse button for Financial Plan sections.
+          const isFinancialPlan = sectionMeta?.groupKey === "financial-plan";
+          const onAnalyse =
+            isFinancialPlan && props.onBpFinancialPlanAnalyse
+              ? () => {
+                  if (!section.isExpanded) props.onToggleExpand(section.key, section.isExpanded);
+                  props.onBpFinancialPlanAnalyse!(section.key);
+                }
+              : undefined;
+          const isActiveAnalyse = props.bpFpAnalyseActiveKey === section.key;
+          return (
+            <SortableCardRow id={section.key} canEdit={props.canEdit} key={section.key}>
+              <SectionCard
+                section={section}
+                canEdit={props.canEdit}
+                bpExamples={bpExamples}
+                isStreaming={props.streamingKey === section.key}
+                blurb={blurb}
+                isLocked={sectionMeta?.isLocked}
+                onToggleVisible={() =>
+                  props.onToggleVisibility(section.key, section.isVisible)
+                }
+                onToggleExpand={() =>
+                  props.onToggleExpand(section.key, section.isExpanded)
+                }
+                onEditStart={() =>
+                  props.onEditStart(section.key, section.userContent ?? section.autoContent)
+                }
+                onEditChange={(val) => props.onEditChange(section.key, val)}
+                onEditSave={() => props.onEditSave(section.key, section.editBuffer)}
+                onEditCancel={() =>
+                  props.onEditCancel(section.key, section.userContent ?? section.autoContent)
+                }
+                onResetToAuto={() => props.onResetToAuto(section.key)}
+                onWriteWithAi={onWriteWithAi}
+                onAutoWriteSection={onAutoWrite}
+                onRegenerateSection={onRegenerate}
+                autoWriteState={section.autoWrite ?? null}
+                onAutoWriteAccept={
+                  props.onAutoWriteAccept
+                    ? () => props.onAutoWriteAccept!(section.key)
+                    : undefined
+                }
+                onAutoWriteRegenerate={
+                  props.onAutoWriteRegenerate
+                    ? () => props.onAutoWriteRegenerate!(section.key)
+                    : undefined
+                }
+                onAutoWriteEdit={
+                  props.onAutoWriteEdit
+                    ? () => props.onAutoWriteEdit!(section.key)
+                    : undefined
+                }
+                onAutoWriteCancel={
+                  props.onAutoWriteCancel
+                    ? () => props.onAutoWriteCancel!(section.key)
+                    : undefined
+                }
+                onAnalyse={onAnalyse}
+                analyseResult={isActiveAnalyse ? props.bpFpAnalyseResult : null}
+                analyseLoading={isActiveAnalyse ? props.bpFpAnalyseLoading : false}
+                analyseError={isActiveAnalyse ? props.bpFpAnalyseError : ""}
+                onArchive={!sectionMeta?.isLocked ? () => props.onArchiveSection(section.key, section.title) : undefined}
+              />
+            </SortableCardRow>
+          );
+        }
+        // Custom section row.
+        const cs = item.section;
+        return (
+          <SortableCardRow id={cs.id} canEdit={props.canEdit} key={cs.id}>
+            <CustomSectionCard
+              section={cs}
+              canEdit={props.canEdit}
+              onToggleExpand={() => props.onCustomToggleExpand(cs.id, cs.isExpanded)}
+              onToggleVisible={() => props.onCustomToggleVisible(cs.id, cs.isVisible)}
+              onTitleEditStart={() => props.onCustomTitleEditStart(cs.id, cs.title)}
+              onTitleChange={(val) => props.onCustomTitleChange(cs.id, val)}
+              onTitleSave={() => props.onCustomTitleSave(cs.id, cs.titleBuffer)}
+              onTitleCancel={() => props.onCustomTitleCancel(cs.id, cs.title)}
+              onEditStart={() => props.onCustomEditStart(cs.id, cs.userContent ?? "")}
+              onEditChange={(val) => props.onCustomEditChange(cs.id, val)}
+              onEditSave={() => props.onCustomEditSave(cs.id, cs.editBuffer)}
+              onEditCancel={() => props.onCustomEditCancel(cs.id, cs.userContent ?? "")}
+              onDelete={() => props.onCustomDelete(cs.id)}
+              onWriteWithAi={() => props.onCustomWriteWithAi(cs.id)}
+              onArchive={() => props.onArchiveCustomSection(cs.id, cs.title)}
+            />
+          </SortableCardRow>
+        );
+      })}
+    </div>
+  );
+}
+
+// SortableCardRow — a single row in the flat list. Owns the grip handle +
+// useSortable hook. Renders the handle inline at the left of the card so
+// the card content keeps its own padding intact (TIM-3492 / TIM-3491 BP
+// card header h2 styling unchanged).
+function SortableCardRow({
+  id,
+  canEdit,
+  children,
+}: {
+  id: string;
+  canEdit: boolean;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled: !canEdit });
+
+  const liftStyle = useSortableLift({ transform, transition, isDragging });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={liftStyle}
+      // TIM-4108 (UX Phase 3): the shared step anchor, so the header's
+      // emphasised button can scroll to the section it names using the same
+      // scheme every other workspace uses.
+      id={`step-${id}`}
+      className="group flex items-stretch gap-1.5 sm:gap-2 scroll-mt-24"
+    >
+      {canEdit && (
+        <SortableHandle
+          ref={setActivatorNodeRef}
+          className="self-start mt-4 sm:opacity-0 sm:group-hover:opacity-100 group-focus-within:opacity-100 sm:transition-opacity"
+          {...attributes}
+          {...listeners}
+        />
+      )}
+      <div className="flex-1 min-w-0 group">{children}</div>
+    </div>
+  );
+}
