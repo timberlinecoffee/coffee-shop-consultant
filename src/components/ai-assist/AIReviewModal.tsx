@@ -215,17 +215,17 @@ function IngredientTable({ value }: { value: string }) {
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-[var(--border)] bg-[var(--muted)]">
-            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Ingredient</th>
-            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Amount</th>
-            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Unit</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">Ingredient</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">Amount</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">Unit</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--border)]">
           {lines.map((line, i) => (
             <tr key={i} className="bg-white">
-              <td className="px-3 py-2 text-neutral-950">{line.name}</td>
-              <td className="px-3 py-2 text-neutral-950">{line.amount}</td>
-              <td className="px-3 py-2 text-neutral-950">{line.unit}</td>
+              <td className="px-3 py-2 text-[var(--foreground)]">{line.name}</td>
+              <td className="px-3 py-2 text-[var(--foreground)]">{line.amount}</td>
+              <td className="px-3 py-2 text-[var(--foreground)]">{line.unit}</td>
             </tr>
           ))}
         </tbody>
@@ -308,9 +308,9 @@ function IngredientDiff({ original, proposed }: { original: string; proposed: st
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-[var(--border)] bg-[var(--muted)]">
-            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Ingredient</th>
-            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Amount</th>
-            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Unit</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">Ingredient</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">Amount</th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">Unit</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--border)]">
@@ -334,19 +334,19 @@ function IngredientDiff({ original, proposed }: { original: string; proposed: st
 
             return (
               <tr key={i} className={rowCls}>
-                <td className="px-3 py-2 text-neutral-950">{row.name}</td>
+                <td className="px-3 py-2 text-[var(--foreground)]">{row.name}</td>
                 <td className="px-3 py-2">
                   {row.kind === "changed" && row.origAmount !== row.propAmount ? (
-                    <><span className="line-through text-[var(--dark-grey)] mr-1">{row.origAmount}</span><span className="text-neutral-950">{row.propAmount}</span></>
+                    <><span className="line-through text-[var(--dark-grey)] mr-1">{row.origAmount}</span><span className="text-[var(--foreground)]">{row.propAmount}</span></>
                   ) : (
-                    <span className="text-neutral-950">{row.propAmount}</span>
+                    <span className="text-[var(--foreground)]">{row.propAmount}</span>
                   )}
                 </td>
                 <td className="px-3 py-2">
                   {row.kind === "changed" && row.origUnit !== row.propUnit ? (
-                    <><span className="line-through text-[var(--dark-grey)] mr-1">{row.origUnit}</span><span className="text-neutral-950">{row.propUnit}</span></>
+                    <><span className="line-through text-[var(--dark-grey)] mr-1">{row.origUnit}</span><span className="text-[var(--foreground)]">{row.propUnit}</span></>
                   ) : (
-                    <span className="text-neutral-950">{row.propUnit}</span>
+                    <span className="text-[var(--foreground)]">{row.propUnit}</span>
                   )}
                 </td>
               </tr>
@@ -580,9 +580,9 @@ function IngredientFormEditor({
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-[var(--border)] bg-[var(--muted)]">
-              <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">Ingredient</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide w-20">Amount</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide w-20">Unit</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">Ingredient</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide w-20">Amount</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide w-20">Unit</th>
               <th className="px-2 py-2 w-8" />
             </tr>
           </thead>
@@ -596,7 +596,7 @@ function IngredientFormEditor({
                     placeholder="Ingredient name"
                     value={row.name}
                     onChange={(e) => updateRow(i, { name: e.target.value })}
-                    className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-neutral-950 placeholder:text-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
+                    className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:outline-none focus:border-teal transition-colors"
                   />
                 </td>
                 <td className="px-2 py-1.5">
@@ -607,7 +607,7 @@ function IngredientFormEditor({
                     step={0.01}
                     value={row.amount}
                     onChange={(e) => { const v = e.target.valueAsNumber; updateRow(i, { amount: isNaN(v) ? 0 : Math.max(0, v) }); }}
-                    className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+                    className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors"
                   />
                 </td>
                 <td className="px-2 py-1.5">
@@ -615,7 +615,7 @@ function IngredientFormEditor({
                     aria-label={`Unit for row ${i + 1}`}
                     value={row.unit}
                     onChange={(e) => updateRow(i, { unit: e.target.value })}
-                    className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+                    className="w-full border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors"
                   >
                     {(ALLOWED_UNITS.includes(row.unit as typeof ALLOWED_UNITS[number])
                       ? ALLOWED_UNITS
@@ -630,7 +630,7 @@ function IngredientFormEditor({
                     type="button"
                     onClick={() => updateRows(rows.filter((_, j) => j !== i))}
                     aria-label={`Remove ${row.name || "this ingredient"}`}
-                    className="w-6 h-6 rounded-lg bg-neutral-200 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-colors text-neutral-500"
+                    className="w-6 h-6 rounded-lg bg-neutral-200 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-colors text-[var(--muted-foreground)]"
                   >
                     <X size={12} aria-hidden />
                   </button>
@@ -1132,7 +1132,7 @@ export function AIReviewModal({
       ) : isCrossWorkspace ? (
         groups.map((g) => (
           <div key={g.label} className="space-y-3">
-            <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
+            <p className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
               {g.label}
             </p>
             {g.items.map(renderCard)}
