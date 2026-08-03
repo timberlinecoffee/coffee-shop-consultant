@@ -1998,9 +1998,7 @@ export function BusinessPlanWorkspace({
             {customSectionError && (
               <div className="mb-3 px-4 py-2 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
                 {customSectionError}
-              </div>
-            )}
-            <button onClick={() => setCustomSectionError(null)} className="ml-3 underline text-xs">
+                <button onClick={() => setCustomSectionError(null)} className="ml-3 underline text-xs">
                   Dismiss
                 </button>
               </div>
