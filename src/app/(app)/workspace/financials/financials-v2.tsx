@@ -144,9 +144,11 @@ const TOUR_STEPS_V2: TourStep[] = [
     body: "Your cost of goods (coffee, milk, cups, syrups) as a percentage of the sale price.",
     hint: "a well-run coffee shop keeps this around 28–35%.",
   },
-  // Steps inside the Costs & Overhead accordion follow DOM order
-  // (Cost lines → Personnel → Startup → Funding) so the spotlight scrolls
-  // monotonically down the section instead of bouncing up and down.
+  // TIM-4113: these four used to live inside one "Costs & Overhead" accordion
+  // and were ordered to make the spotlight scroll monotonically down it. They
+  // are now four separate steps, so each names its own section — pointing them
+  // all at the old id would open Running Costs and then spotlight a field
+  // inside a panel that is still closed.
   {
     id: "costs",
     tab: "inputs",
@@ -160,7 +162,7 @@ const TOUR_STEPS_V2: TourStep[] = [
     id: "staffing",
     tab: "inputs",
     targetId: "tour-personnel",
-    sectionId: "v2-section-costs",
+    sectionId: "v2-section-staffing",
     title: "Add your team",
     body: "Add your baristas and any manager here, with their pay. We add a payroll cushion for taxes and benefits automatically.",
     hint: "baristas often earn $15–$20/hr; a manager $40k–$55k a year.",
@@ -170,7 +172,7 @@ const TOUR_STEPS_V2: TourStep[] = [
     id: "startup",
     tab: "inputs",
     targetId: "tour-startup-capital-assets",
-    sectionId: "v2-section-costs",
+    sectionId: "v2-section-startup",
     title: "Add up your opening costs",
     body: "Your one-time costs to open live here. Capital assets (espresso machine, grinders, build-out) flow in automatically from the Equipment & Supplies workspace; add supplies, deposits and other one-time costs directly.",
     hint: "opening a small espresso bar often runs $80k–$250k all in.",
@@ -179,7 +181,7 @@ const TOUR_STEPS_V2: TourStep[] = [
     id: "funding",
     tab: "inputs",
     targetId: "tour-funding",
-    sectionId: "v2-section-costs",
+    sectionId: "v2-section-funding",
     title: "How are you paying for it?",
     body: "Add the money you're putting in, plus any loan. We'll check it covers your opening costs with a cushion for the early months.",
     hint: "many first owners self-fund $30k–$150k, often with a small loan.",
@@ -257,30 +259,31 @@ function openSection(id: string) {
   window.dispatchEvent(new CustomEvent(SECTION_OPEN_EVENT, { detail: { id } }));
 }
 
+// TIM-4113 (UX Phase 5): ONE STEP OPEN AT A TIME.
+//
+// Two sections used to open on arrival, and nothing closed when another opened,
+// so the owner could be looking at four steps at once on a screen that told
+// them there were four steps in total. Trent's words: "hard to track where you
+// are and understand the process."
+//
+// Now the parent owns which one is open. Opening a step closes the others, and
+// closing the open one leaves nothing open — a state the owner can reach on
+// purpose when they want to see the shape of the whole thing.
 function AccordionSection({
   id,
   title,
   status,
-  defaultOpen = false,
+  open,
+  onToggle,
   children,
 }: {
   id?: string;
   title: string;
   status: SectionStatus;
-  defaultOpen?: boolean;
+  open: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  useEffect(() => {
-    if (!id) return;
-    function onExpand(e: Event) {
-      const detail = (e as CustomEvent<{ id?: string }>).detail;
-      if (detail?.id === id) setOpen(true);
-    }
-    window.addEventListener(SECTION_OPEN_EVENT, onExpand as EventListener);
-    return () => window.removeEventListener(SECTION_OPEN_EVENT, onExpand as EventListener);
-  }, [id]);
 
   return (
     <div
@@ -299,7 +302,7 @@ function AccordionSection({
       <div className="w-full flex items-center justify-between px-5 py-4">
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={onToggle}
           aria-expanded={open}
           aria-controls={id ? `${id}-content` : undefined}
           className="flex items-center gap-3 flex-1 min-w-0 hover:bg-[var(--background)] -mx-2 px-2 py-1 rounded-lg transition-colors text-left"
@@ -347,21 +350,40 @@ function getRevenueStreamsStatus(mp: MonthlyProjections): SectionStatus {
   return "empty";
 }
 
-function getCostsOverheadStatus(mp: MonthlyProjections): SectionStatus {
+// TIM-4113 (UX Phase 5): what used to be one "Costs & Overhead" step was four
+// jobs wearing one hat — running costs, staffing, startup costs, funding. The
+// old status function even counted them, then reported "complete" at three out
+// of four, so an owner could finish the step without ever opening funding.
+//
+// Splitting them is the honest version: each says whether IT is done, the
+// progress line counts what is really there, and each is one screenful rather
+// than a scroll through five panels.
+
+function getRunningCostsStatus(mp: MonthlyProjections): SectionStatus {
   const hasCostLines = mp.forecast_lines.some(
     (l) => ["overhead", "cogs"].includes(l.category) && (l.value ?? 0) > 0
   );
-  const hasPersonnel = (mp.personnel ?? []).length > 0;
+  return hasCostLines ? "complete" : "empty";
+}
+
+function getStaffingStatus(mp: MonthlyProjections): SectionStatus {
+  return (mp.personnel ?? []).length > 0 ? "complete" : "empty";
+}
+
+function getStartupCostsStatus(mp: MonthlyProjections): SectionStatus {
   const sc = mp.startup_costs ?? defaultStartupCosts();
-  const hasStartup =
-    (sc.equipment_cents ?? 0) > 0 ||
-    (sc.buildout_cents ?? 0) > 0 ||
-    (sc.initial_inventory_cents ?? 0) > 0;
-  const hasFunding = (mp.funding_sources ?? []).length > 0;
-  const count = [hasCostLines, hasPersonnel, hasStartup, hasFunding].filter(Boolean).length;
-  if (count >= 3) return "complete";
-  if (count > 0) return "in_progress";
+  const filled = [
+    sc.equipment_cents ?? 0,
+    sc.buildout_cents ?? 0,
+    sc.initial_inventory_cents ?? 0,
+  ].filter((c) => c > 0).length;
+  if (filled >= 2) return "complete";
+  if (filled > 0) return "in_progress";
   return "empty";
+}
+
+function getFundingStatus(mp: MonthlyProjections): SectionStatus {
+  return (mp.funding_sources ?? []).length > 0 ? "complete" : "empty";
 }
 
 function getGrowthRampStatus(mp: MonthlyProjections): SectionStatus {
@@ -823,7 +845,13 @@ function RevenueStreamsContent({
 
 // ── Costs & Overhead section content ──────────────────────────────────────────
 
-function CostsOverheadContent({
+// TIM-4113 (UX Phase 5): one job per component, because one job per step.
+//
+// These four were a single `CostsOverheadContent` that rendered five titled
+// panels in a row. Nothing here changed except which step it belongs to — the
+// editors, the sync panel, the runway maths are all the same code.
+
+function RunningCostsContent({
   mp,
   canEdit,
   onUpdate,
@@ -837,16 +865,6 @@ function CostsOverheadContent({
   isRefreshingMenu,
   onRefreshEquipment,
   isRefreshingEquipment,
-  financialInputs,
-  equipment,
-  hasEquipmentItems,
-  startupCapexLines,
-  startupEquipmentItemLines,
-  openingRunway,
-  onStartupCostUpdate,
-  onPersonnelUpdate,
-  onFundingUpdate,
-  minimumWage,
 }: {
   mp: MonthlyProjections;
   canEdit: boolean;
@@ -861,16 +879,6 @@ function CostsOverheadContent({
   isRefreshingMenu: boolean;
   onRefreshEquipment: () => void;
   isRefreshingEquipment: boolean;
-  financialInputs: FinancialInputs;
-  equipment: { total_cost_cents: number; financed_cost_cents: number };
-  hasEquipmentItems: boolean;
-  startupCapexLines: ForecastLine[];
-  startupEquipmentItemLines: ForecastLine[];
-  openingRunway: OpeningRunwayResult;
-  onStartupCostUpdate: (key: keyof StartupCosts, cents: number) => void;
-  onPersonnelUpdate: (next: PersonnelLine[]) => void;
-  onFundingUpdate: (next: FundingSourceLine[]) => void;
-  minimumWage: MinWageInfo | null;
 }) {
   const inputCls =
     "w-full text-sm border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--foreground)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
@@ -903,12 +911,27 @@ function CostsOverheadContent({
         />
       </div>
 
-      {/* Other operating costs */}
-      <div className="rounded-xl border border-[var(--border)] bg-white p-4">
-        <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)] mb-3">
-          Other Operating Costs
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* TIM-4113: the three percentages below are fine-tuning. Every one has a
+          sensible default and a typical range, and none of them changes the
+          answer much — card fees move the bottom line by a rounding error next
+          to rent. A first-time owner meeting them on arrival learns only that
+          this screen is complicated. They stay one disclosure away, open by
+          default for anyone who has already set one. */}
+      <details
+        className="rounded-xl border border-[var(--border)] bg-white group"
+        open={
+          (mp.payment_processing_pct ?? 0) > 0 ||
+          (mp.spoilage_pct ?? 0) > 0 ||
+          (mp.loyalty_discount_pct ?? 0) > 0
+        }
+      >
+        <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
+          <span>Fine-tuning</span>
+          <span className="text-[10px] font-medium normal-case tracking-normal text-[var(--muted-foreground)]">
+            card fees, spoilage, loyalty — sensible defaults already applied
+          </span>
+        </summary>
+        <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <LabelWithHint className={labelCls.replace(" mb-1", "")} hintLabel="Payment processing %" hint="% of gross revenue. Card fees: 2.5–3.0%">
               Payment processing %
@@ -937,7 +960,7 @@ function CostsOverheadContent({
               step={0.5}
               value={mp.spoilage_pct ?? ""}
               onChange={(e) => onUpdate({ ...mp, spoilage_pct: Math.max(0, parseFloat(e.target.value) || 0) })}
-              placeholder="2"
+              placeholder="3"
               disabled={!canEdit}
             />
           </div>
@@ -950,7 +973,7 @@ function CostsOverheadContent({
               type="number"
               min={0}
               max={20}
-              step={0.1}
+              step={0.5}
               value={mp.loyalty_discount_pct ?? ""}
               onChange={(e) => onUpdate({ ...mp, loyalty_discount_pct: Math.max(0, parseFloat(e.target.value) || 0) })}
               placeholder="1"
@@ -958,70 +981,108 @@ function CostsOverheadContent({
             />
           </div>
         </div>
-      </div>
-
-      {/* Personnel / Salaries — `id="tour-personnel"` lives on the inner
-          PersonnelEditor root, so the wrapper here intentionally has no id to
-          avoid a duplicate-id DOM. */}
-      <div className="space-y-3">
-        <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
-          Personnel &amp; Salaries
-        </p>
-        <OrgSyncPanel
-          personnel={mp.personnel ?? []}
-          enabled={mp.org_sync_enabled ?? false}
-          canEdit={canEdit}
-          currencyCode={currencyCode}
-          onToggle={(next) => onUpdate({ ...mp, org_sync_enabled: next })}
-          onPersonnelChange={onPersonnelUpdate}
-        />
-        <PersonnelEditor
-          personnel={mp.personnel ?? []}
-          canEdit={canEdit}
-          currencyCode={currencyCode}
-          onChange={onPersonnelUpdate}
-          minimumWage={minimumWage}
-        />
-      </div>
-
-      {/* Startup Costs — `id="tour-startup-capital-assets"` lives on the inner
-          StartupTab root. */}
-      <div className="space-y-3">
-        <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
-          Startup &amp; Opening Costs
-        </p>
-        <StartupTab
-          startupCosts={mp.startup_costs ?? defaultStartupCosts()}
-          equipmentTotalCents={
-            hasEquipmentItems
-              ? equipment.total_cost_cents
-              : (mp.startup_costs ?? defaultStartupCosts()).equipment_cents
-          }
-          hasEquipmentItems={hasEquipmentItems}
-          capexLines={startupCapexLines}
-          equipmentItemLines={startupEquipmentItemLines}
-          fundingSources={mp.funding_sources ?? []}
-          currencyCode={currencyCode}
-          canEdit={canEdit}
-          onUpdateField={onStartupCostUpdate}
-          openingRunway={openingRunway}
-        />
-      </div>
-
-      {/* Funding — `id="tour-funding"` lives on the inner FundingTab root. */}
-      <div className="space-y-3">
-        <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--teal)]">
-          Funding &amp; Loans
-        </p>
-        <FundingTab
-          sources={mp.funding_sources ?? []}
-          inputs={financialInputs}
-          canEdit={canEdit}
-          currencyCode={currencyCode}
-          onChange={onFundingUpdate}
-        />
-      </div>
+      </details>
     </div>
+  );
+}
+
+function StaffingContent({
+  mp,
+  canEdit,
+  onUpdate,
+  onPersonnelUpdate,
+  minimumWage,
+}: {
+  mp: MonthlyProjections;
+  canEdit: boolean;
+  onUpdate: (next: MonthlyProjections) => void;
+  onPersonnelUpdate: (next: PersonnelLine[]) => void;
+  minimumWage: MinWageInfo | null;
+}) {
+  const currencyCode = mp.currency_code ?? "USD";
+  // `id="tour-personnel"` lives on the inner PersonnelEditor root, so this
+  // wrapper intentionally has no id — a duplicate would break the tour.
+  return (
+    <div className="space-y-3">
+      <OrgSyncPanel
+        personnel={mp.personnel ?? []}
+        enabled={mp.org_sync_enabled ?? false}
+        canEdit={canEdit}
+        currencyCode={currencyCode}
+        onToggle={(next) => onUpdate({ ...mp, org_sync_enabled: next })}
+        onPersonnelChange={onPersonnelUpdate}
+      />
+      <PersonnelEditor
+        personnel={mp.personnel ?? []}
+        canEdit={canEdit}
+        currencyCode={currencyCode}
+        onChange={onPersonnelUpdate}
+        minimumWage={minimumWage}
+      />
+    </div>
+  );
+}
+
+function StartupCostsContent({
+  mp,
+  canEdit,
+  equipment,
+  hasEquipmentItems,
+  startupCapexLines,
+  startupEquipmentItemLines,
+  openingRunway,
+  onStartupCostUpdate,
+}: {
+  mp: MonthlyProjections;
+  canEdit: boolean;
+  equipment: { total_cost_cents: number; financed_cost_cents: number };
+  hasEquipmentItems: boolean;
+  startupCapexLines: ForecastLine[];
+  startupEquipmentItemLines: ForecastLine[];
+  openingRunway: OpeningRunwayResult;
+  onStartupCostUpdate: (key: keyof StartupCosts, cents: number) => void;
+}) {
+  // `id="tour-startup-capital-assets"` lives on the inner StartupTab root.
+  return (
+    <StartupTab
+      startupCosts={mp.startup_costs ?? defaultStartupCosts()}
+      equipmentTotalCents={
+        hasEquipmentItems
+          ? equipment.total_cost_cents
+          : (mp.startup_costs ?? defaultStartupCosts()).equipment_cents
+      }
+      hasEquipmentItems={hasEquipmentItems}
+      capexLines={startupCapexLines}
+      equipmentItemLines={startupEquipmentItemLines}
+      fundingSources={mp.funding_sources ?? []}
+      currencyCode={mp.currency_code ?? "USD"}
+      canEdit={canEdit}
+      onUpdateField={onStartupCostUpdate}
+      openingRunway={openingRunway}
+    />
+  );
+}
+
+function FundingContent({
+  mp,
+  canEdit,
+  financialInputs,
+  onFundingUpdate,
+}: {
+  mp: MonthlyProjections;
+  canEdit: boolean;
+  financialInputs: FinancialInputs;
+  onFundingUpdate: (next: FundingSourceLine[]) => void;
+}) {
+  // `id="tour-funding"` lives on the inner FundingTab root.
+  return (
+    <FundingTab
+      sources={mp.funding_sources ?? []}
+      inputs={financialInputs}
+      canEdit={canEdit}
+      currencyCode={mp.currency_code ?? "USD"}
+      onChange={onFundingUpdate}
+    />
   );
 }
 
@@ -1490,6 +1551,30 @@ export function FinancialsV2({
     AIReviewModalNode: ConflictReviewNode,
   } = useCrossSuiteConflictResolver();
 
+  // TIM-4113 (UX Phase 5): which single step is open. Null is allowed and means
+  // all collapsed. Seeded below, once the statuses are known, to the first
+  // unfinished step — landing an owner on work they have already done is how a
+  // screen wastes the one moment it has their full attention.
+  // `touched` distinguishes "the owner has not chosen yet" from "the owner
+  // deliberately closed everything" — without it, collapsing the open step
+  // would spring straight back to the default.
+  const [openStep, setOpenStep] = useState<{ touched: boolean; id: string | null }>({
+    touched: false,
+    id: null,
+  });
+
+  // The guided tour and the header's emphasised button both open sections
+  // through one event (TIM-4108). That now sets the single open step rather
+  // than expanding another panel alongside the others.
+  useEffect(() => {
+    function onOpen(e: Event) {
+      const detail = (e as CustomEvent<{ id?: string }>).detail;
+      if (detail?.id) setOpenStep({ touched: true, id: detail.id });
+    }
+    window.addEventListener(SECTION_OPEN_EVENT, onOpen as EventListener);
+    return () => window.removeEventListener(SECTION_OPEN_EVENT, onOpen as EventListener);
+  }, []);
+
   // TIM-3851: mirror the selected tab/report into the URL so each sub-nav
   // entry has a stable, shareable route. `history.replaceState` keeps this
   // out of the Next.js router (no re-render, no data refetch).
@@ -1555,8 +1640,11 @@ export function FinancialsV2({
     getRevenueStreamsStatus(mp),
     blockedReason === "no_avg_ticket" || blockedReason === "no_contribution_margin"
   );
-  const s3 = demote(getCostsOverheadStatus(mp), blockedReason === "no_fixed_costs");
-  const s4 = getGrowthRampStatus(mp);
+  const s3 = demote(getRunningCostsStatus(mp), blockedReason === "no_fixed_costs");
+  const s4 = getStaffingStatus(mp);
+  const s5 = getStartupCostsStatus(mp);
+  const s6 = getFundingStatus(mp);
+  const s7 = getGrowthRampStatus(mp);
 
   const tabs: { id: V2Tab; label: string; badge?: number }[] = [
     { id: "inputs", label: "Inputs" },
@@ -1565,14 +1653,28 @@ export function FinancialsV2({
 
   // TIM-4108 (UX Phase 3): one list of steps feeds BOTH the progress line and
   // the emphasised button, in the order an owner should walk them.
+  //
+  // TIM-4113 (UX Phase 5): seven, not four. The old third step held five titled
+  // panels — running costs, three fine-tuning percentages, staffing, startup
+  // costs, funding — so the screen promised four things and asked for eleven.
+  // That gap is what "hard to track where you are" was made of. Nothing was
+  // removed to close it; the work that was already there is now counted.
   const steps = [
     { id: "v2-section-daily-traffic", label: "Daily Traffic & Schedule", done: s1 === "complete" },
     { id: "v2-section-revenue", label: "Revenue Streams", done: s2 === "complete" },
-    { id: "v2-section-costs", label: "Costs & Overhead", done: s3 === "complete" },
-    { id: "v2-section-growth", label: "Growth & Ramp", done: s4 === "complete" },
+    { id: "v2-section-costs", label: "Running Costs", done: s3 === "complete" },
+    { id: "v2-section-staffing", label: "Staffing", done: s4 === "complete" },
+    { id: "v2-section-startup", label: "Startup Costs", done: s5 === "complete" },
+    { id: "v2-section-funding", label: "Funding", done: s6 === "complete" },
+    { id: "v2-section-growth", label: "Growth & Ramp", done: s7 === "complete" },
   ];
   const next = nextStep(steps);
   const nothingStarted = steps.every((s) => !s.done);
+
+  // Until the owner chooses, the open step is the first unfinished one. Landing
+  // them on work they have already done wastes the one moment the screen has
+  // their full attention.
+  const openStepId = openStep.touched ? openStep.id : (next?.id ?? steps[0].id);
 
   const goToStep = (id: string) => {
     // The sections only exist on the Inputs tab, so a button pressed while
@@ -1581,6 +1683,17 @@ export function FinancialsV2({
     openSection(id);
     requestAnimationFrame(() => scrollToStep(id));
   };
+
+  // TIM-4113: exactly one step open, and it starts on the first unfinished one
+  // rather than on whichever two happened to be flagged open in the markup.
+  // Toggling
+  // the open one shut leaves nothing open, which is a legitimate thing to want
+  // — it is how you see the shape of the whole screen at once.
+  const toggleStep = (id: string) =>
+    setOpenStep((current) => ({
+      touched: true,
+      id: current.touched && current.id === id ? null : id,
+    }));
 
   // TIM-4108: the header's amber band. Two things can want it, and both are
   // the same kind of thing — something standing between the owner and a
@@ -1722,11 +1835,23 @@ export function FinancialsV2({
         {activeTab === "inputs" && (
           <div>
             <div className="space-y-3">
-              <AccordionSection id="v2-section-daily-traffic" title="Daily Traffic & Schedule" status={s1} defaultOpen>
+              <AccordionSection
+                id="v2-section-daily-traffic"
+                title="Daily Traffic & Schedule"
+                status={s1}
+                open={openStepId === "v2-section-daily-traffic"}
+                onToggle={() => toggleStep("v2-section-daily-traffic")}
+              >
                 <DailyTrafficContent mp={mp} canEdit={canEdit} onUpdate={onMpUpdate} />
               </AccordionSection>
 
-              <AccordionSection id="v2-section-revenue" title="Revenue Streams" status={s2} defaultOpen>
+              <AccordionSection
+                id="v2-section-revenue"
+                title="Revenue Streams"
+                status={s2}
+                open={openStepId === "v2-section-revenue"}
+                onToggle={() => toggleStep("v2-section-revenue")}
+              >
                 <RevenueStreamsContent
                   mp={mp}
                   canEdit={canEdit}
@@ -1742,8 +1867,14 @@ export function FinancialsV2({
                 />
               </AccordionSection>
 
-              <AccordionSection id="v2-section-costs" title="Costs & Overhead" status={s3}>
-                <CostsOverheadContent
+              <AccordionSection
+                id="v2-section-costs"
+                title="Running Costs"
+                status={s3}
+                open={openStepId === "v2-section-costs"}
+                onToggle={() => toggleStep("v2-section-costs")}
+              >
+                <RunningCostsContent
                   mp={mp}
                   canEdit={canEdit}
                   onUpdate={onMpUpdate}
@@ -1757,20 +1888,66 @@ export function FinancialsV2({
                   isRefreshingMenu={isRefreshingMenu}
                   onRefreshEquipment={onRefreshEquipment}
                   isRefreshingEquipment={isRefreshingEquipment}
-                  financialInputs={financialInputs}
+                />
+              </AccordionSection>
+
+              <AccordionSection
+                id="v2-section-staffing"
+                title="Staffing"
+                status={s4}
+                open={openStepId === "v2-section-staffing"}
+                onToggle={() => toggleStep("v2-section-staffing")}
+              >
+                <StaffingContent
+                  mp={mp}
+                  canEdit={canEdit}
+                  onUpdate={onMpUpdate}
+                  onPersonnelUpdate={onPersonnelUpdate}
+                  minimumWage={minimumWage}
+                />
+              </AccordionSection>
+
+              <AccordionSection
+                id="v2-section-startup"
+                title="Startup Costs"
+                status={s5}
+                open={openStepId === "v2-section-startup"}
+                onToggle={() => toggleStep("v2-section-startup")}
+              >
+                <StartupCostsContent
+                  mp={mp}
+                  canEdit={canEdit}
                   equipment={equipment}
                   hasEquipmentItems={hasEquipmentItems}
                   startupCapexLines={startupCapexLines}
                   startupEquipmentItemLines={startupEquipmentItemLines}
                   openingRunway={openingRunway}
                   onStartupCostUpdate={onStartupCostUpdate}
-                  onPersonnelUpdate={onPersonnelUpdate}
-                  onFundingUpdate={onFundingUpdate}
-                  minimumWage={minimumWage}
                 />
               </AccordionSection>
 
-              <AccordionSection id="v2-section-growth" title="Growth & Ramp" status={s4}>
+              <AccordionSection
+                id="v2-section-funding"
+                title="Funding"
+                status={s6}
+                open={openStepId === "v2-section-funding"}
+                onToggle={() => toggleStep("v2-section-funding")}
+              >
+                <FundingContent
+                  mp={mp}
+                  canEdit={canEdit}
+                  financialInputs={financialInputs}
+                  onFundingUpdate={onFundingUpdate}
+                />
+              </AccordionSection>
+
+              <AccordionSection
+                id="v2-section-growth"
+                title="Growth & Ramp"
+                status={s7}
+                open={openStepId === "v2-section-growth"}
+                onToggle={() => toggleStep("v2-section-growth")}
+              >
                 <GrowthRampContent mp={mp} canEdit={canEdit} onUpdate={onMpUpdate} />
               </AccordionSection>
             </div>
