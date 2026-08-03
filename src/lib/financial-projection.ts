@@ -17,6 +17,8 @@ import {
 } from "./cross-workspace/linked-number.ts";
 import type { ExpectedPopularity } from "./menu-engineering.ts";
 import { defaultBaristaWageMinorUnits, type MinWageInfo } from "./wages/minimum-wage.ts";
+// TIM-4115: the real Drink / Food / Retail split, derived from the menu.
+import { blendMenuByBucket, type BucketableMenuItem } from "./menu-cogs-buckets.ts";
 
 export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -2521,7 +2523,40 @@ export function findForecastLineByKey(lines: ForecastLine[], key: LegacyLineKey)
   return lines.find((l) => l.legacy_key === key);
 }
 
-export function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
+/**
+ * TIM-4115 (UX Phase 5): the revenue-mix and per-category COGS rates now come
+ * from the owner's menu when there is one.
+ *
+ * They used to be six hardcoded literals — beverage/food/retail revenue at
+ * 70/20/10 and their cost rates at 30/35/45 — which the P&L multiplied by total
+ * revenue to print "Drink Costs / Food Costs / Retail Product Costs". Identical
+ * on every plan ever created. Unmoved by anything the owner typed. And they did
+ * not sum to the total COGS line printed directly beneath them.
+ *
+ * Trent, 2026-08-03: "The cost of goods should always be linked to line items
+ * elsewhere in the workspace, not just having generic cost of goods floating
+ * around, because that makes it confusing."
+ *
+ * `menuItems` is optional and the literals remain the fallback, deliberately:
+ *   • Every existing caller keeps working unchanged.
+ *   • A plan with no menu yet genuinely has no basis for a split. Reporting 0%
+ *     drink costs would be a confident lie, which is the failure being fixed —
+ *     a documented industry default is the honest answer there.
+ *
+ * When the menu does answer, the three rows reconcile with the plan-wide
+ * blended COGS percentage shown elsewhere on the same screen. That is pinned by
+ * menu-cogs-buckets.test.mjs, because rows that do not add up to the total
+ * beneath them are worse than no rows at all.
+ */
+export function deriveFinancialInputs(
+  mp: MonthlyProjections,
+  // BucketableMenuItem, not MenuItemForCogs: the split needs `category_name`,
+  // which the flat breakdown shape does not carry, and it is deliberately
+  // looser about popularity (plain string) so callers can hand over rows
+  // straight from the category groups without re-narrowing the enum.
+  menuItems?: ReadonlyArray<BucketableMenuItem> | null,
+): FinancialInputs {
+  const bucketBlends = blendMenuByBucket(menuItems);
   const sc: StartupCosts = mp.startup_costs ?? defaultStartupCosts();
   const openDays = Object.values(mp.weekly_schedule).filter((d) => d.open).length;
   const openDayKeys = (Object.keys(mp.weekly_schedule) as DayKey[]).filter(
@@ -2562,12 +2597,15 @@ export function deriveFinancialInputs(mp: MonthlyProjections): FinancialInputs {
     hours_per_day: 10,
     avg_ticket_cents: mp.avg_ticket_cents,
     customers_per_day: avgCustomersPerDay,
-    beverage_revenue_pct: 70,
-    food_revenue_pct: 20,
-    retail_revenue_pct: 10,
-    beverage_cogs_pct: 30,
-    food_cogs_pct: 35,
-    retail_cogs_pct: 45,
+    // From the menu when it can answer; the documented industry defaults when
+    // the plan has no priced items yet. Never a blend of the two — a half-real
+    // split would be the hardest kind of number to argue with.
+    beverage_revenue_pct: bucketBlends?.beverage.revenue_pct ?? 70,
+    food_revenue_pct: bucketBlends?.food.revenue_pct ?? 20,
+    retail_revenue_pct: bucketBlends?.retail.revenue_pct ?? 10,
+    beverage_cogs_pct: bucketBlends?.beverage.cogs_pct ?? 30,
+    food_cogs_pct: bucketBlends?.food.cogs_pct ?? 35,
+    retail_cogs_pct: bucketBlends?.retail.cogs_pct ?? 45,
     rent_cents: rent?.mode === "flat" ? rent.value : 0,
     labor_pct: labor?.mode === "pct" ? labor.value : 30,
     marketing_pct: marketing?.mode === "pct" ? marketing.value : 2,
