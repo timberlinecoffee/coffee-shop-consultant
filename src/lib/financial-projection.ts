@@ -1226,7 +1226,7 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
   };
 }
 
-// ── Equipment ───────────────────────────────────────────────────────────────────
+// ── Equipment ─────────────────────────────────────────────────────────────────
 
 export interface EquipmentSummary {
   total_cost_cents: number;
