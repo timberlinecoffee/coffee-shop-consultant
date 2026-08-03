@@ -80,5 +80,3 @@ import {
   isBpPlaceholderContent,
   type WriteAiApproveExtras,
 } from "@/components/business-plan/BPWriteWithAIModal";
-
-PLACEHOLDER_TRUNCATED_DO_NOT_USE
