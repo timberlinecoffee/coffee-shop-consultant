@@ -71,7 +71,13 @@ const TEACHING: Record<string, TeachingContent> = {
       "v2-section-revenue":
         "One drink, or a drink and a pastry — that difference is most of your margin. Most espresso bars land between $6 and $10 a visit.",
       "v2-section-costs":
-        "Rent, wages and insurance do not care how quiet Tuesday was. These are the costs that decide how many customers a day you need just to keep the doors open.",
+        "Rent, insurance and the coffee itself do not care how quiet Tuesday was. These are the costs that decide how many customers a day you need just to keep the doors open.",
+      "v2-section-staffing":
+        "Wages are usually the biggest cost after rent, and the one most often guessed at. Two people on a slow Tuesday costs the same whether ten customers come in or a hundred.",
+      "v2-section-startup":
+        "This is the money you spend before a single cup is sold — fit-out, equipment, the first inventory, the deposit. It is the number people underestimate most, and the one your funding has to cover.",
+      "v2-section-funding":
+        "Savings, a loan, an investor, or some of each. Naming where the money comes from is what turns a startup cost into a plan rather than a hope.",
       "v2-section-growth":
         "Almost nobody is busy in month one. Planning the climb honestly is what tells you how much cash you need to survive it — which is the number that closes most new shops.",
     },

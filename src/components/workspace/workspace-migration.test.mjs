@@ -433,3 +433,107 @@ test("no NEW screen may use the deprecated free-form action cluster", () => {
     "the free-form cluster is closed to new callers"
   );
 });
+
+// ── One step open at a time (TIM-4113) ──────────────────────────────────────
+
+test("Financials opens exactly one step, and the step count is honest", () => {
+  // Trent, 2026-08-03: "so many fields and callout buttons that it is hard to
+  // track where you are". The screen said four steps and contained eleven
+  // titled blocks, two of them open on arrival. Nothing was removed to fix
+  // that — the work that was already there is now counted and shown one at a
+  // time.
+  const src = read("src/app/(app)/workspace/financials/financials-v2.tsx");
+
+  assert.doesNotMatch(
+    src,
+    /defaultOpen/,
+    "no step may open itself; the parent decides which single one is open"
+  );
+  assert.match(
+    src,
+    /open=\{openStepId === "v2-section-/,
+    "each step's open state must come from the one shared value"
+  );
+  assert.match(
+    src,
+    /id: current\.touched && current\.id === id \? null : id/,
+    "toggling the open step shut must leave nothing open"
+  );
+
+  const stepIds = [...src.matchAll(/id: "(v2-section-[a-z-]+)"/g)].map((m) => m[1]);
+  assert.equal(stepIds.length, 7, "the seven steps the screen actually contains");
+  assert.deepEqual(
+    stepIds,
+    [
+      "v2-section-daily-traffic",
+      "v2-section-revenue",
+      "v2-section-costs",
+      "v2-section-staffing",
+      "v2-section-startup",
+      "v2-section-funding",
+      "v2-section-growth",
+    ],
+    "in the order an owner should walk them"
+  );
+
+  // Every step in the list must also be rendered, or the progress line counts
+  // work the owner cannot reach.
+  for (const id of stepIds) {
+    assert.ok(
+      src.includes(`id="${id}"`),
+      `${id} is counted in progress but never rendered`
+    );
+  }
+});
+
+test("nothing was removed from Financials when the step was split", () => {
+  // The whole point of the split: re-shelved, not reduced. Each of the five
+  // panels that used to live inside "Costs & Overhead" must still be rendered.
+  const src = read("src/app/(app)/workspace/financials/financials-v2.tsx");
+  for (const kept of [
+    "<ForecastLinesEditor",
+    "<OrgSyncPanel",
+    "<PersonnelEditor",
+    "<StartupTab",
+    "<FundingTab",
+    "Payment processing %",
+    "Spoilage %",
+    "Loyalty discount %",
+  ]) {
+    assert.ok(src.includes(kept), `${kept} went missing in the split`);
+  }
+});
+
+test("the fine-tuning percentages are folded away, but open once used", () => {
+  // They have sensible defaults and typical ranges, and none of them moves the
+  // answer much next to rent. A first-time owner meeting them on arrival learns
+  // only that this screen is complicated. Anyone who has already set one should
+  // not have to go looking for it again.
+  const src = read("src/app/(app)/workspace/financials/financials-v2.tsx");
+  assert.match(src, /<summary[\s\S]{0,200}Fine-tuning/);
+  assert.match(src, /\(mp\.payment_processing_pct \?\? 0\) > 0 \|\|/);
+});
+
+test("the guided tour points each step at the section that holds it", () => {
+  // TIM-4113: three tour steps used to name the old combined section id. Left
+  // alone, the tour would open Running Costs and then spotlight a field inside
+  // a panel that is still closed — a silent break, because the tour would look
+  // like it was working right up until the spotlight landed on nothing.
+  const src = read("src/app/(app)/workspace/financials/financials-v2.tsx");
+  const tour = src.slice(src.indexOf("TOUR_STEPS_V2"), src.indexOf("DAY_KEYS"));
+  const named = new Set(
+    [...tour.matchAll(/sectionId: "(v2-section-[a-z-]+)"/g)].map((m) => m[1])
+  );
+  const rendered = new Set(
+    [...src.matchAll(/id: "(v2-section-[a-z-]+)"/g)].map((m) => m[1])
+  );
+  for (const id of named) {
+    assert.ok(rendered.has(id), `the tour names ${id}, which is not a step`);
+  }
+  // The three that moved must no longer claim to live in Running Costs.
+  for (const target of ["tour-personnel", "tour-startup-capital-assets", "tour-funding"]) {
+    const at = tour.indexOf(target);
+    const section = tour.slice(at, at + 200).match(/sectionId: "([^"]+)"/)?.[1];
+    assert.notEqual(section, "v2-section-costs", `${target} still points at the old section`);
+  }
+});

@@ -97,3 +97,20 @@ test("every workspace on the header standard has a line", () => {
   }
   assert.deepEqual(missing, [], `these screens are on the standard but teach nothing`);
 });
+
+test("every step the Financials header can point at has its own line", () => {
+  // TIM-4113 split one step into four. A step with no line falls back to the
+  // workspace's general one, which is not wrong but is a wasted sentence — the
+  // owner is standing in front of a specific question.
+  const src = read("src/app/(app)/workspace/financials/financials-v2.tsx");
+  const stepIds = [...src.matchAll(/id: "(v2-section-[a-z-]+)"/g)].map((m) => m[1]);
+  assert.ok(stepIds.length >= 7, `expected the seven steps, found ${stepIds.length}`);
+  const generic = teachingLine("financials");
+  for (const id of stepIds) {
+    assert.notEqual(
+      teachingLine("financials", id),
+      generic,
+      `${id} has no line of its own`
+    );
+  }
+});
