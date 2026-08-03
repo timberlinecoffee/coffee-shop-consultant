@@ -1288,6 +1288,7 @@ function SectionHeader({
                     {section.name}
                   </span>
                 )}
+
                 {canEdit && (
                   <div className="flex items-center gap-0.5 shrink-0">
                     <button
