@@ -1953,6 +1953,13 @@ export function FinancialsWorkspace({
   const [liveMenuCogsByCategory, setLiveMenuCogsByCategory] = useState<MenuCogsCategoryGroup[]>(menuCogsByCategory);
   const [liveEquipmentItems, setLiveEquipmentItems] = useState<EquipmentItem[]>(initialEquipmentItems);
   const [isRefreshingMenu, setIsRefreshingMenu] = useState(false);
+  // TIM-4114: when the menu pull last ran. The page is force-dynamic and the
+  // server recomputes the blend on every request, so first render genuinely is
+  // fresh — seeding this at first render rather than in an effect is the
+  // honest stamp, not a convenience. The label built from it is client-only
+  // (see useClientClock in LinkedValueField), so nothing here can produce a
+  // hydration mismatch.
+  const [menuSyncedAtMs, setMenuSyncedAtMs] = useState<number | null>(() => Date.now());
   const [isRefreshingEquipment, setIsRefreshingEquipment] = useState(false);
 
   // TIM-3887: Analyse-with-AI state for COGS sections.
@@ -2064,6 +2071,8 @@ export function FinancialsWorkspace({
         setLiveMenuBlendedCogsPct(computeMenuBlendedCogsPct(data));
         setLiveMenuCogsItems(buildMenuCogsBreakdown(data));
         setLiveMenuCogsByCategory(groupMenuItemsByCategory(data));
+        // TIM-4114: stamp the pull so the screen can say when it happened.
+        setMenuSyncedAtMs(Date.now());
       }
     } catch {
       // silently ignore — stale data is better than an error state
@@ -2511,6 +2520,7 @@ export function FinancialsWorkspace({
         onCritiqueUpdate={handleCritiqueUpdate}
         menuBlendedCogsPct={liveMenuBlendedCogsPct}
         menuCogsItems={liveMenuCogsItems}
+        menuSyncedAtMs={menuSyncedAtMs}
         isRefreshingMenu={isRefreshingMenu}
         onRefreshMenu={handleRefreshMenu}
         isRefreshingEquipment={isRefreshingEquipment}
