@@ -16,6 +16,26 @@
 
   --teal: #155e63;
   --sage: #76b39d;
+
+  /* TIM-4114 (UX Phase 5): the table-header standard.
+     Trent, 2026-08-03: "on the Equipment and Supplies page, the headers are a
+     beige that's similar to the background, so it doesn't really separate it
+     out. Maybe the headers should have the teal background with white letters."
+     He is right — the old header sat on --surface-warm-100 (#f5f4f0) inside a
+     white card on a #faf9f7 page: a 3% luminance step doing the work of a
+     structural divider.
+     These are deliberately their own tokens rather than raw --teal at the call
+     sites, so the whole platform's header treatment can move in one edit.
+     --teal is NOT overridden in .dark, so white-on-teal is stable in both
+     modes — which the beige tokens were not (they flip to near-black). */
+  --table-header-bg: var(--teal);
+  --table-header-fg: #ffffff;
+  /* Group/category bands inside the body (e.g. "Espresso Machines"). Same teal
+     today; separated from the column header by a white hairline rather than by
+     hue, because every teal light enough to read as "one step down" drops white
+     text below the WCAG AA 4.5:1 floor. Kept as its own token so it can diverge
+     later without touching a single call site. */
+  --table-group-header-bg: var(--teal);
   --off-white: #faf9f7;
   --light-grey: #efefef;
   /* WCAG 1.4.3: #afafaf was 2.8:1. #6b6b6b clears 4.5:1 on both white (5.3:1)
