@@ -2402,7 +2402,7 @@ function SortableCardRow({
   );
 }
 
-// ── TIM-3490: Reset-to-default order confirmation modal ───────────────────────────────────
+// ── TIM-3490: Reset-to-default order confirmation modal ─────────────────────
 
 function ResetOrderConfirmationModal({
   onCancel,
@@ -2465,7 +2465,7 @@ function ResetOrderConfirmationModal({
   );
 }
 
-// ── TIM-3575: ArchiveConfirmDialog ───────────────────────────────────────────────────────
+// ── TIM-3575: ArchiveConfirmDialog ────────────────────────────────────────────
 
 function ArchiveConfirmDialog({
   title,
@@ -2522,7 +2522,7 @@ function ArchiveConfirmDialog({
   );
 }
 
-// ── TIM-3950: RegenerateWarningDialog ──────────────────────────────────────────────────
+// ── TIM-3950: RegenerateWarningDialog ─────────────────────────────────────────
 //
 // Confirmation gate before a destructive Regenerate-with-AI run. Copy is
 // verbatim from the TIM-3950 board directive DoD. Escape dismisses; the
@@ -2591,7 +2591,7 @@ function RegenerateWarningDialog({
   );
 }
 
-// ── TIM-3950: RegenerateUndoToast ──────────────────────────────────────────────────
+// ── TIM-3950: RegenerateUndoToast ─────────────────────────────────────────────
 //
 // Toast pill surfaced after a successful Regenerate PATCH. Holds a visible
 // Undo affordance and an X to dismiss. Parent auto-clears at 15s. Parent
@@ -2635,7 +2635,7 @@ function RegenerateUndoToast({
   );
 }
 
-// ── TIM-3575: ArchivePanel ──────────────────────────────────────────────────
+// ── TIM-3575: ArchivePanel ────────────────────────────────────────────────────
 // Inline collapsible panel at the bottom of the section list (TIM-3579 IA decision).
 // Shows two groups: Archived (with Restore) and Optional (with Add to Plan).
 
@@ -2786,7 +2786,7 @@ function ArchivePanel({
   );
 }
 
-// ── SectionCard ─────────────────────────────────────────────────────────────
+// ── SectionCard ───────────────────────────────────────────────────────────────
 
 interface SectionCardProps {
   section: SectionState;
