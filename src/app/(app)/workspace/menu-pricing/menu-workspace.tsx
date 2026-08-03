@@ -96,7 +96,9 @@ import {
   aggregateMargins,
   computeMsrpCents,
   cogsChipStatusFor,
+  menuMixSharePct,
 } from "@/lib/menu";
+import { MenuBlendedCogsSummary } from "@/components/cross-suite/MenuBlendedCogsSummary";
 import {
   type ExpectedPopularity,
   type Quadrant,
@@ -290,6 +292,7 @@ function ItemEditorPanel({
   benchmarkResult,
   benchmarkError,
   onPhotoChange,
+  mixSharePct,
 }: {
   item: MenuItemWithCogs;
   category: MenuCategory | undefined;
@@ -324,6 +327,8 @@ function ItemEditorPanel({
   benchmarkLoading: boolean;
   benchmarkResult: BenchmarkResult | null;
   benchmarkError: string | null;
+  /** TIM-4114: this item's implied share of sales, from its popularity. */
+  mixSharePct: number | null;
 }) {
   const [activeTab, setActiveTab] = useState<ItemEditorTab>("recipe");
   const [name, setName] = useState(item.name);
@@ -557,6 +562,7 @@ function ItemEditorPanel({
             benchmarkLoading={benchmarkLoading}
             benchmarkResult={benchmarkResult}
             benchmarkError={benchmarkError}
+            mixSharePct={mixSharePct}
           />
         )}
       </div>
@@ -922,11 +928,14 @@ function CostOfGoodsTabContent({
   benchmarkLoading,
   benchmarkResult,
   benchmarkError,
+  mixSharePct,
 }: {
   item: MenuItemWithCogs;
   category: MenuCategory | undefined;
   categoryMidPct: number | null;
   canEdit: boolean;
+  /** TIM-4114: this item's implied share of sales, or null if unpriced. */
+  mixSharePct: number | null;
   priceDisplay: string;
   setPriceDisplay: (v: string) => void;
   onPriceBlur: () => void;
@@ -1061,6 +1070,21 @@ function CostOfGoodsTabContent({
         <p className="text-[11px] text-[var(--neutral-cool-650)] mt-1.5 leading-relaxed">
           Your best guess at how often this will sell. Paired with margin in the Insights tab.
         </p>
+        {/* TIM-4114 (UX Phase 6): what that guess actually means, in the units
+            the owner was thinking in. Trent asked for "what percentage of
+            beverages sold do we anticipate will be this particular beverage" —
+            the maths already had an answer and never said it out loud, so the
+            blended cost of goods downstream looked like it came from nowhere. */}
+        {mixSharePct !== null && (
+          <p className="text-[11px] text-[var(--muted-foreground)] mt-1.5 leading-relaxed">
+            On your current guesses, that works out at roughly{" "}
+            <span className="font-semibold text-[var(--foreground)]">
+              {fmtIntegerPct(mixSharePct / 100)}
+            </span>{" "}
+            of everything you sell — which is how much this item pulls on your
+            average cost of goods.
+          </p>
+        )}
       </section>
 
       {/* AI suggest retail price — TIM-1561: bespoke box replaced by unified modal */}
@@ -1995,6 +2019,7 @@ function MenuTab(props: MenuTabProps) {
                             <div className="bg-[var(--warm-1050)] border-t border-b-2 border-[var(--neutral-cool-200)] pb-4 mb-3">
                               <ItemEditorPanel
                                 item={item}
+                                mixSharePct={menuMixSharePct(items, item.id)}
                                 category={cat}
                                 categories={categories}
                                 ingredients={ingredients}
@@ -3542,6 +3567,14 @@ export function MenuWorkspace({
           onSelect={setActiveTab}
           ariaLabel="Menu & Pricing sections"
         />
+
+        {/* TIM-4114 (UX Phase 6): the menu says what it is handing to the
+            financial plan. Before this, the blend was computed here and only
+            ever read on another screen, so the popularity settings felt like a
+            note to yourself rather than something that moves the numbers. */}
+        {activeTab === "menu" && (
+          <MenuBlendedCogsSummary items={items} className="mb-4" />
+        )}
 
         {activeTab === "menu" && (
           <MenuTab
