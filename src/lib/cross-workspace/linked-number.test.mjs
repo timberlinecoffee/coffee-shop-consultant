@@ -133,6 +133,35 @@ test("cost of goods pulls from the menu wherever the plan is computed", () => {
   );
 });
 
+test("the Financials cost-of-goods box cannot go back to being a bare box", () => {
+  // What it was before this phase: a number box with the hint "typical coffee
+  // shop: 28–35%", sitting inches from a menu full of real recipe costs. The
+  // whole complaint. The box still exists — but only inside the linked field,
+  // where the owner has to take over deliberately to reach it.
+  const src = read("src/app/(app)/workspace/financials/financials-v2.tsx");
+  const cogs = src.slice(src.indexOf('id="tour-cogs"'));
+  const block = cogs.slice(0, 4000);
+  assert.match(
+    block,
+    /<LinkedValueField/,
+    "cost of goods no longer renders through the shared linked-number field"
+  );
+  assert.match(block, /ownerLabel="your menu"/, "the field no longer names where the number comes from");
+  assert.match(block, /syncedAtMs=/, "the field no longer says when the pull last ran");
+  assert.match(block, /cogs_source: "manual"/, "there is no way to take over with your own number");
+  assert.match(block, /cogs_source: "linked"/, "there is no way back to the menu number");
+});
+
+test("the label the owner reads is not a trade term", () => {
+  // Session-zero brief: the reader has never opened a business. "COGS % of
+  // revenue" was three pieces of jargon in four words.
+  const src = read("src/app/(app)/workspace/financials/financials-v2.tsx");
+  const cogs = src.slice(src.indexOf('id="tour-cogs"'), src.indexOf('id="tour-cogs"') + 4000);
+  const label = cogs.match(/label="([^"]+)"/);
+  assert.ok(label, "the cost-of-goods field has no label");
+  assert.doesNotMatch(label[1], /\bCOGS\b/, `label uses a trade term bare: "${label[1]}"`);
+});
+
 test("a brand-new plan starts linked, not overridden", () => {
   const src = read("src/lib/financial-projection.ts");
   const defaults = src.slice(src.indexOf("export function defaultMonthlyProjections"));
