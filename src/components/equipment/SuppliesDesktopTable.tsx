@@ -15,7 +15,8 @@ import type { ListSection, SuppliesItem } from "@/types/buildout";
 import { MoneyInput } from "@/components/ui/money-input";
 import {
   TABLE_CELL_TEXT,
-  TABLE_HEADER_TEXT,
+  TABLE_HEADER_ROW_CLS,
+  TABLE_HEADER_CELL_CLS,
   TABLE_ACTION_ICON_SIZE,
   TABLE_ROW_PADDING,
   TABLE_PRICE_CLS,
@@ -363,7 +364,8 @@ export function SuppliesDesktopTable({
 
   // TIM-3251: row padding from TABLE_ROW_PADDING (Menu ingredients-tab canon).
   const cellCls = `px-2.5 ${TABLE_ROW_PADDING} ${TABLE_CELL_TEXT} border-r border-[var(--neutral-cool-150)] last:border-r-0 align-middle`;
-  const headerCellCls = `px-2.5 py-2.5 text-left ${TABLE_HEADER_TEXT} text-[var(--muted-foreground)] border-r border-[var(--neutral-cool-150)] last:border-r-0 bg-[var(--background)] select-none`;
+  // TIM-4114: the teal header band, from the shared standard.
+  const headerCellCls = TABLE_HEADER_CELL_CLS;
 
   return (
     <div className="space-y-3">
@@ -404,7 +406,7 @@ export function SuppliesDesktopTable({
 
             {/* Sticky column headers */}
             <thead className="sticky top-0 z-10">
-              <tr className="border-b border-[var(--neutral-cool-150)]">
+              <tr className={TABLE_HEADER_ROW_CLS}>
                 <th className={headerCellCls}>Name</th>
                 <th className={headerCellCls}>Vendor</th>
                 <th className={headerCellCls}>Unit</th>
