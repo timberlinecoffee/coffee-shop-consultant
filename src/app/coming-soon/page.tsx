@@ -391,7 +391,7 @@ export default async function ComingSoonPage({
                   >
                     {item.title}
                   </p>
-                  <p className="text-neutral-600" style={{ fontSize: "16px", lineHeight: 1.6 }}>
+                  <p className="text-[var(--muted-foreground)]" style={{ fontSize: "16px", lineHeight: 1.6 }}>
                     {item.body}
                   </p>
                 </div>
@@ -430,7 +430,7 @@ export default async function ComingSoonPage({
               Real Coffee Planning Tools, Shipped Today
             </h2>
             <p
-              className="mx-auto mt-4 text-neutral-600"
+              className="mx-auto mt-4 text-[var(--muted-foreground)]"
               style={{ fontSize: "17px", lineHeight: 1.55, maxWidth: "600px" }}
             >
               Every module below is live in the coffee planning platform today, and Scout
@@ -498,7 +498,7 @@ export default async function ComingSoonPage({
               >
                 Scout Reads Your Coffee Shop Plan as You Build It
               </h2>
-              <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
+              <p className="text-[var(--muted-foreground)] mb-8 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
                 Concept, menu, financials, hiring, equipment, launch. Scout has access
                 to every module you fill in, so the answer to your lease, ticket size,
                 or staffing question is grounded in your plan and real-market research,
@@ -525,7 +525,7 @@ export default async function ComingSoonPage({
                 ))}
               </div>
               <p
-                className="mt-6 text-neutral-500 italic"
+                className="mt-6 text-[var(--muted-foreground)] italic"
                 style={{ fontSize: "12px", lineHeight: 1.5, maxWidth: "460px" }}
               >
                 AI responses are planning support, not professional advice. Verify any
@@ -609,7 +609,7 @@ export default async function ComingSoonPage({
                 >
                   Every Module a Lender Expects
                 </h2>
-                <p className="text-neutral-600 mb-7 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
+                <p className="text-[var(--muted-foreground)] mb-7 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
                   Coffee concept, cafe location, menu, build-out, barista hiring,
                   financials, operations, and launch all live in one workspace, wired
                   to the same source of truth so updates in one module flow through
@@ -689,7 +689,7 @@ export default async function ComingSoonPage({
                 From the Founder
               </p>
               <blockquote
-                className="text-neutral-800 mb-6"
+                className="text-[var(--foreground)] mb-6"
                 style={{
                   fontSize: "clamp(1.25rem, 2.4vw, 1.625rem)",
                   lineHeight: 1.4,
@@ -710,7 +710,7 @@ export default async function ComingSoonPage({
                   <p className="font-semibold" style={{ fontSize: "14px", color: "var(--teal)" }}>
                     {FOUNDER_QUOTE.attribution}
                   </p>
-                  <p className="text-neutral-500" style={{ fontSize: "12px", marginTop: "1px" }}>
+                  <p className="text-[var(--muted-foreground)]" style={{ fontSize: "12px", marginTop: "1px" }}>
                     {FOUNDER_QUOTE.role}
                   </p>
                 </div>

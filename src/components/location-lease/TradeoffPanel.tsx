@@ -50,7 +50,7 @@ const CANDIDATE_COLORS = [
   { name: 'rose',    bar: 'bg-rose-500',          dot: 'bg-rose-500',          text: 'text-rose-600' },
   { name: 'violet',  bar: 'bg-violet-500',        dot: 'bg-violet-500',        text: 'text-violet-600' },
   { name: 'emerald', bar: 'bg-emerald-500',       dot: 'bg-emerald-500',       text: 'text-emerald-600' },
-  { name: 'slate',   bar: 'bg-slate-500',         dot: 'bg-slate-500',         text: 'text-slate-600' },
+  { name: 'slate',   bar: 'bg-slate-500',         dot: 'bg-slate-500',         text: 'text-[var(--muted-foreground)]' },
 ]
 
 // ── Types for tradeoff API response ──────────────────────────────────────
