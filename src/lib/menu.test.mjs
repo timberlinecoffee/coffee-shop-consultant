@@ -5,7 +5,14 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { blendedTicketCentsFromMenu, cogsChipStatusFor, costPerUnit } from "./menu.ts";
+import { readFileSync } from "node:fs";
+import {
+  blendedTicketCentsFromMenu,
+  cogsChipStatusFor,
+  costPerUnit,
+  menuMixShares,
+  menuMixSharePct,
+} from "./menu.ts";
 
 const EPSILON = 1e-9;
 
@@ -258,4 +265,89 @@ test("cogsChipStatusFor: 2pp floor kicks in for tight low-COGS categories", () =
   assert.equal(cogsChipStatusFor(11, 8, 10).status, "yellow");
   assert.equal(cogsChipStatusFor(12, 8, 10).status, "yellow");
   assert.equal(cogsChipStatusFor(12.5, 8, 10).status, "red");
+});
+
+// ── TIM-4114 (UX Phase 6): the implied share of sales ────────────────────────
+//
+// Trent asked to be able to say what percentage of drinks sold each item will
+// be. The maths already had an answer — popularity, weighted 3/2/1 — and never
+// said it out loud, so the blended cost of goods downstream looked like it came
+// from nowhere. His ruling was to show the implied share, NOT to add a second
+// numeric input. These guards hold both halves of that.
+
+test("the share a popularity setting implies is the one the blend uses", () => {
+  // Same weights, same filter, same items as computeMenuBlendedCogsPct. If
+  // these ever drift, the menu shows one story and the plan runs on another —
+  // which is the exact confusion this phase exists to remove.
+  const shares = menuMixShares([
+    { id: "a", price_cents: 500, expected_popularity: "high" },   // w3
+    { id: "b", price_cents: 400, expected_popularity: "medium" }, // w2
+    { id: "c", price_cents: 300, expected_popularity: "low" },    // w1
+  ]);
+  assert.ok(Math.abs(shares.get("a") - 50) < EPSILON);
+  assert.ok(Math.abs(shares.get("b") - (2 / 6) * 100) < EPSILON);
+  assert.ok(Math.abs(shares.get("c") - (1 / 6) * 100) < EPSILON);
+});
+
+test("shares always add up to a hundred", () => {
+  // The number is being shown to a beginner as a percentage of everything they
+  // sell. If the column does not total 100 it is not that, and they will spot
+  // it before we do.
+  const shares = menuMixShares([
+    { id: "a", price_cents: 500, expected_popularity: "high" },
+    { id: "b", price_cents: 400, expected_popularity: null },
+    { id: "c", price_cents: 300, expected_popularity: "low" },
+    { id: "d", price_cents: 600, expected_popularity: "medium" },
+  ]);
+  const total = [...shares.values()].reduce((s, v) => s + v, 0);
+  assert.ok(Math.abs(total - 100) < 1e-9, `shares total ${total}, not 100`);
+});
+
+test("unpriced and archived items are outside the blend, not zero inside it", () => {
+  // An unpriced item is not yet part of the menu the plan is costing. Counting
+  // it would quietly shrink every other item's share.
+  const shares = menuMixShares([
+    { id: "a", price_cents: 500, expected_popularity: "high" },
+    { id: "b", price_cents: 0, expected_popularity: "high" },
+    { id: "c", price_cents: 400, expected_popularity: "high", archived: true },
+  ]);
+  assert.equal(shares.size, 1);
+  assert.ok(Math.abs(shares.get("a") - 100) < EPSILON);
+});
+
+test("an item with no popularity set still counts", () => {
+  // Default weight 1 — never silently dropped. A priced item the owner has not
+  // rated is still something they intend to sell.
+  const shares = menuMixShares([
+    { id: "a", price_cents: 500, expected_popularity: null },
+    { id: "b", price_cents: 400, expected_popularity: "high" },
+  ]);
+  assert.ok(Math.abs(shares.get("a") - 25) < EPSILON);
+});
+
+test("an empty or unpriced menu yields no shares rather than NaN", () => {
+  assert.equal(menuMixShares([]).size, 0);
+  assert.equal(menuMixShares(null).size, 0);
+  assert.equal(menuMixShares([{ id: "a", price_cents: 0 }]).size, 0);
+  assert.equal(menuMixSharePct([{ id: "a", price_cents: 500 }], "nope"), null);
+  assert.equal(menuMixSharePct([{ id: "a", price_cents: 500 }], null), null);
+});
+
+test("no second sales-mix input was reintroduced", () => {
+  // TIM-2491 removed the legacy numeric expected_mix_pct from the weighting
+  // because a mixed corpus weighted old items 10-70x as heavily as new ones.
+  // Trent's 2026-08-03 ruling kept that removal: show the implied share, do
+  // not ask a first-timer for thirty numbers that have to total a hundred.
+  const src = readFileSync(new URL("./menu.ts", import.meta.url), "utf8");
+  const body = src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .filter((l) => !l.trim().startsWith("//"))
+    .join("\n");
+  const fn = body.slice(body.indexOf("export function menuMixShares"));
+  assert.doesNotMatch(
+    fn.slice(0, 1200),
+    /expected_mix_pct/,
+    "the popularity blend is reading a numeric mix field again"
+  );
 });

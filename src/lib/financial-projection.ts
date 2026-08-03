@@ -11,6 +11,10 @@
 //   formatCurrency / fmt accept an optional code and delegate to src/lib/currency.
 
 import { formatCurrencyAmount, formatMinorUnits, normalizeCurrencyCode } from "./currency.ts";
+import {
+  resolveLinkedNumber,
+  type LinkedSource,
+} from "./cross-workspace/linked-number.ts";
 import type { ExpectedPopularity } from "./menu-engineering.ts";
 import { defaultBaristaWageMinorUnits, type MinWageInfo } from "./wages/minimum-wage.ts";
 
@@ -300,7 +304,18 @@ export interface MonthlyProjections {
 
   // Default COGS rate for the foot-traffic base revenue (additional COGS lines
   // can be added in forecast_lines).
+  //
+  // TIM-4114: this is now the owner's OWN number, not necessarily the one the
+  // plan uses. When cogs_source is "linked" (the default) the menu's blended
+  // rate wins and this is only what the owner would fall back to. Read the
+  // effective rate through resolveCogsPct() rather than reaching for this
+  // field — the two differ on almost every real plan.
   cogs_pct: number;
+
+  // TIM-4114 (UX Phase 6): whether cost of goods is pulled from the menu or
+  // typed. Absent means "linked": pulling is the default, and a plan saved
+  // before this field existed was never asked the question.
+  cogs_source?: LinkedSource;
 
   // TIM-1102: source-of-truth flexible line items.
   forecast_lines: ForecastLine[];
@@ -599,7 +614,11 @@ export function defaultMonthlyProjections(minimumWage?: MinWageInfo | null): Mon
     daily_flow: { mon: 80, tue: 90, wed: 100, thu: 100, fri: 130, sat: 150, sun: 100 },
     avg_ticket_cents: 750,
     weekly_schedule: defaultWeekSchedule(),
+    // TIM-4114: 30 is the industry starting point a brand-new plan shows while
+    // the menu is still empty. The moment the menu has priced items with
+    // recipes, the blend takes over — that is what cogs_source: "linked" buys.
     cogs_pct: 30,
+    cogs_source: "linked",
     forecast_lines: defaultForecastLines(),
     funding_sources: defaultFundingSources(),
     personnel: defaultPersonnel(minimumWage),
@@ -1172,6 +1191,11 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
     food_ticket_cents,
     weekly_schedule,
     cogs_pct: typeof r.cogs_pct === "number" ? r.cogs_pct : defaults.cogs_pct,
+    // TIM-4114: only an explicit "manual" counts as an override. Every plan
+    // saved before this field existed comes back linked, which is the point —
+    // those are exactly the plans running on a 30% guess while their own menu
+    // held the real answer.
+    cogs_source: r.cogs_source === "manual" ? "manual" : "linked",
     forecast_lines: forecast_lines_final,
     funding_sources,
     personnel,
@@ -1464,6 +1488,30 @@ export interface ProjectionContext {
   // cogs_pct × revenue as the base COGS. Applied with revFactor so it scales
   // proportionally with business growth, the same way revenue does.
   cogs_grand_total_monthly_cents?: number | null;
+}
+
+// TIM-4114 (UX Phase 6): THE cost-of-goods rate, for every surface.
+//
+// Before this, the answer depended on which screen you were standing on. The
+// live Financials screen used the typed guess. A stranded sync panel on the
+// retired screen used per-category unit counts. A menu-linked forecast line
+// used the blend, but only as an extra on top. Four mechanisms, one number.
+//
+// Now there is one rule, and it lives inside the engine rather than in a
+// component: unless the owner has explicitly said otherwise, the menu wins.
+// Every caller of computeMonthlyProjections — the screen, the spreadsheet
+// export, the PDF, the business plan, the lender metrics — inherits it without
+// opting in, which is what stopped the last good version from reaching anyone.
+export function resolveCogsPct(
+  mp: Pick<MonthlyProjections, "cogs_pct" | "cogs_source">,
+  ctx: ProjectionContext,
+): number {
+  const view = resolveLinkedNumber({
+    linkedValue: ctx.menu_blended_cogs_pct,
+    manualValue: mp.cogs_pct,
+    source: mp.cogs_source,
+  });
+  return view.value ?? 0;
 }
 
 // TIM-1118: pct-mode COGS and Overhead lines may target a revenue stream rather
@@ -1922,11 +1970,15 @@ export function computeMonthlyProjections(
       }
 
       // TIM-3735: use COGS Grand Total (menu + additional) when available; fall
-      // back to legacy percentage-of-revenue for empty-menu / pre-sync plans.
+      // back to a percentage of revenue otherwise.
+      //
+      // TIM-4114: that percentage is no longer whatever sits in cogs_pct. It
+      // resolves through the shared rule, so the base cost of goods comes from
+      // the owner's own recipes unless they have said to use their number.
       const baseCogs =
         typeof ctx.cogs_grand_total_monthly_cents === "number" && ctx.cogs_grand_total_monthly_cents > 0
           ? Math.round(ctx.cogs_grand_total_monthly_cents * revFactor)
-          : Math.round(revenue_cents * (mp.cogs_pct / 100));
+          : Math.round(revenue_cents * (resolveCogsPct(mp, ctx) / 100));
       let extraCogs = 0;
       const cogsLineResults: LineMonthlyAmount[] = [];
       for (const l of cogsLines) {

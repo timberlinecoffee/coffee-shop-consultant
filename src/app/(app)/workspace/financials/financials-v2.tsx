@@ -41,6 +41,9 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { LabelWithHint } from "@/components/ui/label-with-hint";
 import { InfoTip } from "@/components/ui/info-tip";
 import { MenuTicketReconciliationBanner } from "@/components/cross-suite/MenuTicketReconciliationBanner";
+import { LinkedValueField } from "@/components/cross-suite/LinkedValueField";
+import { resolveLinkedNumber } from "@/lib/cross-workspace/linked-number";
+import { fmtPct, fmtIntegerPct } from "@/lib/formatters";
 import { DismissibleCallout } from "@/components/DismissibleCallout";
 import { GuidedTour, type TourStep } from "./guided-tour";
 import { Compass, FileDown, Sheet } from "lucide-react";
@@ -423,6 +426,8 @@ export interface FinancialsV2Props {
   onCritiqueUpdate: (c: CritiqueResult | null) => void;
   menuBlendedCogsPct: number | null;
   menuCogsItems: { name: string; price_cents: number; cogs_cents: number; expected_mix_pct: number; cogs_pct: number }[];
+  /** TIM-4114: when the menu pull last ran, so the screen can say so. */
+  menuSyncedAtMs: number | null;
   isRefreshingMenu: boolean;
   onRefreshMenu: () => void;
   isRefreshingEquipment: boolean;
@@ -627,6 +632,7 @@ function RevenueStreamsContent({
   onUpdate,
   menuBlendedCogsPct,
   menuCogsItems,
+  menuSyncedAtMs,
   manualLines,
   overrideCounts,
   onClearLineOverrides,
@@ -639,6 +645,7 @@ function RevenueStreamsContent({
   onUpdate: (next: MonthlyProjections) => void;
   menuBlendedCogsPct: number | null;
   menuCogsItems: { name: string; price_cents: number; cogs_cents: number; expected_mix_pct: number; cogs_pct: number }[];
+  menuSyncedAtMs: number | null;
   manualLines: string[];
   overrideCounts: Record<string, number>;
   onClearLineOverrides: (lineId: string) => void;
@@ -646,6 +653,15 @@ function RevenueStreamsContent({
   onRefreshMenu: () => void;
   isRefreshingMenu: boolean;
 }) {
+  // TIM-4114: which cost-of-goods number is in play — the menu's or the
+  // owner's. Resolved through the shared rule so this screen and the
+  // projection engine can never disagree about it.
+  const cogsView = resolveLinkedNumber({
+    linkedValue: menuBlendedCogsPct,
+    manualValue: mp.cogs_pct,
+    source: mp.cogs_source,
+  });
+
   const inputCls =
     "w-full text-sm border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
   const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
@@ -749,20 +765,98 @@ function RevenueStreamsContent({
               />
             </div>
           )}
+          {/* TIM-4114 (UX Phase 6): this was a bare box with a hint reading
+              "typical coffee shop: 28–35%", while the owner's own recipes sat
+              one workspace away holding the real answer. Trent's ruling: the
+              default is to pull, and the owner can see that it happened. The
+              box is still here — it appears the moment they take over. */}
           <div id="tour-cogs">
-            <LabelWithHint className={labelCls.replace(" mb-1", "")} hintLabel="COGS % of revenue" hint="Typical coffee shop: 28–35%">
-              COGS % of revenue
-            </LabelWithHint>
-            <NumericInput
-              className={inputCls}
-              type="number"
-              min={0}
-              max={100}
-              value={mp.cogs_pct || ""}
-              onChange={(e) => onUpdate({ ...mp, cogs_pct: parseFloat(e.target.value) || 0 })}
-              placeholder="30"
-              disabled={!canEdit}
-            />
+            <LinkedValueField
+              label="Cost of goods — what each sale costs you to make"
+              view={cogsView}
+              format={(v) => fmtPct(v / 100)}
+              ownerLabel="your menu"
+              ownerHref="/workspace/menu-pricing"
+              basis={
+                menuCogsItems.length > 0
+                  ? `${menuCogsItems.length} priced item${menuCogsItems.length === 1 ? "" : "s"}, weighted by how popular you expect each one to be`
+                  : null
+              }
+              syncedAtMs={menuSyncedAtMs}
+              onRefresh={onRefreshMenu}
+              isRefreshing={isRefreshingMenu}
+              onUseLinked={() => onUpdate({ ...mp, cogs_source: "linked" })}
+              onUseOwn={() =>
+                onUpdate({
+                  ...mp,
+                  cogs_source: "manual",
+                  // Seed the box with what the menu said, so taking over means
+                  // adjusting a real number rather than facing a blank one.
+                  cogs_pct: menuBlendedCogsPct
+                    ? Math.round(menuBlendedCogsPct * 10) / 10
+                    : mp.cogs_pct,
+                })
+              }
+              canEdit={canEdit}
+              input={
+                <NumericInput
+                  className={inputCls}
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={mp.cogs_pct || ""}
+                  onChange={(e) => onUpdate({ ...mp, cogs_pct: parseFloat(e.target.value) || 0 })}
+                  placeholder="30"
+                  disabled={!canEdit}
+                />
+              }
+            >
+              {menuCogsItems.length > 0 ? (
+                <details className="mt-2 group">
+                  <summary className="cursor-pointer text-[11px] font-semibold text-[var(--teal)] hover:underline list-none">
+                    See which items drive it
+                  </summary>
+                  {/* The share column is the answer to "how does it know I
+                      sell more lattes than pour-overs" — it is the popularity
+                      setting, made legible. Trent's ruling 2026-08-03: show
+                      the percentage behind Popular / Average / Slow rather
+                      than asking a first-timer for thirty numbers that have
+                      to add up to a hundred. */}
+                  <div className="mt-2 rounded-lg border border-[var(--border)] overflow-hidden">
+                    <table className="w-full text-[11px]">
+                      <thead className="bg-[var(--background)]">
+                        <tr className="text-left text-[var(--muted-foreground)]">
+                          <th className="px-2 py-1.5 font-medium">Item</th>
+                          <th className="px-2 py-1.5 font-medium text-right">Share of sales</th>
+                          <th className="px-2 py-1.5 font-medium text-right">Costs to make</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...menuCogsItems]
+                          .sort((a, b) => b.expected_mix_pct - a.expected_mix_pct)
+                          .slice(0, 8)
+                          .map((it) => (
+                            <tr key={it.name} className="border-t border-[var(--border)]">
+                              <td className="px-2 py-1.5 text-[var(--foreground)]">{it.name}</td>
+                              <td className="px-2 py-1.5 text-right tabular-nums text-[var(--muted-foreground)]">
+                                {fmtIntegerPct(it.expected_mix_pct / 100)}
+                              </td>
+                              <td className="px-2 py-1.5 text-right tabular-nums text-[var(--muted-foreground)]">
+                                {fmtIntegerPct(it.cogs_pct / 100)} of its price
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                    {menuCogsItems.length > 8 ? (
+                      <p className="px-2 py-1.5 text-[11px] text-[var(--muted-foreground)] border-t border-[var(--border)]">
+                        …and {menuCogsItems.length - 8} more, all counted in the blend.
+                      </p>
+                    ) : null}
+                  </div>
+                </details>
+              ) : null}
+            </LinkedValueField>
           </div>
         </div>
 
@@ -1503,6 +1597,7 @@ export function FinancialsV2({
   onCritiqueUpdate,
   menuBlendedCogsPct,
   menuCogsItems,
+  menuSyncedAtMs,
   isRefreshingMenu,
   onRefreshMenu,
   isRefreshingEquipment,
@@ -1858,6 +1953,7 @@ export function FinancialsV2({
                   onUpdate={onMpUpdate}
                   menuBlendedCogsPct={menuBlendedCogsPct}
                   menuCogsItems={menuCogsItems}
+                  menuSyncedAtMs={menuSyncedAtMs}
                   manualLines={manualLines}
                   overrideCounts={overrideCounts}
                   onClearLineOverrides={onClearLineOverrides}
