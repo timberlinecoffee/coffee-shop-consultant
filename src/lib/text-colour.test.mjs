@@ -117,33 +117,62 @@ test("dark mode carries the same teal without inverting into unreadable ink", ()
   assert.ok(contrast(muted, card) >= 4.5, `dark secondary on card is ${contrast(muted, card).toFixed(2)}:1`);
 });
 
-test("no screen hardcodes a near-black text colour", () => {
+/** Every distinct near-black hex a screen sets on text directly. */
+function hardcodedNearBlacks() {
+  const out = execSync(`grep -rho 'text-\\[#[0-9a-fA-F]\\{6\\}\\]' src --include=*.tsx || true`, {
+    cwd: new URL("../..", import.meta.url).pathname,
+    encoding: "utf8",
+  }).trim();
+
+  const found = new Set();
+  for (const cls of out.split("\n").filter(Boolean)) {
+    const hex = `#${cls.match(/#([0-9a-fA-F]{6})/)[1]}`.toLowerCase();
+    const [r, g, b] = rgb(hex);
+    // Near-neutral AND dark is the thing being banned. A hardcoded light value,
+    // or a clearly-coloured one, is someone's deliberate choice — not this bug.
+    const neutral = Math.max(r, g, b) - Math.min(r, g, b) <= 24;
+    if (neutral && luminance(hex) < 0.35) found.add(hex);
+  }
+  return [...found];
+}
+
+test("every hardcoded near-black is neutralised by an override", () => {
   // The token change moves ~2,000 call sites. What it CANNOT move is a screen
   // that wrote the hex itself — which is exactly how six Business Plan elements
-  // and one Buildout input stayed black through the first attempt at this.
-  const out = execSync(
-    `grep -rn 'text-\\[#' src --include=*.tsx || true`,
-    { cwd: new URL("../..", import.meta.url).pathname, encoding: "utf8" }
-  ).trim();
+  // stayed black through the first attempt at this.
+  //
+  // Fixing those at source is preferred and was done everywhere it was possible
+  // in one pass. business-plan-workspace.tsx is the exception: 156KB, past the
+  // ceiling for writing a file back safely (D-018). So globals.css neutralises
+  // the literal instead, and this test holds the pair together rather than
+  // quietly allowlisting the file — which would read as "handled" forever.
+  for (const hex of hardcodedNearBlacks()) {
+    const selector = `.text-\\\\\\[\\\\#${hex.slice(1)}\\\\\\]`;
+    const rule = new RegExp(`${selector}\\s*\\{[^}]*color:\\s*var\\(--foreground\\)`);
+    assert.match(
+      css,
+      rule,
+      `${hex} is hardcoded on text somewhere in src but globals.css does not neutralise it. ` +
+        `Either fix it at source, or add an override in the components layer.`
+    );
+  }
+});
 
-  const offenders = out
-    .split("\n")
-    .filter(Boolean)
-    .filter((line) => {
-      const m = line.match(/text-\[#([0-9a-fA-F]{6})\]/);
-      if (!m) return false;
-      const [r, g, b] = rgb(`#${m[1]}`);
-      // Near-neutral AND dark = the thing being banned. A hardcoded light or
-      // clearly-coloured value is someone's deliberate choice, not this bug.
-      const neutral = Math.max(r, g, b) - Math.min(r, g, b) <= 24;
-      return neutral && luminance(`#${m[1]}`) < 0.35;
-    });
-
-  assert.deepEqual(
-    offenders,
-    [],
-    `these hardcode a near-black text colour instead of using --foreground:\n${offenders.join("\n")}`
+test("no override outlives the thing it was covering for", () => {
+  // The other direction, and the one that rots silently. When the Business Plan
+  // file is finally split and its six literals fixed at source, this fails and
+  // tells whoever did it to delete the backstop — instead of leaving a rule in
+  // globals.css that quietly overrides a colour nobody sets any more.
+  const overridden = [...css.matchAll(/\.text-\\\[\\#([0-9a-fA-F]{6})\\\]/g)].map(
+    (m) => `#${m[1].toLowerCase()}`
   );
+  const stillHardcoded = hardcodedNearBlacks();
+  for (const hex of overridden) {
+    assert.ok(
+      stillHardcoded.includes(hex),
+      `globals.css still overrides ${hex}, but no screen sets it any more — delete the rule`
+    );
+  }
 });
 
 test("no screen sets text colour from the neutral Tailwind ramp", () => {

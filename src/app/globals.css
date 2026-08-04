@@ -47,7 +47,7 @@
      want black font. I think we can go for a blue font across the platform
      instead" — and it was recorded as D-009: a rejection of black, NOT a
      request to change the accent. Half right. The accent was correctly left
-     alone; the instruction to move BODY TEXT off near-black was missed
+     alone, and the instruction to move BODY TEXT off near-black was missed
      entirely, and #1a1a1a stayed. D-009 is corrected here.
 
      Changing these two tokens moves ~2,000 call sites at once: 1,071 uses of
@@ -511,6 +511,27 @@ body {
    Tailwind equivalent of base: text-sm font-bold uppercase tracking-[0.08em]
    text-[var(--teal)] mb-3. */
 @layer components {
+  /* ── TIM-4116: the near-black backstop ──────────────────────────────────────
+     Changing --foreground moves ~2,000 call sites. What it cannot move is a
+     screen that wrote the hex itself, and one still does:
+     business-plan-workspace.tsx sets text-[#1a1a1a] on six markdown elements —
+     the headings, paragraphs, list items and bold runs of the GENERATED PLAN.
+     That is the most-read prose in the product, and it would have stayed black.
+
+     It is not fixed at source because that file is 156KB, past the ceiling for
+     writing a file back in one operation (D-018: "when a file can no longer be
+     changed safely, that is a defect in the file"). Splitting it is the real
+     fix and is on the list. Until then this neutralises the value rather than
+     leaving the prose black for however long that takes.
+
+     Deliberately narrow: it targets the one literal being banned, not a
+     wildcard over hardcoded colours. text-colour.test.mjs enforces the pairing
+     in both directions — a hardcoded near-black with no override here fails the
+     build, and so does an override left behind after its last caller is gone. */
+  .text-\[\#1a1a1a\] {
+    color: var(--foreground);
+  }
+
   .section-eyebrow {
     font-size: 0.875rem; /* 14px — was 12px (v1) and 10px (original) */
     font-weight: 700;
