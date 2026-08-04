@@ -193,7 +193,7 @@ export default async function LandingPage({
       <HomeNav />
       <HomepageHero />
 
-      {/* ── Value props strip ───────────────────────────────────────────────────── */}
+      {/* ── Value props strip ────────────────────────────────────────────────── */}
       <section className="bg-white border-b border-neutral-200" style={{ padding: "56px 24px" }}>
         <div className="max-w-5xl mx-auto">
           <FadeUp>
@@ -237,7 +237,7 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Groundwork Suite — accordion of platform capabilities ────────────── */}
+      {/* ── Groundwork Suite — accordion of platform capabilities ──────────────── */}
       <section id="how-it-works" style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-12">
@@ -263,9 +263,9 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── AI planning co-pilot companion ────────────────────────
+      {/* ── AI planning co-pilot companion ────────────────────────────────────────
           Sage-tinted bg. Left: copy with benchmarking angle. Right: chat mockup.
-      ──────────────────────────────────────────────────────────────────── */}
+      ─────────────────────────────────────────────────────────────────────────── */}
       <section
         style={{ background: "rgba(118,179,157,0.06)", padding: "96px 24px", borderTop: "1px solid rgba(118,179,157,0.15)", borderBottom: "1px solid rgba(118,179,157,0.15)" }}
       >
@@ -332,7 +332,7 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Module snapshots strip ────────────────────────── */}
+      {/* ── Module snapshots strip ────────────────────────────────────────────── */}
       <section
         style={{
           background: "rgba(118,179,157,0.06)",
@@ -393,10 +393,10 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Photography-integrated benefit sections (additive, TIM-1320) ───── */}
+      {/* ── Photography-integrated benefit sections (additive, TIM-1320) ───────── */}
       <BenefitSections />
 
-      {/* ── Founder pull-quote + barista photo ──────────────────── */}
+      {/* ── Founder pull-quote + barista photo ────────────────────────────────── */}
       <section className="bg-white" style={{ padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-center">
@@ -460,7 +460,7 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Why Groundwork ──────────────────────────── */}
+      {/* ── Why Groundwork ────────────────────────────────────────────────────── */}
       <section style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-12">
@@ -521,7 +521,7 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── CTA break — gradient ──────────────────────────── */}
+      {/* ── CTA break — gradient ──────────────────────────────────────────────── */}
       <section
         className="relative overflow-hidden"
         style={{
@@ -571,7 +571,7 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Pricing ────────────────────────────────── */}
+      {/* ── Pricing ───────────────────────────────────────────────────────────── */}
       <section id="pricing" style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
         <PricingSection />
         <div className="max-w-6xl mx-auto">
@@ -590,7 +590,7 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Footer ───────────────────────────────────────── */}
+      {/* ── Footer ────────────────────────────────────────────────────────────── */}
       <footer style={{ background: "var(--neutral-900)", padding: "64px 24px 40px" }}>
         <div className="max-w-6xl mx-auto">
           <div className="mb-10">
