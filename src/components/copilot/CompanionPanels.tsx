@@ -486,3 +486,4 @@ export function CheckPanel({
     </div>
   );
 }
+

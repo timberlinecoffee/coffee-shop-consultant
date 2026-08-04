@@ -58,7 +58,7 @@ function SeverityChip({ level }: { level: AuditSeverity }) {
   );
 }
 
-// ── FindingCard. ──────────────────────────────────────────────────────────────
+// ── FindingCard. ─────────────────────────────────────────────────────────────
 
 interface FindingCardProps {
   finding: AuditFinding;
@@ -152,7 +152,7 @@ function FindingCard({ finding, onApply, onGoToSource, onDismiss, onSnooze, snoo
   );
 }
 
-// ── Panel. ────────────────────────────────────────────────────────────────────
+// ── Panel. ───────────────────────────────────────────────────────────────────
 
 export interface QualityCheckPanelProps {
   report: AuditReport | null;
