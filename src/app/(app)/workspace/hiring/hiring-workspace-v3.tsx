@@ -213,7 +213,7 @@ function flattenTree(
   return out;
 }
 
-// ── PDF download button ──────────────────────────────────────────────────────
+// ── PDF download button ───────────────────────────────────────────────────────────────────────────────
 
 function HiringPdfButton({
   templateId,
@@ -584,7 +584,7 @@ function AccordionV3({
   );
 }
 
-// ── Delete-role confirmation dialog ──────────────────────────────────────
+// ── Delete-role confirmation dialog ──────────────────────────────────────────
 
 function DeleteRoleDialog({
   roleTitle,
@@ -634,7 +634,7 @@ function DeleteRoleDialog({
   );
 }
 
-// ── Main workspace ─────────────────────────────────────────────────────────────
+// ── Main workspace ────────────────────────────────────────────────────────────
 
 export function HiringWorkspaceV3(props: Props) {
   const [roles, setRoles] = useState<OrgRole[]>(props.initialRoles);
@@ -1607,7 +1607,7 @@ function RoleJobDescriptionSection({
   );
 }
 
-// ── Interview questions ──────────────────────────────────────────────
+// ── Interview questions ───────────────────────────────────────────────────────
 
 function RoleInterviewQuestionsSection({
   role,
@@ -2033,7 +2033,7 @@ function RoleScorecardSection({
   );
 }
 
-// ── Competency forms ──────────────────────────────────────────────────────
+// ── Competency forms ─────────────────────────────────────────────────────────
 
 function RoleCompetencyFormsSection({
   role,
@@ -2188,7 +2188,7 @@ function RoleCompetencyFormsSection({
   );
 }
 
-// ── Onboarding ──────────────────────────────────────────────────────────
+// ── Onboarding ────────────────────────────────────────────────────────────────
 
 function RoleOnboardingSection({
   role,
@@ -2942,7 +2942,7 @@ function RoleNavRowV3({
   );
 }
 
-// ── HiringRevertV3Toggle — sidebar toggle to opt out of v3 ─────────────────────
+// ── HiringRevertV3Toggle — sidebar toggle to opt out of v3 ───────────────────
 
 function HiringRevertV3Toggle() {
   const [enabled, setEnabled] = useState(true);
