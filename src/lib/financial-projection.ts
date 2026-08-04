@@ -40,7 +40,7 @@ export interface OpexLine {
   flat_cents: number; // monthly, in cents (used when mode === "flat")
 }
 
-// ── TIM-1102: Custom forecast lines ────────────────────────────────────────────
+// ── TIM-1102: Custom forecast lines ────────────────────────────────────────────────────────────
 
 export type ForecastCategory = "revenue" | "cogs" | "overhead" | "capex";
 
@@ -94,6 +94,17 @@ export interface ForecastLine {
   legacy_key?: LegacyLineKey;
   revenue_stream_id?: string;
   menu_linked?: boolean;
+  /**
+   * TIM-4117: who created this line, when it was not the owner.
+   *
+   * "revenue_stream" means it was generated alongside a revenue line and exists
+   * to cost that stream. It is swept when its stream is deleted — see
+   * deleteLine in forecast-lines-editor.tsx for why leaving the orphan is the
+   * dangerous option, not the safe one.
+   *
+   * Absent means the owner added it by hand, and nothing may remove it.
+   */
+  auto_source?: "revenue_stream";
   // TIM-1169: capex lines depreciate straight-line over their own useful life.
   // Default 7 years preserves prior behavior. Ignored on non-capex lines.
   useful_life_years?: number;
@@ -801,6 +812,11 @@ function normalizeForecastLine(raw: unknown, fallbackId: string): ForecastLine |
       ? r.revenue_stream_id
       : undefined;
   const menu_linked = r.menu_linked === true ? true : undefined;
+  // TIM-4117: this function is a SILENT ALLOWLIST — a field it does not
+  // explicitly copy is dropped on the next read, and the bug presents as "the
+  // auto-link randomly forgets itself" rather than as a parse error. Three
+  // fields are already lost this way. Anything new must be added here.
+  const auto_source = r.auto_source === "revenue_stream" ? ("revenue_stream" as const) : undefined;
   const useful_life_years =
     typeof r.useful_life_years === "number" && r.useful_life_years > 0
       ? Math.min(50, Math.max(1, Math.round(r.useful_life_years)))
@@ -816,6 +832,7 @@ function normalizeForecastLine(raw: unknown, fallbackId: string): ForecastLine |
     legacy_key: legacy,
     revenue_stream_id,
     menu_linked,
+    auto_source,
     useful_life_years,
   };
 }
@@ -1250,7 +1267,7 @@ export function normalizeMonthlyProjections(raw: unknown): MonthlyProjections {
   };
 }
 
-// ── Equipment ─────────────────────────────────────────────────────────────────
+// ── Equipment ───────────────────────────────────────────────────────────────────
 
 export interface EquipmentSummary {
   total_cost_cents: number;
@@ -1328,7 +1345,7 @@ export interface MonthlyProjectionRow {
   personnel_line_amounts: LineMonthlyAmount[];
 }
 
-// ── Projections output ────────────────────────────────────────────────────────
+// ── Projections output ─────────────────────────────────────────────────────────────
 
 export interface YearProjection {
   revenue: number;
@@ -1368,7 +1385,7 @@ export interface FinancialProjections {
   financed_total: number;
 }
 
-// ── Fiscal year helpers (TIM-1100) ────────────────────────────────────────────
+// ── Fiscal year helpers (TIM-1100) ──────────────────────────────────────────────
 
 const CALENDAR_MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -1382,7 +1399,7 @@ export function fiscalYearMonthLabels(startMonth: number): string[] {
   return Array.from({ length: 12 }, (_, i) => CALENDAR_MONTH_LABELS[(s + i) % 12]);
 }
 
-// ── Schedule helpers ──────────────────────────────────────────────────────────
+// ── Schedule helpers ────────────────────────────────────────────────────────────────
 
 export function computeDayHours(day: DaySchedule): number {
   if (!day.open) return 0;
@@ -1395,7 +1412,7 @@ export function computeWeeklyHours(schedule: WeekSchedule): number {
   return DAY_KEYS.reduce((sum, d) => sum + computeDayHours(schedule[d]), 0);
 }
 
-// ── Projection math ───────────────────────────────────────────────────────────
+// ── Projection math ────────────────────────────────────────────────────────────────────
 
 // Compute a revenue multiplier for a given 1-based month index (1–60).
 // During ramp: uses ramp_multipliers[i-1] / 100 (clamped to stored length).
@@ -1670,7 +1687,7 @@ function computeCapexAmountCents(line: ForecastLine, monthIndex: number): number
   return Math.round(line.value);
 }
 
-// ── TIM-1762: per-loan amortization schedule (single source of truth) ────────
+// ── TIM-1762: per-loan amortization schedule (single source of truth) ────
 // One schedule feeds both compute passes so the principal/interest split can
 // never drift between the P&L (which needs interest as an expense) and the
 // cash-flow / balance-sheet statements (which need principal for financing
@@ -2403,7 +2420,7 @@ export function formatCurrency(n: number, currencyCode: string = "USD"): string 
   return formatCurrencyAmount(n, currencyCode);
 }
 
-// ── Phase 2 additions (TIM-1019) ─────────────────────────────────────────────
+// ── Phase 2 additions (TIM-1019) ────────────────────────────────────────────
 
 // MonthlySlice: richer per-month record for 5-year statement tabs.
 // Extends MonthlyProjectionRow with break-even, cash-flow, and balance-sheet fields.
@@ -2513,7 +2530,7 @@ export interface FinancialInputs {
   days_receivable: number;
 }
 
-// ── Derived FinancialInputs view (TIM-1257) ──────────────────────────────────
+// ── Derived FinancialInputs view (TIM-1257) ───────────────────────────────────────────
 // FinancialInputs is a flat, derived projection of MonthlyProjections consumed by
 // the Funding / Startup / Break-Even / Balance-Sheet tabs. It MUST be derived
 // purely from `mp` (no parallel mutable copy) so any upstream edit — customer
@@ -2643,7 +2660,7 @@ export function deriveFinancialInputs(
   };
 }
 
-// ── Break-even cost model (TIM-1178, TIM-1206) ───────────────────────────────
+// ── Break-even cost model (TIM-1178, TIM-1206) ─────────────────────────────
 // Splits the month-1 cost base into variable (scales with revenue) and fixed
 // (does not) buckets, then derives break-even revenue and transactions.
 //
@@ -3052,7 +3069,7 @@ export function computeMonthlySlices(
   });
 }
 
-// ── TIM-1255: shared equipment-item → capex-line helpers ─────────────────────
+// ── TIM-1255: shared equipment-item → capex-line helpers ─────────────────
 // Mirror the runtime mpForProjection logic from financials-workspace so any
 // server-side consumer (export routes, AI assessment) sees the same unified
 // asset model the workspace UI computes from.
