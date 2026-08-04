@@ -2895,6 +2895,3 @@ function SectionCard({
     : (section.userContent ?? section.autoContent);
 
   // TIM-3112: also treat the legacy summary-field placeholder as a non-content state
-  // so Write with AI triggers generate rather than improve on those fields.
-  const isPlaceholder =
-    !displayContent ||
