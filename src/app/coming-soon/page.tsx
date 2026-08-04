@@ -366,7 +366,7 @@ export default async function ComingSoonPage({
         </div>
       </section>
 
-      {/* ── Value-props strip (white) ──────────────────────── */}
+      {/* ── Value-props strip (white) ───────────────────────────────────────────── */}
       <section className="bg-white border-b border-neutral-200" style={{ padding: "56px 24px" }}>
         <div className="max-w-5xl mx-auto">
           <FadeUp>
@@ -401,7 +401,7 @@ export default async function ComingSoonPage({
         </div>
       </section>
 
-      {/* ── Real Tools, Shipped Today — ModuleCard grid ──────────────────── */}
+      {/* ── Real Tools, Shipped Today — ModuleCard grid ─────────────────────────── */}
       <section
         style={{
           background: "rgba(118,179,157,0.06)",
@@ -476,7 +476,7 @@ export default async function ComingSoonPage({
         </div>
       </section>
 
-      {/* ── Scout AI assistant — 2-col with chat mockup ──────────────────── */}
+      {/* ── Scout AI assistant — 2-col with chat mockup ──────────────────────────── */}
       <section className="bg-white" style={{ padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">

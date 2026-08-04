@@ -193,7 +193,7 @@ export default async function LandingPage({
       <HomeNav />
       <HomepageHero />
 
-      {/* ── Value props strip ────────────────────────── */}
+      {/* ── Value props strip ───────────────────────────────────────────────────── */}
       <section className="bg-white border-b border-neutral-200" style={{ padding: "56px 24px" }}>
         <div className="max-w-5xl mx-auto">
           <FadeUp>
@@ -237,7 +237,7 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Groundwork Suite — accordion of platform capabilities ──────── */}
+      {/* ── Groundwork Suite — accordion of platform capabilities ────────────── */}
       <section id="how-it-works" style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-12">
@@ -657,3 +657,4 @@ export default async function LandingPage({
     </main>
   );
 }
+
