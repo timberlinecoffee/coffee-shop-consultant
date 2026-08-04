@@ -47,7 +47,7 @@
      want black font. I think we can go for a blue font across the platform
      instead" — and it was recorded as D-009: a rejection of black, NOT a
      request to change the accent. Half right. The accent was correctly left
-     alone, and the instruction to move BODY TEXT off near-black was missed
+     alone; the instruction to move BODY TEXT off near-black was missed
      entirely, and #1a1a1a stayed. D-009 is corrected here.
 
      Changing these two tokens moves ~2,000 call sites at once: 1,071 uses of
