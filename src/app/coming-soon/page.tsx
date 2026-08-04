@@ -143,7 +143,7 @@ export default async function ComingSoonPage({
   return (
     <main className="flex flex-col">
       <OAuthHashHandler />
-      {/* ── Top bar (white-on-dark, no sign-in CTA pre-launch) ───────────────────── */}
+      {/* ── Top bar (white-on-dark, no sign-in CTA pre-launch) ───────────────── */}
       <header className="absolute top-0 left-0 right-0 z-20">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center" aria-label="Groundwork.AI home">
@@ -366,7 +366,7 @@ export default async function ComingSoonPage({
         </div>
       </section>
 
-      {/* ── Value-props strip (white) ───────────────────────────────────────────── */}
+      {/* ── Value-props strip (white) ────────────────────────────────────────── */}
       <section className="bg-white border-b border-neutral-200" style={{ padding: "56px 24px" }}>
         <div className="max-w-5xl mx-auto">
           <FadeUp>
@@ -401,7 +401,7 @@ export default async function ComingSoonPage({
         </div>
       </section>
 
-      {/* ── Real Tools, Shipped Today — ModuleCard grid ─────────────────────────── */}
+      {/* ── Real Tools, Shipped Today — ModuleCard grid ──────────────────────── */}
       <section
         style={{
           background: "rgba(118,179,157,0.06)",
@@ -476,7 +476,7 @@ export default async function ComingSoonPage({
         </div>
       </section>
 
-      {/* ── Scout AI assistant — 2-col with chat mockup ──────────────────────────── */}
+      {/* ── Scout AI assistant — 2-col with chat mockup ──────────────────────── */}
       <section className="bg-white" style={{ padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
@@ -541,7 +541,7 @@ export default async function ComingSoonPage({
         </div>
       </section>
 
-      {/* ── Eight modules strip — sage-tint background, with photo ─────────── */}
+      {/* ── Eight modules strip — sage-tint background, with photo ───────────── */}
       <section
         style={{
           background: "rgba(118,179,157,0.06)",
@@ -658,7 +658,7 @@ export default async function ComingSoonPage({
         </div>
       </section>
 
-      {/* ── Founder pull quote + barista photo (mirrors landing page) ────── */}
+      {/* ── Founder pull quote + barista photo (mirrors landing page) ────────── */}
       <section className="bg-white" style={{ padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-center">
@@ -720,7 +720,7 @@ export default async function ComingSoonPage({
         </div>
       </section>
 
-      {/* ── Final CTA — gradient break, mirrors landing page CTA break ───── */}
+      {/* ── Final CTA — gradient break, mirrors landing page CTA break ───────── */}
       <section
         className="relative overflow-hidden"
         style={{
@@ -791,7 +791,7 @@ export default async function ComingSoonPage({
         </div>
       </section>
 
-      {/* ── Footer (dark, mirrors landing-page footer rhythm) ──────────── */}
+      {/* ── Footer (dark, mirrors landing-page footer rhythm) ────────────────── */}
       <footer
         style={{
           background: "var(--neutral-900, #18181B)",
