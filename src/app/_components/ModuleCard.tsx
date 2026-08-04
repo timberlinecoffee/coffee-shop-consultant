@@ -55,7 +55,7 @@ export default function ModuleCard({ title, description, mockup, thumbnailSrc, t
       <div className="flex-1" style={{ minHeight: "200px" }}>{mockup}</div>
       <div className="px-5 py-4 border-t border-neutral-100">
         <p className="font-semibold mb-1" style={{ fontSize: "14px", color: "var(--teal)" }}>{title}</p>
-        <p className="text-neutral-600" style={{ fontSize: "13px", lineHeight: 1.5 }}>{description}</p>
+        <p className="text-[var(--muted-foreground)]" style={{ fontSize: "13px", lineHeight: 1.5 }}>{description}</p>
       </div>
     </div>
   );

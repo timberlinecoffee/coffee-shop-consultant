@@ -20,12 +20,12 @@ export default async function HiringReportPrintPage() {
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 py-20">
       <div className="max-w-md w-full text-center space-y-5">
         <div className="h-[3px] bg-[#2d9f8f] rounded-full mb-8 max-w-xs mx-auto" />
-        <h1 className="text-2xl font-bold text-gray-900">Staff Evaluation Reports</h1>
-        <p className="text-sm text-gray-500 leading-relaxed">
+        <h1 className="text-2xl font-bold text-[var(--foreground)]">Staff Evaluation Reports</h1>
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
           Per-staff competency evaluation reports are coming in a future update as part of
           the Operations Management Suite.
         </p>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-[var(--muted-foreground)]">
           Your competency framework and blank form templates are available now on the
           Competency tab.
         </p>

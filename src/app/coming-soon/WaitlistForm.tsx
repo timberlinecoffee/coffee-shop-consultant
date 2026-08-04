@@ -135,7 +135,7 @@ export function WaitlistForm() {
           disabled={status === "submitting"}
           aria-invalid={status === "error"}
           aria-describedby={message ? "waitlist-msg" : undefined}
-          className="flex-1 rounded-lg px-4 py-3 text-base text-neutral-900 placeholder-neutral-500 focus:outline-none focus:ring-2"
+          className="flex-1 rounded-lg px-4 py-3 text-base text-[var(--foreground)] placeholder-neutral-500 focus:outline-none focus:ring-2"
           style={{
             background: "rgba(255,255,255,0.96)",
             border: "1px solid rgba(255,255,255,0.3)",

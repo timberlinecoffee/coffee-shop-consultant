@@ -73,7 +73,7 @@ export function EquipmentRecommendationCard({ recommendation: rec }: Props) {
           <button
             type="button"
             onClick={() => setDisclosureOpen((o) => !o)}
-            className="text-[8px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+            className="text-[8px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-slate-100 text-[var(--muted-foreground)] hover:bg-slate-200 transition-colors"
             aria-expanded={disclosureOpen}
             aria-label="Affiliate link disclosure"
           >

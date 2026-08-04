@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { SUPPORTED_LANGUAGES, type AccountSettings } from "@/lib/account-settings";
 
 const FIELD_CLASS =
-  "w-full border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm text-neutral-950 placeholder:text-neutral-300 focus-visible:outline-none focus:border-teal transition-colors";
+  "w-full border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:outline-none focus:border-teal transition-colors";
 
 export function LanguageSettingsCard({ initial }: { initial: AccountSettings }) {
   const router = useRouter();
@@ -45,7 +45,7 @@ export function LanguageSettingsCard({ initial }: { initial: AccountSettings }) 
       </p>
 
       <label className="block">
-        <span className="block text-sm font-medium text-neutral-950 mb-1">Language</span>
+        <span className="block text-sm font-medium text-[var(--foreground)] mb-1">Language</span>
         <select
           className={FIELD_CLASS}
           value={lang}
