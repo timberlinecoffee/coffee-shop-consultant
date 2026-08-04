@@ -94,6 +94,17 @@ export interface ForecastLine {
   legacy_key?: LegacyLineKey;
   revenue_stream_id?: string;
   menu_linked?: boolean;
+  /**
+   * TIM-4117: who created this line, when it was not the owner.
+   *
+   * "revenue_stream" means it was generated alongside a revenue line and exists
+   * to cost that stream. It is swept when its stream is deleted — see
+   * deleteLine in forecast-lines-editor.tsx for why leaving the orphan is the
+   * dangerous option, not the safe one.
+   *
+   * Absent means the owner added it by hand, and nothing may remove it.
+   */
+  auto_source?: "revenue_stream";
   // TIM-1169: capex lines depreciate straight-line over their own useful life.
   // Default 7 years preserves prior behavior. Ignored on non-capex lines.
   useful_life_years?: number;
@@ -801,6 +812,11 @@ function normalizeForecastLine(raw: unknown, fallbackId: string): ForecastLine |
       ? r.revenue_stream_id
       : undefined;
   const menu_linked = r.menu_linked === true ? true : undefined;
+  // TIM-4117: this function is a SILENT ALLOWLIST — a field it does not
+  // explicitly copy is dropped on the next read, and the bug presents as "the
+  // auto-link randomly forgets itself" rather than as a parse error. Three
+  // fields are already lost this way. Anything new must be added here.
+  const auto_source = r.auto_source === "revenue_stream" ? ("revenue_stream" as const) : undefined;
   const useful_life_years =
     typeof r.useful_life_years === "number" && r.useful_life_years > 0
       ? Math.min(50, Math.max(1, Math.round(r.useful_life_years)))
@@ -816,6 +832,7 @@ function normalizeForecastLine(raw: unknown, fallbackId: string): ForecastLine |
     legacy_key: legacy,
     revenue_stream_id,
     menu_linked,
+    auto_source,
     useful_life_years,
   };
 }
