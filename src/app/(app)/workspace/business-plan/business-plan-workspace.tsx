@@ -2895,3 +2895,257 @@ function SectionCard({
     : (section.userContent ?? section.autoContent);
 
   // TIM-3112: also treat the legacy summary-field placeholder as a non-content state
+  // so Write with AI triggers generate rather than improve on those fields.
+  const isPlaceholder =
+    !displayContent ||
+    displayContent.includes("workspace to populate") ||
+    displayContent.includes("Click Generate") ||
+    displayContent.includes("Complete the other") ||
+    displayContent.includes("Complete the Marketing") ||
+    displayContent.includes("click the text field");
+
+  // TIM-3501: dismiss card overflow menu on outside click or Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onMouse = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onMouse);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onMouse);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  // TIM-3501 code-review fix: reset is destructive (writes userContent=null) —
+  // guard against losing unsaved edits / racing with streaming generation.
+  const canReset = hasUserOverride && !section.isEditing && !section.isGenerating && !isStreaming;
+
+  return (
+    <div
+      className={`group relative rounded-xl border bg-white ${
+        section.isVisible ? "border-[var(--border)]" : "border-[var(--neutral-cool-200)]"
+      }`}
+    >
+      {/* TIM-3501: card-level overflow menu (kebab) for low-frequency actions
+          that TIM-3492 removed from the header row per TIM-3300 canon
+          ([Title] [Help(?)] ——— [Write with AI]). Hide-from-PDF + reset-to-auto
+          live here so the canon stays clean AND hidden sections always have a
+          reveal path (no stranded state).
+          Code-review fixes:
+          - Kebab + popover render OUTSIDE the opacity-60 wrapper so the
+            reveal trigger stays full-opacity when the section is hidden
+            (otherwise the only un-hide path dims with the card).
+          - Tap target ≥44px per TIM-3428 (p-2.5 + size 18 + min-w-11 min-h-11).
+          - Popover z-30 matches SectionHelp / suppliers-workspace convention.
+          - Plain &lt;button&gt; children (no role="menu"/menuitem) — we don't
+            implement the WAI-ARIA arrow-key contract; aria-haspopup="true"
+            on the trigger conveys the popover correctly without overpromising. */}
+      {canEdit && (
+        <div ref={menuRef} className="absolute top-1.5 right-1.5 z-20">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-haspopup="true"
+            aria-expanded={menuOpen}
+            aria-label={`Section options for ${section.title}`}
+            className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] p-2.5 rounded-lg text-[var(--neutral-cool-600)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-cool-100)] transition-colors"
+          >
+            <MoreVertical size={18} aria-hidden="true" />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-12 z-30 bg-white border border-[var(--border)] rounded-lg shadow-lg py-1 min-w-[220px]">
+              <button
+                type="button"
+                onClick={() => {
+                  onToggleVisible();
+                  setMenuOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--neutral-cool-50)] flex items-center gap-2"
+              >
+                {section.isVisible ? (
+                  <>
+                    <EyeOff size={14} aria-hidden="true" className="text-[var(--neutral-cool-600)]" />
+                    Hide from PDF
+                  </>
+                ) : (
+                  <>
+                    <Eye size={14} aria-hidden="true" className="text-[var(--neutral-cool-600)]" />
+                    Show in PDF
+                  </>
+                )}
+              </button>
+              {!isLocked && onArchive && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onArchive();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--neutral-cool-50)] flex items-center gap-2"
+                >
+                  <Archive size={14} aria-hidden="true" className="text-[var(--neutral-cool-600)]" />
+                  Archive section
+                </button>
+              )}
+              {hasUserOverride && (
+                <button
+                  type="button"
+                  disabled={!canReset}
+                  title={
+                    section.isEditing
+                      ? "Save or cancel your edit before resetting"
+                      : section.isGenerating || isStreaming
+                        ? "Wait for the current generation to finish"
+                        : undefined
+                  }
+                  onClick={() => {
+                    onResetToAuto();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--neutral-cool-50)] flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                >
+                  <RotateCcw size={14} aria-hidden="true" className="text-[var(--neutral-cool-600)]" />
+                  Reset to AI-generated
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TIM-3501: opacity-60 dim is on this inner wrapper, NOT the outer card.
+          Keeps the kebab + popover at full opacity when the section is hidden
+          so the "Show in PDF" reveal path is always visible. */}
+      <div className={`transition-opacity ${section.isVisible ? "opacity-100" : "opacity-60"}`}>
+      {/* Header — TIM-3893: replaced hand-rolled h2 + Write button with shared
+          SectionHeader (closes drift called out in TIM-3492 comment).
+          Chevron toggle is a standalone shrink-0 button; SectionHeader fills
+          the remaining space and owns the [Analyse][Write] action slots.
+          pr-12 on the outer flex reserves room for the kebab. */}
+      <div className="px-4 sm:px-5 py-4">
+        <div className="flex items-center gap-2 sm:gap-3 pr-12">
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            aria-expanded={section.isExpanded}
+            aria-label={section.isExpanded ? `Collapse ${section.title}` : `Expand ${section.title}`}
+            className="flex-shrink-0 p-0.5 rounded hover:bg-[var(--neutral-cool-100)] transition-colors"
+          >
+            {section.isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-[var(--neutral-cool-600)]" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-[var(--neutral-cool-600)]" />
+            )}
+          </button>
+          <SectionHeader
+            title={section.title}
+            helpContent={blurb || undefined}
+            headingLevel={2}
+            className="flex-1"
+            aiActions={[
+              ...(onAnalyse != null
+                ? [{ kind: "analyse" as const, onClick: onAnalyse, disabled: analyseLoading ?? false }]
+                : []),
+              // TIM-3950: Two-button split (BP_AI_SPLIT flag ON) — [Write with
+              // AI] primary opens the guided modal; [Regenerate with AI]
+              // secondary is the destructive warn-then-undo path. When the
+              // flag is OFF, fall back to the TIM-3927 single "Auto-Write"
+              // button + Customize Sources link (rendered in the sub-header).
+              ...(BP_AI_SPLIT
+                ? [
+                    ...(onWriteWithAi != null
+                      ? [{
+                          kind: "write" as const,
+                          onClick: onWriteWithAi,
+                          disabled: !canEdit || isStreaming || autoWriteState != null,
+                        }]
+                      : []),
+                    ...(onRegenerateSection != null
+                      ? [{
+                          kind: "regenerate" as const,
+                          onClick: onRegenerateSection,
+                          disabled: !canEdit || isStreaming || autoWriteState != null,
+                        }]
+                      : []),
+                  ]
+                : onAutoWriteSection != null
+                ? [{
+                    kind: "write" as const,
+                    label: "Auto-Write This Section",
+                    onClick: onAutoWriteSection,
+                    disabled: !canEdit || isStreaming || autoWriteState != null,
+                  }]
+                : onWriteWithAi != null
+                ? [{ kind: "write" as const, onClick: onWriteWithAi, disabled: !canEdit || isStreaming }]
+                : []),
+            ] satisfies AiAction[]}
+          />
+        </div>
+
+        {/* Sub-header: source label + Edited badge (expanded), or blurb (collapsed).
+            TIM-3501: pl tracks chevron-button width + flex gap to align under
+            the title — expanded chevron has p-0.5 (≈20px), collapsed is plain
+            (16px); inner gap is gap-2 sm:gap-3. */}
+        {section.isExpanded ? (
+          <div className="flex items-center gap-2 mt-1 pl-7 sm:pl-8 flex-wrap">
+            <p className="text-xs text-[var(--dark-grey)]">{section.sourceLabel}</p>
+            {hasUserOverride && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--success-bg-3)] text-[var(--success-dark)] border border-[var(--success-bg)]">
+                Edited
+              </span>
+            )}
+            {/* TIM-3927: Customize Sources — advanced path, link-styled.
+                TIM-3950: only shown when flag OFF; when flag is ON the
+                SectionHeader's primary "Write with AI" button IS this path,
+                so surfacing a duplicate link would be redundant. */}
+            {!BP_AI_SPLIT && onWriteWithAi && canEdit && !isStreaming && !autoWriteState && (
+              <button
+                type="button"
+                onClick={onWriteWithAi}
+                className="text-xs text-[var(--teal)] hover:underline focus-visible:outline-none"
+              >
+                Customize Sources
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-[var(--muted-foreground)] mt-0.5 pl-6 sm:pl-7">{blurb}</p>
+        )}
+
+        {section.isExpanded && bpExamples.length > 0 && (
+          <div className="pl-7 sm:pl-8 mt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setOpenExample((v) => !v);
+                if (!openExample) setExampleIdx(0);
+              }}
+              className="text-xs text-[var(--teal)] font-medium hover:underline focus-visible:outline-none focus:underline"
+            >
+              {openExample ? "Hide example" : "See an example"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Body */}
+      {section.isExpanded && (
+        <div className="px-5 pb-5">
+          {/* TIM-3927: Inline auto-write card — takes visual priority when present. */}
+          {autoWriteState && onAutoWriteAccept && onAutoWriteRegenerate && onAutoWriteEdit && onAutoWriteCancel && (
+            <AutoWriteInlineCard
+              state={autoWriteState}
+              onAccept={onAutoWriteAccept}
+              onRegenerate={onAutoWriteRegenerate}
+              onEdit={onAutoWriteEdit}
+              onCancel={onAutoWriteCancel}
+            />
+          )}
+          {/* TIM-3893: Analyse-with-AI result card for Financial Plan sections. */}
+          {!autoWriteState && analyseError && (
+            <p className="text-xs text-red-600 mb-3">{analyseError}</p>
