@@ -17,7 +17,7 @@ import { InlineAnalysisCard } from './InlineAnalysisCard'
 import type { AnalyseResponse } from './InlineAnalysisCard'
 import type { Candidate } from './CandidateListCard'
 
-// FACTOR-SET-DIVIDER
+// ── Factor set used for visual comparison ────────────────────────
 
 const COMPARE_FACTORS = [
   { key: 'foot_traffic_weekday', label: 'Weekday Foot Traffic' },
@@ -42,7 +42,7 @@ type ScoreRow = {
   score_1_5: number | null
 }
 
-// COLOR-PALETTE-DIVIDER
+// ── Color palette for candidate dots/bars (avoids emojis) ────────────
 
 const CANDIDATE_COLORS = [
   { name: 'teal',    bar: 'bg-[var(--teal)]',         dot: 'bg-[var(--teal)]',         text: 'text-[var(--teal)]' },
@@ -53,7 +53,7 @@ const CANDIDATE_COLORS = [
   { name: 'slate',   bar: 'bg-slate-500',         dot: 'bg-slate-500',         text: 'text-[var(--muted-foreground)]' },
 ]
 
-// TYPES-DIVIDER
+// ── Types for tradeoff API response ──────────────────────────
 
 type PerCandidate = {
   id: string
@@ -74,7 +74,7 @@ type TradeoffResponse = {
   ranking: RankingEntry[]
 }
 
-// FACTORBARROW-DIVIDER
+// ── FactorBarRow ───────────────────────────────────────
 
 function FactorBarRow({
   label,
@@ -149,7 +149,7 @@ function FactorBarRow({
   )
 }
 
-// TRADEOFFPANEL-DIVIDER
+// ── TradeoffPanel ──────────────────────────────────────
 
 export interface TradeoffPanelProps {
   open: boolean
