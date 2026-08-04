@@ -686,7 +686,7 @@ function RegenerateAllPreflightDialog({ report, onFixFirst, onGenerateAnyway, on
             )}
             {info > 0 && (
               <div className="flex justify-between">
-                <span className="text-neutral-600 font-semibold">Heads-up</span>
+                <span className="text-[var(--muted-foreground)] font-semibold">Heads-up</span>
                 <span className="font-semibold">{info}</span>
               </div>
             )}
