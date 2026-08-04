@@ -213,7 +213,7 @@ function flattenTree(
   return out;
 }
 
-// ── PDF download button ──────────────────────────────────────────────────────
+// ── PDF download button ───────────────────────────────────────────────────────
 
 function HiringPdfButton({
   templateId,
@@ -2033,7 +2033,7 @@ function RoleScorecardSection({
   );
 }
 
-// ── Competency forms ─────────────────────────────────────────────────────────
+// ── Competency forms ──────────────────────────────────────────────────────
 
 function RoleCompetencyFormsSection({
   role,
