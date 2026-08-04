@@ -213,7 +213,7 @@ function flattenTree(
   return out;
 }
 
-// ── PDF download button ───────────────────────────────────────────────────────────────────────────────
+// ── PDF download button ──────────────────────────────────────────────────────
 
 function HiringPdfButton({
   templateId,
