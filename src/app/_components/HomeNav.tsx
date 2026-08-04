@@ -28,7 +28,7 @@ export default function HomeNav() {
           <Link
             href="/login"
             className={`text-sm font-medium transition-colors duration-200 ${
-              scrolled ? "text-neutral-700 hover:text-neutral-950" : "text-white/80 hover:text-white"
+              scrolled ? "text-[var(--foreground)] hover:text-[var(--foreground)]" : "text-white/80 hover:text-white"
             }`}
           >
             Sign In

@@ -184,7 +184,7 @@ export function LaunchReadinessButton({ planId }: { planId: string }) {
         </div>
       )}
       {state === "error" && errorMsg && !errorDismissed && errorSnoozed && errorSnoozedUntil && (
-        <div className="mt-4 border border-[var(--border)] bg-[var(--muted)] rounded-lg px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-neutral-500">
+        <div className="mt-4 border border-[var(--border)] bg-[var(--muted)] rounded-lg px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-[var(--muted-foreground)]">
           <span>
             Error Snoozed Until{" "}
             {errorSnoozedUntil.toLocaleString(undefined, {
@@ -194,7 +194,7 @@ export function LaunchReadinessButton({ planId }: { planId: string }) {
           <button
             type="button"
             onClick={() => dismissError()}
-            className="font-semibold text-neutral-400 hover:text-neutral-600 whitespace-nowrap"
+            className="font-semibold text-[var(--muted-foreground)] hover:text-[var(--muted-foreground)] whitespace-nowrap"
           >
             Dismiss
           </button>

@@ -36,7 +36,7 @@ const SEVERITY_CONFIG: Readonly<Record<AuditSeverity, { label: string; className
   },
   info: {
     label: "Heads-Up",
-    className: "bg-neutral-100 text-neutral-600 border-neutral-200",
+    className: "bg-neutral-100 text-[var(--muted-foreground)] border-neutral-200",
   },
 };
 
@@ -99,8 +99,8 @@ function CompanionFindingCard({
     return (
       <div className="bg-white rounded-xl border border-[var(--border)] px-3 py-2.5 flex items-center gap-2">
         <SeverityChip level={finding.severity} />
-        <p className="text-xs text-neutral-500 flex-1 min-w-0 truncate">{issue}</p>
-        <span className="text-xs text-neutral-400 whitespace-nowrap flex-shrink-0">
+        <p className="text-xs text-[var(--muted-foreground)] flex-1 min-w-0 truncate">{issue}</p>
+        <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap flex-shrink-0">
           Snoozed Until {formatted}
         </span>
       </div>
@@ -129,12 +129,12 @@ function CompanionFindingCard({
         >
           <div className="flex items-start gap-2 flex-wrap">
             <SeverityChip level={finding.severity} />
-            <p className="text-sm font-medium text-neutral-950 leading-snug flex-1 min-w-0">
+            <p className="text-sm font-medium text-[var(--foreground)] leading-snug flex-1 min-w-0">
               {issue}
             </p>
           </div>
           {why && (
-            <p className="text-xs text-neutral-500 leading-snug">{why}</p>
+            <p className="text-xs text-[var(--muted-foreground)] leading-snug">{why}</p>
           )}
           <p className="text-xs text-[var(--teal)] leading-snug">{fix}</p>
         </button>
@@ -142,12 +142,12 @@ function CompanionFindingCard({
         <>
           <div className="flex items-start gap-2 flex-wrap">
             <SeverityChip level={finding.severity} />
-            <p className="text-sm font-medium text-neutral-950 leading-snug flex-1 min-w-0">
+            <p className="text-sm font-medium text-[var(--foreground)] leading-snug flex-1 min-w-0">
               {issue}
             </p>
           </div>
           {why && (
-            <p className="text-xs text-neutral-500 leading-snug">{why}</p>
+            <p className="text-xs text-[var(--muted-foreground)] leading-snug">{why}</p>
           )}
           <p className="text-xs text-[var(--teal)] leading-snug">{fix}</p>
         </>
@@ -176,7 +176,7 @@ function CompanionFindingCard({
         )}
         <button
           type="button"
-          className="text-xs font-semibold text-neutral-500 hover:text-neutral-950 inline-flex items-center gap-1"
+          className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] inline-flex items-center gap-1"
           onClick={() => onGoToSource(finding)}
         >
           <ExternalLink size={10} aria-hidden="true" />
@@ -184,14 +184,14 @@ function CompanionFindingCard({
         </button>
         <button
           type="button"
-          className="text-xs font-semibold text-neutral-400 hover:text-neutral-500"
+          className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--muted-foreground)]"
           onClick={() => onSnooze(finding.id)}
         >
           Snooze 24h
         </button>
         <button
           type="button"
-          className="text-xs font-semibold text-neutral-400 hover:text-neutral-500"
+          className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--muted-foreground)]"
           onClick={() => onDismiss(finding.id)}
         >
           Dismiss
@@ -293,7 +293,7 @@ function FindingList({
         if (list.length === 0) return null;
         return (
           <section key={s.key} aria-label={s.heading}>
-            <h3 className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wide mb-2">
+            <h3 className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-2">
               {s.heading}
             </h3>
             <div className="space-y-2">
@@ -315,7 +315,7 @@ function FindingList({
       })}
       {snoozedFindings && snoozedFindings.length > 0 && (
         <section aria-label="Snoozed findings">
-          <h3 className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wide mb-2">
+          <h3 className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-2">
             Snoozed
           </h3>
           <div className="space-y-2">
@@ -435,7 +435,7 @@ export function CheckPanel({
       <div className="flex flex-col items-center justify-center text-center py-10 px-4">
         <div className="w-12 h-12 rounded-2xl bg-[var(--teal)]/10 flex items-center justify-center mb-4">
           <ShieldCheck
-            className={`w-6 h-6 ${allDismissed ? "text-neutral-300" : "text-[var(--teal)]"}`}
+            className={`w-6 h-6 ${allDismissed ? "text-[var(--muted-foreground)]" : "text-[var(--teal)]"}`}
             aria-hidden="true"
           />
         </div>

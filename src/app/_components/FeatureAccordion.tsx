@@ -115,7 +115,7 @@ export function FeatureAccordionCard({
             </span>
           </div>
           <p
-            className="text-neutral-600 mt-1.5"
+            className="text-[var(--muted-foreground)] mt-1.5"
             style={{ fontSize: "13px", lineHeight: 1.5 }}
           >
             {item.oneLiner}
@@ -154,7 +154,7 @@ export function FeatureAccordionCard({
                     &#10003;
                   </span>
                   <span
-                    className="text-neutral-700"
+                    className="text-[var(--foreground)]"
                     style={{ fontSize: "13px", lineHeight: 1.55 }}
                   >
                     {bullet}

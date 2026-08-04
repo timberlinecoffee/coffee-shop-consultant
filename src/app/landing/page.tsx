@@ -227,7 +227,7 @@ export default async function LandingPage({
                   >
                     {item.title}
                   </p>
-                  <p className="text-neutral-600" style={{ fontSize: "16px", lineHeight: 1.6 }}>
+                  <p className="text-[var(--muted-foreground)]" style={{ fontSize: "16px", lineHeight: 1.6 }}>
                     {item.body}
                   </p>
                 </div>
@@ -291,7 +291,7 @@ export default async function LandingPage({
                 >
                   Scout, Your Coffee-Specific AI Assistant
                 </h2>
-                <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
+                <p className="text-[var(--muted-foreground)] mb-8 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
                   Ask about your market, lease, or equipment. Get coffee-specific answers tied
                   to your plan, not generic small-business advice.
                 </p>
@@ -314,7 +314,7 @@ export default async function LandingPage({
                   ))}
                 </div>
                 <p
-                  className="mt-6 text-neutral-500 italic"
+                  className="mt-6 text-[var(--muted-foreground)] italic"
                   style={{ fontSize: "12px", lineHeight: 1.5, maxWidth: "460px" }}
                 >
                   AI responses are planning support, not professional advice.
@@ -429,7 +429,7 @@ export default async function LandingPage({
                 From the Founder
               </p>
               <blockquote
-                className="text-neutral-800 mb-6"
+                className="text-[var(--foreground)] mb-6"
                 style={{
                   fontSize: "clamp(1.25rem, 2.4vw, 1.625rem)",
                   lineHeight: 1.4,
@@ -450,7 +450,7 @@ export default async function LandingPage({
                   <p className="font-semibold" style={{ fontSize: "14px", color: "var(--teal)" }}>
                     {FOUNDER_QUOTE.attribution}
                   </p>
-                  <p className="text-neutral-500" style={{ fontSize: "12px", marginTop: "1px" }}>
+                  <p className="text-[var(--muted-foreground)]" style={{ fontSize: "12px", marginTop: "1px" }}>
                     {FOUNDER_QUOTE.role}
                   </p>
                 </div>
@@ -499,13 +499,13 @@ export default async function LandingPage({
                     {tile.eyebrow}
                   </p>
                   <h3
-                    className="font-semibold mb-3 text-neutral-900"
+                    className="font-semibold mb-3 text-[var(--foreground)]"
                     style={{ fontSize: "1.05rem", lineHeight: 1.35, fontWeight: 600 }}
                   >
                     {tile.title}
                   </h3>
                   <p
-                    className="text-neutral-700 flex-1"
+                    className="text-[var(--foreground)] flex-1"
                     style={{
                       fontSize: "0.95rem",
                       lineHeight: 1.6,
@@ -576,10 +576,10 @@ export default async function LandingPage({
         <PricingSection />
         <div className="max-w-6xl mx-auto">
           <FadeUp delay={0.3}>
-            <p className="text-center text-neutral-500 mt-6" style={{ fontSize: "14px", fontWeight: 500 }}>
+            <p className="text-center text-[var(--muted-foreground)] mt-6" style={{ fontSize: "14px", fontWeight: 500 }}>
               Try Pro free for 7 days. We&apos;ll remind you before your trial ends.
             </p>
-            <p className="text-center text-neutral-400 mt-2" style={{ fontSize: "12px" }}>
+            <p className="text-center text-[var(--muted-foreground)] mt-2" style={{ fontSize: "12px" }}>
               A card is required at signup. Cancel before day 7 and you won&apos;t be charged. See{" "}
               <Link href="/subscription-terms" className="underline">
                 Subscription Terms

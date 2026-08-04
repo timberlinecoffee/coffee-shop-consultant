@@ -22,12 +22,12 @@ const MONTHS = [
 ];
 
 const FIELD_CLASS =
-  "w-full border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm text-neutral-950 placeholder:text-neutral-300 focus-visible:outline-none focus:border-teal transition-colors";
+  "w-full border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:outline-none focus:border-teal transition-colors";
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-sm font-medium text-neutral-950 mb-1">{label}</span>
+      <span className="block text-sm font-medium text-[var(--foreground)] mb-1">{label}</span>
       {children}
       {hint ? <span className="block text-xs text-[var(--dark-grey)] mt-1">{hint}</span> : null}
     </label>

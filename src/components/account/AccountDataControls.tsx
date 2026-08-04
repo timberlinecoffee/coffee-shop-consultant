@@ -161,7 +161,7 @@ export function AccountDataControls({ userEmail, variant = "stacked-card" }: Pro
                 value={confirmation}
                 onChange={(e) => setConfirmation(e.target.value)}
                 placeholder={userEmail}
-                className="w-full border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm text-neutral-950 placeholder:text-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
+                className="w-full border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:outline-none focus:border-teal transition-colors"
                 data-testid="delete-confirmation-input"
               />
             </label>
