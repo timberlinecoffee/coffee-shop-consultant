@@ -17,7 +17,7 @@ import { InlineAnalysisCard } from './InlineAnalysisCard'
 import type { AnalyseResponse } from './InlineAnalysisCard'
 import type { Candidate } from './CandidateListCard'
 
-// ── Factor set used for visual comparison ────────────────────────────────
+// ── Factor set used for visual comparison ────────────────────────
 
 const COMPARE_FACTORS = [
   { key: 'foot_traffic_weekday', label: 'Weekday Foot Traffic' },
@@ -42,7 +42,7 @@ type ScoreRow = {
   score_1_5: number | null
 }
 
-// ── Color palette for candidate dots/bars (avoids emojis) ────────────────
+// ── Color palette for candidate dots/bars (avoids emojis) ────────────
 
 const CANDIDATE_COLORS = [
   { name: 'teal',    bar: 'bg-[var(--teal)]',         dot: 'bg-[var(--teal)]',         text: 'text-[var(--teal)]' },
@@ -50,10 +50,10 @@ const CANDIDATE_COLORS = [
   { name: 'rose',    bar: 'bg-rose-500',          dot: 'bg-rose-500',          text: 'text-rose-600' },
   { name: 'violet',  bar: 'bg-violet-500',        dot: 'bg-violet-500',        text: 'text-violet-600' },
   { name: 'emerald', bar: 'bg-emerald-500',       dot: 'bg-emerald-500',       text: 'text-emerald-600' },
-  { name: 'slate',   bar: 'bg-slate-500',         dot: 'bg-slate-500',         text: 'text-slate-600' },
+  { name: 'slate',   bar: 'bg-slate-500',         dot: 'bg-slate-500',         text: 'text-[var(--muted-foreground)]' },
 ]
 
-// ── Types for tradeoff API response ──────────────────────────────────────
+// ── Types for tradeoff API response ──────────────────────────
 
 type PerCandidate = {
   id: string
@@ -74,7 +74,7 @@ type TradeoffResponse = {
   ranking: RankingEntry[]
 }
 
-// ── FactorBarRow ─────────────────────────────────────────────────────────
+// ── FactorBarRow ───────────────────────────────────────
 
 function FactorBarRow({
   label,
@@ -149,7 +149,7 @@ function FactorBarRow({
   )
 }
 
-// ── TradeoffPanel ────────────────────────────────────────────────────────
+// ── TradeoffPanel ──────────────────────────────────────
 
 export interface TradeoffPanelProps {
   open: boolean

@@ -193,7 +193,7 @@ export default async function LandingPage({
       <HomeNav />
       <HomepageHero />
 
-      {/* ── Value props strip ────────────────────────────────────────────────── */}
+      {/* ── Value props strip ────────────────────────── */}
       <section className="bg-white border-b border-neutral-200" style={{ padding: "56px 24px" }}>
         <div className="max-w-5xl mx-auto">
           <FadeUp>
@@ -227,7 +227,7 @@ export default async function LandingPage({
                   >
                     {item.title}
                   </p>
-                  <p className="text-neutral-600" style={{ fontSize: "16px", lineHeight: 1.6 }}>
+                  <p className="text-[var(--muted-foreground)]" style={{ fontSize: "16px", lineHeight: 1.6 }}>
                     {item.body}
                   </p>
                 </div>
@@ -237,7 +237,7 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Groundwork Suite — accordion of platform capabilities ──────────────── */}
+      {/* ── Groundwork Suite — accordion of platform capabilities ──────── */}
       <section id="how-it-works" style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-12">
@@ -263,9 +263,9 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── AI planning co-pilot companion ────────────────────────────────────────
+      {/* ── AI planning co-pilot companion ────────────────────────
           Sage-tinted bg. Left: copy with benchmarking angle. Right: chat mockup.
-      ─────────────────────────────────────────────────────────────────────────── */}
+      ──────────────────────────────────────────────────────────────────── */}
       <section
         style={{ background: "rgba(118,179,157,0.06)", padding: "96px 24px", borderTop: "1px solid rgba(118,179,157,0.15)", borderBottom: "1px solid rgba(118,179,157,0.15)" }}
       >
@@ -291,7 +291,7 @@ export default async function LandingPage({
                 >
                   Scout, Your Coffee-Specific AI Assistant
                 </h2>
-                <p className="text-neutral-600 mb-8 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
+                <p className="text-[var(--muted-foreground)] mb-8 leading-relaxed" style={{ fontSize: "1.0625rem" }}>
                   Ask about your market, lease, or equipment. Get coffee-specific answers tied
                   to your plan, not generic small-business advice.
                 </p>
@@ -314,7 +314,7 @@ export default async function LandingPage({
                   ))}
                 </div>
                 <p
-                  className="mt-6 text-neutral-500 italic"
+                  className="mt-6 text-[var(--muted-foreground)] italic"
                   style={{ fontSize: "12px", lineHeight: 1.5, maxWidth: "460px" }}
                 >
                   AI responses are planning support, not professional advice.
@@ -332,7 +332,7 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Module snapshots strip ────────────────────────────────────────────── */}
+      {/* ── Module snapshots strip ────────────────────────── */}
       <section
         style={{
           background: "rgba(118,179,157,0.06)",
@@ -393,10 +393,10 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Photography-integrated benefit sections (additive, TIM-1320) ───────── */}
+      {/* ── Photography-integrated benefit sections (additive, TIM-1320) ───── */}
       <BenefitSections />
 
-      {/* ── Founder pull-quote + barista photo ────────────────────────────────── */}
+      {/* ── Founder pull-quote + barista photo ──────────────────── */}
       <section className="bg-white" style={{ padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-center">
@@ -429,7 +429,7 @@ export default async function LandingPage({
                 From the Founder
               </p>
               <blockquote
-                className="text-neutral-800 mb-6"
+                className="text-[var(--foreground)] mb-6"
                 style={{
                   fontSize: "clamp(1.25rem, 2.4vw, 1.625rem)",
                   lineHeight: 1.4,
@@ -450,7 +450,7 @@ export default async function LandingPage({
                   <p className="font-semibold" style={{ fontSize: "14px", color: "var(--teal)" }}>
                     {FOUNDER_QUOTE.attribution}
                   </p>
-                  <p className="text-neutral-500" style={{ fontSize: "12px", marginTop: "1px" }}>
+                  <p className="text-[var(--muted-foreground)]" style={{ fontSize: "12px", marginTop: "1px" }}>
                     {FOUNDER_QUOTE.role}
                   </p>
                 </div>
@@ -460,7 +460,7 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Why Groundwork ────────────────────────────────────────────────────── */}
+      {/* ── Why Groundwork ──────────────────────────── */}
       <section style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
         <div className="max-w-6xl mx-auto">
           <FadeUp className="text-center mb-12">
@@ -499,13 +499,13 @@ export default async function LandingPage({
                     {tile.eyebrow}
                   </p>
                   <h3
-                    className="font-semibold mb-3 text-neutral-900"
+                    className="font-semibold mb-3 text-[var(--foreground)]"
                     style={{ fontSize: "1.05rem", lineHeight: 1.35, fontWeight: 600 }}
                   >
                     {tile.title}
                   </h3>
                   <p
-                    className="text-neutral-700 flex-1"
+                    className="text-[var(--foreground)] flex-1"
                     style={{
                       fontSize: "0.95rem",
                       lineHeight: 1.6,
@@ -521,7 +521,7 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── CTA break — gradient ──────────────────────────────────────────────── */}
+      {/* ── CTA break — gradient ──────────────────────────── */}
       <section
         className="relative overflow-hidden"
         style={{
@@ -571,15 +571,15 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Pricing ───────────────────────────────────────────────────────────── */}
+      {/* ── Pricing ────────────────────────────────── */}
       <section id="pricing" style={{ background: "var(--neutral-50, var(--neutral-50))", padding: "96px 24px" }}>
         <PricingSection />
         <div className="max-w-6xl mx-auto">
           <FadeUp delay={0.3}>
-            <p className="text-center text-neutral-500 mt-6" style={{ fontSize: "14px", fontWeight: 500 }}>
+            <p className="text-center text-[var(--muted-foreground)] mt-6" style={{ fontSize: "14px", fontWeight: 500 }}>
               Try Pro free for 7 days. We&apos;ll remind you before your trial ends.
             </p>
-            <p className="text-center text-neutral-400 mt-2" style={{ fontSize: "12px" }}>
+            <p className="text-center text-[var(--muted-foreground)] mt-2" style={{ fontSize: "12px" }}>
               A card is required at signup. Cancel before day 7 and you won&apos;t be charged. See{" "}
               <Link href="/subscription-terms" className="underline">
                 Subscription Terms
@@ -590,7 +590,7 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ── Footer ────────────────────────────────────────────────────────────── */}
+      {/* ── Footer ───────────────────────────────────────── */}
       <footer style={{ background: "var(--neutral-900)", padding: "64px 24px 40px" }}>
         <div className="max-w-6xl mx-auto">
           <div className="mb-10">
@@ -657,4 +657,3 @@ export default async function LandingPage({
     </main>
   );
 }
-
