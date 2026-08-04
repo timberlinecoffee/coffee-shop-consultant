@@ -1347,3 +1347,454 @@ export function BusinessPlanWorkspace({
       return null;
     }
   }, []);
+
+  // TIM-2416 — when the user accepts the pre-flight gate's "Fix first"
+  // recommendation, open the AI companion in Check mode. The companion's
+  // Check engine calls the same /api/business-plan/audit cache, so it returns
+  // the same finding set instantly. `report` arg is intentionally unused —
+  // the companion drives its own fetch so the cards round-trip through the
+  // companion's Apply path (the canonical Apply path going forward).
+  const handlePreflightFixFirst = useCallback((report: AuditReport) => {
+    void report;
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("copilot:open-in-mode", {
+          detail: { mode: "check", scope: null },
+        }),
+      );
+    }
+  }, []);
+
+  // TIM-2382: apply Scout suggest_workspace_changes proposals for business plan.
+  // fieldId = BusinessPlanSectionKey; finalValue = proposed section text.
+  const handleApplyBusinessPlanSuggestions = useCallback(async (accepted: ApprovedChange[]) => {
+    for (const c of accepted) {
+      const sectionKey = c.fieldId as BusinessPlanSectionKey;
+      const section = sections.find((s) => s.key === sectionKey);
+      if (!section) continue;
+      await saveSection(sectionKey, c.finalValue);
+    }
+  }, [sections, saveSection]);
+
+  // ── TIM-3111: Custom section handlers ───────────────────────────────────────
+
+  const updateCustomSection = useCallback((id: string, patch: Partial<CustomSectionState>) => {
+    setCustomSections((prev) => prev.map((cs) => (cs.id === id ? { ...cs, ...patch } : cs)));
+  }, []);
+
+  const persistCustomDirty = useCallback(async () => {
+    if (!canEdit) return;
+    const snapshot = new Map(customDirtyBuffersRef.current);
+    customDirtyBuffersRef.current.clear();
+    if (snapshot.size === 0) return;
+    setSaveState({ kind: "saving" });
+    try {
+      await Promise.all(
+        Array.from(snapshot.entries()).map(async ([id, userContent]) => {
+          const res = await fetch(`/api/business-plan/custom-sections/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_content: userContent }),
+          });
+          if (!res.ok) throw new Error(`custom section save failed (${res.status})`);
+          setCustomSections((prev) =>
+            prev.map((cs) => (cs.id !== id ? cs : { ...cs, userContent, isSaving: false }))
+          );
+        })
+      );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    } catch {
+      // Re-queue failed entries so the next manual save or debounce can retry them.
+      snapshot.forEach((val, id) => {
+        if (!customDirtyBuffersRef.current.has(id)) {
+          customDirtyBuffersRef.current.set(id, val);
+        }
+      });
+      setSaveState({ kind: "error", message: "Could not save. Try again." });
+    }
+  }, [canEdit]);
+
+  const scheduleCustomSave = useCallback(
+    (id: string, val: string | null) => {
+      customDirtyBuffersRef.current.set(id, val);
+      setSaveState({ kind: "dirty" });
+      if (customPendingSaveTimer.current) clearTimeout(customPendingSaveTimer.current);
+      customPendingSaveTimer.current = setTimeout(() => {
+        customPendingSaveTimer.current = null;
+        void persistCustomDirty();
+      }, AUTOSAVE_DEBOUNCE_MS);
+    },
+    [persistCustomDirty]
+  );
+
+  const handleAddCustomSection = useCallback(async () => {
+    if (!canEdit || isAddingCustomSection) return;
+    setIsAddingCustomSection(true);
+    setCustomSectionError(null);
+    try {
+      const res = await fetch("/api/business-plan/custom-sections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Custom Section" }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({})) as Record<string, unknown>;
+        setCustomSectionError((j.error as string) ?? "Could not add custom section.");
+        return;
+      }
+      const data = await res.json() as { customSection: { id: string; title: string; user_content: string | null; is_visible: boolean; sort_order: number } };
+      const cs = data.customSection;
+      setCustomSections((prev) => [
+        ...prev,
+        {
+          id: cs.id,
+          title: cs.title,
+          userContent: cs.user_content,
+          isVisible: cs.is_visible,
+          sortOrder: cs.sort_order,
+          isExpanded: true,
+          isEditing: false,
+          editBuffer: cs.user_content ?? "",
+          isTitleEditing: true,
+          titleBuffer: cs.title,
+          isSaving: false,
+          isArchived: false,
+        },
+      ]);
+    } catch {
+      setCustomSectionError("Could not add custom section. Try again.");
+    } finally {
+      setIsAddingCustomSection(false);
+    }
+  }, [canEdit, isAddingCustomSection]);
+
+  const handleCustomSectionTitleSave = useCallback(async (id: string, title: string) => {
+    const trimmed = title.trim() || "Custom Section";
+    updateCustomSection(id, { isTitleEditing: false, title: trimmed, titleBuffer: trimmed });
+    await fetch(`/api/business-plan/custom-sections/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: trimmed }),
+    });
+  }, [updateCustomSection]);
+
+  const handleDeleteCustomSection = useCallback(async (id: string) => {
+    const snapshot = customSections.find((cs) => cs.id === id);
+    if (!snapshot || snapshot.isDeleting) return;
+    updateCustomSection(id, { isDeleting: true });
+    setCustomSectionError(null);
+    try {
+      const res = await fetch(`/api/business-plan/custom-sections/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("delete failed");
+      setCustomSections((prev) => prev.filter((cs) => cs.id !== id));
+    } catch {
+      updateCustomSection(id, { isDeleting: false });
+      setCustomSections((prev) => [...prev, snapshot].sort((a, b) => a.sortOrder - b.sortOrder));
+      setCustomSectionError("Could not delete section. Try again.");
+    }
+  }, [customSections, updateCustomSection]);
+
+  const handleCustomSectionVisibility = useCallback(async (id: string, current: boolean) => {
+    const next = !current;
+    updateCustomSection(id, { isVisible: next });
+    await fetch(`/api/business-plan/custom-sections/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_visible: next }),
+    });
+  }, [updateCustomSection]);
+
+  // TIM-3490: handleCustomSectionReorder removed — custom-section sort_order
+  // PATCHes are replaced by the unified per-plan section_order on
+  // coffee_shop_plans (drag-to-reorder via the shared sortable canon).
+
+  // TIM-3675: open the Write-with-AI modal for a custom section. Same shape
+  // as handleOpenWriteAiModal for standard sections, but the modal wires
+  // approve to the custom-sections PATCH endpoint.
+  const handleOpenCustomWriteAiModal = useCallback((id: string) => {
+    if (!canEdit) return;
+    const cs = customSections.find((c) => c.id === id);
+    if (!cs) return;
+    if (!cs.isExpanded) updateCustomSection(id, { isExpanded: true });
+    const initial = cs.isEditing ? cs.editBuffer : (cs.userContent ?? "");
+    setBpWriteAiTarget({
+      kind: "custom",
+      sectionId: id,
+      sectionTitle: cs.title,
+      initialContent: initial,
+    });
+  }, [canEdit, customSections, updateCustomSection]);
+
+  // TIM-3893: Analyse-with-AI handler for Financial Plan sections.
+  const runBpFinancialPlanAnalyse = useCallback(async (sectionKey: BusinessPlanSectionKey) => {
+    if (bpFpAnalyseLoading) return;
+    // Clear stale result only when switching to a different section; preserve it
+    // when regenerating the same section so InlineAnalysisCard can show a spinner.
+    if (bpFpAnalyseActiveKey !== sectionKey) setBpFpAnalyseResult(null);
+    setBpFpAnalyseActiveKey(sectionKey);
+    setBpFpAnalyseLoading(true);
+    setBpFpAnalyseError("");
+    try {
+      const res = await fetch(`/api/ai/analyse/business-plan-financial-plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        if (res.status === 402) {
+          setGlobalError("Analyse with AI requires a Pro subscription.");
+        } else {
+          setBpFpAnalyseError((json.error as string | undefined) ?? "Analysis failed. Please try again.");
+        }
+        return;
+      }
+      const json = await res.json();
+      setBpFpAnalyseResult(json as AnalyseResponse);
+    } catch {
+      setBpFpAnalyseError("Network error — please try again.");
+    } finally {
+      setBpFpAnalyseLoading(false);
+    }
+  }, [bpFpAnalyseLoading, bpFpAnalyseActiveKey, planId]);
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
+  const allExpanded = sections.every((s) => s.isExpanded);
+
+  // TIM-3672 follow-up (board comment db265403 on 2026-07-08): compute the
+  // cross-section context excerpts fed to the BP Write-with-AI modal's "Seed
+  // from other sections" button. Excludes the target section, archived
+  // sections, empty content, and assembled-content placeholders (feeding
+  // placeholders to /improve would just have the AI rewrite the placeholder
+  // text). Prefers userContent over autoContent — that's what the founder has
+  // actually curated.
+  const bpOtherSectionsForContext = useMemo<BpOtherSectionExcerpt[]>(() => {
+    if (!bpWriteAiTarget) return [];
+    const excerpts: BpOtherSectionExcerpt[] = [];
+    const targetKey =
+      bpWriteAiTarget.kind === "standard" ? (bpWriteAiTarget.sectionKey as string) : null;
+    const targetCustomId =
+      bpWriteAiTarget.kind === "custom" ? bpWriteAiTarget.sectionId : null;
+    for (const s of sections) {
+      if (s.isArchived) continue;
+      if (targetKey && s.key === targetKey) continue;
+      const raw = (s.userContent && s.userContent.trim().length > 0
+        ? s.userContent
+        : s.autoContent) ?? "";
+      if (!raw.trim().length) continue;
+      if (isBpPlaceholderContent(raw)) continue;
+      const excerpt = bpSeedExcerpt(raw);
+      if (!excerpt) continue;
+      excerpts.push({ title: s.title, excerpt });
+    }
+    for (const cs of customSections) {
+      if (cs.isArchived) continue;
+      if (targetCustomId && cs.id === targetCustomId) continue;
+      const raw = cs.userContent ?? "";
+      if (!raw.trim().length) continue;
+      if (isBpPlaceholderContent(raw)) continue;
+      const excerpt = bpSeedExcerpt(raw);
+      if (!excerpt) continue;
+      excerpts.push({ title: cs.title, excerpt });
+    }
+    return excerpts;
+  }, [bpWriteAiTarget, sections, customSections]);
+
+  // TIM-3675: Approve handler for the BP Write-with-AI modal — mirrors the
+  // onApply body the pre-TIM-3675 AIReviewModal was using inside runStream.
+  // Standard-section approve PATCHes /api/business-plan/sections/[key];
+  // custom section approve PATCHes /api/business-plan/custom-sections/[id].
+  //
+  // TIM-3675 review-fix: also PATCHes estimated_claims_json alongside
+  // user_content on standard sections. TIM-2342's export-gate validator
+  // reads that column to populate the "Estimated claims to verify" band,
+  // and the pre-TIM-3675 runStream persisted it too. Custom sections don't
+  // participate in the estimated-claims flow (schema doesn't have the
+  // column) so the extras are dropped there.
+  const handleBpWriteAiApprove = useCallback(async (
+    finalText: string,
+    extras: WriteAiApproveExtras,
+  ) => {
+    if (!bpWriteAiTarget) return;
+    if (bpWriteAiTarget.kind === "standard") {
+      const key = bpWriteAiTarget.sectionKey;
+      const res = await fetch(`/api/business-plan/sections/${key}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_content: finalText,
+          estimated_claims_json: extras.estimatedClaims,
+        }),
+      });
+      if (!res.ok) throw new Error("Couldn't save this change. Please try again.");
+      setSections((prev) =>
+        prev.map((s) =>
+          s.key !== key ? s : { ...s, userContent: finalText, isEditing: false, editBuffer: finalText },
+        ),
+      );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    } else {
+      const id = bpWriteAiTarget.sectionId;
+      const res = await fetch(`/api/business-plan/custom-sections/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_content: finalText }),
+      });
+      if (!res.ok) throw new Error("Could not save. Please try again.");
+      setCustomSections((prev) =>
+        prev.map((s) =>
+          s.id !== id ? s : { ...s, userContent: finalText, editBuffer: finalText, isEditing: false },
+        ),
+      );
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+    }
+  }, [bpWriteAiTarget]);
+
+  return (
+    <>
+    {AIReviewModalNode}
+    {ProgressOverlayNode}
+    {/* TIM-3675: BP Write-with-AI modal (per-section). Opens when the user
+        clicks the Write-with-AI button on a section header. Owns the input
+        state (pre-populated content + optional instructions), the generate
+        stream, and the approve/reject flow. Approve merges the AI draft into
+        the section via the sections / custom-sections PATCH endpoints. */}
+    {bpWriteAiTarget && (
+      <BPWriteWithAIModal
+        sectionKey={bpWriteAiTarget.kind === "standard" ? bpWriteAiTarget.sectionKey : "custom"}
+        sectionTitle={bpWriteAiTarget.sectionTitle}
+        shopName={shopName}
+        initialContent={bpWriteAiTarget.initialContent}
+        onClose={() => setBpWriteAiTarget(null)}
+        onApprove={handleBpWriteAiApprove}
+        otherSectionsForContext={bpOtherSectionsForContext}
+      />
+    )}
+    {/* TIM-3950: Regenerate-with-AI overwrite warning. Fires before the
+        destructive regenerate stream starts. Skipped for empty sections in
+        handleRegenerateClick — the dialog only opens when there is user
+        content worth protecting. */}
+    {regenerateWarningKey && (() => {
+      const activeKey = regenerateWarningKey;
+      const target = sections.find((s) => s.key === activeKey);
+      if (!target) return null;
+      // handleRegenerateConfirm chains through runRegenerateSectionStream,
+      // which reads sectionsRef.current inside its own useCallback body — the
+      // ref access is deferred until the user clicks Confirm, not evaluated
+      // during this render. The rule's static analysis flags the closure
+      // chain regardless.
+      // eslint-disable-next-line react-hooks/refs
+      const confirm = () => handleRegenerateConfirm(activeKey);
+      return (
+        <RegenerateWarningDialog
+          sectionTitle={target.title}
+          onCancel={() => setRegenerateWarningKey(null)}
+          onConfirm={confirm}
+        />
+      );
+    })()}
+    {/* TIM-3950: Undo-toast surface after a successful Regenerate. Auto-
+        clears each entry after 15s, or immediately on Undo / dismiss. Stacks
+        vertically so concurrent regenerates on different sections each keep
+        their own Undo affordance. */}
+    {undoToasts.size > 0 && (
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col-reverse items-center gap-2 pointer-events-none">
+        {Array.from(undoToasts.entries()).map(([key, entry]) => (
+          <div key={key} className="pointer-events-auto">
+            <RegenerateUndoToast
+              sectionTitle={entry.sectionTitle}
+              onUndo={() => void handleUndoRegenerate(key)}
+              onDismiss={() => handleDismissUndoToast(key)}
+            />
+          </div>
+        ))}
+      </div>
+    )}
+    {/* TIM-3576: cover config modal opens before print/export */}
+    {coverModalAction && (
+      <CoverConfigModal
+        initialSettings={initialCoverSettings}
+        logoPublicUrl={logoPublicUrl}
+        shopName={shopName}
+        authorFullName={authorFullName}
+        action={coverModalAction}
+        onConfirm={handleCoverModalConfirm}
+        onCancel={() => setCoverModalAction(null)}
+      />
+    )}
+    {validationReport && (
+      <ExportGateModal
+        report={validationReport}
+        shopName={shopName}
+        // TIM-3490: AI prompt assemblers must respect the persisted order.
+        // orderedSectionsForAi iterates effectiveOrder so the validation /
+        // export prompts reflect the user's reorder.
+        sections={orderedSectionsForAi}
+        onSectionPatched={handleSectionPatchedFromGate}
+        onCancel={handleGateCancel}
+        onContinue={handleGateContinue}
+      />
+    )}
+    <div className="bg-[var(--background)] min-h-screen">
+      <div className="w-full px-4 sm:px-6 pt-8 pb-20">
+        {/* TIM-1894: canonical WorkspaceHeader — actions live top-right on the
+            title band (was a separate toolbar stacked below the header, the
+            board-flagged Item-3 offender). Export PDF is the filled-primary to
+            match Financials' single primary + outlined secondaries. */}
+        <WorkspaceHeader
+          Icon={FileText}
+          title="Business Plan"
+          description="Your complete business plan, assembled from every workspace. Edit each section in place or improve it with AI."
+          scout={
+            /* TIM-2382: Scout-as-hub — replaces the legacy auto-apply
+               Generate/Improve flow. Suggestions route through chat +
+               AIReviewModal ([[feedback_ai_never_auto_apply]]). */
+            <AskScoutButton
+              workspaceKey="business_plan"
+              focusLabel="business plan"
+              hasContent={hasContent}
+            />
+          }
+          primaryAction={
+            /* TIM-4108 (UX Phase 3): the next section the owner has not put
+               their own words to. Every section arrives pre-filled from the
+               other workspaces, so "reviewed" here means the owner has read it
+               and made it theirs — which is the actual work on this screen. */
+            nextUnreviewed ? (
+              <WorkspaceNextStepButton
+                step={nextUnreviewed}
+                onGo={(key) => {
+                  setSections((prev) =>
+                    prev.map((s) =>
+                      s.key === key ? { ...s, isExpanded: true } : s,
+                    ),
+                  );
+                  requestAnimationFrame(() => scrollToStep(key));
+                }}
+              />
+            ) : undefined
+          }
+          overflow={
+            /* TIM-3556: hideAdvisor — the Scout button above already opens the
+               same drawer, so the menu's default "Open Advisor" row would
+               duplicate it.
+               TIM-4108: Expand/Collapse All was a bare underlined link sitting
+               in the action cluster — the only control on any workspace that
+               looked like body text. It is a view toggle, so it belongs with
+               the other view toggles, in the menu. */
+            <WorkspaceActionMenu hideAdvisor>
+              {({ closeMenu }) => (
+                <>
+                  <WorkspaceActionMenuItem
+                    Icon={allExpanded ? ChevronUp : ChevronDown}
+                    label={allExpanded ? "Collapse all sections" : "Expand all sections"}
+                    onClick={() => {
+                      closeMenu();
+                      setSections((prev) =>
+                        prev.map((s) => ({ ...s, isExpanded: !allExpanded })),
+                      );
+                    }}
+                  />
+                  <WorkspaceActionMenuItem
+                    Icon={Download}
