@@ -119,7 +119,7 @@ const INDENT_PX = 16;
 const INDENT_STEP = 18;
 const MAX_DEPTH = 4;
 
-// ── Shared input styles (matches v1 RoleDetailPanel) ─────────────────────────────────
+// ── Shared input styles (matches v1 RoleDetailPanel) ─────────────────────────
 const inputCls =
   "w-full text-sm border border-[var(--border-medium)] rounded-lg px-3 py-2 text-[var(--foreground)] placeholder-[var(--neutral-cool-400)] focus-visible:outline-none focus:border-[var(--teal)] disabled:bg-[var(--background)] disabled:text-[var(--dark-grey)] transition-colors";
 const labelCls = "block text-xs font-medium text-[var(--muted-foreground)] mb-1";
@@ -159,7 +159,7 @@ function computeDueDateLabel(startDate: string | null, dueOffsetDays: number | n
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// ── PDF download button (mirrors v1 HiringPdfButton) ─────────────────────────────────
+// ── PDF download button (mirrors v1 HiringPdfButton) ─────────────────────────
 function HiringPdfButton({
   templateId,
   queryParams,
@@ -351,7 +351,7 @@ function flattenTree(
   return out;
 }
 
-// ── Hiring Laws panel ───────────────────────────────────────────────
+// ── Hiring Laws panel ─────────────────────────────────────────────────────────
 // TIM-3558: migrated from v1 RequirementsTab. Shown when the user clicks
 // "Hiring laws" in the left nav, replacing the old ?hiring=v1 link.
 
@@ -752,7 +752,7 @@ export function HiringWorkspaceV2(props: Props) {
   );
 }
 
-// ── Role page (right side) ─────────────────────────────────────────
+// ── Role page (right side) ────────────────────────────────────────────────────
 
 type RolePageProps = {
   role: OrgRole;
@@ -874,7 +874,7 @@ function Accordion({
   );
 }
 
-// ── Role basics ──────────────────────────────────────────────────
+// ── Role basics ──────────────────────────────────────────────────────────────
 
 function RoleBasicsSection({
   role,
@@ -959,7 +959,7 @@ function RoleBasicsSection({
   );
 }
 
-// ── Compensation ────────────────────────────────────────────────────
+// ── Compensation ─────────────────────────────────────────────────────────────
 
 function RoleCompensationSection({
   role,
@@ -1170,7 +1170,7 @@ function RoleCompensationSection({
   );
 }
 
-// ── Job description ───────────────────────────────────────────────
+// ── Job description ──────────────────────────────────────────────────────────
 
 function RoleJobDescriptionSection({
   role,
@@ -1529,7 +1529,7 @@ function RoleInterviewQuestionsSection({
   );
 }
 
-// ── Scorecard ─────────────────────────────────────────────────
+// ── Scorecard ────────────────────────────────────────────────────────────────
 // TIM-3370: candidates × competencies grid renders inline below the selected
 // scorecard. Auto-selects the default (or first) scorecard so the grid appears
 // on open; user can click another row to switch or hit Add to create one.
@@ -1754,7 +1754,7 @@ function RoleScorecardSection({
   );
 }
 
-// ── Competency forms ────────────────────────────────────────────
+// ── Competency forms ─────────────────────────────────────────────────────────
 
 function RoleCompetencyFormsSection({
   role,
@@ -1890,7 +1890,7 @@ function RoleCompetencyFormsSection({
   );
 }
 
-// ── Onboarding (filtered to this role) ────────────────────────────────────
+// ── Onboarding (filtered to this role) ───────────────────────────────────────
 
 function RoleOnboardingSection({
   role,
@@ -2373,7 +2373,7 @@ function RoleOnboardingSection({
   );
 }
 
-// ── Left nav (drag-to-reparent preserved) ────────────────────────────────
+// ── Left nav (drag-to-reparent preserved) ─────────────────────────────────────
 
 function HiringRoleNav({
   planId,
