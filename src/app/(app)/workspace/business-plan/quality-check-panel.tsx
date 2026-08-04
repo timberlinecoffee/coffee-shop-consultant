@@ -43,7 +43,7 @@ const SEVERITY_CONFIG: Readonly<Record<AuditSeverity, { label: string; className
   },
   info: {
     label: "Heads-Up",
-    className: "bg-neutral-100 text-neutral-600 border-neutral-200",
+    className: "bg-neutral-100 text-[var(--muted-foreground)] border-neutral-200",
   },
 };
 
@@ -58,7 +58,7 @@ function SeverityChip({ level }: { level: AuditSeverity }) {
   );
 }
 
-// ── FindingCard. ─────────────────────────────────────────────────────────────
+// ── FindingCard. ──────────────────────────────────────────────────────────────
 
 interface FindingCardProps {
   finding: AuditFinding;
@@ -89,8 +89,8 @@ function FindingCard({ finding, onApply, onGoToSource, onDismiss, onSnooze, snoo
     return (
       <div className="bg-white px-4 py-3 flex items-center gap-3">
         <SeverityChip level={finding.severity} />
-        <p className="text-xs text-neutral-500 flex-1 min-w-0 truncate">{issue}</p>
-        <span className="text-xs text-neutral-400 whitespace-nowrap flex-shrink-0">
+        <p className="text-xs text-[var(--muted-foreground)] flex-1 min-w-0 truncate">{issue}</p>
+        <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap flex-shrink-0">
           Snoozed Until {formatted}
         </span>
       </div>
@@ -102,11 +102,11 @@ function FindingCard({ finding, onApply, onGoToSource, onDismiss, onSnooze, snoo
       <div className="flex items-start gap-3">
         <SeverityChip level={finding.severity} />
         <div className="flex-1 min-w-0 space-y-0.5">
-          <p className="text-sm font-medium text-neutral-950 leading-snug">
+          <p className="text-sm font-medium text-[var(--foreground)] leading-snug">
             {issue}
           </p>
           {why && (
-            <p className="text-xs text-neutral-500 leading-snug">
+            <p className="text-xs text-[var(--muted-foreground)] leading-snug">
               {why}
             </p>
           )}
@@ -127,7 +127,7 @@ function FindingCard({ finding, onApply, onGoToSource, onDismiss, onSnooze, snoo
         )}
         <button
           type="button"
-          className="text-xs font-semibold text-neutral-500 hover:text-neutral-950 inline-flex items-center gap-1"
+          className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] inline-flex items-center gap-1"
           onClick={() => onGoToSource(finding)}
         >
           <ExternalLink size={10} aria-hidden="true" />
@@ -135,14 +135,14 @@ function FindingCard({ finding, onApply, onGoToSource, onDismiss, onSnooze, snoo
         </button>
         <button
           type="button"
-          className="text-xs font-semibold text-neutral-400 hover:text-neutral-500"
+          className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--muted-foreground)]"
           onClick={() => onSnooze(finding.id)}
         >
           Snooze 24h
         </button>
         <button
           type="button"
-          className="text-xs font-semibold text-neutral-400 hover:text-neutral-500"
+          className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--muted-foreground)]"
           onClick={() => onDismiss(finding.id)}
         >
           Dismiss
@@ -152,7 +152,7 @@ function FindingCard({ finding, onApply, onGoToSource, onDismiss, onSnooze, snoo
   );
 }
 
-// ── Panel. ───────────────────────────────────────────────────────────────────
+// ── Panel. ────────────────────────────────────────────────────────────────────
 
 export interface QualityCheckPanelProps {
   report: AuditReport | null;
@@ -206,10 +206,10 @@ export function QualityCheckPanel({
           className="w-10 h-10 rounded-full border-2 border-[var(--teal)] border-t-transparent animate-spin mb-4"
           aria-hidden="true"
         />
-        <p className="text-sm font-medium text-neutral-950 mb-1">
+        <p className="text-sm font-medium text-[var(--foreground)] mb-1">
           Checking your plan...
         </p>
-        <p className="text-sm text-neutral-500 max-w-sm">
+        <p className="text-sm text-[var(--muted-foreground)] max-w-sm">
           Reviewing all workspaces for gaps and inconsistencies. This takes about 10 seconds.
         </p>
       </div>
@@ -220,11 +220,11 @@ export function QualityCheckPanel({
   if (!report) {
     return (
       <div className="bg-white rounded-2xl border border-[var(--border)] p-8 flex flex-col items-center justify-center text-center min-h-[320px]">
-        <ShieldCheck className="w-10 h-10 text-neutral-300 mb-4" aria-hidden="true" />
-        <p className="text-sm font-medium text-neutral-950 mb-1">
+        <ShieldCheck className="w-10 h-10 text-[var(--muted-foreground)] mb-4" aria-hidden="true" />
+        <p className="text-sm font-medium text-[var(--foreground)] mb-1">
           Your plan has not been checked yet
         </p>
-        <p className="text-sm text-neutral-500 mb-6 max-w-sm">
+        <p className="text-sm text-[var(--muted-foreground)] mb-6 max-w-sm">
           Click &ldquo;Check Plan&rdquo; to scan all your workspaces for gaps, mismatches,
           and things worth fixing before you launch.
         </p>
@@ -250,7 +250,7 @@ export function QualityCheckPanel({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-[var(--muted-foreground)]">
           Checked {formattedDate} &mdash; {totalCount} {totalCount === 1 ? "item" : "items"} found
           {hiddenCount > 0 ? ` (${hiddenCount} dismissed)` : ""}
         </p>
@@ -268,7 +268,7 @@ export function QualityCheckPanel({
 
       {grouped.critical.length > 0 && (
         <section aria-label="Fix Before Launch findings">
-          <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-3">
+          <h2 className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide mb-3">
             Fix Before Launch
           </h2>
           <div className="border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
@@ -288,7 +288,7 @@ export function QualityCheckPanel({
 
       {grouped.warning.length > 0 && (
         <section aria-label="Worth a Look findings">
-          <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-3">
+          <h2 className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide mb-3">
             Worth a Look
           </h2>
           <div className="border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
@@ -308,7 +308,7 @@ export function QualityCheckPanel({
 
       {grouped.info.length > 0 && (
         <section aria-label="Heads-Up findings">
-          <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-3">
+          <h2 className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide mb-3">
             Heads-Up
           </h2>
           <div className="border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
@@ -328,7 +328,7 @@ export function QualityCheckPanel({
 
       {snoozedFindings.length > 0 && (
         <section aria-label="Snoozed findings">
-          <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-3">
+          <h2 className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide mb-3">
             Snoozed
           </h2>
           <div className="border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
@@ -350,17 +350,17 @@ export function QualityCheckPanel({
       {totalCount === 0 && snoozedFindings.length === 0 && hiddenCount === 0 && (
         <div className="bg-white rounded-2xl border border-[var(--border)] p-8 flex flex-col items-center justify-center text-center">
           <ShieldCheck className="w-10 h-10 text-[var(--teal)] mb-4" aria-hidden="true" />
-          <p className="text-sm font-medium text-neutral-950 mb-1">No issues found</p>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm font-medium text-[var(--foreground)] mb-1">No issues found</p>
+          <p className="text-sm text-[var(--muted-foreground)]">
             Your plan looks consistent across all workspaces. Good to go.
           </p>
         </div>
       )}
       {totalCount === 0 && snoozedFindings.length === 0 && hiddenCount > 0 && (
         <div className="bg-white rounded-2xl border border-[var(--border)] p-8 flex flex-col items-center justify-center text-center">
-          <ShieldCheck className="w-10 h-10 text-neutral-300 mb-4" aria-hidden="true" />
-          <p className="text-sm font-medium text-neutral-950 mb-1">All Findings Dismissed</p>
-          <p className="text-sm text-neutral-500">
+          <ShieldCheck className="w-10 h-10 text-[var(--muted-foreground)] mb-4" aria-hidden="true" />
+          <p className="text-sm font-medium text-[var(--foreground)] mb-1">All Findings Dismissed</p>
+          <p className="text-sm text-[var(--muted-foreground)]">
             {hiddenCount} {hiddenCount === 1 ? "finding" : "findings"} dismissed. Re-check any time to re-scan.
           </p>
         </div>

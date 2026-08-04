@@ -397,7 +397,7 @@ function FileRowView({ file, stage }: { file: FileRow; stage: Stage }) {
     chipClass = "bg-amber-100 text-amber-700 animate-pulse";
   } else {
     label = "Queued";
-    chipClass = "bg-neutral-200 text-neutral-600";
+    chipClass = "bg-neutral-200 text-[var(--muted-foreground)]";
   }
   return (
     <div className="flex items-center gap-3 py-2 px-3 text-sm">
