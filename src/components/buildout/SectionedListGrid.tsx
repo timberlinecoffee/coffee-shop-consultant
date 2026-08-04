@@ -326,7 +326,7 @@ function UsefulLifeInput({
         min={1}
         max={50}
         step={1}
-        className="w-full text-xs text-[#1a1a1a] bg-transparent outline-none border-0 p-0 placeholder-[#c0c0c0]"
+        className="w-full text-xs text-[var(--foreground)] bg-transparent outline-none border-0 p-0 placeholder-[#c0c0c0]"
         value={draft}
         placeholder="7"
         disabled={disabled}
