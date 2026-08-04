@@ -2033,7 +2033,7 @@ function RoleScorecardSection({
   );
 }
 
-// ── Competency forms ──────────────────────────────────────────────────────
+// ── Competency forms ───────────────────────────────────────────────────────
 
 function RoleCompetencyFormsSection({
   role,
