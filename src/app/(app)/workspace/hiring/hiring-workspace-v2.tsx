@@ -7,7 +7,10 @@
 // TIM-3558: Hiring Laws panel migrated from v1 RequirementsTab so left nav
 // no longer links to ?hiring=v1 (which was trapping users in v1 permanently).
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+// TIM-4118: the roles route returns the created row unwrapped. Shared reader,
+// pinned against that route's own source by created-role.test.mjs.
+import { parseCreatedRole } from "@/lib/hiring/created-role";
 import {
   ChevronDown,
   ChevronUp,
@@ -541,6 +544,8 @@ export function HiringWorkspaceV2(props: Props) {
   const [selectedView, setSelectedView] = useState<"role" | "hiring_laws">("role");
   const [navOpen, setNavOpen] = useState(false);
   const [addingRole, setAddingRole] = useState(false);
+  // TIM-4118: in-flight guard for "Add role" — see addRole below.
+  const addingRoleRef = useRef(false);
   const [newTitle, setNewTitle] = useState("");
 
   const selectedRole = useMemo(
@@ -569,11 +574,17 @@ export function HiringWorkspaceV2(props: Props) {
 
   const addRole = useCallback(async () => {
     if (!props.canEdit) return;
+    // TIM-4118: the input submits on BOTH Enter and blur, so without this one
+    // keypress could create two roles. A ref, not state, because the second
+    // call must see the first one's flag immediately — a state update would not
+    // have landed yet.
+    if (addingRoleRef.current) return;
     const trimmed = newTitle.trim();
     if (!trimmed) {
       setAddingRole(false);
       return;
     }
+    addingRoleRef.current = true;
     try {
       const res = await fetch(`/api/workspaces/hiring/roles?planId=${props.planId}`, {
         method: "POST",
@@ -581,13 +592,20 @@ export function HiringWorkspaceV2(props: Props) {
         body: JSON.stringify({ role_title: trimmed, headcount: 1 }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { data?: OrgRole };
-      if (data.data) {
-        setRoles((prev) => [...prev, data.data!]);
-        setSelectedRoleId(data.data.id);
+      // TIM-4118: this used to read `body.data`. The route returns the row
+      // UNWRAPPED, so that was always undefined — the role was created, the
+      // server said 201, and the screen dropped it. Enter looked like it did
+      // nothing, and because the text stayed in the focused input, clicking
+      // away submitted it a second time and made a duplicate.
+      const created = parseCreatedRole(await res.json()) as OrgRole | null;
+      if (created) {
+        setRoles((prev) => [...prev, created]);
+        setSelectedRoleId(created.id);
       }
     } catch {
       // swallow — input stays open with the typed text so the user can retry
+    } finally {
+      addingRoleRef.current = false;
     }
     setNewTitle("");
     setAddingRole(false);
