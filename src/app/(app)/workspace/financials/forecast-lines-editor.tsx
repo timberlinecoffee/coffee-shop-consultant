@@ -18,6 +18,12 @@ import type {
   LineRamp,
   LineGrowth,
 } from "@/lib/financial-projection";
+// TIM-4117: revenue streams and the cost of selling them are created and
+// deleted together. Shared, tested rule — not a copy in this component.
+import {
+  withPairedCostLine,
+  withoutLineAndItsPairs,
+} from "@/lib/cross-workspace/paired-cost-lines";
 import { currencySymbol } from "@/lib/currency";
 import { fmtPct, fmtIntegerPct } from "@/lib/formatters";
 import { NumericInput } from "@/components/ui/numeric-input";
@@ -783,7 +789,11 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
         newLine.menu_linked = true;
       }
     }
-    onLinesChange([...lines, newLine]);
+
+    // TIM-4117: a revenue stream arrives with the cost of selling it attached.
+    // The rule lives in paired-cost-lines.ts so it can be tested — see there
+    // for why the delete half is a correctness fix rather than tidiness.
+    onLinesChange(withPairedCostLine(lines, newLine, genId));
   }
 
   function updateLine(idx: number, next: ForecastLine) {
@@ -799,7 +809,10 @@ function CategorySection({ category, lines, canEdit, onLinesChange, currencyCode
     const allMyIdx = lines.map((l, i) => (l.category === category ? i : -1)).filter((i) => i >= 0);
     const targetIdx = allMyIdx[idx];
     if (targetIdx === undefined) return;
-    onLinesChange(lines.filter((_, i) => i !== targetIdx));
+    // TIM-4117: deleting a revenue stream takes its auto-created cost line with
+    // it, because the engine fails OPEN on an orphan and silently recharges the
+    // cost against the whole business. Shared rule, tested next door.
+    onLinesChange(withoutLineAndItsPairs(lines, lines[targetIdx].id));
   }
 
   return (
