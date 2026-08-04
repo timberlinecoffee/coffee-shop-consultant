@@ -136,11 +136,11 @@ function SectionShopType({
 
   return (
     <div className="space-y-8">
-      <p className="text-sm italic text-neutral-500 leading-relaxed">{SECTION_1_CONTEXT.shop_type}</p>
+      <p className="text-sm italic text-[var(--muted-foreground)] leading-relaxed">{SECTION_1_CONTEXT.shop_type}</p>
       {/* Learn */}
       <div>
-        <h3 className="font-semibold text-neutral-950 mb-3">The 7 Shop Models</h3>
-        <p className="text-sm text-neutral-500 mb-5 leading-relaxed">
+        <h3 className="font-semibold text-[var(--foreground)] mb-3">The 7 Shop Models</h3>
+        <p className="text-sm text-[var(--muted-foreground)] mb-5 leading-relaxed">
           Your shop model shapes every decision that follows: staffing, equipment, lease requirements, and your daily rhythm. Choose based on your budget, lifestyle, and the gap you&apos;ve identified, not just what sounds exciting.
         </p>
         <div className="grid gap-3">
@@ -156,11 +156,11 @@ function SectionShopType({
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className={`font-semibold text-sm mb-1 ${model === m.id ? "text-teal" : "text-neutral-950"}`}>
+                  <div className={`font-semibold text-sm mb-1 ${model === m.id ? "text-teal" : "text-[var(--foreground)]"}`}>
                     {m.label}
                   </div>
-                  <div className="text-xs text-neutral-500 mb-1">{m.desc}</div>
-                  <div className="text-xs text-neutral-500 italic">{m.example}</div>
+                  <div className="text-xs text-[var(--muted-foreground)] mb-1">{m.desc}</div>
+                  <div className="text-xs text-[var(--muted-foreground)] italic">{m.example}</div>
                 </div>
                 <div className="flex-shrink-0 text-xs font-medium text-teal bg-teal/10 px-2 py-1 rounded-lg whitespace-nowrap">
                   {m.costRange}
@@ -175,10 +175,10 @@ function SectionShopType({
       {model && (
         <div className="border-t border-grey-light pt-6 space-y-5">
           <div>
-            <p className="text-sm font-medium text-neutral-950 mb-1">
+            <p className="text-sm font-medium text-[var(--foreground)] mb-1">
               You&apos;ve selected: <span className="text-teal">{selectedModel?.label}</span>
             </p>
-            <p className="text-xs text-neutral-500">Answer a few follow-up questions to sharpen your concept.</p>
+            <p className="text-xs text-[var(--muted-foreground)]">Answer a few follow-up questions to sharpen your concept.</p>
           </div>
 
           {model === "coworking_hybrid" && (
@@ -188,7 +188,7 @@ function SectionShopType({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-neutral-950 mb-2">Square footage / size</label>
+            <label className="block text-sm font-medium text-[var(--foreground)] mb-2">Square footage / size</label>
             <div className="grid grid-cols-2 gap-2">
               {["Under 500 sq ft", "500–1,000 sq ft", "1,000–2,000 sq ft", "Over 2,000 sq ft"].map((opt) => (
                 <button
@@ -197,7 +197,7 @@ function SectionShopType({
                   className={`text-sm px-4 py-2.5 rounded-xl border transition-colors ${
                     data.size === opt
                       ? "border-teal bg-teal/5 text-teal font-medium"
-                      : "border-grey-light bg-white text-neutral-950 hover:border-neutral-500"
+                      : "border-grey-light bg-white text-[var(--foreground)] hover:border-neutral-500"
                   }`}
                 >
                   {opt}
@@ -207,7 +207,7 @@ function SectionShopType({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-950 mb-2">Seating capacity</label>
+            <label className="block text-sm font-medium text-[var(--foreground)] mb-2">Seating capacity</label>
             <div className="grid grid-cols-2 gap-2">
               {["None (grab & go)", "1–12 seats", "13–30 seats", "30+ seats"].map((opt) => (
                 <button
@@ -216,7 +216,7 @@ function SectionShopType({
                   className={`text-sm px-4 py-2.5 rounded-xl border transition-colors ${
                     data.seating === opt
                       ? "border-teal bg-teal/5 text-teal font-medium"
-                      : "border-grey-light bg-white text-neutral-950 hover:border-neutral-500"
+                      : "border-grey-light bg-white text-[var(--foreground)] hover:border-neutral-500"
                   }`}
                 >
                   {opt}
@@ -226,7 +226,7 @@ function SectionShopType({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-950 mb-2">Food service level</label>
+            <label className="block text-sm font-medium text-[var(--foreground)] mb-2">Food service level</label>
             <div className="grid grid-cols-1 gap-2">
               {["No food", "Pastries and grab-and-go only", "Light kitchen (sandwiches, salads)", "Full food menu"].map((opt) => (
                 <button
@@ -235,7 +235,7 @@ function SectionShopType({
                   className={`text-left text-sm px-4 py-2.5 rounded-xl border transition-colors ${
                     data.food_level === opt
                       ? "border-teal bg-teal/5 text-teal font-medium"
-                      : "border-grey-light bg-white text-neutral-950 hover:border-neutral-500"
+                      : "border-grey-light bg-white text-[var(--foreground)] hover:border-neutral-500"
                   }`}
                 >
                   {opt}
@@ -245,7 +245,7 @@ function SectionShopType({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-950 mb-2">Service style</label>
+            <label className="block text-sm font-medium text-[var(--foreground)] mb-2">Service style</label>
             <div className="grid grid-cols-1 gap-2">
               {["Counter service only", "Counter + table service", "Table service only", "Grab & go / window service"].map((opt) => (
                 <button
@@ -254,7 +254,7 @@ function SectionShopType({
                   className={`text-left text-sm px-4 py-2.5 rounded-xl border transition-colors ${
                     data.service_style === opt
                       ? "border-teal bg-teal/5 text-teal font-medium"
-                      : "border-grey-light bg-white text-neutral-950 hover:border-neutral-500"
+                      : "border-grey-light bg-white text-[var(--foreground)] hover:border-neutral-500"
                   }`}
                 >
                   {opt}
@@ -277,57 +277,57 @@ function SectionYourWhy({
 }) {
   return (
     <div className="space-y-8">
-      <p className="text-sm italic text-neutral-500 leading-relaxed">{SECTION_1_CONTEXT.your_why}</p>
+      <p className="text-sm italic text-[var(--muted-foreground)] leading-relaxed">{SECTION_1_CONTEXT.your_why}</p>
       <div>
-        <h3 className="font-semibold text-neutral-950 mb-3">Why Motivation Matters</h3>
-        <p className="text-sm text-neutral-500 leading-relaxed mb-4">
+        <h3 className="font-semibold text-[var(--foreground)] mb-3">Why Motivation Matters</h3>
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed mb-4">
           Your &quot;why&quot; isn&apos;t just a feel-good exercise. It shapes how you hire, what you put on the menu, who you serve, and how you behave on the hardest days. Successful operators who make it through year two almost always have a clear, specific answer to this. Vague reasons produce vague concepts.
         </p>
-        <p className="text-sm text-neutral-500 leading-relaxed">
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
           The three prompts below will become the foundation of your positioning statement in Section 5. Answer them as if you&apos;re talking to someone who&apos;s genuinely curious, not a business plan reviewer.
         </p>
       </div>
 
       <div className="space-y-5">
         <div>
-          <label className="block text-sm font-medium text-neutral-950 mb-1">
+          <label className="block text-sm font-medium text-[var(--foreground)] mb-1">
             What&apos;s pulling you toward this?
           </label>
-          <p className="text-xs text-neutral-500 mb-2">Not what you think sounds good. What&apos;s actually driving you.</p>
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">Not what you think sounds good. What&apos;s actually driving you.</p>
           <textarea
             value={(data.motivation as string) ?? ""}
             onChange={(e) => onChange({ ...data, motivation: e.target.value })}
             rows={4}
             placeholder="I've been a barista for six years and I watch the regulars..."
-            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white"
+            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-950 mb-1">
+          <label className="block text-sm font-medium text-[var(--foreground)] mb-1">
             What experience do you want customers to have?
           </label>
-          <p className="text-xs text-neutral-500 mb-2">Describe the feeling, not the features. What do they say when they tell a friend about you?</p>
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">Describe the feeling, not the features. What do they say when they tell a friend about you?</p>
           <textarea
             value={(data.customer_experience as string) ?? ""}
             onChange={(e) => onChange({ ...data, customer_experience: e.target.value })}
             rows={4}
             placeholder="I want people to feel like they've found their spot. Like the barista knows their name and their order..."
-            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white"
+            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-950 mb-1">
+          <label className="block text-sm font-medium text-[var(--foreground)] mb-1">
             What&apos;s your line in the sand?
           </label>
-          <p className="text-xs text-neutral-500 mb-2">What would you never compromise on, even if it cost you customers?</p>
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">What would you never compromise on, even if it cost you customers?</p>
           <textarea
             value={(data.line_in_sand as string) ?? ""}
             onChange={(e) => onChange({ ...data, line_in_sand: e.target.value })}
             rows={4}
             placeholder="I will never serve pre-ground coffee or use flavored syrups with artificial ingredients..."
-            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white"
+            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white"
           />
         </div>
       </div>
@@ -344,13 +344,13 @@ function SectionTargetCustomer({
 }) {
   return (
     <div className="space-y-8">
-      <p className="text-sm italic text-neutral-500 leading-relaxed">{SECTION_1_CONTEXT.target_customer}</p>
+      <p className="text-sm italic text-[var(--muted-foreground)] leading-relaxed">{SECTION_1_CONTEXT.target_customer}</p>
       <div>
-        <h3 className="font-semibold text-neutral-950 mb-3">Your Customer Is Not &quot;Everyone Who Likes Coffee&quot;</h3>
-        <p className="text-sm text-neutral-500 leading-relaxed mb-4">
+        <h3 className="font-semibold text-[var(--foreground)] mb-3">Your Customer Is Not &quot;Everyone Who Likes Coffee&quot;</h3>
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed mb-4">
           The most common mistake in coffee shop planning is designing for everyone. When you try to serve everyone, you end up resonating with no one. Shops that win have a clear, specific customer in mind, and every decision runs through that filter.
         </p>
-        <p className="text-sm text-neutral-500 leading-relaxed">
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
           Build your primary customer persona here. You&apos;re not excluding everyone else; you&apos;re anchoring your decisions to someone real. Your coach will create a vivid paragraph from your answers and challenge you on blind spots.
         </p>
       </div>
@@ -358,7 +358,7 @@ function SectionTargetCustomer({
       <div className="grid gap-5">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-neutral-950 mb-2">Age range</label>
+            <label className="block text-sm font-medium text-[var(--foreground)] mb-2">Age range</label>
             <div className="grid gap-2">
               {["18–25", "26–35", "36–50", "50+", "Mixed"].map((opt) => (
                 <button
@@ -367,7 +367,7 @@ function SectionTargetCustomer({
                   className={`text-sm px-4 py-2 rounded-xl border transition-colors text-left ${
                     data.age_range === opt
                       ? "border-teal bg-teal/5 text-teal font-medium"
-                      : "border-grey-light bg-white text-neutral-950 hover:border-neutral-500"
+                      : "border-grey-light bg-white text-[var(--foreground)] hover:border-neutral-500"
                   }`}
                 >
                   {opt}
@@ -377,7 +377,7 @@ function SectionTargetCustomer({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-950 mb-2">Income level</label>
+            <label className="block text-sm font-medium text-[var(--foreground)] mb-2">Income level</label>
             <div className="grid gap-2">
               {["Budget-conscious", "Middle income", "Upper-middle", "High income", "Mixed"].map((opt) => (
                 <button
@@ -386,7 +386,7 @@ function SectionTargetCustomer({
                   className={`text-sm px-4 py-2 rounded-xl border transition-colors text-left ${
                     data.income === opt
                       ? "border-teal bg-teal/5 text-teal font-medium"
-                      : "border-grey-light bg-white text-neutral-950 hover:border-neutral-500"
+                      : "border-grey-light bg-white text-[var(--foreground)] hover:border-neutral-500"
                   }`}
                 >
                   {opt}
@@ -397,7 +397,7 @@ function SectionTargetCustomer({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-950 mb-2">Occupation / lifestyle</label>
+          <label className="block text-sm font-medium text-[var(--foreground)] mb-2">Occupation / lifestyle</label>
           <div className="grid grid-cols-2 gap-2">
             {["Remote workers / freelancers", "Students", "Office professionals", "Parents / families", "Hospitality workers", "Creatives / artists", "Fitness / wellness crowd", "Local regulars / retirees"].map((opt) => {
               const current = (data.occupation as string[]) ?? [];
@@ -412,7 +412,7 @@ function SectionTargetCustomer({
                   className={`text-left text-sm px-3 py-2 rounded-xl border transition-colors flex items-center gap-2 ${
                     selected
                       ? "border-teal bg-teal/5 text-teal font-medium"
-                      : "border-grey-light bg-white text-neutral-950 hover:border-neutral-500"
+                      : "border-grey-light bg-white text-[var(--foreground)] hover:border-neutral-500"
                   }`}
                 >
                   <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${selected ? "bg-teal border-teal" : "border-neutral-500"}`}>
@@ -426,7 +426,7 @@ function SectionTargetCustomer({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-950 mb-2">Coffee habits</label>
+          <label className="block text-sm font-medium text-[var(--foreground)] mb-2">Coffee habits</label>
           <div className="grid grid-cols-1 gap-2">
             {["Daily drinker, creature of habit", "Occasional: treats coffee as a treat", "Coffee-curious, interested in origin and craft", "Specialty-focused, knows what they want", "On-the-go, speed matters most"].map((opt) => (
               <button
@@ -435,7 +435,7 @@ function SectionTargetCustomer({
                 className={`text-left text-sm px-4 py-2.5 rounded-xl border transition-colors ${
                   data.coffee_habits === opt
                     ? "border-teal bg-teal/5 text-teal font-medium"
-                    : "border-grey-light bg-white text-neutral-950 hover:border-neutral-500"
+                    : "border-grey-light bg-white text-[var(--foreground)] hover:border-neutral-500"
                 }`}
               >
                 {opt}
@@ -445,7 +445,7 @@ function SectionTargetCustomer({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-950 mb-2">What they value most</label>
+          <label className="block text-sm font-medium text-[var(--foreground)] mb-2">What they value most</label>
           <div className="grid grid-cols-2 gap-2">
             {["Quality above all", "Convenience and speed", "Community and connection", "Sustainability and ethics", "Value for money", "Atmosphere and aesthetics", "Discovery and novelty", "Consistency and reliability"].map((opt) => {
               const current = (data.values as string[]) ?? [];
@@ -460,7 +460,7 @@ function SectionTargetCustomer({
                   className={`text-left text-sm px-3 py-2 rounded-xl border transition-colors flex items-center gap-2 ${
                     selected
                       ? "border-teal bg-teal/5 text-teal font-medium"
-                      : "border-grey-light bg-white text-neutral-950 hover:border-neutral-500"
+                      : "border-grey-light bg-white text-[var(--foreground)] hover:border-neutral-500"
                   }`}
                 >
                   <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${selected ? "bg-teal border-teal" : "border-neutral-500"}`}>
@@ -512,13 +512,13 @@ function SectionCompetitiveAnalysis({
 
   return (
     <div className="space-y-8">
-      <p className="text-sm italic text-neutral-500 leading-relaxed">{SECTION_1_CONTEXT.competitive_analysis}</p>
+      <p className="text-sm italic text-[var(--muted-foreground)] leading-relaxed">{SECTION_1_CONTEXT.competitive_analysis}</p>
       <div>
-        <h3 className="font-semibold text-neutral-950 mb-3">Know What Exists to Find the Gap</h3>
-        <p className="text-sm text-neutral-500 leading-relaxed mb-4">
+        <h3 className="font-semibold text-[var(--foreground)] mb-3">Know What Exists to Find the Gap</h3>
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed mb-4">
           You don&apos;t need to be different from everyone; you need to be different from the places that will compete for the same customers and occasions. Map your real competitors: the places your target customer would go instead of you.
         </p>
-        <p className="text-sm text-neutral-500 leading-relaxed">
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
           Add 3–5 competitors. Your coach will identify patterns and gaps once you&apos;ve filled these in.
         </p>
       </div>
@@ -527,11 +527,11 @@ function SectionCompetitiveAnalysis({
         {competitors.map((comp, i) => (
           <div key={i} className="bg-white border border-grey-light rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-neutral-950">Competitor {i + 1}</span>
+              <span className="text-sm font-medium text-[var(--foreground)]">Competitor {i + 1}</span>
               {competitors.length > 1 && (
                 <button
                   onClick={() => removeCompetitor(i)}
-                  className="text-xs text-neutral-500 hover:text-red-500 transition-colors"
+                  className="text-xs text-[var(--muted-foreground)] hover:text-red-500 transition-colors"
                 >
                   Remove
                 </button>
@@ -540,53 +540,53 @@ function SectionCompetitiveAnalysis({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs text-neutral-500 mb-1">Name</label>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Name</label>
                 <input
                   type="text"
                   value={comp.name}
                   onChange={(e) => updateCompetitor(i, "name", e.target.value)}
                   placeholder="Blue Star Coffee"
-                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
+                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-[var(--foreground)] placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-xs text-neutral-500 mb-1">Location / area</label>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Location / area</label>
                 <input
                   type="text"
                   value={comp.location}
                   onChange={(e) => updateCompetitor(i, "location", e.target.value)}
                   placeholder="Downtown, 2 blocks away"
-                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
+                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-[var(--foreground)] placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs text-neutral-500 mb-1">Strengths</label>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Strengths</label>
                 <textarea
                   value={comp.strengths}
                   onChange={(e) => updateCompetitor(i, "strengths", e.target.value)}
                   rows={2}
                   placeholder="Great location, loyal regulars, strong brand..."
-                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none"
+                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-[var(--foreground)] placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none"
                 />
               </div>
               <div>
-                <label className="block text-xs text-neutral-500 mb-1">Weaknesses</label>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Weaknesses</label>
                 <textarea
                   value={comp.weaknesses}
                   onChange={(e) => updateCompetitor(i, "weaknesses", e.target.value)}
                   rows={2}
                   placeholder="Long wait times, inconsistent quality..."
-                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none"
+                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-[var(--foreground)] placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs text-neutral-500 mb-1">Price range</label>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Price range</label>
                 <div className="grid grid-cols-4 gap-1">
                   {["$", "$$", "$$$", "$$$$"].map((p) => (
                     <button
@@ -595,7 +595,7 @@ function SectionCompetitiveAnalysis({
                       className={`py-1.5 text-sm rounded-lg border transition-colors ${
                         comp.price_range === p
                           ? "border-teal bg-teal/5 text-teal font-medium"
-                          : "border-grey-light text-neutral-500 hover:border-neutral-500"
+                          : "border-grey-light text-[var(--muted-foreground)] hover:border-neutral-500"
                       }`}
                     >
                       {p}
@@ -604,13 +604,13 @@ function SectionCompetitiveAnalysis({
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-neutral-500 mb-1">Vibe / feel</label>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Vibe / feel</label>
                 <input
                   type="text"
                   value={comp.vibe}
                   onChange={(e) => updateCompetitor(i, "vibe", e.target.value)}
                   placeholder="Hip, fast-paced, Instagram-friendly..."
-                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
+                  className="w-full border border-grey-light rounded-lg px-3 py-2 text-sm text-[var(--foreground)] placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors"
                 />
               </div>
             </div>
@@ -620,7 +620,7 @@ function SectionCompetitiveAnalysis({
         {competitors.length < 5 && (
           <button
             onClick={addCompetitor}
-            className="w-full py-3 border border-dashed border-neutral-500 rounded-xl text-sm text-neutral-500 hover:border-teal hover:text-teal transition-colors"
+            className="w-full py-3 border border-dashed border-neutral-500 rounded-xl text-sm text-[var(--muted-foreground)] hover:border-teal hover:text-teal transition-colors"
           >
             + Add competitor {competitors.length === 0 ? "(add at least 3)" : `(${5 - competitors.length} more possible)`}
           </button>
@@ -656,8 +656,8 @@ function SectionConceptBrief({
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="font-semibold text-neutral-950 mb-3">Your Concept Brief</h3>
-        <p className="text-sm text-neutral-500 leading-relaxed">
+        <h3 className="font-semibold text-[var(--foreground)] mb-3">Your Concept Brief</h3>
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
           This is your plan&apos;s foundation. Everything from here builds on it.
         </p>
       </div>
@@ -666,11 +666,11 @@ function SectionConceptBrief({
         {isEditing ? (
           <>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-neutral-950">Edit your brief</label>
+              <label className="text-sm font-medium text-[var(--foreground)]">Edit your brief</label>
               {data.brief_content !== generated && (
                 <button
                   onClick={() => onChange({ ...data, brief_content: generated })}
-                  className="text-xs text-neutral-500 hover:text-teal transition-colors"
+                  className="text-xs text-[var(--muted-foreground)] hover:text-teal transition-colors"
                 >
                   Reset to generated
                 </button>
@@ -681,18 +681,18 @@ function SectionConceptBrief({
               value={content}
               onChange={(e) => onChange({ ...data, brief_content: e.target.value })}
               rows={22}
-              className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white font-mono leading-relaxed"
+              className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white font-mono leading-relaxed"
             />
             <button
               onClick={() => setIsEditing(false)}
-              className="mt-2 text-xs text-neutral-500 hover:text-neutral-950 transition-colors"
+              className="mt-2 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
             >
               Done editing
             </button>
           </>
         ) : (
           <>
-            <pre className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 bg-neutral-100 font-mono leading-relaxed whitespace-pre-wrap overflow-auto min-h-[320px]">
+            <pre className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-[var(--foreground)] bg-neutral-100 font-mono leading-relaxed whitespace-pre-wrap overflow-auto min-h-[320px]">
               {content}
             </pre>
             <button
@@ -734,22 +734,22 @@ function SectionStartupCosts({ data, onChange }: { data: Record<string, unknown>
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="font-semibold text-neutral-950 mb-2">Startup Budget</h3>
-        <p className="text-sm text-neutral-500 leading-relaxed">
+        <h3 className="font-semibold text-[var(--foreground)] mb-2">Startup Budget</h3>
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
           Break down your total startup cost by category. Be honest; most operators underestimate buildout and working capital by 20-30%.
         </p>
       </div>
       <div className="space-y-5">
         {fields.map((f) => (
           <div key={f.key}>
-            <label className="text-sm font-medium text-neutral-950 block mb-1">{f.label}</label>
-            <p className="text-xs text-neutral-500 mb-2">{f.hint}</p>
+            <label className="text-sm font-medium text-[var(--foreground)] block mb-1">{f.label}</label>
+            <p className="text-xs text-[var(--muted-foreground)] mb-2">{f.hint}</p>
             <MoneyInput
               min={0}
               value={(data[f.key] as string) ?? ""}
               onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
               placeholder={f.placeholder}
-              className="w-full border border-grey-light rounded-xl pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+              className="w-full border border-grey-light rounded-xl pr-4 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors"
             />
           </div>
         ))}
@@ -774,38 +774,38 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="font-semibold text-neutral-950 mb-2">Revenue Projections</h3>
-        <p className="text-sm text-neutral-500 leading-relaxed">
+        <h3 className="font-semibold text-[var(--foreground)] mb-2">Revenue Projections</h3>
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
           Start with realistic daily transaction counts, not best-case. Most independent cafés average 80–150 transactions/day in year one.
         </p>
       </div>
       <div className="space-y-5">
         <div>
-          <label className="text-sm font-medium text-neutral-950 block mb-1">Average Ticket Size</label>
-          <p className="text-xs text-neutral-500 mb-2">Total sale per customer including food and add-ons</p>
+          <label className="text-sm font-medium text-[var(--foreground)] block mb-1">Average Ticket Size</label>
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">Total sale per customer including food and add-ons</p>
           <MoneyInput
             min={0}
             step="0.50"
             value={(data.avg_ticket as string) ?? ""}
             onChange={(e) => onChange({ ...data, avg_ticket: e.target.value })}
             placeholder="e.g. 8.50"
-            className="w-full border border-grey-light rounded-xl pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+            className="w-full border border-grey-light rounded-xl pr-4 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-neutral-950 block mb-1">Daily Transactions</label>
-          <p className="text-xs text-neutral-500 mb-2">Estimated unique customer transactions per day</p>
+          <label className="text-sm font-medium text-[var(--foreground)] block mb-1">Daily Transactions</label>
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">Estimated unique customer transactions per day</p>
           <input
             type="number"
             min="0"
             value={(data.daily_transactions as string) ?? ""}
             onChange={(e) => onChange({ ...data, daily_transactions: e.target.value })}
             placeholder="e.g. 120"
-            className="w-full border border-grey-light rounded-xl px-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+            className="w-full border border-grey-light rounded-xl px-4 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-neutral-950 block mb-1">Days Open Per Week</label>
+          <label className="text-sm font-medium text-[var(--foreground)] block mb-1">Days Open Per Week</label>
           <input
             type="number"
             min="1"
@@ -813,18 +813,18 @@ function SectionRevenueProjections({ data, onChange }: { data: Record<string, un
             value={(data.days_per_week as string) ?? ""}
             onChange={(e) => onChange({ ...data, days_per_week: e.target.value })}
             placeholder="e.g. 6"
-            className="w-full border border-grey-light rounded-xl px-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+            className="w-full border border-grey-light rounded-xl px-4 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-neutral-950 block mb-1">Seasonal Notes</label>
-          <p className="text-xs text-neutral-500 mb-2">Describe any seasonality expected in your market</p>
+          <label className="text-sm font-medium text-[var(--foreground)] block mb-1">Seasonal Notes</label>
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">Describe any seasonality expected in your market</p>
           <textarea
             value={(data.seasonal_notes as string) ?? ""}
             onChange={(e) => onChange({ ...data, seasonal_notes: e.target.value })}
             placeholder="e.g. Tourist area: expect 40% volume spike June-August, slower January-February"
             rows={3}
-            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors resize-none"
+            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors resize-none"
           />
         </div>
       </div>
@@ -856,15 +856,15 @@ function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unkno
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="font-semibold text-neutral-950 mb-2">Monthly Expenses</h3>
-        <p className="text-sm text-neutral-500 leading-relaxed">
+        <h3 className="font-semibold text-[var(--foreground)] mb-2">Monthly Expenses</h3>
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
           Know your fixed and variable costs before you open. Labor + rent typically make up 50–60% of a café&apos;s revenue.
         </p>
       </div>
       <div className="space-y-5">
         <div>
-          <label className="text-sm font-medium text-neutral-950 block mb-1">Cost of Goods Sold (COGS) %</label>
-          <p className="text-xs text-neutral-500 mb-2">Typical specialty café COGS is 25–35% of revenue</p>
+          <label className="text-sm font-medium text-[var(--foreground)] block mb-1">Cost of Goods Sold (COGS) %</label>
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">Typical specialty café COGS is 25–35% of revenue</p>
           <div className="relative">
             <input
               type="number"
@@ -873,21 +873,21 @@ function SectionMonthlyExpenses({ data, onChange }: { data: Record<string, unkno
               value={(data.cogs_percentage as string) ?? ""}
               onChange={(e) => onChange({ ...data, cogs_percentage: e.target.value })}
               placeholder="e.g. 30"
-              className="w-full border border-grey-light rounded-xl px-4 pr-8 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+              className="w-full border border-grey-light rounded-xl px-4 pr-8 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">%</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)]">%</span>
           </div>
         </div>
         {fields.map((f) => (
           <div key={f.key}>
-            <label className="text-sm font-medium text-neutral-950 block mb-1">{f.label}</label>
-            <p className="text-xs text-neutral-500 mb-2">{f.hint}</p>
+            <label className="text-sm font-medium text-[var(--foreground)] block mb-1">{f.label}</label>
+            <p className="text-xs text-[var(--muted-foreground)] mb-2">{f.hint}</p>
             <MoneyInput
               min={0}
               value={(data[f.key] as string) ?? ""}
               onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
               placeholder={f.placeholder}
-              className="w-full border border-grey-light rounded-xl pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+              className="w-full border border-grey-light rounded-xl pr-4 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors"
             />
           </div>
         ))}
@@ -919,34 +919,34 @@ function SectionPricingStrategy({ data, onChange }: { data: Record<string, unkno
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="font-semibold text-neutral-950 mb-2">Pricing Strategy</h3>
-        <p className="text-sm text-neutral-500 leading-relaxed">
+        <h3 className="font-semibold text-[var(--foreground)] mb-2">Pricing Strategy</h3>
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
           Set your core price points. Specialty cafés in major metros average {symbol}5–{symbol}7 for espresso drinks. Price confidently; customers pay for experience, not just coffee.
         </p>
       </div>
       <div className="space-y-5">
         {pricingFields.map((f) => (
           <div key={f.key}>
-            <label className="text-sm font-medium text-neutral-950 block mb-1">{f.label}</label>
+            <label className="text-sm font-medium text-[var(--foreground)] block mb-1">{f.label}</label>
             <MoneyInput
               min={0}
               step="0.25"
               value={(data[f.key] as string) ?? ""}
               onChange={(e) => onChange({ ...data, [f.key]: e.target.value })}
               placeholder={f.placeholder}
-              className="w-full border border-grey-light rounded-xl pr-4 py-2.5 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors"
+              className="w-full border border-grey-light rounded-xl pr-4 py-2.5 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors"
             />
           </div>
         ))}
         <div>
-          <label className="text-sm font-medium text-neutral-950 block mb-1">Pricing Philosophy</label>
-          <p className="text-xs text-neutral-500 mb-2">How will you position on price vs. local competitors?</p>
+          <label className="text-sm font-medium text-[var(--foreground)] block mb-1">Pricing Philosophy</label>
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">How will you position on price vs. local competitors?</p>
           <textarea
             value={(data.pricing_notes as string) ?? ""}
             onChange={(e) => onChange({ ...data, pricing_notes: e.target.value })}
             placeholder="e.g. Premium pricing (10% above market) justified by single-origin sourcing and barista education. Loyalty program to offset frequency sensitivity."
             rows={4}
-            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors resize-none"
+            className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors resize-none"
           />
         </div>
       </div>
@@ -989,8 +989,8 @@ function SectionFinancialSummary({
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="font-semibold text-neutral-950 mb-2">Financial Summary</h3>
-        <p className="text-sm text-neutral-500 leading-relaxed">
+        <h3 className="font-semibold text-[var(--foreground)] mb-2">Financial Summary</h3>
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
           Your financial model auto-compiled from the sections above. Review it, annotate your assumptions, and use it as the financial section of your BRD.
         </p>
       </div>
@@ -1002,19 +1002,19 @@ function SectionFinancialSummary({
             { label: "Monthly Profit", value: format(Math.round(monthlyProfit)), highlight: monthlyProfit > 0 },
           ].map((stat) => (
             <div key={stat.label} className={`rounded-xl border p-4 ${stat.highlight ? "bg-teal/5 border-teal/20" : "bg-neutral-100 border-grey-light"}`}>
-              <div className="text-xs text-neutral-500 mb-1">{stat.label}</div>
-              <div className={`text-lg font-bold ${stat.highlight ? "text-teal" : "text-neutral-950"}`}>{stat.value}</div>
+              <div className="text-xs text-[var(--muted-foreground)] mb-1">{stat.label}</div>
+              <div className={`text-lg font-bold ${stat.highlight ? "text-teal" : "text-[var(--foreground)]"}`}>{stat.value}</div>
             </div>
           ))}
         </div>
       )}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-medium text-neutral-950">Financial Summary Document</label>
+          <label className="text-sm font-medium text-[var(--foreground)]">Financial Summary Document</label>
           {data.summary_notes !== generated && (
             <button
               onClick={() => onChange({ ...data, summary_notes: generated })}
-              className="text-xs text-neutral-500 hover:text-teal transition-colors"
+              className="text-xs text-[var(--muted-foreground)] hover:text-teal transition-colors"
             >
               Reset to generated
             </button>
@@ -1024,7 +1024,7 @@ function SectionFinancialSummary({
           value={content}
           onChange={(e) => onChange({ ...data, summary_notes: e.target.value })}
           rows={18}
-          className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-neutral-950 focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white font-mono leading-relaxed"
+          className="w-full border border-grey-light rounded-xl px-4 py-3 text-sm text-[var(--foreground)] focus-visible:outline-none focus:border-teal transition-colors resize-none bg-white font-mono leading-relaxed"
         />
       </div>
     </div>
@@ -1164,11 +1164,11 @@ function CoachPanel({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-grey-light">
           <div>
-            <div className="font-semibold text-sm text-neutral-950">AI Coach</div>
-            <div className="text-xs text-neutral-500">{sectionTitle}</div>
+            <div className="font-semibold text-sm text-[var(--foreground)]">AI Coach</div>
+            <div className="text-xs text-[var(--muted-foreground)]">{sectionTitle}</div>
           </div>
           <div className="flex items-center gap-3">
-            <span className={`text-xs font-medium ${credits <= 10 && credits > 0 ? "text-amber-500" : "text-neutral-500"}`}>
+            <span className={`text-xs font-medium ${credits <= 10 && credits > 0 ? "text-amber-500" : "text-[var(--muted-foreground)]"}`}>
               {credits} credits
             </span>
             <button
@@ -1187,8 +1187,8 @@ function CoachPanel({
               <div className="w-12 h-12 bg-teal/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-teal)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
               </div>
-              <p className="text-sm text-neutral-950 font-medium mb-1">Your coach is ready</p>
-              <p className="text-xs text-neutral-500 leading-relaxed">
+              <p className="text-sm text-[var(--foreground)] font-medium mb-1">Your coach is ready</p>
+              <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
                 Ask anything about {sectionTitle.toLowerCase()}, or share what you&apos;ve filled in and I&apos;ll give you honest feedback.
               </p>
             </div>
@@ -1201,7 +1201,7 @@ function CoachPanel({
                 className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                   msg.role === "user"
                     ? "bg-teal text-white rounded-br-sm"
-                    : "bg-neutral-200 text-neutral-950 rounded-bl-sm"
+                    : "bg-neutral-200 text-[var(--foreground)] rounded-bl-sm"
                 }`}
               >
                 {msg.content}
@@ -1232,8 +1232,8 @@ function CoachPanel({
         <div className="border-t border-grey-light px-4 py-4">
           {subscriptionTier === "free" ? (
             <div className="text-center">
-              <p className="text-sm text-neutral-950 font-medium mb-1">AI coaching requires a paid plan</p>
-              <p className="text-xs text-neutral-500 mb-3">Free accounts can explore modules but cannot use the AI coach.</p>
+              <p className="text-sm text-[var(--foreground)] font-medium mb-1">AI coaching requires a paid plan</p>
+              <p className="text-xs text-[var(--muted-foreground)] mb-3">Free accounts can explore modules but cannot use the AI coach.</p>
               <Link
                 href="/pricing"
                 className="inline-block text-xs bg-teal text-white px-4 py-2 rounded-lg font-medium hover:bg-teal-dark transition-colors"
@@ -1243,8 +1243,8 @@ function CoachPanel({
             </div>
           ) : credits === 0 ? (
             <div className="text-center">
-              <p className="text-sm text-neutral-950 font-medium mb-1">You&apos;re out of AI credits</p>
-              <p className="text-xs text-neutral-500 mb-3">
+              <p className="text-sm text-[var(--foreground)] font-medium mb-1">You&apos;re out of AI credits</p>
+              <p className="text-xs text-[var(--muted-foreground)] mb-3">
                 Your monthly credits have been used up. Upgrade your plan for more credits, or wait for your monthly reset.
               </p>
               <Link
@@ -1276,7 +1276,7 @@ function CoachPanel({
                   }}
                   rows={2}
                   placeholder="Ask your coach..."
-                  className="flex-1 border border-grey-light rounded-xl px-3 py-2 text-sm text-neutral-950 placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none"
+                  className="flex-1 border border-grey-light rounded-xl px-3 py-2 text-sm text-[var(--foreground)] placeholder-neutral-300 focus-visible:outline-none focus:border-teal transition-colors resize-none"
                 />
                 <button
                   data-testid="coach-submit"
@@ -1387,12 +1387,12 @@ export function ModuleClient({
             <Link href="/dashboard" className="flex items-center gap-2" aria-label="Groundwork home">
               <LogoMark variant="color" height={28} />
             </Link>
-            <span className="text-neutral-500 text-sm">/</span>
-            <Link href="/dashboard" className="text-sm text-neutral-500 hover:text-neutral-950 transition-colors hidden sm:block">
+            <span className="text-[var(--muted-foreground)] text-sm">/</span>
+            <Link href="/dashboard" className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors hidden sm:block">
               {planName}
             </Link>
-            <span className="text-neutral-500 text-sm hidden sm:block">/</span>
-            <span className="text-sm font-medium text-neutral-950">Module {moduleNumber}: {MODULE_TITLES[moduleNumber] ?? "Module"}</span>
+            <span className="text-[var(--muted-foreground)] text-sm hidden sm:block">/</span>
+            <span className="text-sm font-medium text-[var(--foreground)]">Module {moduleNumber}: {MODULE_TITLES[moduleNumber] ?? "Module"}</span>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -1400,7 +1400,7 @@ export function ModuleClient({
               className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
                 coachOpen
                   ? "bg-teal text-white"
-                  : "bg-neutral-200 text-neutral-950 hover:bg-grey-light"
+                  : "bg-neutral-200 text-[var(--foreground)] hover:bg-grey-light"
               }`}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
@@ -1419,7 +1419,7 @@ export function ModuleClient({
         {/* Section sidebar */}
         <aside className="hidden lg:block w-56 flex-shrink-0">
           <div className="sticky top-24 space-y-1">
-            <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-3">Sections</p>
+            <p className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide mb-3">Sections</p>
             {SECTIONS.map((s, i) => {
               const complete = isSectionComplete(s.key);
               const active = i === activeSection;
@@ -1434,14 +1434,14 @@ export function ModuleClient({
                     active
                       ? "bg-teal text-white font-medium"
                       : locked
-                      ? "text-neutral-500 hover:bg-grey-light"
-                      : "text-neutral-950 hover:bg-grey-light"
+                      ? "text-[var(--muted-foreground)] hover:bg-grey-light"
+                      : "text-[var(--foreground)] hover:bg-grey-light"
                   }`}
                 >
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs ${
                     complete
                       ? active ? "bg-white text-teal" : "bg-teal text-white"
-                      : active ? "bg-white/20 text-white" : started ? "bg-grey-light text-neutral-500" : "bg-neutral-200 text-neutral-500"
+                      : active ? "bg-white/20 text-white" : started ? "bg-grey-light text-[var(--muted-foreground)]" : "bg-neutral-200 text-[var(--muted-foreground)]"
                   }`}>
                     {locked ? (
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -1481,10 +1481,10 @@ export function ModuleClient({
                     active
                       ? "bg-teal text-white"
                       : locked
-                      ? "bg-neutral-200 text-neutral-500"
+                      ? "bg-neutral-200 text-[var(--muted-foreground)]"
                       : complete
                       ? "bg-teal/10 text-teal"
-                      : "bg-grey-light text-neutral-500"
+                      : "bg-grey-light text-[var(--muted-foreground)]"
                   }`}
                 >
                   {locked && !active && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
@@ -1499,10 +1499,10 @@ export function ModuleClient({
           <div className="bg-white rounded-2xl border border-grey-light p-6 sm:p-8">
             <div className="flex items-start justify-between mb-8">
               <div>
-                <div className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
+                <div className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide mb-1">
                   Section {activeSection + 1} of {SECTIONS.length}
                 </div>
-                <h2 className="text-xl font-bold text-neutral-950">{section.title}</h2>
+                <h2 className="text-xl font-bold text-[var(--foreground)]">{section.title}</h2>
               </div>
               {isSectionComplete(section.key) && activeSectionAccessible && (
                 <div className="flex items-center gap-1.5 bg-teal/10 text-teal px-3 py-1.5 rounded-full">
@@ -1595,7 +1595,7 @@ export function ModuleClient({
                 {userProfile.subscription_tier === "free" ? (
                   <Link
                     href={`/pricing?return=${encodeURIComponent(`/plan/${moduleNumber}`)}`}
-                    className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-teal transition-colors"
+                    className="inline-flex items-center gap-1.5 text-sm text-[var(--muted-foreground)] hover:text-teal transition-colors"
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
                     Ask a question <span className="text-teal font-medium ml-0.5">(Builder plan)</span>
@@ -1617,7 +1617,7 @@ export function ModuleClient({
               <button
                 onClick={() => setActiveSection((s) => Math.max(0, s - 1))}
                 disabled={activeSection === 0}
-                className="px-5 py-2.5 border border-grey-light rounded-xl text-sm text-neutral-500 hover:border-neutral-500 hover:text-neutral-950 transition-colors disabled:opacity-30"
+                className="px-5 py-2.5 border border-grey-light rounded-xl text-sm text-[var(--muted-foreground)] hover:border-neutral-500 hover:text-[var(--foreground)] transition-colors disabled:opacity-30"
               >
                 ← Back
               </button>
