@@ -7,6 +7,9 @@
 // revert path. No schema migration.
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+// TIM-4118: the roles route returns the created row unwrapped. Shared reader,
+// pinned against that route's own source by created-role.test.mjs.
+import { parseCreatedRole } from "@/lib/hiring/created-role";
 import {
   ChevronDown,
   ChevronUp,
@@ -210,7 +213,7 @@ function flattenTree(
   return out;
 }
 
-// ── PDF download button ───────────────────────────────────────────────────────
+// ── PDF download button ──────────────────────────────────────────────────────
 
 function HiringPdfButton({
   templateId,
@@ -581,7 +584,7 @@ function AccordionV3({
   );
 }
 
-// ── Delete-role confirmation dialog ──────────────────────────────────────────
+// ── Delete-role confirmation dialog ──────────────────────────────────────
 
 function DeleteRoleDialog({
   roleTitle,
@@ -631,7 +634,7 @@ function DeleteRoleDialog({
   );
 }
 
-// ── Main workspace ────────────────────────────────────────────────────────────
+// ── Main workspace ─────────────────────────────────────────────────────────────
 
 export function HiringWorkspaceV3(props: Props) {
   const [roles, setRoles] = useState<OrgRole[]>(props.initialRoles);
@@ -664,6 +667,11 @@ export function HiringWorkspaceV3(props: Props) {
   // Previously onSave was `() => {}` — which also meant the indicator's
   // "Save Failed — Retry" link did nothing in the one moment it mattered.
   const retryRef = useRef<(() => Promise<Response>) | null>(null);
+  // TIM-4118: in-flight guard for "Add role". The input submits on Enter AND on
+  // blur, so without this one keypress can create two roles. A ref, not state,
+  // because the second call must see the first one's flag immediately — a state
+  // update would not have landed yet.
+  const addingRoleRef = useRef(false);
 
   // Runs a write and reports honestly what happened to it. Every role mutation
   // goes through here so no call site can forget to check the response again.
@@ -731,11 +739,18 @@ export function HiringWorkspaceV3(props: Props) {
 
   const addRole = useCallback(async () => {
     if (!props.canEdit) return;
+    // TIM-4118: the input submits on BOTH Enter and blur. Enter used to leave
+    // the text sitting in the still-focused input, so clicking away submitted
+    // the same title a second time and created a duplicate role. One intention
+    // makes one role.
+    if (addingRoleRef.current) return;
     const trimmed = newTitle.trim();
     if (!trimmed) {
       setAddingRole(false);
       return;
     }
+    addingRoleRef.current = true;
+    try {
     // TIM-4105: the failure used to be swallowed with "input stays open so
     // user can retry" — but nothing told the owner it had failed, so they had
     // no reason to retry. The indicator now says so.
@@ -747,8 +762,12 @@ export function HiringWorkspaceV3(props: Props) {
         body: JSON.stringify({ role_title: trimmed, headcount: 1 }),
       });
       if (res.ok) {
-        const data = (await res.clone().json()) as { data?: OrgRole };
-        created = data.data ?? null;
+        // TIM-4118: this used to read `body.data`. The route returns the row
+        // UNWRAPPED, so that was always undefined — the role was created, the
+        // server said 201, and the screen silently dropped it on the floor.
+        // Enter looked like it did nothing. parseCreatedRole reads either
+        // shape, and its test pins that against the route's own source.
+        created = parseCreatedRole(await res.clone().json()) as OrgRole | null;
       }
       return res;
     });
@@ -762,7 +781,10 @@ export function HiringWorkspaceV3(props: Props) {
       return;
     }
     // Keep the typed title in the open input so retrying does not mean
-    // re-typing it.
+    // re-typing it. The save indicator has already said the write failed.
+    } finally {
+      addingRoleRef.current = false;
+    }
   }, [newTitle, props.canEdit, props.planId, persist]);
 
   const confirmDelete = useCallback(
@@ -1585,7 +1607,7 @@ function RoleJobDescriptionSection({
   );
 }
 
-// ── Interview questions ───────────────────────────────────────────────────────
+// ── Interview questions ──────────────────────────────────────────────
 
 function RoleInterviewQuestionsSection({
   role,
@@ -2011,7 +2033,7 @@ function RoleScorecardSection({
   );
 }
 
-// ── Competency forms ─────────────────────────────────────────────────────────
+// ── Competency forms ──────────────────────────────────────────────────────
 
 function RoleCompetencyFormsSection({
   role,
@@ -2166,7 +2188,7 @@ function RoleCompetencyFormsSection({
   );
 }
 
-// ── Onboarding ────────────────────────────────────────────────────────────────
+// ── Onboarding ──────────────────────────────────────────────────────────
 
 function RoleOnboardingSection({
   role,
@@ -2920,7 +2942,7 @@ function RoleNavRowV3({
   );
 }
 
-// ── HiringRevertV3Toggle — sidebar toggle to opt out of v3 ───────────────────
+// ── HiringRevertV3Toggle — sidebar toggle to opt out of v3 ─────────────────────
 
 function HiringRevertV3Toggle() {
   const [enabled, setEnabled] = useState(true);
