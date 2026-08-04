@@ -335,7 +335,7 @@ export function BusinessPlanWorkspace({
     if (hasContent) promoteOnEdit("business_plan");
   }, [hasContent, promoteOnEdit]);
 
-  // ── Autosave state ─────────────────────────────────────────────────────────
+  // ── Autosave state ──────────────────────────────────────────────────────────
 
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle", lastSavedAt: null });
   // TIM-3675: per-section Write-with-AI now runs inside its own modal, which
@@ -393,7 +393,7 @@ export function BusinessPlanWorkspace({
     };
   }, []);
 
-  // ── Section helpers ───────────────────────────────────────────────────────────────
+  // ── Section helpers ────────────────────────────────────────────────────────────
 
   const updateSection = useCallback((key: BusinessPlanSectionKey, patch: Partial<SectionState>) => {
     setSections((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)));
@@ -439,7 +439,7 @@ export function BusinessPlanWorkspace({
     });
   }, [updateSection]);
 
-  // ── TIM-3575: Archive / restore helpers ────────────────────────
+  // ── TIM-3575: Archive / restore helpers ──────────────────────────────────
 
   const archiveSection = useCallback(async (key: BusinessPlanSectionKey) => {
     updateSection(key, { isArchived: true, isExpanded: false });
@@ -488,7 +488,7 @@ export function BusinessPlanWorkspace({
     });
   }, [updateSection]);
 
-  // ── TIM-3490: Drag-to-reorder helpers ─────────────────────
+  // ── TIM-3490: Drag-to-reorder helpers ─────────────────────────────────
 
   // Effective merged order: standard keys + custom UUIDs in the persisted
   // order, with any missing entries appended at the tail in default order.
@@ -602,7 +602,7 @@ export function BusinessPlanWorkspace({
     }
   }, [sectionOrder]);
 
-  // ── Autosave helpers ────────────────────────────────────────────────────
+  // ── Autosave helpers ──────────────────────────────────────────────────────────
 
   const persistDirty = useCallback(async () => {
     if (!canEdit) return;
@@ -650,7 +650,7 @@ export function BusinessPlanWorkspace({
     [persistDirty]
   );
 
-  // ── Per-section Write-with-AI (TIM-3675) ──────────────────────
+  // ── Per-section Write-with-AI (TIM-3675) ──────────────────────────────
   //
   // TIM-3675 replaces the pre-existing inline stream + AIReviewModal path
   // with a dedicated per-section modal. The modal itself owns the SSE call
@@ -684,7 +684,7 @@ export function BusinessPlanWorkspace({
     });
   }, [canEdit, sections, updateSection]);
 
-  // ── TIM-3927: One-click Auto-Write handlers ────────────────────────
+  // ── TIM-3927: One-click Auto-Write handlers ────────────────────────────────
   //
   // Collapses the TIM-3854 seed-then-generate two-step modal into a single
   // click. The generate/improve routes already fetch workspace data from the
@@ -871,7 +871,7 @@ export function BusinessPlanWorkspace({
     updateSection(key, { autoWrite: null });
   }, [updateSection]);
 
-  // ── TIM-3950: Regenerate-with-AI (warning + undo) ─────────────────
+  // ── TIM-3950: Regenerate-with-AI (warning + undo) ───────────────────────────
   //
   // Two-button split flow — the destructive "Regenerate with AI" path. On
   // click:
@@ -1171,7 +1171,7 @@ export function BusinessPlanWorkspace({
     clearUndoToastFor(key);
   }, [clearUndoToastFor]);
 
-  // ── PDF export / print ──────────────────────────────────────────────────────────────────────────────
+  // ── PDF export / print ──────────────────────────────────────────────
 
   // TIM-1551: Both Print and Export drive through the same React-PDF renderer.
   // TIM-2336: Both now run through the validation gate first. The gate runs
@@ -1376,7 +1376,7 @@ export function BusinessPlanWorkspace({
     }
   }, [sections, saveSection]);
 
-  // ── TIM-3111: Custom section handlers ──────────────────────────────
+  // ── TIM-3111: Custom section handlers ─────────────────────────────────
 
   const updateCustomSection = useCallback((id: string, patch: Partial<CustomSectionState>) => {
     setCustomSections((prev) => prev.map((cs) => (cs.id === id ? { ...cs, ...patch } : cs)));
@@ -1558,4 +1558,4 @@ export function BusinessPlanWorkspace({
     }
   }, [bpFpAnalyseLoading, bpFpAnalyseActiveKey, planId]);
 
-  // ── Render ──────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────
