@@ -10,7 +10,7 @@ import { streamScoutTurn, toTurnMetricArgs, runScoutTurn } from "@/lib/ai/scout-
 import type { ScoutLane } from "@/lib/ai/scout-lane";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { loadPlanContext } from "@/lib/plan-context";
 import { buildPlanSnapshotForExecutiveSummary, BUSINESS_PLAN_SECTIONS } from "@/lib/business-plan";
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
   if (!profile) return Response.json({ error: "Profile not found" }, { status: 404 });
 
   // TIM-1902: trialists count as active here — gated on ai_credits_remaining.
-  const isActive = isSubscriptionActive(profile.subscription_status);
+  const isActive = hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null });
   const hasAccess = hasWriteAccess({
     subscription_status: profile.subscription_status,
     trial_ends_at: profile.trial_ends_at,
