@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { isSubscriptionActive } from "@/lib/access"
+import { hasWriteAccess } from "@/lib/access"
 import { getActivePlanId } from "@/lib/plan-context"
 import { getTemplate } from "@/lib/pdf/registry"
 import "@/lib/pdf/templates" // Side-effect: registers all templates
@@ -58,11 +58,11 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, email")
+    .select("subscription_status, trial_ends_at, email")
     .eq("id", user.id)
     .single()
 
-  if (!profile || !isSubscriptionActive(profile.subscription_status)) {
+  if (!profile || !hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null })) {
     return Response.json(
       { reason: "paywall", tier_required: "starter" },
       { status: 402 }

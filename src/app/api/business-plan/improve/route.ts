@@ -9,7 +9,7 @@ import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics";
 import { streamScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
 import { enforceRateLimit } from "@/lib/rate-limit";
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
   // TIM-1902: trialists with a card on file count as active here — they're
   // gated on ai_credits_remaining (75 grant), same as paid users.
-  const isActive = isSubscriptionActive(profile.subscription_status);
+  const isActive = hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null });
   const hasAccess = hasWriteAccess({
     subscription_status: profile.subscription_status,
     trial_ends_at: profile.trial_ends_at,

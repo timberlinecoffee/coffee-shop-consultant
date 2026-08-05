@@ -1,7 +1,7 @@
 // TIM-972: Equipment item PATCH (update) + DELETE (soft-archive).
 
 import { createClient } from "@/lib/supabase/server";
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { hasWriteAccess, isBetaWaived } from "@/lib/access";
 import { toTitleCase } from "@/lib/text";
 import type { NextRequest } from "next/server";
 
@@ -41,13 +41,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single();
 
   if (
     !profile ||
-    (!isSubscriptionActive(profile.subscription_status) &&
+    (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) &&
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json({ error: "Subscription required" }, { status: 402 });
@@ -112,13 +112,13 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single();
 
   if (
     !profile ||
-    (!isSubscriptionActive(profile.subscription_status) &&
+    (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) &&
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json({ error: "Subscription required" }, { status: 402 });

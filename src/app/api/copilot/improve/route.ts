@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot";
 import { normalizeAIOutput } from "@/lib/normalize";
-import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import { loadPlanContext } from "@/lib/plan-context";
 import { rateLimit } from "@/lib/rate-limit";
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";

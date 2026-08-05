@@ -6,7 +6,7 @@
 import { redirect, notFound } from "next/navigation";
 import { FREE_PREVIEW_MODULE } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
-import { isSubscriptionActive } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import { ModuleClient } from "./module-client";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +57,7 @@ export default async function PlanModulePage({
       .maybeSingle(),
     supabase
       .from("users")
-      .select("full_name, onboarding_data, ai_credits_remaining, subscription_tier, subscription_status")
+      .select("full_name, onboarding_data, ai_credits_remaining, subscription_tier, subscription_status, trial_ends_at")
       .eq("id", user.id)
       .maybeSingle(),
   ]);
@@ -94,7 +94,7 @@ export default async function PlanModulePage({
   }
 
   const subscriptionTier = profile?.subscription_tier ?? "free";
-  const freePreview = !isSubscriptionActive(profile?.subscription_status);
+  const freePreview = !hasWriteAccess({ subscription_status: profile?.subscription_status, trial_ends_at: profile?.trial_ends_at ?? null });
 
   return (
     <ModuleClient

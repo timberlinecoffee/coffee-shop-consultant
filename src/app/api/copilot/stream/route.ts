@@ -24,7 +24,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composePlanSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import {
-  isSubscriptionActive,
+  hasWriteAccess,
   isBetaWaived,
   isTrialActive,
   effectivePlanForGating,
@@ -850,7 +850,7 @@ export async function POST(request: NextRequest) {
   // charged (subscription.updated still pending), block with the expired
   // paywall message so the user is funneled into the billing portal.
   const isTrial = profile.subscription_status === "free_trial"
-  const isActive = isSubscriptionActive(profile.subscription_status)
+  const isActive = hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null })
   const trialWindowOpen = isTrial && isTrialActive(profile.trial_ends_at)
 
   if (!isWaived && isTrial && !trialWindowOpen) {

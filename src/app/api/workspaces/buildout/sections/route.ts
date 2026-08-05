@@ -2,7 +2,7 @@
 // Shared by equipment and supplies lists.
 
 import { createClient } from "@/lib/supabase/server";
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { hasWriteAccess, isBetaWaived } from "@/lib/access";
 import { toTitleCase } from "@/lib/text";
 import type { NextRequest } from "next/server";
 
@@ -46,11 +46,11 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single();
 
-  if (!profile || (!isSubscriptionActive(profile.subscription_status) && !isBetaWaived(profile.beta_waiver_until))) {
+  if (!profile || (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) && !isBetaWaived(profile.beta_waiver_until))) {
     return Response.json({ error: "Subscription required" }, { status: 402 });
   }
 

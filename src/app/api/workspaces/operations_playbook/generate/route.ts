@@ -16,7 +16,7 @@ export const maxDuration = 30;
 import { runScoutTurn } from "@/lib/ai/scout-adapter";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeAIOutput } from "@/lib/normalize";
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { hasWriteAccess, isBetaWaived } from "@/lib/access";
 import { buildAiLanguageDirective, SUPPORTED_LANGUAGES } from "@/lib/account-settings";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
@@ -488,13 +488,13 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until, preferred_language")
+    .select("subscription_status, trial_ends_at, beta_waiver_until, preferred_language")
     .eq("id", user.id)
     .single();
 
   if (
     !profile ||
-    (!isSubscriptionActive(profile.subscription_status) &&
+    (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) &&
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json(

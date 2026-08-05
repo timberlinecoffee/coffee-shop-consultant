@@ -15,7 +15,7 @@ import { streamScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
-import { isSubscriptionActive } from "@/lib/access"
+import { hasWriteAccess } from "@/lib/access"
 import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
 import { rateLimit } from "@/lib/rate-limit"
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, subscription_tier, subscription_status, beta_waiver_until")
+    .select("ai_credits_remaining, subscription_tier, subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single()
 
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  if (!isSubscriptionActive(profile.subscription_status)) {
+  if (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null })) {
     return new Response(
       sse("error", { code: "paywall", reason: "paywall", tier_required: "starter" }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
