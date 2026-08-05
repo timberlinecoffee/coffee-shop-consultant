@@ -4,7 +4,7 @@
 // defaults if the plan has none.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { isSubscriptionActive } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import { getActivePlanId } from "@/lib/plan-context";
 import { MenuWorkspace } from "./menu-workspace";
 import { normalizeConceptV2 } from "@/lib/concept";
@@ -153,7 +153,7 @@ export default async function MenuPricingWorkspacePage() {
       .eq("menu_categories.plan_id", planId),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used")
+      .select("subscription_status, trial_ends_at, subscription_tier, copilot_trial_messages_used")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -164,7 +164,7 @@ export default async function MenuPricingWorkspacePage() {
       .maybeSingle(),
   ]);
 
-  const canEdit = isSubscriptionActive(profile?.subscription_status);
+  const canEdit = hasWriteAccess({ subscription_status: profile?.subscription_status, trial_ends_at: profile?.trial_ends_at ?? null });
   const initialTrialMessagesUsed =
     profile?.subscription_tier === "free"
       ? (profile.copilot_trial_messages_used ?? 0)

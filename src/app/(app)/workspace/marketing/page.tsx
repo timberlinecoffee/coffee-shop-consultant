@@ -5,7 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { hasWriteAccess, isBetaWaived } from "@/lib/access";
 import { normalizeMarketing, type MarketingDocument } from "@/lib/marketing";
 import { normalizeConceptV2 } from "@/lib/concept";
 import { MarketingWorkspace } from "./marketing-workspace";
@@ -49,7 +49,7 @@ export default async function MarketingWorkspacePage() {
       .maybeSingle(),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used, beta_waiver_until, target_opening_date")
+      .select("subscription_status, trial_ends_at, subscription_tier, copilot_trial_messages_used, beta_waiver_until, target_opening_date")
       .eq("id", user.id)
       .maybeSingle(),
   ]);
@@ -62,7 +62,7 @@ export default async function MarketingWorkspacePage() {
   const conceptBrandVoice = concept.components.brand_voice.content;
 
   const canEdit =
-    isSubscriptionActive(profile?.subscription_status ?? "free_trial") ||
+    hasWriteAccess({ subscription_status: profile?.subscription_status ?? "free_trial", trial_ends_at: profile?.trial_ends_at ?? null }) ||
     isBetaWaived(profile?.beta_waiver_until ?? null);
 
   const initialTrialMessagesUsed =

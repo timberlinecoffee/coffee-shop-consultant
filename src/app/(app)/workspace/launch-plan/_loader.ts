@@ -8,7 +8,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getActivePlanId } from "@/lib/plan-context";
 import { redirect } from "next/navigation";
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { hasWriteAccess, isBetaWaived } from "@/lib/access";
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan";
 import type { Milestone } from "@/lib/launch-plan";
 
@@ -52,7 +52,7 @@ export async function loadLaunchPlanWorkspaceData(): Promise<LaunchPlanLoaderRes
       .maybeSingle(),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used, beta_waiver_until")
+      .select("subscription_status, trial_ends_at, subscription_tier, copilot_trial_messages_used, beta_waiver_until")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -73,7 +73,7 @@ export async function loadLaunchPlanWorkspaceData(): Promise<LaunchPlanLoaderRes
       : null;
 
   const canEdit =
-    isSubscriptionActive(profile?.subscription_status ?? "free_trial") ||
+    hasWriteAccess({ subscription_status: profile?.subscription_status ?? "free_trial", trial_ends_at: profile?.trial_ends_at ?? null }) ||
     isBetaWaived(profile?.beta_waiver_until ?? null);
 
   const initialTrialMessagesUsed =
