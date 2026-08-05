@@ -24,7 +24,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { getActivePlanId } from "@/lib/plan-context"
 import { enforceRateLimit } from "@/lib/rate-limit"
-import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/lib/access"
+import { hasWriteAccess, isBetaWaived, effectivePlanForGating } from "@/lib/access"
 import { normalizeMarketing } from "@/lib/marketing"
 import { normalizeConceptV2 } from "@/lib/concept"
 import { menuItemMixWeight } from "@/lib/financial-projection"
@@ -911,7 +911,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   if (
     !profile ||
-    (!isSubscriptionActive(profile.subscription_status) &&
+    (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) &&
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json({ error: "Subscription required" }, { status: 402 })
