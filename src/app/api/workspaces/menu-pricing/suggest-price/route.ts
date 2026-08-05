@@ -9,7 +9,7 @@ import { runScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
 import { normalizeAIOutput } from "@/lib/normalize"
-import { isSubscriptionActive, isBetaWaived, effectivePlanForGating } from "@/lib/access"
+import { hasWriteAccess, isBetaWaived, effectivePlanForGating } from "@/lib/access"
 import { resolvePlanGeo } from "@/lib/wages/resolve-plan-geo"
 import { enforceRateLimit } from "@/lib/rate-limit"
 import { computeLocalCafeRange, type BenchmarkCitation } from "@/lib/menu-pricing/local-cafe-range"
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
   if (
     !profile ||
-    (!isSubscriptionActive(profile.subscription_status) &&
+    (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) &&
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json({ error: "Subscription required" }, { status: 402 })

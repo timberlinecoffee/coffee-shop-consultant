@@ -6,7 +6,7 @@
 // POST /api/workspaces/financials/seed
 
 import { createClient } from "@/lib/supabase/server";
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { hasWriteAccess, isBetaWaived } from "@/lib/access";
 import { normalizeConceptV2 } from "@/lib/concept";
 import { toTitleCase } from "@/lib/text";
 
@@ -136,13 +136,13 @@ export async function POST() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until, onboarding_data")
+    .select("subscription_status, trial_ends_at, beta_waiver_until, onboarding_data")
     .eq("id", user.id)
     .single();
 
   if (
     !profile ||
-    (!isSubscriptionActive(profile.subscription_status) &&
+    (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) &&
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json({ error: "Subscription required" }, { status: 402 });

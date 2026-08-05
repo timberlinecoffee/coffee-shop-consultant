@@ -13,7 +13,7 @@ import { streamScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { normalizeAIOutput } from "@/lib/normalize"
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { hasWriteAccess, isBetaWaived } from "@/lib/access"
 import { buildAiLanguageDirective, SUPPORTED_LANGUAGES } from "@/lib/account-settings"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
 import { rateLimit } from "@/lib/rate-limit"
@@ -107,11 +107,11 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until, onboarding_data, preferred_language")
+    .select("subscription_status, trial_ends_at, beta_waiver_until, onboarding_data, preferred_language")
     .eq("id", user.id)
     .single()
 
-  if (!profile || (!isSubscriptionActive(profile.subscription_status) && !isBetaWaived(profile.beta_waiver_until))) {
+  if (!profile || (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) && !isBetaWaived(profile.beta_waiver_until))) {
     return new Response(sse("error", { code: "paywall", reason: "no_subscription", tier_required: "starter" }), {
       status: 402,
       headers: { "Content-Type": "text/event-stream" },
