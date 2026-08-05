@@ -361,15 +361,34 @@ function ProfileMenu({
                 Privacy Policy
               </Link>
               <div role="separator" className="my-1 mx-2 h-px bg-[var(--border)]" />
-              <Link
-                href="/auth/signout"
-                role="menuitem"
-                onClick={handleNavigate}
-                className="flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors"
-              >
-                <LogOut size={14} strokeWidth={1.75} aria-hidden />
-                Sign Out
-              </Link>
+              {/* TIM-4119: Sign Out must POST.
+                  This was a plain <Link href="/auth/signout">, which issues a
+                  GET. The route only exports POST, so Next returned 405 and the
+                  browser showed its own error page — and the session survived.
+                  Clicking Sign Out took you to a broken page and left you
+                  signed in.
+
+                  That is worse than a dead button. Someone on a shared laptop
+                  clicks Sign Out, sees a broken page, closes the tab and walks
+                  away believing they are logged out. They are not.
+
+                  The route is right to be POST-only: signing out changes state,
+                  and a GET endpoint that destroys a session can be fired by any
+                  <img> tag on any page. So the caller is what changes. The
+                  Account page and Settings already submit a form here — this
+                  sidebar was the one caller that did not, and it is the one on
+                  every screen. */}
+              <form action="/auth/signout" method="POST">
+                <button
+                  type="submit"
+                  role="menuitem"
+                  onClick={handleNavigate}
+                  className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors text-left"
+                >
+                  <LogOut size={14} strokeWidth={1.75} aria-hidden />
+                  Sign Out
+                </button>
+              </form>
             </>
           ) : (
             <>
