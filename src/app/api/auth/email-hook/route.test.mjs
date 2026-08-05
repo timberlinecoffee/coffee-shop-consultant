@@ -61,7 +61,6 @@ test('route enforces rate limit via enforceRateLimit with auth-email-hook bucket
 test('route wires every send-template helper into the dispatcher', () => {
   const required = [
     'sendVerifyEmail',
-    'sendWelcomeEmail',
     'sendPasswordResetEmail',
     'sendEmailChangeEmail',
     'sendMagicLinkEmail',
@@ -76,6 +75,23 @@ test('route wires every send-template helper into the dispatcher', () => {
   assert.match(
     src,
     /import\s*\{[^}]*\bsendVerifyEmail\b[^}]*\}\s*from\s*['"]@\/lib\/email\/templates['"]/,
+  );
+});
+
+// TIM-3441: the welcome email must NOT be reachable from this hook. Sending it
+// on `signup` is what replaced the confirmation link with a dashboard link.
+// Assert on the import list specifically — a bare \bsendWelcomeEmail\b scan
+// would be satisfied by the comment explaining its absence, which is the
+// false-green that let the original bug through.
+test('route does NOT import sendWelcomeEmail — that moved to /auth/confirm', () => {
+  const importBlock = src.match(
+    /import\s*\{([^}]*)\}\s*from\s*['"]@\/lib\/email\/templates['"]/,
+  );
+  assert.ok(importBlock, 'expected an @/lib/email/templates import');
+  assert.doesNotMatch(
+    importBlock[1],
+    /\bsendWelcomeEmail\b/,
+    'welcome email must be sent after confirmation, not instead of it',
   );
 });
 

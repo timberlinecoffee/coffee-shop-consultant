@@ -24,9 +24,12 @@ import {
   extractHeaders,
   verifyStandardWebhook,
 } from '@/lib/webhooks/standard-webhooks';
+// TIM-3441: sendWelcomeEmail is deliberately absent. The welcome email is no
+// longer sent from this hook — it goes out from /auth/confirm once the address
+// is actually confirmed. Sending it here meant the signup mail carried a
+// dashboard link and no verification token at all.
 import {
   sendVerifyEmail,
-  sendWelcomeEmail,
   sendPasswordResetEmail,
   sendEmailChangeEmail,
   sendMagicLinkEmail,
@@ -78,7 +81,6 @@ export async function POST(request: NextRequest) {
   try {
     outcome = await dispatchEmailHook(payload, {
       sendVerifyEmail,
-      sendWelcomeEmail,
       sendPasswordResetEmail,
       sendEmailChangeEmail,
       sendMagicLinkEmail,
