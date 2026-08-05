@@ -5,7 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { hasWriteAccess, isBetaWaived } from "@/lib/access";
 import {
   normalizeOperationsPlaybook,
   seededPlaybook,
@@ -55,7 +55,7 @@ export default async function OperationsPlaybookPage() {
       .maybeSingle(),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used, beta_waiver_until, onboarding_data")
+      .select("subscription_status, trial_ends_at, subscription_tier, copilot_trial_messages_used, beta_waiver_until, onboarding_data")
       .eq("id", user.id)
       .maybeSingle(),
     loadOperationsRecipeCards(supabase, planId),
@@ -78,7 +78,7 @@ export default async function OperationsPlaybookPage() {
   const conceptShopIdentity = (plan.plan_name?.trim() ?? "") || concept.components.shop_identity.content;
 
   const canEdit =
-    isSubscriptionActive(profile?.subscription_status ?? "free_trial") ||
+    hasWriteAccess({ subscription_status: profile?.subscription_status ?? "free_trial", trial_ends_at: profile?.trial_ends_at ?? null }) ||
     isBetaWaived(profile?.beta_waiver_until ?? null);
 
   const initialTrialMessagesUsed =

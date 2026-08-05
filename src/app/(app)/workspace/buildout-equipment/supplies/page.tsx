@@ -3,7 +3,7 @@
 // suite as a sibling page to /workspace/buildout-equipment.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { isSubscriptionActive } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import { normalizeCurrencyCode } from "@/lib/currency";
 import type { ListSection, SuppliesItem } from "@/types/buildout";
 import { SuppliesWorkspace } from "./supplies-workspace";
@@ -54,7 +54,7 @@ export default async function SuppliesPage({
       .maybeSingle(),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used")
+      .select("subscription_status, trial_ends_at, subscription_tier, copilot_trial_messages_used")
       .eq("id", user.id)
       .maybeSingle(),
   ]);
@@ -62,7 +62,7 @@ export default async function SuppliesPage({
   const supplies = (suppliesResult.data ?? []) as SuppliesItem[];
   const sections = (sectionsResult.data ?? []) as ListSection[];
   const profile = profileResult.data;
-  const canEdit = isSubscriptionActive(profile?.subscription_status);
+  const canEdit = hasWriteAccess({ subscription_status: profile?.subscription_status, trial_ends_at: profile?.trial_ends_at ?? null });
   const initialTrialMessagesUsed =
     profile?.subscription_tier === "free"
       ? (profile.copilot_trial_messages_used ?? 0)

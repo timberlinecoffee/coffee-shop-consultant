@@ -3,7 +3,7 @@
 // TIM-1483: loads financial document visibility for FinancialDocumentsPanel.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { isSubscriptionActive } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import { BusinessPlanWorkspace } from "./business-plan-workspace";
 import type { CoverSettings } from "./cover-branding-panel";
 import type { PreGenerateChecklistItem } from "./pre-generate-checklist";
@@ -115,7 +115,7 @@ export default async function BusinessPlanWorkspacePage() {
       .eq("plan_id", planId),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used, full_name")
+      .select("subscription_status, trial_ends_at, subscription_tier, copilot_trial_messages_used, full_name")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -195,7 +195,7 @@ export default async function BusinessPlanWorkspacePage() {
     };
   });
 
-  const canEdit = isSubscriptionActive(profile?.subscription_status);
+  const canEdit = hasWriteAccess({ subscription_status: profile?.subscription_status, trial_ends_at: profile?.trial_ends_at ?? null });
   const initialTrialMessagesUsed =
     profile?.subscription_tier === "free"
       ? (profile.copilot_trial_messages_used ?? 0)

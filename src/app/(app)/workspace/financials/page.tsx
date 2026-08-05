@@ -3,7 +3,7 @@
 // TIM-1253: Also fetches buildout_equipment_items for shared-read capex sync.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { isSubscriptionActive } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import {
   normalizeMonthlyProjections,
   defaultMonthlyProjections,
@@ -53,7 +53,7 @@ export default async function FinancialsWorkspacePage() {
       .maybeSingle(),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used, onboarding_data")
+      .select("subscription_status, trial_ends_at, subscription_tier, copilot_trial_messages_used, onboarding_data")
       .eq("id", user.id)
       .maybeSingle(),
     // TIM-1117: pull menu items so COGS lines can link to menu costing.
@@ -169,7 +169,7 @@ export default async function FinancialsWorkspacePage() {
   const initialNeedsReviewAt = modelRow?.needs_review_at ?? null;
 
   const profile = profileResult.data;
-  const canEdit = isSubscriptionActive(profile?.subscription_status);
+  const canEdit = hasWriteAccess({ subscription_status: profile?.subscription_status, trial_ends_at: profile?.trial_ends_at ?? null });
   const initialTrialMessagesUsed =
     profile?.subscription_tier === "free"
       ? (profile.copilot_trial_messages_used ?? 0)
