@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── Parse body ──────────────────────────────────────────────────────────────
+  // ── Parse body ───────────────────────────────────────────────────────────────
   let planId: string;
   let workspaceKey: WorkspaceKey;
   let fieldKey: string;
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── Quota/billing gate ──────────────────────────────────────────────────────
+  // ── Quota/billing gate ───────────────────────────────────────────────────────
   // TIM-1902: trialists with a card on file count as active here. Gating is
   // uniform across active and trial — both debit ai_credits_remaining.
   const { data: profile } = await supabase
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── Build prompt ────────────────────────────────────────────────────────────
+  // ── Build prompt ─────────────────────────────────────────────────────────────
   const svcClient = createServiceClient();
   const onboarding = (profile.onboarding_data as Record<string, unknown>) ?? {};
 
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
   }
   const userMessage = userParts.join("\n\n");
 
-  // ── SSE stream ──────────────────────────────────────────────────────────────
+  // ── SSE stream ───────────────────────────────────────────────────────────────
   const encoder = new TextEncoder();
 
   const body = new ReadableStream({
