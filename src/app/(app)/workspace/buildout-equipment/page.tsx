@@ -3,7 +3,7 @@
 // TIM-1325: Pass currency_code from financial_models so prices show the correct symbol.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { isSubscriptionActive } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import { normalizeCurrencyCode } from "@/lib/currency";
 import type { EquipmentItem } from "@/app/(app)/workspace/financials/financials-workspace";
 import type { ListSection } from "@/types/buildout";
@@ -50,7 +50,7 @@ export default async function BuildoutEquipmentPage() {
         .maybeSingle(),
       supabase
         .from("users")
-        .select("subscription_status, subscription_tier, copilot_trial_messages_used")
+        .select("subscription_status, trial_ends_at, subscription_tier, copilot_trial_messages_used")
         .eq("id", user.id)
         .maybeSingle(),
     ]);
@@ -59,7 +59,7 @@ export default async function BuildoutEquipmentPage() {
   const sections = (sectionsResult.data ?? []) as ListSection[];
   const modelRow = modelResult.data;
   const profile = profileResult.data;
-  const canEdit = isSubscriptionActive(profile?.subscription_status);
+  const canEdit = hasWriteAccess({ subscription_status: profile?.subscription_status, trial_ends_at: profile?.trial_ends_at ?? null });
   const initialTrialMessagesUsed =
     profile?.subscription_tier === "free"
       ? (profile.copilot_trial_messages_used ?? 0)

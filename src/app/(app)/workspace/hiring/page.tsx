@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { isSubscriptionActive } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import { resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 import {
   HIRING_REVAMP_COOKIE,
@@ -107,7 +107,7 @@ export default async function HiringWorkspacePage() {
     supabase.from("competency_evaluations").select("*"),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used")
+      .select("subscription_status, trial_ends_at, subscription_tier, copilot_trial_messages_used")
       .eq("id", user.id)
       .maybeSingle(),
     // TIM-1300: Plan hiring settings (country override)
@@ -174,7 +174,7 @@ export default async function HiringWorkspacePage() {
   // location_candidates so the comp wage input can warn on sub-minimum entries.
   const planMinimumWage = await resolvePlanMinimumWage(supabase, planId);
 
-  const canEdit = isSubscriptionActive(profile?.subscription_status);
+  const canEdit = hasWriteAccess({ subscription_status: profile?.subscription_status, trial_ends_at: profile?.trial_ends_at ?? null });
   const initialTrialMessagesUsed =
     profile?.subscription_tier === "free"
       ? (profile.copilot_trial_messages_used ?? 0)

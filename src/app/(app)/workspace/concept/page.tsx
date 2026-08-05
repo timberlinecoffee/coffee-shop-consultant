@@ -4,7 +4,7 @@
 // where the workspace API route writes saves.
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { isSubscriptionActive } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import { normalizeConceptV2 } from "@/lib/concept";
 import { getActivePlanId } from "@/lib/plan-context";
 import { ConceptWorkspace } from "./concept-editor";
@@ -45,7 +45,7 @@ export default async function ConceptWorkspacePage() {
       .maybeSingle(),
     supabase
       .from("users")
-      .select("subscription_status, subscription_tier, copilot_trial_messages_used, onboarding_data")
+      .select("subscription_status, trial_ends_at, subscription_tier, copilot_trial_messages_used, onboarding_data")
       .eq("id", user.id)
       .maybeSingle(),
   ]);
@@ -62,7 +62,7 @@ export default async function ConceptWorkspacePage() {
       content: planName,
     };
   }
-  const canEdit = isSubscriptionActive(profile?.subscription_status);
+  const canEdit = hasWriteAccess({ subscription_status: profile?.subscription_status, trial_ends_at: profile?.trial_ends_at ?? null });
   const initialTrialMessagesUsed =
     profile?.subscription_tier === "free"
       ? (profile.copilot_trial_messages_used ?? 0)
@@ -79,6 +79,8 @@ export default async function ConceptWorkspacePage() {
       canEdit={canEdit}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
       shopType={shopType}
+      subscriptionStatus={profile?.subscription_status ?? null}
+      trialEndsAt={(profile?.trial_ends_at as string | null) ?? null}
     />
   );
 }
