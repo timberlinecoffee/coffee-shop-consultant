@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lightbulb, Printer, Sparkles } from "lucide-react";
 import { CollapseButton } from "@/components/ui/CollapseButton";
+import { ReadOnlyBanner } from "@/components/workspace/ReadOnlyBanner";
 import { PaywallModal } from "@/components/paywall-modal";
 import { AIAssistCallout } from "@/components/ai-assist/AIAssistCallout";
 import { useAIReviewModal, type ApprovedChange } from "@/hooks/useAIReviewModal";
@@ -49,7 +50,9 @@ import {
 } from "@/lib/concept";
 import { CompetitorSection } from "@/components/concept/CompetitorSection";
 import { PersonaSection } from "@/components/concept/PersonaSection";
-import { UPGRADE_PATH, COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
+// TIM-3442: UPGRADE_PATH dropped — the read-only CTA and its destination now
+// live in ReadOnlyBanner, so this screen no longer needs to know the route.
+import { COPILOT_FREE_TRIAL_LIMIT } from "@/lib/access";
 import { FIELD_EXAMPLES, type FieldExampleKey } from "@/lib/field-examples";
 
 // IDs that get featured (tinted, slightly larger) treatment in the brief
@@ -71,6 +74,10 @@ interface ConceptWorkspaceProps {
   canEdit: boolean;
   initialTrialMessagesUsed?: number;
   shopType?: string | string[] | null;
+  // TIM-3442: the banner explains *why* editing is locked, so it needs the
+  // state itself rather than the boolean the state collapses into.
+  subscriptionStatus?: string | null;
+  trialEndsAt?: string | null;
 }
 
 export function ConceptWorkspace({
@@ -80,6 +87,8 @@ export function ConceptWorkspace({
   canEdit,
   initialTrialMessagesUsed,
   shopType,
+  subscriptionStatus,
+  trialEndsAt,
 }: ConceptWorkspaceProps) {
   const [doc, setDoc] = useState<ConceptDocumentV2>(initialDoc);
   const [saveState, setSaveState] = useState<SaveState>({
@@ -406,21 +415,19 @@ export function ConceptWorkspace({
             out — the title already says Concept, and the header is not the
             place to repeat what the owner just typed into the first card. */}
 
-        {/* Read-only banner */}
+        {/* TIM-3442: read-only banner. The wording used to be hardcoded here —
+            "your subscription is paused" — and was shown to 23 users who had
+            never subscribed. It now comes from readOnlyReason(), which derives
+            it from the actual status and is tested against the access gate. */}
         {!canEdit && (
-          <div
-            role="alert"
-            className="mb-6 rounded-xl border border-[var(--warning-amber-bg-2)] bg-[var(--warning-bg-8)] px-4 py-3 text-sm text-[var(--warning-text-9)]"
-          >
-            <p className="font-medium mb-1">Read-only preview</p>
-            <p className="leading-relaxed">
-              Your subscription is paused so we&apos;ve locked editing.{" "}
-              <Link href={UPGRADE_PATH} className="underline font-medium text-[var(--warning-text-9)]">
-                Reactivate to keep editing
-              </Link>
-              .
-            </p>
-          </div>
+          <ReadOnlyBanner
+            user={{
+              subscription_status: subscriptionStatus,
+              trial_ends_at: trialEndsAt,
+            }}
+            className="mb-6"
+            returnHref="/workspace/concept"
+          />
         )}
 
         {/* Trial limit notice */}
