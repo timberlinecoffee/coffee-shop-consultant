@@ -15,7 +15,7 @@ import { toTitleCase } from "@/lib/text";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 export type ParsedRow = {
   _id: string;         // client-side key (rowNum string)
@@ -31,7 +31,7 @@ export type ParsedRow = {
   skip: boolean;
 };
 
-// ── ExcelJS helpers ──────────────────────────────────────────────────────────
+// ── ExcelJS helpers ────────────────────────────────────────────────────────────
 
 type CellValue = string | number | null;
 
