@@ -6,7 +6,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getActivePlanId } from "@/lib/plan-context";
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { hasWriteAccess, isBetaWaived } from "@/lib/access";
 import type { LaunchItemStatus } from "@/types/supabase";
 import { SEED_ROWS } from "./seed-data";
 
@@ -19,13 +19,13 @@ export async function POST() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single();
 
   const allowed =
     !!profile &&
-    (isSubscriptionActive(profile.subscription_status) || isBetaWaived(profile.beta_waiver_until));
+    (hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) || isBetaWaived(profile.beta_waiver_until));
   if (!allowed) {
     return Response.json({ reason: "paywall", tier_required: "starter" }, { status: 402 });
   }
