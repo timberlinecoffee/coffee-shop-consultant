@@ -15,7 +15,7 @@ import { streamScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
-import { isSubscriptionActive } from "@/lib/access"
+import { hasWriteAccess } from "@/lib/access"
 import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
 import { rateLimit } from "@/lib/rate-limit"
@@ -90,7 +90,7 @@ Rules:
 - Plain-English rule: when referencing financial ratios in blockers or next actions, use plain English on first reference: "ingredient cost (COGS)" not "COGS", "what you keep after ingredients (gross margin)" not "gross margin."
 - Output ONLY the JSON object. Nothing before or after it.`
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
@@ -127,7 +127,7 @@ function normalizeReadiness(value: unknown): unknown {
   return out
 }
 
-// ── Route ─────────────────────────────────────────────────────────────────────
+// ── Route ──────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -170,11 +170,11 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // ── Credit/billing gate ───────────────────────────────────────────────────
+  // ── Credit/billing gate ─────────────────────────────────────────────────
 
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_credits_remaining, subscription_tier, subscription_status, beta_waiver_until")
+    .select("ai_credits_remaining, subscription_tier, subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single()
 
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  if (!isSubscriptionActive(profile.subscription_status)) {
+  if (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null })) {
     return new Response(
       sse("error", { code: "paywall", reason: "paywall", tier_required: "starter" }),
       { status: 402, headers: { "Content-Type": "text/event-stream" } },
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // ── Build cross-workspace snapshot ────────────────────────────────────────
+  // ── Build cross-workspace snapshot ───────────────────────────────────────
 
   const svcClient = createServiceClient()
   const { snapshots } = await composeAllWorkspacesSnapshot(planId, svcClient)
@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
 
   const userMessage = `## Plan Workspace Data\n\n${workspaceDataSection}\n\nAnalyze all 6 workspaces and produce the launch readiness JSON.`
 
-  // ── SSE stream ────────────────────────────────────────────────────────────
+  // ── SSE stream ─────────────────────────────────────────────────────────
 
   const encoder = new TextEncoder()
 
