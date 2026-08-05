@@ -8,7 +8,7 @@
 // from a multi-project account 404'd with "No plan found".
 
 import { createClient } from "@/lib/supabase/server"
-import { isSubscriptionActive, isBetaWaived, MUTABLE_WORKSPACE_KEYS } from "@/lib/access"
+import { hasWriteAccess, isBetaWaived, MUTABLE_WORKSPACE_KEYS } from "@/lib/access"
 import { getActivePlanId } from "@/lib/plan-context"
 import type { WorkspaceKey } from "@/types/supabase"
 import type { NextRequest } from "next/server"
@@ -65,11 +65,11 @@ async function writeMutation(request: NextRequest, { params }: RouteContext) {
   // Paywall gate — only active subscriptions (or beta-waived accounts) can mutate workspace data.
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single()
 
-  if (!profile || (!isSubscriptionActive(profile.subscription_status) && !isBetaWaived(profile.beta_waiver_until))) {
+  if (!profile || (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) && !isBetaWaived(profile.beta_waiver_until))) {
     return Response.json(
       { reason: paywallReason(profile?.subscription_status ?? "free_trial"), tier_required: "starter" },
       { status: 402 }
@@ -150,11 +150,11 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single()
 
-  if (!profile || (!isSubscriptionActive(profile.subscription_status) && !isBetaWaived(profile.beta_waiver_until))) {
+  if (!profile || (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) && !isBetaWaived(profile.beta_waiver_until))) {
     return Response.json(
       { reason: paywallReason(profile?.subscription_status ?? "free_trial"), tier_required: "starter" },
       { status: 402 }

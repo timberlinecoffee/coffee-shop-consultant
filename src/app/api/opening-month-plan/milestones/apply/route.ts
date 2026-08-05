@@ -4,7 +4,7 @@
 // route (Shape C fix). Pattern mirrors suggest-recipe/apply/route.ts.
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { hasWriteAccess, isBetaWaived } from "@/lib/access"
 import { normalizeLaunchPlanConfig } from "@/lib/launch-plan"
 import type { TrackKey, MilestoneStatus } from "@/lib/launch-plan"
 import type { NextRequest } from "next/server"
@@ -31,13 +31,13 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single()
 
   if (
     !profile ||
-    (!isSubscriptionActive(profile.subscription_status) &&
+    (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) &&
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json({ reason: "paywall", tier_required: "starter" }, { status: 402 })

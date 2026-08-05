@@ -3,7 +3,7 @@
 // PATCH: upserts monthly_projections, startup_costs, critique, needs_review_at.
 
 import { createClient } from "@/lib/supabase/server";
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { hasWriteAccess, isBetaWaived } from "@/lib/access";
 import type { NextRequest } from "next/server";
 import { defaultMonthlyProjections } from "@/lib/financial-projection";
 import { getAccountSettings } from "@/lib/account-settings";
@@ -131,13 +131,13 @@ export async function PATCH(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single();
 
   if (
     !profile ||
-    (!isSubscriptionActive(profile.subscription_status) &&
+    (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) &&
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json({ error: "Subscription required" }, { status: 402 });
