@@ -378,11 +378,21 @@ function ProfileMenu({
                   Account page and Settings already submit a form here — this
                   sidebar was the one caller that did not, and it is the one on
                   every screen. */}
+              {/* No onClick={handleNavigate} here, and that omission is the
+                  fix's second half. Every other item in this menu closes it on
+                  click, which is right for a <Link> — Next handles the
+                  navigation itself, so unmounting the menu afterwards is
+                  harmless. A NATIVE FORM SUBMIT is different: setOpen(false)
+                  unmounts the <form> during the click handler, and the browser
+                  cancels a submission whose form no longer exists. The first
+                  attempt at this fix used the same handler as its neighbours
+                  and silently did nothing at all.
+
+                  Nothing needs closing anyway — the page is navigating away. */}
               <form action="/auth/signout" method="POST">
                 <button
                   type="submit"
                   role="menuitem"
-                  onClick={handleNavigate}
                   className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-warm-100)] transition-colors text-left"
                 >
                   <LogOut size={14} strokeWidth={1.75} aria-hidden />

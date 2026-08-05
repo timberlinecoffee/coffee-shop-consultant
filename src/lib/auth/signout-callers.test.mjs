@@ -85,6 +85,29 @@ test("every sign-out control submits a form", () => {
   }
 });
 
+test("no sign-out form is torn down by its own click handler", () => {
+  // The second half of this bug, and the subtler one. The first fix turned the
+  // sidebar's link into a form submit but kept the neighbours' onClick, which
+  // calls setOpen(false). That unmounts the <form> during the click handler,
+  // and a browser cancels a submission whose form no longer exists. The button
+  // looked right, posted nothing, and left the session intact — the same
+  // symptom as before, one layer down.
+  //
+  // Closing the menu is pointless here regardless: the page is navigating away.
+  for (const file of callerFiles().filter((f) => /\.tsx$/.test(f))) {
+    const src = read(file);
+    const form = src.match(
+      /<form[^>]*action=["'`]\/auth\/signout["'`][\s\S]*?<\/form>/i
+    );
+    if (!form) continue;
+    assert.doesNotMatch(
+      form[0],
+      /onClick=/,
+      `${file}: the sign-out button runs a click handler that can unmount its own form before it submits`
+    );
+  }
+});
+
 test("the sign-out route stays POST-only", () => {
   // If a future fix "solves" a 405 by adding a GET handler, the bug comes back
   // as something worse: any <img src="/auth/signout"> on any page — an avatar,
