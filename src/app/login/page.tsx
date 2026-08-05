@@ -90,6 +90,15 @@ export default async function LoginPage({
             )}
           </div>
         )}
+        {/* TIM-3441: a confirmation link that is expired, already used, or
+            malformed. Distinct copy from auth_failed — the user did nothing
+            wrong and the fix is a fresh link, not a retry. */}
+        {error === "confirm_failed" && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <p className="font-medium mb-1">That confirmation link has expired or was already used.</p>
+            <p>Sign in below if you have already confirmed. Otherwise sign up again and we&apos;ll send a fresh link.</p>
+          </div>
+        )}
         <LoginForm initialMode={initialMode} />
         <p className="text-center text-sm text-[var(--dark-grey)] mt-6">
           {isSignup ? (
