@@ -10,12 +10,12 @@ export const maxDuration = 60;
 import { runScoutTurn } from "@/lib/ai/scout-adapter";
 import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access";
+import { hasWriteAccess, isBetaWaived } from "@/lib/access";
 import { toTitleCase } from "@/lib/text";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────
 
 export type ParsedRow = {
   _id: string;         // client-side key (rowNum string)
@@ -31,7 +31,7 @@ export type ParsedRow = {
   skip: boolean;
 };
 
-// ── ExcelJS helpers ───────────────────────────────────────────────────────────
+// ── ExcelJS helpers ──────────────────────────────────────────────────────────
 
 type CellValue = string | number | null;
 
@@ -141,7 +141,7 @@ async function parseWorkbook(buffer: Buffer, filename: string): Promise<{ header
   return { headers, dataRows };
 }
 
-// ── AI normalisation ──────────────────────────────────────────────────────────
+// ── AI normalisation ─────────────────────────────────────────────────────────
 
 type AiColumnMap = {
   name?: string;
@@ -280,7 +280,7 @@ Return ONLY valid JSON matching this exact structure (no markdown, no explanatio
   }
 }
 
-// ── Handler ───────────────────────────────────────────────────────────────────
+// ── Handler ────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -300,13 +300,13 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single();
 
   if (
     !profile ||
-    (!isSubscriptionActive(profile.subscription_status) &&
+    (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) &&
       !isBetaWaived(profile.beta_waiver_until))
   ) {
     return Response.json({ error: "Subscription required" }, { status: 402 });
