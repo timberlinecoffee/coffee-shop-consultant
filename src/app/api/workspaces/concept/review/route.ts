@@ -18,7 +18,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { normalizeAIOutput } from "@/lib/normalize";
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite";
-import { isSubscriptionActive, hasWriteAccess } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   CONCEPT_COMPONENTS_V2,
@@ -99,7 +99,6 @@ export async function POST(request: Request) {
       { status: 402 },
     );
   }
-  void isSubscriptionActive;
 
   // ── Eligible fields: prose fields that have content ──────────────────────────
   const targets = REVIEWABLE_IDS.filter(
