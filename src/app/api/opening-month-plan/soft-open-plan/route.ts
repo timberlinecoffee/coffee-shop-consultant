@@ -6,16 +6,16 @@
 // fallback; this aligns and goes one better by respecting active-project.
 import { createClient } from "@/lib/supabase/server";
 import { getActivePlanId } from "@/lib/plan-context";
-import { isSubscriptionActive } from "@/lib/access";
+import { hasWriteAccess } from "@/lib/access";
 import type { NextRequest } from "next/server";
 
 async function checkPaywall(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status")
+    .select("subscription_status, trial_ends_at")
     .eq("id", userId)
     .single();
-  return profile && isSubscriptionActive(profile.subscription_status);
+  return profile && hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null });
 }
 
 export async function GET() {

@@ -3,7 +3,7 @@
 // getActivePlanId (TIM-2377) so plan ID agrees with users.current_plan_id.
 import { createClient } from "@/lib/supabase/server"
 import { getActivePlanId } from "@/lib/plan-context"
-import { isSubscriptionActive, isBetaWaived } from "@/lib/access"
+import { hasWriteAccess, isBetaWaived } from "@/lib/access"
 import type { NextRequest } from "next/server"
 
 type RouteCtx = { params: Promise<{ id: string }> }
@@ -18,11 +18,11 @@ export async function PATCH(request: NextRequest, { params }: RouteCtx) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single()
 
-  if (!profile || (!isSubscriptionActive(profile.subscription_status) && !isBetaWaived(profile.beta_waiver_until))) {
+  if (!profile || (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) && !isBetaWaived(profile.beta_waiver_until))) {
     return Response.json({ reason: "paywall", tier_required: "starter" }, { status: 402 })
   }
 
@@ -75,11 +75,11 @@ export async function DELETE(_request: NextRequest, { params }: RouteCtx) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("subscription_status, beta_waiver_until")
+    .select("subscription_status, trial_ends_at, beta_waiver_until")
     .eq("id", user.id)
     .single()
 
-  if (!profile || (!isSubscriptionActive(profile.subscription_status) && !isBetaWaived(profile.beta_waiver_until))) {
+  if (!profile || (!hasWriteAccess({ subscription_status: profile.subscription_status, trial_ends_at: profile.trial_ends_at ?? null }) && !isBetaWaived(profile.beta_waiver_until))) {
     return Response.json({ reason: "paywall", tier_required: "starter" }, { status: 402 })
   }
 
