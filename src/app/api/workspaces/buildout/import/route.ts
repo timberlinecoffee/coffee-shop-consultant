@@ -15,7 +15,7 @@ import { toTitleCase } from "@/lib/text";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export type ParsedRow = {
   _id: string;         // client-side key (rowNum string)
@@ -31,7 +31,7 @@ export type ParsedRow = {
   skip: boolean;
 };
 
-// ── ExcelJS helpers ────────────────────────────────────────────────────────────
+// ── ExcelJS helpers ───────────────────────────────────────────────────────────
 
 type CellValue = string | number | null;
 
@@ -141,7 +141,7 @@ async function parseWorkbook(buffer: Buffer, filename: string): Promise<{ header
   return { headers, dataRows };
 }
 
-// ── AI normalisation ─────────────────────────────────────────────────────────
+// ── AI normalisation ──────────────────────────────────────────────────────────
 
 type AiColumnMap = {
   name?: string;
@@ -280,7 +280,7 @@ Return ONLY valid JSON matching this exact structure (no markdown, no explanatio
   }
 }
 
-// ── Handler ────────────────────────────────────────────────────────────────
+// ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
