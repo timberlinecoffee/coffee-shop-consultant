@@ -30,7 +30,7 @@ type AiEquipmentItem = {
   notes: string;
 };
 
-// ── Handler ────────────────────────────────────────────────────────────────
+// ── Handler ─────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
