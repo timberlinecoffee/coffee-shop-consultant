@@ -14,7 +14,6 @@ import {
   computeMonthlyProjections,
   computeBreakEvenModel,
   type MonthlyProjections,
-  type MonthlySlice,
 } from "@/lib/financial-projection";
 import {
   deriveBreakEvenStatus,
@@ -105,8 +104,13 @@ export async function loadFinancialSnapshot(
     const matureRow = rows[rampMonths] ?? m1;
 
     const avgTicketCents = mp.avg_ticket_cents ?? 750;
+    // TIM-3444: the `as unknown as MonthlySlice` cast that used to sit here was
+    // load-bearing in the worst way — it silenced the one check that would have
+    // caught computeBreakEvenModel reading a slice-only field off a plain row.
+    // The signature now takes the row type, so no cast is needed and the next
+    // shape mismatch fails the build instead of the dashboard.
     const breakEven = computeBreakEvenModel(
-      m1 as unknown as MonthlySlice,
+      m1,
       mp.forecast_lines ?? [],
       avgTicketCents
     );
