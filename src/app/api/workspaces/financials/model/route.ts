@@ -108,13 +108,16 @@ export async function GET() {
   // the numbers this owner will actually be shown. Fingerprinting the
   // pre-calibration template would make each calibrated step read as already
   // edited, and the workspace would open at 7 of 7 again.
-  forecastInputs.seed_fingerprints = buildSeedFingerprints(forecastInputs);
+  const seededInputs = {
+    ...forecastInputs,
+    seed_fingerprints: buildSeedFingerprints(forecastInputs),
+  };
 
   const { data: created, error } = await supabase
     .from("financial_models")
     .insert({
       plan_id: plan.id,
-      forecast_inputs: forecastInputs,
+      forecast_inputs: seededInputs,
       startup_costs: seededStartupCosts(shopTypes),
     })
     .select()

@@ -15,6 +15,7 @@ import {
   ownerTouchedSteps,
   stepFingerprint,
   seededStepNotice,
+  readSeedFingerprints,
 } from "./seed-provenance.ts";
 
 /** A stand-in for the seeded model, shaped like defaultMonthlyProjections(). */
@@ -163,4 +164,35 @@ test("the notice says whose numbers these are without apologising for them", () 
     assert.ok(!/wrong|error|invalid|sorry/i.test(notice), `notice reads as a fault: "${notice}"`);
     assert.match(notice, /counts as yours/, "does not tell the owner how to claim the step");
   }
+});
+
+test("a corrupt or hand-edited fingerprint blob fails open", () => {
+  // Failing open means the owner keeps their progress. Wrongly withholding a
+  // completion someone earned is worse than wrongly granting one, and a blob
+  // we cannot read is not evidence that they did nothing.
+  assert.equal(readSeedFingerprints(null), undefined);
+  assert.equal(readSeedFingerprints({}), undefined);
+  assert.equal(readSeedFingerprints({ seed_fingerprints: [1, 2] }), undefined);
+  assert.equal(readSeedFingerprints({ seed_fingerprints: { revenue: 5 } }), undefined);
+  assert.equal(readSeedFingerprints({ seed_fingerprints: "nope" }), undefined);
+
+  // Unknown keys are dropped rather than trusted.
+  const mixed = readSeedFingerprints({
+    seed_fingerprints: { revenue: "abc", not_a_step: "xyz" },
+  });
+  assert.deepEqual(mixed, { revenue: "abc" });
+});
+
+test("fingerprints survive a save and reload with the owner's edit intact", () => {
+  // The full round trip: seed, store as jsonb, read back, edit, store, read.
+  const mp = seededModel();
+  const stored = JSON.parse(JSON.stringify(mp));
+
+  const loaded = { ...stored, seed_fingerprints: readSeedFingerprints(stored) };
+  assert.deepEqual(ownerTouchedSteps(loaded), [], "a reload invented progress");
+
+  loaded.avg_ticket_cents = 550;
+  const resaved = JSON.parse(JSON.stringify(loaded));
+  const reloaded = { ...resaved, seed_fingerprints: readSeedFingerprints(resaved) };
+  assert.deepEqual(ownerTouchedSteps(reloaded), ["revenue"], "the edit did not survive the save");
 });

@@ -179,6 +179,28 @@ export function ownerTouchedSteps(mp: FingerprintableModel): FinancialStepKey[] 
 }
 
 /**
+ * Read `seed_fingerprints` off a raw stored blob, if it looks like one.
+ *
+ * Only string values count. A corrupt or hand-edited blob reads as absent,
+ * which resolves to "unknown" provenance — i.e. the owner keeps their
+ * progress. Failing open is deliberate: the cost of wrongly withholding a
+ * completion someone earned is higher than the cost of wrongly granting one.
+ */
+export function readSeedFingerprints(raw: unknown): SeedFingerprints | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const fp = (raw as Record<string, unknown>).seed_fingerprints;
+  if (!fp || typeof fp !== "object" || Array.isArray(fp)) return undefined;
+
+  const out: SeedFingerprints = {};
+  for (const [k, v] of Object.entries(fp as Record<string, unknown>)) {
+    if (typeof v === "string" && (FINANCIAL_STEP_KEYS as readonly string[]).includes(k)) {
+      out[k as FinancialStepKey] = v;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
  * The sentence a seeded step shows.
  *
  * Deliberately not an apology and not a warning. These are useful starting

@@ -18,7 +18,7 @@ const SRC = join(HERE, "..", "..");
 const V2 = join(SRC, "app", "(app)", "workspace", "financials", "financials-v2.tsx");
 const PAGE = join(SRC, "app", "(app)", "workspace", "financials", "page.tsx");
 const ROUTE = join(SRC, "app", "api", "workspaces", "financials", "model", "route.ts");
-const PROJECTION = join(SRC, "lib", "financial-projection.ts");
+const NORMALIZE_SEAM = join(SRC, "lib", "financials", "normalize-with-provenance.ts");
 
 /** Source with comments stripped, so prose about the bug cannot trip a guard. */
 function code(path) {
@@ -94,14 +94,21 @@ test("fingerprints are stamped after calibration, not before", () => {
   }
 });
 
-test("normalize does not drop the fingerprints", () => {
-  // normalizeMonthlyProjections rebuilds the model from a whitelist. A field
-  // missing from that whitelist is dropped on EVERY read, so the fingerprints
-  // would survive exactly until the first page load.
+test("the read path does not drop the fingerprints", () => {
+  // normalizeMonthlyProjections rebuilds the model from a whitelist, so a
+  // field it does not name is dropped on EVERY read. The fingerprints would
+  // survive exactly until the first page load, and every seeded step would go
+  // back to counting as the owner's work.
   assert.match(
-    code(PROJECTION),
-    /seed_fingerprints:\s*\n?\s*r\.seed_fingerprints/,
-    "normalize no longer passes seed_fingerprints through — they will vanish on first read",
+    code(NORMALIZE_SEAM),
+    /export function normalizeWithProvenance/,
+    "the normalize seam is gone",
+  );
+  const page = code(PAGE);
+  assert.match(
+    page,
+    /const initialProjections = normalizeWithProvenance\(/,
+    "the Financials page normalizes without preserving provenance — fingerprints vanish on first read",
   );
 });
 
