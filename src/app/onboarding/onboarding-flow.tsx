@@ -187,7 +187,7 @@ const STEPS: Step[] = [
   { id: "trial_offer", type: "trial-offer" },
 ];
 
-// ─── Answer types ──────────────────────────────────────────────────────────────
+// ─── Answer types ────────────────────────────────────────────────────────────
 
 const EMPTY_VISION_META: ShopVisionMeta = {
   usage_types: [],
@@ -319,7 +319,7 @@ function getStepStatus(
   return "pending";
 }
 
-// ─── Main component ──────────────────────────────────────────────────────────
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function OnboardingFlow({
   userId = "",
@@ -1015,7 +1015,7 @@ export function OnboardingFlow({
   );
 }
 
-// ─── City autocomplete ──────────────────────────────────────────────────────
+// ─── City autocomplete ───────────────────────────────────────────────────────
 
 function CityAutocompleteInput({
   value,
@@ -1186,7 +1186,7 @@ function CityAutocompleteInput({
   );
 }
 
-// ─── Review summary ─────────────────────────────────────────────────────────
+// ─── Review summary ──────────────────────────────────────────────────────────
 
 function ReviewSummary({
   wizardState,
