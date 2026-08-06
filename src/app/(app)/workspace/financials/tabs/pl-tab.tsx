@@ -852,14 +852,11 @@ function PLCritique({ slices, year }: { slices: MonthlySlice[]; year: number }) 
   const ni = totals.net_income_cents ?? 0;
   // TIM-1206: labor_cents is overhead labor; COGS-labor sits inside total_cogs.
   const laborOverhead = totals.labor_cents ?? 0;
-  const laborCogs = totals.labor_cogs_cents ?? 0;
-  const totalLabor = laborOverhead + laborCogs;
   const cogs = totals.total_cogs_cents ?? 0;
   const rent = totals.rent_cents ?? 0;
 
   const grossMargin = nr > 0 ? gp / nr * 100 : 0;
   const netMargin = nr > 0 ? ni / nr * 100 : 0;
-  const laborPct = nr > 0 ? totalLabor / nr * 100 : 0;
   // Prime cost = goods COGS + all labor. cogs already includes COGS-labor, so
   // add only overhead labor to avoid double-counting.
   const primeCost = nr > 0 ? (cogs + laborOverhead) / nr * 100 : 0;
