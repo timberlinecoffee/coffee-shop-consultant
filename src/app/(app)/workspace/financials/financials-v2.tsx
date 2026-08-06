@@ -79,11 +79,20 @@ import type { CritiqueResult } from "@/lib/financials";
 import type { MinWageInfo } from "@/lib/wages/minimum-wage";
 import type { OpeningRunwayResult } from "@/lib/business-plan/opening-runway";
 import type { EquipmentItem } from "./financials-workspace";
+import {
+  isUntouchedSeed,
+  seededStepNotice,
+  type FinancialStepKey,
+} from "@/lib/financials/seed-provenance";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types ───────────────────────────────────────────────────────────────────
 
 type V2Tab = "inputs" | "reports";
-type SectionStatus = "complete" | "in_progress" | "empty";
+// TIM-3448: "seeded" joins the union. Before this, a step whose numbers we had
+// supplied and the owner had never looked at was indistinguishable from one
+// they had finished — every predicate below asks "is this non-zero?", and our
+// seeds are non-zero, so a thirty-second-old account read 7 of 7 - 100%.
+type SectionStatus = "complete" | "in_progress" | "seeded" | "empty";
 
 // TIM-3851: sub-nav report keys inside the Reports tab. Order matches the
 // former stacked layout so the default landing (pl) is unchanged.
@@ -209,7 +218,7 @@ const TOUR_STEPS_V2: TourStep[] = [
   },
 ];
 
-// ── Shared day constants ───────────────────────────────────────────────────────
+// ── Shared day constants ──────────────────────────────────────────────────────────
 
 const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const DAY_LABELS: Record<DayKey, string> = {
@@ -220,7 +229,7 @@ const DAY_FULL_LABELS: Record<DayKey, string> = {
   fri: "Friday", sat: "Saturday", sun: "Sunday",
 };
 
-// ── Status badge ──────────────────────────────────────────────────────────────
+// ── Status badge ───────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: SectionStatus }) {
   if (status === "complete") {
@@ -239,6 +248,17 @@ function StatusBadge({ status }: { status: SectionStatus }) {
       </span>
     );
   }
+  // TIM-3448: our numbers, not theirs. Neutral rather than alarming — these are
+  // calibrated starting figures and genuinely useful; the owner simply has not
+  // agreed to them yet, and the badge should say only that.
+  if (status === "seeded") {
+    return (
+      <span className="flex items-center gap-1 text-[11px] font-semibold text-[var(--muted-foreground)] bg-[var(--background)] border border-[var(--border)] px-2 py-0.5 rounded-full shrink-0">
+        <Circle size={10} aria-hidden="true" />
+        Starting numbers
+      </span>
+    );
+  }
   return (
     <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--muted-foreground)] bg-[var(--background)] border border-[var(--border)] px-2 py-0.5 rounded-full shrink-0">
       <Minus size={10} aria-hidden="true" />
@@ -247,7 +267,7 @@ function StatusBadge({ status }: { status: SectionStatus }) {
   );
 }
 
-// ── AccordionSection ──────────────────────────────────────────────────────────
+// ── AccordionSection ───────────────────────────────────────────────────────────
 
 // TIM-3488: `id` lets the guided tour open this section before spotlighting a
 // field inside it.
@@ -279,6 +299,7 @@ function AccordionSection({
   open,
   onToggle,
   children,
+  seedCityLabel,
 }: {
   id?: string;
   title: string;
@@ -286,6 +307,8 @@ function AccordionSection({
   open: boolean;
   onToggle: () => void;
   children: React.ReactNode;
+  /** City the starting numbers were calibrated for, when we know it. */
+  seedCityLabel?: string | null;
 }) {
 
   return (
@@ -321,6 +344,15 @@ function AccordionSection({
       </div>
       {open && (
         <div id={id ? `${id}-content` : undefined} className="px-5 pb-5 pt-1 border-t border-[var(--border)] space-y-5">
+          {/* TIM-3448: say whose numbers these are, at the moment the owner is
+              looking at them. A badge alone would leave them to guess, and the
+              whole failure here was the product not distinguishing its own
+              suggestions from their decisions. */}
+          {status === "seeded" && (
+            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed bg-[var(--background)] border border-[var(--border)] rounded-xl px-4 py-3">
+              {seededStepNotice(seedCityLabel)}
+            </p>
+          )}
           {children}
         </div>
       )}
@@ -334,7 +366,7 @@ function AccordionSection({
 // hang off the bottom of this bar moved into the header's amber band, which is
 // where blocking notices live on every screen.
 
-// ── Section-status derivers ───────────────────────────────────────────────────
+// ── Section-status derivers ─────────────────────────────────────────────────────
 
 function getDailyTrafficStatus(mp: MonthlyProjections): SectionStatus {
   const openDays = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
@@ -398,7 +430,7 @@ function getGrowthRampStatus(mp: MonthlyProjections): SectionStatus {
   return "empty";
 }
 
-// ── Props ─────────────────────────────────────────────────────────────────────
+// ── Props ───────────────────────────────────────────────────────────────────
 
 export interface FinancialsV2Props {
   planId: string;
@@ -452,7 +484,7 @@ export interface FinancialsV2Props {
   initialTrialMessagesUsed?: number;
 }
 
-// ── Daily Traffic & Schedule section content ──────────────────────────────────
+// ── Daily Traffic & Schedule section content ────────────────────────────────────
 
 function DailyTrafficContent({
   mp,
@@ -937,7 +969,7 @@ function RevenueStreamsContent({
   );
 }
 
-// ── Costs & Overhead section content ──────────────────────────────────────────
+// ── Costs & Overhead section content ─────────────────────────────────────────
 
 // TIM-4113 (UX Phase 5): one job per component, because one job per step.
 //
@@ -1575,7 +1607,7 @@ function ReportsTab({
   );
 }
 
-// ── FinancialsV2 ──────────────────────────────────────────────────────────────
+// ── FinancialsV2 ───────────────────────────────────────────────────────────
 
 export function FinancialsV2({
   planId,
@@ -1730,16 +1762,32 @@ export function FinancialsV2({
   // Map each blocking reason to the section that actually owns the fix, so
   // the demotion points at the right accordion rather than marking everything
   // incomplete. "compute_failed" is our bug, so no section is demoted for it.
-  const s1 = demote(getDailyTrafficStatus(mp), blockedReason === "no_revenue");
-  const s2 = demote(
-    getRevenueStreamsStatus(mp),
-    blockedReason === "no_avg_ticket" || blockedReason === "no_contribution_margin"
+
+  // TIM-3448: a step whose numbers are still ours reports "seeded", whatever
+  // its value-shape says. Wrapped around the derivers rather than written into
+  // each of the seven, so the rule lives in one place and reads in one place.
+  const untouched = (step: FinancialStepKey, status: SectionStatus): SectionStatus =>
+    isUntouchedSeed(step, mp) ? "seeded" : status;
+
+  const s1 = untouched(
+    "daily_traffic",
+    demote(getDailyTrafficStatus(mp), blockedReason === "no_revenue"),
   );
-  const s3 = demote(getRunningCostsStatus(mp), blockedReason === "no_fixed_costs");
-  const s4 = getStaffingStatus(mp);
-  const s5 = getStartupCostsStatus(mp);
-  const s6 = getFundingStatus(mp);
-  const s7 = getGrowthRampStatus(mp);
+  const s2 = untouched(
+    "revenue",
+    demote(
+      getRevenueStreamsStatus(mp),
+      blockedReason === "no_avg_ticket" || blockedReason === "no_contribution_margin",
+    ),
+  );
+  const s3 = untouched(
+    "running_costs",
+    demote(getRunningCostsStatus(mp), blockedReason === "no_fixed_costs"),
+  );
+  const s4 = untouched("staffing", getStaffingStatus(mp));
+  const s5 = untouched("startup", getStartupCostsStatus(mp));
+  const s6 = untouched("funding", getFundingStatus(mp));
+  const s7 = untouched("growth", getGrowthRampStatus(mp));
 
   const tabs: { id: V2Tab; label: string; badge?: number }[] = [
     { id: "inputs", label: "Inputs" },
@@ -1926,7 +1974,7 @@ export function FinancialsV2({
           />
         </div>
 
-        {/* ── Inputs tab ────────────────────────────────────────────────────── */}
+        {/* ── Inputs tab ─────────────────────────────────────────────────── */}
         {activeTab === "inputs" && (
           <div>
             <div className="space-y-3">
@@ -2050,7 +2098,7 @@ export function FinancialsV2({
           </div>
         )}
 
-        {/* ── Reports tab ───────────────────────────────────────────────────── */}
+        {/* ── Reports tab ────────────────────────────────────────────────── */}
         {activeTab === "reports" && (
           <ReportsTab
             slices={slices}
