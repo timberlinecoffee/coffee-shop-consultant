@@ -852,14 +852,11 @@ function PLCritique({ slices, year }: { slices: MonthlySlice[]; year: number }) 
   const ni = totals.net_income_cents ?? 0;
   // TIM-1206: labor_cents is overhead labor; COGS-labor sits inside total_cogs.
   const laborOverhead = totals.labor_cents ?? 0;
-  const laborCogs = totals.labor_cogs_cents ?? 0;
-  const totalLabor = laborOverhead + laborCogs;
   const cogs = totals.total_cogs_cents ?? 0;
   const rent = totals.rent_cents ?? 0;
 
   const grossMargin = nr > 0 ? gp / nr * 100 : 0;
   const netMargin = nr > 0 ? ni / nr * 100 : 0;
-  const laborPct = nr > 0 ? totalLabor / nr * 100 : 0;
   // Prime cost = goods COGS + all labor. cogs already includes COGS-labor, so
   // add only overhead labor to avoid double-counting.
   const primeCost = nr > 0 ? (cogs + laborOverhead) / nr * 100 : 0;
@@ -887,10 +884,23 @@ function PLCritique({ slices, year }: { slices: MonthlySlice[]; year: number }) 
     }
   }
 
-  if (primeCost > 65) {
-    lines.push(`Prime cost (COGS + labor) is ${primeCost.toFixed(1)}% of revenue — above 65%. This is the number that kills most shops. Something needs to move: raise prices, tighten scheduling, or push higher-margin items.`);
+  // TIM-3444: prime cost was the one line TIM-2474 left on a hand-rolled
+  // two-branch check, so everything at or below 65% was asserted to be "within
+  // the 55-65% benchmark" — including a plan sitting at 19.1%, told it was
+  // inside a range it fell 36 points short of. Gross margin and rent, directly
+  // above and below, already classify three ways off the shared band helpers.
+  // This now does too, and a plan far below the floor is told what that
+  // usually means rather than congratulated.
+  const primeCostBand = { min: 0.55, max: 0.65 };
+  const primeRatio = primeCost / 100;
+  const primeCls = classifyAgainstBand(primeRatio, primeCostBand);
+  const primePosition = describeBandPosition(primeRatio, primeCostBand);
+  if (primeCls === "above") {
+    lines.push(`Prime cost (COGS + labor) is ${primeCost.toFixed(1)}% of revenue — ${primePosition}. This is the number that kills most shops. Something needs to move: raise prices, tighten scheduling, or push higher-margin items.`);
+  } else if (primeCls === "within") {
+    lines.push(`Prime cost is ${primeCost.toFixed(1)}% — ${primePosition}. That is the most important number to keep an eye on.`);
   } else {
-    lines.push(`Prime cost is ${primeCost.toFixed(1)}% — within the 55-65% benchmark. That is the most important number to keep an eye on.`);
+    lines.push(`Prime cost is ${primeCost.toFixed(1)}% — ${primePosition}. That is unusually low for a coffee shop, which normally means the menu is not fully priced yet or the staffing plan is still incomplete. Worth checking both before you rely on this number.`);
   }
 
   if (rentBand) {

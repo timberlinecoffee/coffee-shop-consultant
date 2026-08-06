@@ -2684,8 +2684,22 @@ export interface BreakEvenModel {
   avgTicketCents: number;
 }
 
+// TIM-3444: takes MonthlyProjectionRow, not MonthlySlice.
+//
+// Every field this function reads lives on MonthlyProjectionRow; MonthlySlice
+// merely re-exposes the COGS total under a second name. Declaring the narrower
+// slice type forced the Home dashboard — which only ever holds rows — to launder
+// its argument through `as unknown as MonthlySlice`, and that double cast is the
+// only reason the mismatch compiled. `total_cogs_cents` was then `undefined` on
+// every dashboard call, `undefined - number` gave NaN, `NaN > 0` took the
+// Infinity branch, and deriveBreakEvenStatus reported `compute_failed` —
+// "We couldn't calculate this. Try re-saving your Financials." — on a plan whose
+// own Break-Even tab rendered the answer correctly two clicks away.
+//
+// Widening the parameter is the fix AND the guard: with the cast gone, the type
+// checker catches the next caller who passes something without these fields.
 export function computeBreakEvenModel(
-  m1: MonthlySlice | undefined,
+  m1: MonthlyProjectionRow | undefined,
   forecastLines: ForecastLine[],
   avgTicketCents: number
 ): BreakEvenModel | null {
@@ -2705,13 +2719,19 @@ export function computeBreakEvenModel(
     else fixedOverheadCents += a.amount_cents;
   }
 
-  // TIM-1206: personnel is fixed. total_cogs_cents includes COGS-labor, so strip
+  // TIM-1206: personnel is fixed. cogs_cents includes COGS-labor, so strip
   // it out of the variable bucket and add all personnel to the fixed bucket.
   const laborCogsCents = m1.labor_cogs_cents ?? 0;
   const laborOverheadCents = m1.labor_overhead_cents ?? 0;
 
+  // TIM-3444: read `cogs_cents`, not `total_cogs_cents`. They are the same
+  // number — a slice is built with `total_cogs_cents: row.cogs_cents` — but
+  // only `cogs_cents` exists on MonthlyProjectionRow. Reading the slice-only
+  // alias made this function silently unusable for any caller holding a plain
+  // row, which is what broke break-even on the Home dashboard for every user
+  // since the metric shipped. See the note on the signature above.
   const variableCents =
-    (m1.total_cogs_cents - laborCogsCents) +
+    (m1.cogs_cents - laborCogsCents) +
     m1.payment_processing_cents +
     m1.spoilage_cents +
     variableOverheadCents;
