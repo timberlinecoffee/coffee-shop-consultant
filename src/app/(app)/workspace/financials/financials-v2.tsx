@@ -85,7 +85,7 @@ import {
   type FinancialStepKey,
 } from "@/lib/financials/seed-provenance";
 
-// ── Types ───────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type V2Tab = "inputs" | "reports";
 // TIM-3448: "seeded" joins the union. Before this, a step whose numbers we had
@@ -218,7 +218,7 @@ const TOUR_STEPS_V2: TourStep[] = [
   },
 ];
 
-// ── Shared day constants ──────────────────────────────────────────────────────────
+// ── Shared day constants ───────────────────────────────────────────────────────
 
 const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const DAY_LABELS: Record<DayKey, string> = {
@@ -229,7 +229,7 @@ const DAY_FULL_LABELS: Record<DayKey, string> = {
   fri: "Friday", sat: "Saturday", sun: "Sunday",
 };
 
-// ── Status badge ───────────────────────────────────────────────────────────────
+// ── Status badge ──────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: SectionStatus }) {
   if (status === "complete") {
@@ -267,7 +267,7 @@ function StatusBadge({ status }: { status: SectionStatus }) {
   );
 }
 
-// ── AccordionSection ───────────────────────────────────────────────────────────
+// ── AccordionSection ──────────────────────────────────────────────────────────
 
 // TIM-3488: `id` lets the guided tour open this section before spotlighting a
 // field inside it.
@@ -366,7 +366,7 @@ function AccordionSection({
 // hang off the bottom of this bar moved into the header's amber band, which is
 // where blocking notices live on every screen.
 
-// ── Section-status derivers ─────────────────────────────────────────────────────
+// ── Section-status derivers ───────────────────────────────────────────────────
 
 function getDailyTrafficStatus(mp: MonthlyProjections): SectionStatus {
   const openDays = DAY_KEYS.filter((d) => mp.weekly_schedule[d].open);
@@ -430,7 +430,7 @@ function getGrowthRampStatus(mp: MonthlyProjections): SectionStatus {
   return "empty";
 }
 
-// ── Props ───────────────────────────────────────────────────────────────────
+// ── Props ─────────────────────────────────────────────────────────────────────
 
 export interface FinancialsV2Props {
   planId: string;
@@ -484,7 +484,7 @@ export interface FinancialsV2Props {
   initialTrialMessagesUsed?: number;
 }
 
-// ── Daily Traffic & Schedule section content ────────────────────────────────────
+// ── Daily Traffic & Schedule section content ──────────────────────────────────
 
 function DailyTrafficContent({
   mp,
@@ -969,7 +969,7 @@ function RevenueStreamsContent({
   );
 }
 
-// ── Costs & Overhead section content ─────────────────────────────────────────
+// ── Costs & Overhead section content ──────────────────────────────────────────
 
 // TIM-4113 (UX Phase 5): one job per component, because one job per step.
 //
@@ -1607,7 +1607,7 @@ function ReportsTab({
   );
 }
 
-// ── FinancialsV2 ───────────────────────────────────────────────────────────
+// ── FinancialsV2 ──────────────────────────────────────────────────────────────
 
 export function FinancialsV2({
   planId,
@@ -1974,7 +1974,7 @@ export function FinancialsV2({
           />
         </div>
 
-        {/* ── Inputs tab ─────────────────────────────────────────────────── */}
+        {/* ── Inputs tab ────────────────────────────────────────────────────── */}
         {activeTab === "inputs" && (
           <div>
             <div className="space-y-3">
@@ -2098,7 +2098,7 @@ export function FinancialsV2({
           </div>
         )}
 
-        {/* ── Reports tab ────────────────────────────────────────────────── */}
+        {/* ── Reports tab ───────────────────────────────────────────────────── */}
         {activeTab === "reports" && (
           <ReportsTab
             slices={slices}
