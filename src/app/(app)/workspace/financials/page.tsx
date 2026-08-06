@@ -21,6 +21,7 @@ import {
   applyCalibratedRentToForecastLines,
 } from "@/lib/financials/rent-calibration";
 import { calibrateFundingSources } from "@/lib/financials/funding-source-calibration";
+import { buildSeedFingerprints } from "@/lib/financials/seed-provenance";
 import { resolvePlanGeo, resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 import { FinancialsWorkspace } from "./financials-workspace";
 import type { EquipmentItem } from "./financials-workspace";
@@ -148,6 +149,11 @@ export default async function FinancialsWorkspacePage() {
       countryCode: planGeo.countryCode ?? onboardingLocation?.countryCode ?? null,
       currencyCode: forecastInputs.currency_code,
     });
+    // TIM-3448: stamp AFTER every calibration above, so the fingerprint
+    // records the numbers this owner will actually be shown. Fingerprinting
+    // the pre-calibration template would make each calibrated step read as
+    // already edited, and the workspace would open at 7 of 7 again.
+    forecastInputs.seed_fingerprints = buildSeedFingerprints(forecastInputs);
     const { data: created } = await supabase
       .from("financial_models")
       .insert({
