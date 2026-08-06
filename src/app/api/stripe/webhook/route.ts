@@ -9,6 +9,7 @@ import {
 } from "@/lib/email/klaviyo-profile-bridge";
 import { createServiceClient } from "@/lib/supabase/service";
 import { assertUserSubscriptionStatus } from "@/lib/billing/subscription-status";
+import { buildTrialGrant } from "@/lib/billing/trial-grant";
 import { NextRequest } from "next/server";
 import Stripe from "stripe";
 import { computeTax, taxAmountCents, taxLabel } from "@/lib/billing/tax";
@@ -60,7 +61,6 @@ export async function POST(request: NextRequest) {
       const tier = tierFromPriceId(priceId);
       const isTrialing = sub.status === "trialing";
       const trialEnd = typeof sub.trial_end === "number" ? sub.trial_end : null;
-      const trialEndIso = trialEnd ? new Date(trialEnd * 1000).toISOString() : null;
       const periodStart = item?.current_period_start ?? sub.current_period_start;
       const periodEnd = item?.current_period_end ?? sub.current_period_end;
 
@@ -75,13 +75,13 @@ export async function POST(request: NextRequest) {
       }, { onConflict: "user_id" });
 
       if (isTrialing) {
-        await supabase.from("users").update({
-          subscription_status: "free_trial",
-          subscription_tier: tier,
-          ai_credits_remaining: TRIAL_CREDITS,
-          trial_ends_at: trialEndIso,
-          trial_credits_granted: true,
-        }).eq("id", userId);
+        // TIM-3447: built as one object so credits cannot be granted without
+        // write access. the raw Stripe timestamp was passed straight through before, and
+        // a null there produces a trial that grants 75 credits the user has no
+        // permission to spend — the 23-stranded-signups bug.
+        await supabase.from("users").update(
+          buildTrialGrant({ tier, credits: TRIAL_CREDITS, stripeTrialEndSeconds: trialEnd }),
+        ).eq("id", userId);
 
         await supabase.from("credit_transactions").insert({
           user_id: userId,
@@ -201,7 +201,6 @@ export async function POST(request: NextRequest) {
       // handled in customer.subscription.updated below.
       const isTrialing = sub.status === "trialing";
       const trialEnd = typeof sub.trial_end === "number" ? sub.trial_end : null;
-      const trialEndIso = trialEnd ? new Date(trialEnd * 1000).toISOString() : null;
 
       await supabase.from("subscriptions").upsert({
         user_id: userId,
@@ -225,13 +224,13 @@ export async function POST(request: NextRequest) {
           stripeEventType: event.type,
           stripeSubscriptionId: subscriptionId,
         });
-        await supabase.from("users").update({
-          subscription_status: "free_trial",
-          subscription_tier: tier,
-          ai_credits_remaining: TRIAL_CREDITS,
-          trial_ends_at: trialEndIso,
-          trial_credits_granted: true,
-        }).eq("id", userId);
+        // TIM-3447: built as one object so credits cannot be granted without
+        // write access. the raw Stripe timestamp was passed straight through before, and
+        // a null there produces a trial that grants 75 credits the user has no
+        // permission to spend — the 23-stranded-signups bug.
+        await supabase.from("users").update(
+          buildTrialGrant({ tier, credits: TRIAL_CREDITS, stripeTrialEndSeconds: trialEnd }),
+        ).eq("id", userId);
 
         await supabase.from("credit_transactions").insert({
           user_id: userId,
