@@ -14,6 +14,8 @@ import { CollapseButton } from "@/components/ui/CollapseButton";
 import type { WorkspaceKey } from "@/types/supabase";
 import { consumeSseFrames } from "@/components/copilot/sse";
 import type { OpenAIReviewModalOptions } from "@/hooks/useAIReviewModal";
+import { aiErrorCopy, type AiErrorFrame } from "@/lib/ai-error-copy";
+import { CreditPacksModal } from "@/components/credit-packs-modal";
 
 export interface AIAssistCalloutProps {
   open: boolean;
@@ -28,11 +30,17 @@ export interface AIAssistCalloutProps {
   openAIReviewModal: (opts: OpenAIReviewModalOptions) => void;
 }
 
+// TIM-3445: the failed state now carries the server's whole error frame, not
+// a pre-flattened string. The old `{ kind: "error"; message }` threw the
+// `code` away at the point of capture, so no amount of care further down could
+// have rendered the right thing — which is how "out of credits" came to be
+// reported as "Something went wrong" with a Try Again button that could never
+// work. The separate `quota` phase is gone: paywall and credit states are
+// error codes like any other, and now share one derivation.
 type Phase =
   | { kind: "draft" }
   | { kind: "streaming"; buffer: string }
-  | { kind: "quota"; reason?: string }
-  | { kind: "error"; message: string };
+  | { kind: "failed"; frame: AiErrorFrame };
 
 export function AIAssistCallout({
   open,
@@ -49,6 +57,7 @@ export function AIAssistCallout({
   const [phase, setPhase] = useState<Phase>({ kind: "draft" });
   const [instruction, setInstruction] = useState("");
   const [draft, setDraft] = useState(currentValue);
+  const [creditPacksOpen, setCreditPacksOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   // Reset to draft state when modal opens with a new value.
@@ -107,22 +116,30 @@ export function AIAssistCallout({
         });
       } catch (err) {
         if ((err as { name?: string }).name === "AbortError") return;
-        setPhase({ kind: "error", message: "Network error. Check your connection and try again." });
+        setPhase({ kind: "failed", frame: { code: "network" } });
         return;
       }
 
       if (!response.ok && response.headers.get("content-type")?.includes("application/json")) {
         try {
-          const payload = (await response.json()) as { error?: string };
-          setPhase({ kind: "error", message: payload.error ?? "Request failed." });
+          const payload = (await response.json()) as {
+            code?: string;
+            error?: string;
+            message?: string;
+          };
+          // Keep the code. This branch used to read `payload.error` alone.
+          setPhase({
+            kind: "failed",
+            frame: { code: payload.code, message: payload.message ?? payload.error },
+          });
         } catch {
-          setPhase({ kind: "error", message: "Request failed." });
+          setPhase({ kind: "failed", frame: {} });
         }
         return;
       }
 
       if (!response.body) {
-        setPhase({ kind: "error", message: "No response from server." });
+        setPhase({ kind: "failed", frame: { message: "No response from server." } });
         return;
       }
 
@@ -131,8 +148,7 @@ export function AIAssistCallout({
       let sseBuffer = "";
       let accumulated = "";
       let doneText: string | null = null;
-      let finalError: string | null = null;
-      let quotaState: { reason?: string } | null = null;
+      let errorFrame: AiErrorFrame | null = null;
 
       try {
         for (;;) {
@@ -161,37 +177,27 @@ export function AIAssistCallout({
                 /* ignore malformed frame */
               }
             } else if (evt.event === "error") {
+              // TIM-3445: pass the frame through whole. The old code branched
+              // on a hardcoded list of three codes and collapsed everything
+              // else to a message string — so any code the list didn't name,
+              // `out_of_credits` included, lost its identity right here.
               try {
-                const parsed = JSON.parse(evt.data) as {
-                  code?: string;
-                  message?: string;
-                  reason?: string;
-                };
-                if (parsed.code === "quota" || parsed.code === "paywall" || parsed.code === "trial_exhausted") {
-                  quotaState = { reason: parsed.reason };
-                } else {
-                  finalError = parsed.message ?? "Something went wrong. Please try again.";
-                }
+                errorFrame = JSON.parse(evt.data) as AiErrorFrame;
               } catch {
-                finalError = "Stream ended with an unknown error.";
+                errorFrame = {};
               }
             }
           }
         }
       } catch (err) {
         if ((err as { name?: string }).name === "AbortError") return;
-        finalError = err instanceof Error ? err.message : "Connection lost.";
+        errorFrame = { code: "network" };
       } finally {
         abortRef.current = null;
       }
 
-      if (quotaState) {
-        setPhase({ kind: "quota", reason: quotaState.reason });
-        return;
-      }
-
-      if (finalError) {
-        setPhase({ kind: "error", message: finalError });
+      if (errorFrame) {
+        setPhase({ kind: "failed", frame: errorFrame });
         return;
       }
 
@@ -367,78 +373,86 @@ export function AIAssistCallout({
             </div>
           )}
 
-          {/* ── Quota state ──────────────────────────────────── */}
-          {phase.kind === "quota" && (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-[var(--warning-text-11)]/40 bg-[var(--warning-bg-4)] px-4 py-3">
-                <p className="text-sm font-semibold text-[var(--warning-text-9)] mb-1">
-                  AI credits used up
-                </p>
-                <p className="text-sm text-[var(--warning-text-9)] leading-relaxed">
-                  {phase.reason === "paused"
-                    ? "Your subscription is paused. Reactivate to keep using AI features."
-                    : phase.reason === "expired"
-                    ? "Your subscription has expired. Renew to continue."
-                    : "You've run out of AI credits for this month. Upgrade for more."}
-                </p>
-              </div>
+          {/* ── Couldn't write ───────────────────────────────────
+              One panel for every reason the write didn't happen. The heading,
+              the sentence and the button all come from aiErrorCopy(), so a
+              state the product expects (spent credits, paywall) reads calmly
+              and offers an action that works, while a real failure reads as a
+              failure. Previously these were two hand-written blocks and the
+              credits case landed in the wrong one. */}
+          {phase.kind === "failed" && (() => {
+            const copy = aiErrorCopy(phase.frame);
+            const tone = copy.isFailure
+              ? {
+                  box: "border-[var(--error-bg-9)] bg-[var(--error-bg-2)]",
+                  text: "text-[var(--error)]",
+                }
+              : {
+                  box: "border-[var(--warning-text-11)]/40 bg-[var(--warning-bg-4)]",
+                  text: "text-[var(--warning-text-9)]",
+                };
+            // 44px minimum touch target (UX audit, 5 Aug: 38 of 38 controls
+            // were under it). These are the buttons a stuck user presses.
+            const primaryClass =
+              "flex-1 text-center min-h-[44px] inline-flex items-center justify-center bg-[var(--teal)] text-white text-sm font-medium px-4 rounded-xl hover:bg-[var(--teal-dark)] transition-colors";
 
-              <div className="flex items-center gap-2">
-                <Link
-                  href={
-                    phase.reason === "paused" || phase.reason === "expired"
-                      ? "/account/billing"
-                      : "/pricing"
-                  }
-                  className="flex-1 text-center bg-[var(--teal)] text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal-dark)] transition-colors"
-                >
-                  {phase.reason === "paused" || phase.reason === "expired"
-                    ? "Reactivate"
-                    : "Upgrade plan"}
-                </Link>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          )}
+            return (
+              <div className="space-y-4">
+                <div className={`rounded-xl border px-4 py-3 ${tone.box}`}>
+                  <p className={`text-sm font-semibold mb-1 ${tone.text}`}>
+                    {copy.heading}
+                  </p>
+                  <p className={`text-sm leading-relaxed ${tone.text}`}>
+                    {copy.body}
+                  </p>
+                </div>
 
-          {/* ── Error state ──────────────────────────────────── */}
-          {phase.kind === "error" && (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-[var(--error-bg-9)] bg-[var(--error-bg-2)] px-4 py-3">
-                <p className="text-sm font-semibold text-[var(--error)] mb-1">
-                  Something went wrong
-                </p>
-                <p className="text-sm text-[var(--error)] leading-relaxed">
-                  {phase.message}
-                </p>
+                <div className="flex items-center gap-2">
+                  {copy.primaryHref ? (
+                    <Link href={copy.primaryHref} className={primaryClass}>
+                      {copy.primaryLabel}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={
+                        copy.primaryAction === "buy_credits"
+                          ? () => setCreditPacksOpen(true)
+                          : handleTryAgain
+                      }
+                      className={primaryClass}
+                    >
+                      {copy.primaryLabel}
+                    </button>
+                  )}
+                  {copy.secondaryLabel && copy.secondaryHref && (
+                    <Link
+                      href={copy.secondaryHref}
+                      className="flex-1 text-center min-h-[44px] inline-flex items-center justify-center border border-[var(--teal)] text-[var(--teal)] text-sm font-medium px-4 rounded-xl hover:bg-[var(--teal)]/5 transition-colors"
+                    >
+                      {copy.secondaryLabel}
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 min-h-[44px] text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleTryAgain}
-                  className="flex-1 border border-[var(--teal)] text-[var(--teal)] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal)]/5 transition-colors"
-                >
-                  Try Again
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
+
+      {/* TIM-1687 top-up, reached from the out-of-credits state. The Copilot
+          drawer has offered this for months; the field writer never did. */}
+      <CreditPacksModal
+        open={creditPacksOpen}
+        onClose={() => setCreditPacksOpen(false)}
+      />
     </div>
   );
 }

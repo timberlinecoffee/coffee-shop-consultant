@@ -140,7 +140,10 @@ export async function POST(request: NextRequest) {
 
   if (!profile) {
     return new Response(
-      sse("error", { code: "quota", message: "Profile not found." }),
+      // TIM-3445: was `code: "quota"`. A missing profile row is our failure,
+      // not the user hitting a limit — and "quota" sent them to a purchase
+      // page that could not have helped. The code names the actual state now.
+      sse("error", { code: "account_missing", message: "Profile not found." }),
       { status: 404, headers: { "Content-Type": "text/event-stream" } },
     );
   }
