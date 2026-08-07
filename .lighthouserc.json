@@ -1,7 +1,23 @@
 {
+  "_comment_tim_3450": [
+    "numberOfRuns was 1. A single un-medianed Lighthouse run on a shared CI",
+    "runner is noisy enough to fail a 0.85 performance bar by chance, and it",
+    "did: four PRs in one week went red on this job with no relevant code",
+    "change, and every one of them passed on a re-run. Each false red cost a",
+    "full investigation to rule out a real regression.",
+    "Three runs with an explicit median makes the assertion describe the",
+    "typical load rather than whichever one happened to land on a busy box.",
+    "Median, not 'optimistic': we want the normal experience to clear the bar,",
+    "not the best of three. The thresholds themselves are unchanged, so this",
+    "loosens nothing about what counts as acceptable.",
+    "NOT fixed here: the job sometimes dies during collect and writes no",
+    "report at all. That is the 'wait-on tcp:3000' race in smoke.yml, which",
+    "only proves the port is bound, not that Next is answering. Fixing it",
+    "means editing the workflow file."
+  ],
   "ci": {
     "collect": {
-      "numberOfRuns": 1,
+      "numberOfRuns": 3,
       "settings": {
         "onlyCategories": ["performance", "accessibility"],
         "preset": "desktop"
@@ -9,8 +25,14 @@
     },
     "assert": {
       "assertions": {
-        "categories:accessibility": ["error", { "minScore": 0.9 }],
-        "categories:performance": ["error", { "minScore": 0.85 }]
+        "categories:accessibility": [
+          "error",
+          { "minScore": 0.9, "aggregationMethod": "median" }
+        ],
+        "categories:performance": [
+          "error",
+          { "minScore": 0.85, "aggregationMethod": "median" }
+        ]
       }
     },
     "upload": {
