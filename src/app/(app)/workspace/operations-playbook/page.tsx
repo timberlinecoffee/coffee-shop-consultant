@@ -11,6 +11,7 @@ import {
   seededPlaybook,
   isPlaybookEmpty,
 } from "@/lib/operations-playbook";
+import { seededSections } from "@/lib/operations/playbook-provenance";
 import { loadOperationsRecipeCards } from "@/lib/operations-recipes";
 import { normalizeConceptV2 } from "@/lib/concept";
 import { OperationsPlaybookWorkspace } from "./operations-playbook-workspace";
@@ -70,7 +71,14 @@ export default async function OperationsPlaybookPage() {
     if (typeof raw === "string" && raw.length > 0) return raw;
     return undefined;
   })();
+  // TIM-3449: the substitution stays — nine headings with a worked example
+  // under each is real scaffolding for someone who has never written an
+  // opening checklist. What changes is that the workspace is now TOLD which
+  // sections are still ours, so it stops reporting our examples as the owner's
+  // finished playbook. `seededPlaybook` is a pure function of shop type, so
+  // the comparison seed is just recomputed — nothing stored, nothing to drift.
   const initialDoc = isPlaybookEmpty(stored) ? seededPlaybook(shopType) : stored;
+  const seededSectionKeys = seededSections(initialDoc, seededPlaybook(shopType));
 
   // TIM-1406: shop name comes from coffee_shop_plans.plan_name (SoT); concept
   // jsonb is the V2 shadow read via normalizer for V1/V2 safety.
@@ -91,6 +99,7 @@ export default async function OperationsPlaybookPage() {
       planId={planId}
       canEdit={canEdit}
       initialDoc={initialDoc}
+      initialSeededSections={seededSectionKeys}
       conceptShopIdentity={conceptShopIdentity}
       initialTrialMessagesUsed={initialTrialMessagesUsed}
       initialRecipeCards={recipeCards}

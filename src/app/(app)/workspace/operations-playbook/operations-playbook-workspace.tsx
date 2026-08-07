@@ -19,6 +19,10 @@ import {
   Printer,
 } from "lucide-react";
 import { AccordionSection, type SectionStatus } from "@/components/ui/AccordionSection";
+import {
+  isSectionSeeded,
+  seededSectionNotice,
+} from "@/lib/operations/playbook-provenance";
 import { PaywallModal } from "@/components/paywall-modal";
 import { WorkspaceSubNav } from "@/components/workspace/WorkspaceSubNav";
 import { AskScoutButton } from "@/components/workspace/AskScoutButton";
@@ -112,6 +116,12 @@ function getSectionStatus(
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
+  /**
+   * TIM-3449: section keys whose content is still exactly what we seeded, as
+   * computed on the server against a freshly recomputed seed. These must not
+   * count as the owner's finished work.
+   */
+  initialSeededSections?: string[];
   planId: string;
   canEdit: boolean;
   initialDoc: OperationsPlaybookDocument;
@@ -127,6 +137,7 @@ export function OperationsPlaybookWorkspace({
   planId,
   canEdit,
   initialDoc,
+  initialSeededSections = [],
   initialTrialMessagesUsed,
   initialRecipeCards,
 }: Props) {
@@ -213,9 +224,25 @@ export function OperationsPlaybookWorkspace({
     [],
   );
 
+  // TIM-3449: a section that arrived seeded stays seeded until the owner
+  // changes it. `initialDoc` IS the seed for exactly those sections, so it
+  // doubles as the comparison baseline and the seed never has to be shipped
+  // to the client. Re-derived on every render, so the badge clears the moment
+  // they type rather than on the next page load.
+  const seededKeys = useMemo(() => {
+    const wasSeeded = new Set(initialSeededSections);
+    return new Set(
+      OPERATIONS_SECTION_KEYS.filter(
+        (key) => wasSeeded.has(key) && isSectionSeeded(key, doc, initialDoc),
+      ),
+    );
+  }, [doc, initialDoc, initialSeededSections]);
+
   // Section statuses for progress bar
   const statuses = OPERATIONS_SECTION_KEYS.map((key) =>
-    getSectionStatus(doc, key, initialRecipeCards.length),
+    seededKeys.has(key)
+      ? ("seeded" as const)
+      : getSectionStatus(doc, key, initialRecipeCards.length),
   );
 
   // TIM-4108 (UX Phase 3): one list of steps feeds BOTH the progress line and
@@ -326,6 +353,16 @@ export function OperationsPlaybookWorkspace({
                       setOpenSteps((prev) => ({ ...prev, [key]: o }))
                     }
                   >
+                    {/* TIM-3449: say whose content this is, where they are
+                        looking at it. The badge alone leaves them to guess,
+                        and not distinguishing our example from their decision
+                        is the whole defect. */}
+                    {status === "seeded" && (
+                      <p className="text-sm text-[var(--muted-foreground)] leading-relaxed bg-[var(--background)] border border-[var(--border)] rounded-xl px-4 py-3 mb-4">
+                        {seededSectionNotice(label)}
+                      </p>
+                    )}
+
                     {(SOP_CATEGORY_KEYS as readonly string[]).includes(key) && (
                       <CategoryEditor
                         categoryKey={key as SopCategoryKey}

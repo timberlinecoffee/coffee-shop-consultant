@@ -7,15 +7,19 @@
 // P1-2, P1-4, P1-6 once C.x consumers migrate.
 // Contract per style guide [TIM-1537 §AccordionSection with status]:
 //
-//   - status?: "complete" | "in_progress" | "empty" — chip omitted entirely
-//     when undefined so non-playbook consumers get a bare accordion.
+//   - status?: "complete" | "in_progress" | "seeded" | "empty" — chip omitted
+//     entirely when undefined so non-playbook consumers get a bare accordion.
+//   - TIM-3449 added "seeded": content we supplied that the owner has not
+//     touched. Additive — the three existing consumers never pass it, and it
+//     reads as "Starting content" rather than as a fault, matching the badge
+//     Financials shows for the same state (TIM-3448).
 //   - Token-only styling; no hex or px literals.
 //   - Consumer migration is C.x children (TIM-3689 fan-out), NOT this issue.
 
 import { useState, type ReactNode } from 'react'
 import { CheckCircle, ChevronDown, Circle, Minus } from 'lucide-react'
 
-export type SectionStatus = 'complete' | 'in_progress' | 'empty'
+export type SectionStatus = 'complete' | 'in_progress' | 'seeded' | 'empty'
 
 function StatusBadge({ status }: { status: SectionStatus }) {
   if (status === 'complete') {
@@ -31,6 +35,16 @@ function StatusBadge({ status }: { status: SectionStatus }) {
       <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">
         <Circle size={10} aria-hidden="true" />
         In progress
+      </span>
+    )
+  }
+  // TIM-3449: our example, not their decision. Neutral rather than alarming —
+  // the content is useful and the owner simply has not made it theirs yet.
+  if (status === 'seeded') {
+    return (
+      <span className="flex items-center gap-1 text-[11px] font-semibold text-[var(--muted-foreground)] bg-[var(--background)] border border-[var(--border)] px-2 py-0.5 rounded-full shrink-0">
+        <Circle size={10} aria-hidden="true" />
+        Starting content
       </span>
     )
   }
