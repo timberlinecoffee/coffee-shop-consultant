@@ -13,8 +13,13 @@ import { dirname, resolve } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ROUTE_SRC = readFileSync(resolve(here, "./route.ts"), "utf8");
+// TIM-3448: was "../../../../workspace/financials/page.tsx". The page moved
+// into the (app) route group and this path was never updated, so the file read
+// threw ENOENT and BOTH tests in this file have been failing — which means the
+// TIM-2463 currency guard has not actually been guarding anything. It is one
+// of the 8 red tests on main that CI does not run.
 const PAGE_SRC = readFileSync(
-  resolve(here, "../../../../workspace/financials/page.tsx"),
+  resolve(here, "../../../../(app)/workspace/financials/page.tsx"),
   "utf8",
 );
 
