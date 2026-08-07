@@ -21,6 +21,8 @@ import {
   applyCalibratedRentToForecastLines,
 } from "@/lib/financials/rent-calibration";
 import { calibrateFundingSources } from "@/lib/financials/funding-source-calibration";
+import { buildSeedFingerprints } from "@/lib/financials/seed-provenance";
+import { normalizeWithProvenance } from "@/lib/financials/normalize-with-provenance";
 import { resolvePlanGeo, resolvePlanMinimumWage } from "@/lib/wages/resolve-plan-geo";
 import { FinancialsWorkspace } from "./financials-workspace";
 import type { EquipmentItem } from "./financials-workspace";
@@ -148,11 +150,19 @@ export default async function FinancialsWorkspacePage() {
       countryCode: planGeo.countryCode ?? onboardingLocation?.countryCode ?? null,
       currencyCode: forecastInputs.currency_code,
     });
+    // TIM-3448: stamp AFTER every calibration above, so the fingerprint
+    // records the numbers this owner will actually be shown. Fingerprinting
+    // the pre-calibration template would make each calibrated step read as
+    // already edited, and the workspace would open at 7 of 7 again.
+    const seededInputs = {
+      ...forecastInputs,
+      seed_fingerprints: buildSeedFingerprints(forecastInputs),
+    };
     const { data: created } = await supabase
       .from("financial_models")
       .insert({
         plan_id: plan.id,
-        forecast_inputs: forecastInputs,
+        forecast_inputs: seededInputs,
         startup_costs: seededStartupCosts(shopTypes),
       })
       .select()
@@ -160,7 +170,10 @@ export default async function FinancialsWorkspacePage() {
     modelRow = created;
   }
 
-  const initialProjections = normalizeMonthlyProjections(
+  // TIM-3448: normalizeWithProvenance, not normalizeMonthlyProjections —
+  // normalize rebuilds from a whitelist, so the plain call drops the seed
+  // fingerprints and every seeded step goes back to counting as done.
+  const initialProjections = normalizeWithProvenance(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (modelRow as any)?.forecast_inputs ?? modelRow?.monthly_projections
   );

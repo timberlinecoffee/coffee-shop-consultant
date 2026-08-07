@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { hasWriteAccess, isBetaWaived } from "@/lib/access";
 import type { NextRequest } from "next/server";
 import { defaultMonthlyProjections } from "@/lib/financial-projection";
+import { buildSeedFingerprints } from "@/lib/financials/seed-provenance";
 import { getAccountSettings } from "@/lib/account-settings";
 import { seededStartupCosts } from "@/lib/financials/seeded-startup-costs";
 import { calibrateStartupCosts } from "@/lib/financials/startup-cost-calibration";
@@ -103,12 +104,20 @@ export async function GET() {
     countryCode: planGeo.countryCode ?? onboardingLocation?.countryCode ?? null,
     currencyCode: forecastInputs.currency_code,
   });
+  // TIM-3448: stamp AFTER every calibration above, so the fingerprint records
+  // the numbers this owner will actually be shown. Fingerprinting the
+  // pre-calibration template would make each calibrated step read as already
+  // edited, and the workspace would open at 7 of 7 again.
+  const seededInputs = {
+    ...forecastInputs,
+    seed_fingerprints: buildSeedFingerprints(forecastInputs),
+  };
 
   const { data: created, error } = await supabase
     .from("financial_models")
     .insert({
       plan_id: plan.id,
-      forecast_inputs: forecastInputs,
+      forecast_inputs: seededInputs,
       startup_costs: seededStartupCosts(shopTypes),
     })
     .select()

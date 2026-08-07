@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { TrialOfferStep } from "./trial-offer-step";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { X } from "lucide-react";
@@ -96,6 +97,8 @@ type Step =
       max?: number;
     }
   | { id: string; type: "review"; question: string; hint: string }
+  // TIM-3446: the ask. Owns its own buttons, so the shared footer hides here.
+  | { id: string; type: "trial-offer" }
   | { id: string; type: "city-autocomplete"; question: string; hint: string }
   | { id: string; type: "guided-shop-vision" }
   | { id: string; type: "guided-target-customer" }
@@ -179,6 +182,9 @@ const STEPS: Step[] = [
     question: "Here's what we're seeding into your Concept workspace.",
     hint: "You can edit any of this on the next screen.",
   },
+  // TIM-3446: shown after the concept is saved, so it is an invitation and not
+  // a toll gate. Filtered out in project mode — those users already pay.
+  { id: "trial_offer", type: "trial-offer" },
 ];
 
 // ─── Answer types ────────────────────────────────────────────────────────────
@@ -336,8 +342,13 @@ export function OnboardingFlow({
   const supabase = createClient();
 
   // In project mode, skip the persona-level questions already collected at signup.
+  // TIM-3446: `trial_offer` is dropped in project mode too — an owner adding a
+  // second project is already subscribed, and offering them a trial they
+  // cannot take is the same class of untrue statement TIM-3442 removed.
   const activeSteps = projectId
-    ? STEPS.filter((s) => s.id !== "welcome" && s.id !== "motivation")
+    ? STEPS.filter(
+        (s) => s.id !== "welcome" && s.id !== "motivation" && s.id !== "trial_offer",
+      )
     : STEPS;
 
   // WCAG 2.4.3 Focus Order: move focus to the step container on each advance so
@@ -372,6 +383,16 @@ export function OnboardingFlow({
 
   const currentStep = activeSteps[step];
   const totalSteps = activeSteps.length;
+
+  // TIM-3446: the trial offer is a screen, not a question, so it does not get
+  // a number. Counting it would make the progress indicator say "12 of 12"
+  // over a screen with nothing to answer — and the UX audit's headline finding
+  // was this product disagreeing with itself about what it is counting.
+  const trialOfferIndex = activeSteps.findIndex((s) => s.type === "trial-offer");
+  const questionCount = trialOfferIndex === -1 ? totalSteps : trialOfferIndex;
+  // The last step that collects an answer. Pressing Next here saves.
+  const lastAnsweringIndex = questionCount - 1;
+  const isLastAnsweringStep = step === lastAnsweringIndex;
 
   const currentAnswer: string | string[] | LocationSelection | null =
     currentStep.type === "multiselect"
@@ -599,7 +620,12 @@ export function OnboardingFlow({
       ]);
 
       clearDraft();
-      router.push("/workspace/concept");
+      // TIM-3446: was `router.push("/workspace/concept")` — eleven steps of
+      // work, then straight into a read-only product with no offer anywhere.
+      // Advance to the trial offer instead. The concept is saved at this
+      // point, which is what lets that screen open by saying so.
+      setSaving(false);
+      setStep((s) => s + 1);
     } catch (err) {
       console.error("onboarding finish failed", err);
       setError(
@@ -612,7 +638,11 @@ export function OnboardingFlow({
   }
 
   async function handleNext() {
-    if (step < totalSteps - 1) {
+    // TIM-3446: was `step < totalSteps - 1`. With the trial offer appended,
+    // that comparison would have walked past the review screen without ever
+    // saving — the offer would then have opened with "Your concept is saved"
+    // over an empty workspace.
+    if (step < lastAnsweringIndex) {
       setStep((s) => s + 1);
     } else {
       await handleFinish();
@@ -633,7 +663,9 @@ export function OnboardingFlow({
           )}
           <div className="flex items-center gap-3">
             <span className="text-xs text-[var(--dark-grey)]">
-              Step {step + 1} of {totalSteps}
+              {currentStep.type === "trial-offer"
+                ? "All done"
+                : `Step ${step + 1} of ${questionCount}`}
             </span>
             {projectId && (
               <button
@@ -651,9 +683,13 @@ export function OnboardingFlow({
         {/* Progress bar — amber for deferred, teal for done, gray for pending */}
         <div
           className="flex gap-1.5"
-          aria-label={`Step ${step + 1} of ${totalSteps}`}
+          aria-label={
+            currentStep.type === "trial-offer"
+              ? "All steps complete"
+              : `Step ${step + 1} of ${questionCount}`
+          }
         >
-          {activeSteps.map((_, i) => {
+          {activeSteps.slice(0, questionCount).map((_, i) => {
             const status = getStepStatus(i, step, diffState.deferred);
             return (
               <span
@@ -914,6 +950,17 @@ export function OnboardingFlow({
           </div>
         )}
 
+        {currentStep.type === "trial-offer" && (
+          <TrialOfferStep
+            shopName={
+              (typeof answers.shop_name === "string" && answers.shop_name.trim()) ||
+              "Your concept"
+            }
+            skipHref="/workspace/concept"
+            onSkip={clearDraft}
+          />
+        )}
+
         {error && (
           <p
             role="alert"
@@ -924,6 +971,11 @@ export function OnboardingFlow({
         )}
       </main>
 
+      {/* TIM-3446: the trial offer owns its own actions — a generic "Next" next
+          to "Start my 7-day free trial" would be a second, unlabelled way out
+          of the one screen that has to be unambiguous. Back is gone here too:
+          the concept is already saved, so stepping back would re-run the save. */}
+      {currentStep.type !== "trial-offer" && (
       <div className="sticky bottom-0 sm:static bg-[var(--background)] border-t border-[var(--border)] px-6 py-4 flex gap-3">
         {step > 0 && (
           <button
@@ -952,11 +1004,12 @@ export function OnboardingFlow({
         >
           {saving
             ? projectId ? "Saving..." : "Saving your Concept..."
-            : step === totalSteps - 1
-            ? projectId ? "Finish" : "Open my Concept workspace"
+            : isLastAnsweringStep
+            ? projectId ? "Finish" : "Save my Concept"
             : "Next"}
         </button>
       </div>
+      )}
       </div>
     </div>
   );
