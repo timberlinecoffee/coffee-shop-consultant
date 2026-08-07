@@ -145,3 +145,34 @@ test("the notice invites rather than apologises", () => {
     assert.match(notice, /counts as yours/, "does not say how to claim the section");
   }
 });
+
+test("content that merely rearranges across fields is not mistaken for the seed", () => {
+  // Why the separators are non-printable. With a space, "Wipe bar" + "down"
+  // and "Wipe" + "bar down" flatten to the same string, so a real edit would
+  // read as untouched and the section would keep claiming to be ours.
+  const a = reseeded();
+  a.roles.items[0] = { id: "x", role: "Bar Lead", responsibilities: "Pull shots" };
+
+  const b = reseeded();
+  b.roles.items[0] = { id: "y", role: "Bar", responsibilities: "Lead Pull shots" };
+
+  assert.notEqual(
+    isSectionSeeded("roles", a, b),
+    true,
+    "two different role splits compared equal — the separator is collapsing fields",
+  );
+});
+
+test("the source carries no invisible control characters", async () => {
+  // The separators are deliberately non-printable, but they must be written as
+  // escape sequences. Literal control bytes in source are invisible in a diff,
+  // get stripped by well-meaning editors, and made the file read as `join(" ")`
+  // while behaving otherwise — which is exactly the kind of gap between what
+  // code looks like and what it does that this codebase keeps getting bitten by.
+  const { readFileSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const path = fileURLToPath(new URL("./playbook-provenance.ts", import.meta.url));
+  const bytes = readFileSync(path);
+  const offenders = [...bytes].filter((b) => b < 9 || (b > 10 && b < 32));
+  assert.equal(offenders.length, 0, `${offenders.length} literal control byte(s) in source`);
+});
