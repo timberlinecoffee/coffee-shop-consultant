@@ -15,6 +15,10 @@ import { streamScoutTurn } from "@/lib/ai/scout-adapter"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { composeAllWorkspacesSnapshot } from "@/lib/copilot/composePlanSnapshot"
+import {
+  GRADED_WORKSPACE_LABELS,
+  keepGradedWorkspaces,
+} from "@/lib/launch-readiness/graded-workspaces"
 import { hasWriteAccess } from "@/lib/access"
 import { normalizeAIOutput, toTitleCase } from "@/lib/normalize"
 import { recordTurnMetric, resolvePlanTier } from "@/lib/ai/turn-metrics"
@@ -28,14 +32,10 @@ const TTFT_MS = 10_000
 const GAP_MS = 25_000
 const HEARTBEAT_MS = 15_000
 
-const WORKSPACE_LABELS: Record<string, string> = {
-  concept: "Concept",
-  location_lease: "Location & Lease",
-  financials: "Financials",
-  menu_pricing: "Menu & Pricing",
-  buildout_equipment: "Equipment & Supplies",
-  opening_month_plan: "Launch Plan",
-}
+// TIM-3452: the six graded workspaces now come from one shared list that the
+// on-screen card reads too, so the prompt, the schema and the sentence the
+// owner sees cannot drift apart. graded-workspaces.test.mjs compares them.
+const WORKSPACE_LABELS = GRADED_WORKSPACE_LABELS
 
 const SYSTEM_PROMPT = `You are a launch readiness auditor for coffee shop entrepreneurs using the My Coffee Shop Consultant platform. Analyze the provided workspace data across the six workspaces below and produce a structured readiness report.
 
@@ -217,7 +217,13 @@ export async function POST(request: NextRequest) {
   // ── Build cross-workspace snapshot ────────────────────────────────────────
 
   const svcClient = createServiceClient()
-  const { snapshots } = await composeAllWorkspacesSnapshot(planId, svcClient)
+  const { snapshots: allSnapshots } = await composeAllWorkspacesSnapshot(planId, svcClient)
+  // TIM-3452: composeAllWorkspacesSnapshot returns EVERY workspace document —
+  // up to eleven. The prompt below says "the six workspaces" and the response
+  // schema permits only six keys, so the rest were being sent to the model as
+  // unlabelled snake_case headings, telling it to ignore content the owner had
+  // just paid credits to transmit. Grade what we say we grade.
+  const snapshots = keepGradedWorkspaces(allSnapshots)
 
   // TIM-3468: streamScoutTurn's `decision` event reports the actual provider +
   // modelId at stream start; chat_launch_readiness lane defaults to DeepSeek
