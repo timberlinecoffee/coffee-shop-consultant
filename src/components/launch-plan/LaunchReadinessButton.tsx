@@ -5,6 +5,10 @@
 // TIM-3253: added dismiss + snooze controls on the error state.
 
 import { useState, useCallback } from "react";
+import {
+  gradedWorkspacesBlurb,
+  gradedWorkspacesThinkingLabel,
+} from "@/lib/launch-readiness/graded-workspaces";
 import { consumeSseFrames } from "@/components/copilot/sse";
 import { useSinglePlanNotifPref } from "@/lib/use-plan-notification-pref";
 
@@ -125,7 +129,7 @@ export function LaunchReadinessButton({ planId }: { planId: string }) {
         <div>
           <h3 className="font-semibold text-sm text-[var(--foreground)] mb-1">Launch Readiness Check</h3>
           <p className="text-xs text-[var(--muted-foreground)]">
-            AI grades all 6 workspaces against a launch rubric and surfaces critical blockers.
+            {gradedWorkspacesBlurb()}
           </p>
         </div>
         <button
@@ -151,7 +155,7 @@ export function LaunchReadinessButton({ planId }: { planId: string }) {
       {state === "thinking" && (
         <div className="mt-4 flex items-center gap-2 text-xs text-[var(--teal)] font-medium">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] animate-pulse" />
-          Thinking across all 6 workspaces…
+          {gradedWorkspacesThinkingLabel()}
         </div>
       )}
 
