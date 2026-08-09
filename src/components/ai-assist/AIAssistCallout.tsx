@@ -240,6 +240,13 @@ export function AIAssistCallout({
   if (!open) return null;
 
   const isStreaming = phase.kind === "streaming";
+  // TIM-3451: an empty field has nothing to improve and a filled one rarely
+  // wants throwing away, so the field itself says which action belongs first.
+  // This replaces a chooser that offered both every time and emphasised
+  // "Improve this" even when the owner had pressed "Write with AI" and even
+  // when the field was empty — in which case the emphasised button was
+  // disabled, so the one thing the screen drew your eye to could not be used.
+  const hasDraft = draft.trim().length > 0;
 
   return (
     <div
@@ -267,7 +274,7 @@ export function AIAssistCallout({
               id="ai-assist-title"
               className="text-base font-semibold text-[var(--foreground)]"
             >
-              Improve: {fieldLabel}
+              {hasDraft ? "Improve" : "Write"}: {fieldLabel}
             </h2>
           </div>
           <CollapseButton
@@ -289,7 +296,7 @@ export function AIAssistCallout({
                   htmlFor="ai-draft"
                   className="block text-xs font-medium text-[var(--muted-foreground)] mb-1.5"
                 >
-                  Your current text
+                  {hasDraft ? "Your current text" : "Anything you have so far"}
                 </label>
                 <textarea
                   id="ai-draft"
@@ -318,22 +325,27 @@ export function AIAssistCallout({
                 />
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
+              {/* One emphasised action, chosen by what is actually in the
+                  field. The other stays reachable as a quiet link rather than
+                  competing for the press. 44px minimum (UX audit, 5 Aug). */}
+              <div className="pt-1">
                 <button
                   type="button"
-                  onClick={() => void startStream("improve")}
-                  disabled={!draft.trim()}
-                  className="flex-1 bg-[var(--teal)] text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal-dark)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={() => void startStream(hasDraft ? "improve" : "write")}
+                  className="w-full min-h-[44px] inline-flex items-center justify-center bg-[var(--teal)] text-white text-sm font-medium px-4 rounded-xl hover:bg-[var(--teal-dark)] transition-colors"
                 >
-                  Improve this
+                  {hasDraft ? "Improve this" : "Write it for me"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => void startStream("write")}
-                  className="flex-1 border border-[var(--teal)] text-[var(--teal)] text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-[var(--teal)]/5 transition-colors"
-                >
-                  Write with AI
-                </button>
+
+                {hasDraft && (
+                  <button
+                    type="button"
+                    onClick={() => void startStream("write")}
+                    className="w-full min-h-[44px] text-sm text-[var(--dark-grey)] hover:text-[var(--foreground)] underline transition-colors mt-1"
+                  >
+                    Start over and write something new
+                  </button>
+                )}
               </div>
             </div>
           )}

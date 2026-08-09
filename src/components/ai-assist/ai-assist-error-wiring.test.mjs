@@ -69,3 +69,44 @@ test("the error frame reaches state with its code intact", () => {
   );
   assert.match(src, /kind:\s*"failed";\s*frame:\s*AiErrorFrame/);
 });
+
+// ── TIM-3451: the dialog honours the verb you pressed ────────────────────────
+
+test("the emphasised action follows what is in the field", () => {
+  const src = code();
+  // Empty field writes; filled field improves. One emphasised button, chosen
+  // by the field's state, rather than a chooser offering both every time.
+  assert.match(
+    src,
+    /startStream\(hasDraft \? "improve" : "write"\)/,
+    "the primary action no longer follows the field's state",
+  );
+  assert.match(src, /const hasDraft = draft\.trim\(\)\.length > 0/);
+});
+
+test("the emphasised button is never the disabled one", () => {
+  const src = code();
+  // The original bug: on an empty field the primary read "Improve this" and
+  // was `disabled`, so the one control the screen drew your eye to could not
+  // be pressed. A disabled primary in this dialog is always wrong.
+  assert.doesNotMatch(
+    src,
+    /bg-\[var\(--teal\)\][^>]*\n?[^>]*disabled=\{!draft/,
+    "the emphasised button is disabled on an empty field again",
+  );
+  assert.doesNotMatch(src, /disabled=\{!draft\.trim\(\)\}/, "the draft-empty disable is back");
+});
+
+test("the title names the action about to happen", () => {
+  // It always read "Improve: <field>", including when the owner pressed
+  // "Write with AI" and when there was nothing to improve.
+  assert.match(code(), /\{hasDraft \? "Improve" : "Write"\}: \{fieldLabel\}/);
+});
+
+test("the second option stays reachable but quiet", () => {
+  const src = code();
+  // Dropping it entirely would strip a real choice from someone who wants to
+  // start over; giving it equal weight is what caused the ambiguity.
+  assert.match(src, /Start over and write something new/);
+  assert.match(src, /\{hasDraft && \(/, "the start-over link is shown when there is nothing to replace");
+});
