@@ -26,7 +26,7 @@ import { rateLimit } from "@/lib/rate-limit"
 import { notifyIfCreditBalanceLow } from "@/lib/email/credit-balance-low-callsite"
 import type { NextRequest } from "next/server"
 
-// ── Constants ──────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const TTFT_MS = 10_000
 const GAP_MS = 25_000
@@ -90,7 +90,7 @@ Rules:
 - Plain-English rule: when referencing financial ratios in blockers or next actions, use plain English on first reference: "ingredient cost (COGS)" not "COGS", "what you keep after ingredients (gross margin)" not "gross margin."
 - Output ONLY the JSON object. Nothing before or after it.`
 
-// ── Helpers ──────────────────────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────────────────
 
 function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
@@ -127,7 +127,7 @@ function normalizeReadiness(value: unknown): unknown {
   return out
 }
 
-// ── Route ────────────────────────────────────────────────────────────────────────
+// ── Route ─────────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // ── Credit/billing gate ──────────────────────────────────────────────────
+  // ── Credit/billing gate ───────────────────────────────────────────────────
 
   const { data: profile } = await supabase
     .from("users")
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // ── Build cross-workspace snapshot ───────────────────────────────────────
+  // ── Build cross-workspace snapshot ────────────────────────────────────────
 
   const svcClient = createServiceClient()
   const { snapshots: allSnapshots } = await composeAllWorkspacesSnapshot(planId, svcClient)
@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
 
   const userMessage = `## Plan Workspace Data\n\n${workspaceDataSection}\n\nAnalyze all 6 workspaces and produce the launch readiness JSON.`
 
-  // ── SSE stream ─────────────────────────────────────────────────────────────
+  // ── SSE stream ────────────────────────────────────────────────────────────
 
   const encoder = new TextEncoder()
 
