@@ -30,6 +30,12 @@ export interface HiringRoleInput {
   headcount: number;
   monthly_cost_cents: number | null;
   start_date: string | null;
+  /**
+   * TIM-3453: "seed" when this row came from the plan-insert trigger and the
+   * owner has never claimed it. Absent on callers that have not been updated,
+   * which reads as the owner's — the safe direction.
+   */
+  source?: string | null;
 }
 
 export interface FinancialsLaborInput {
@@ -43,6 +49,12 @@ export interface HiringFinancialsInputs {
   monthlyRevenueCents: number;
   laborPctBand: { min: number; max: number; source: string } | null;
   currencyCode?: string;
+  /**
+   * TIM-3453: true when the Financials staffing step is still exactly what we
+   * seeded (TIM-3448 provenance). Paired with every hiring row being "seed",
+   * it means neither number is the owner's.
+   */
+  financialsStaffingIsSeed?: boolean;
 }
 
 function sumHeadcount(rows: HiringRoleInput[]): number {
@@ -146,6 +158,20 @@ export function detectHiringFinancialsConflict(
   // No conflict if either side is empty or both already agree on headcount.
   if (hiringHeadcount === 0 || finHeadcount === 0) return null;
   if (hiringHeadcount === finHeadcount) return null;
+
+  // TIM-3453: the seeding audit's last finding. A brand-new plan gets 7 people
+  // seeded into Hiring by a database trigger and 3 seeded into the financial
+  // model by defaultPersonnel(). 7 != 3, both non-zero, so this fired on every
+  // untouched account — the product reporting its own two guesses disagreeing,
+  // worded as though the owner had made a mistake. Neither number was theirs.
+  //
+  // Stay quiet until at least one side is. The moment they change a headcount
+  // in Hiring or touch Staffing in Financials, the comparison means something
+  // and this fires exactly as before. Both flags default to "the owner's", so
+  // a caller that has not been updated loses no conflicts.
+  const hiringIsAllSeed =
+    input.hiringRoles.length > 0 && input.hiringRoles.every((r) => r.source === "seed");
+  if (hiringIsAllSeed && input.financialsStaffingIsSeed === true) return null;
 
   const hiringMonthlyCents = sumHiringMonthlyPayrollCents(input.hiringRoles);
   const finMonthlyCents = input.financialsLabor.monthly_loaded_cost_cents;
