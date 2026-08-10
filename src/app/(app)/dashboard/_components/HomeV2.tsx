@@ -25,7 +25,7 @@ import {
 } from "@/lib/dashboard/metric-status";
 import { formatCurrencyAmount } from "@/lib/currency";
 
-// ── Progress Ring ─────────────────────────────────────────────────────────────
+// ── Progress Ring ──
 
 // TIM-4104 (T1-D): the ring said "18% ready" and never said ready for WHAT.
 // It now says "ready to open", and `total` lets the title spell out what 100%
@@ -74,7 +74,7 @@ function ProgressRing({ pct, total }: { pct: number; total: number }) {
           />
         </svg>
         <div
-          className="absolute inset-0 flex flex-col items-center justify-center"
+          className="absolute inset-0 flex items-center justify-center"
           aria-label={
             total > 0
               ? `${pct}% ready to open. 100% means all ${total} workspaces are complete.`
@@ -84,16 +84,29 @@ function ProgressRing({ pct, total }: { pct: number; total: number }) {
           <span className="text-xl font-bold text-[var(--foreground)] leading-none tabular-nums">
             {pct}%
           </span>
-          <span className="text-[10px] text-[var(--muted-foreground)] mt-0.5 leading-tight">
-            ready to open
-          </span>
         </div>
       </div>
+
+      {/* TIM-3454: "ready to open" used to sit inside the ring under the
+          percentage, where it did not fit. The ring's clear inner diameter is
+          65px, but a circle narrows as you move away from its centre: at the
+          height the label sat, only 55-64px was actually available, and the
+          label needs 65-72px at 10px. It collided with the stroke on both
+          sides at every percentage.
+
+          Shrinking it further was the wrong direction — the 5 August audit
+          found 10px body text is already below the readable floor. Outside the
+          ring it has the full card width, so it reads at 12px, the percentage
+          gets the whole circle to itself, and a longer translation cannot
+          reintroduce the collision. */}
+      <span className="text-xs text-[var(--muted-foreground)] leading-tight">
+        ready to open
+      </span>
     </div>
   );
 }
 
-// ── Plan Badge ────────────────────────────────────────────────────────────────
+// ── Plan Badge ──
 
 // TIM-4101 (T1-A): three states, not two.
 //
@@ -186,7 +199,7 @@ function PlanBadge({
   );
 }
 
-// ── Plan Nudge Cards ──────────────────────────────────────────────────────────
+// ── Plan Nudge Cards ──
 
 interface NudgeCardProps {
   href: string;
@@ -217,7 +230,7 @@ function NudgeCard({ href, label, copy }: NudgeCardProps) {
   );
 }
 
-// ── Financial Snapshot Card ───────────────────────────────────────────────────
+// ── Financial Snapshot Card ──
 
 interface SnapshotMetricProps {
   label: string;
@@ -383,7 +396,7 @@ function FinancialSnapshotCard({ snapshot }: { snapshot: FinancialSnapshot | nul
   );
 }
 
-// ── Home v2 root ──────────────────────────────────────────────────────────────
+// ── Home v2 root ──
 
 interface HomeV2Props {
   firstName: string;
