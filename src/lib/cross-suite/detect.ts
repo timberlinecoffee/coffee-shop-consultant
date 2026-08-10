@@ -23,6 +23,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildPlanState } from "@/lib/business-plan/plan-state";
 import { loadBenchmarks } from "@/lib/business-plan/benchmarks";
 import { detectHiringFinancialsConflict } from "@/lib/cross-suite/hiring-financials";
+import { stepProvenance } from "@/lib/financials/seed-provenance";
 import { detectMenuTicketMismatch } from "@/lib/cross-suite/menu-ticket";
 import { detectEquipmentMismatch } from "@/lib/cross-suite/equipment-financials";
 import { blendedTicketCentsFromMenu } from "@/lib/menu";
@@ -67,7 +68,9 @@ export async function readCrossSuiteInputs(
       .select("id, name, category_id, category_name, price_cents, cogs_cents, computed_cogs_cents, expected_mix_pct, expected_popularity, archived")
       .eq("plan_id", planId).order("position"),
     supabase.from("hiring_plan_roles")
-      .select("id, role_title, headcount, start_date, monthly_cost_cents")
+      // TIM-3453: `source` distinguishes rows the plan-insert trigger seeded
+      // from roles the owner actually decided on.
+      .select("id, role_title, headcount, start_date, monthly_cost_cents, source")
       .eq("plan_id", planId).order("created_at"),
     supabase.from("workspace_documents")
       .select("content").eq("plan_id", planId).eq("workspace_key", "concept").maybeSingle(),
@@ -159,12 +162,19 @@ export async function readCrossSuiteInputs(
       headcount: number;
       start_date: string | null;
       monthly_cost_cents: number | null;
+      source: string | null;
     }>,
     menuRows: menuRowsTyped,
     forecastAvgTicketCents,
     buildoutGridTotalCents,
     buildoutItemCount,
     financialsEquipmentCents,
+    // TIM-3453: the raw stored blob, carrying the TIM-3448 seed fingerprints.
+    // Passed through unnormalized on purpose — stepProvenance compares
+    // structurally, and normalizeMonthlyProjections would strip the
+    // fingerprints on the way past.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    forecastInputs: ((financialModel as any)?.forecast_inputs ?? null) as unknown,
   };
 }
 
@@ -208,6 +218,7 @@ export function runCrossSuiteResolvers(
       headcount: r.headcount ?? 0,
       monthly_cost_cents: r.monthly_cost_cents ?? null,
       start_date: r.start_date ?? null,
+      source: r.source ?? null,
     })),
     financialsLabor: {
       total_headcount: args.planState.labor.total_headcount,
@@ -216,6 +227,13 @@ export function runCrossSuiteResolvers(
     monthlyRevenueCents,
     laborPctBand: laborPctBand(),
     currencyCode: args.planState.meta.currency_code || "USD",
+    // TIM-3453: read straight off the stored blob. `forecast_inputs` carries
+    // the TIM-3448 seed fingerprints, and stepProvenance compares structurally,
+    // so no normalize pass is needed here. Absent fingerprints (a plan predating
+    // TIM-3448) resolve to "unknown", not "seeded", so those owners keep every
+    // conflict they would have seen.
+    financialsStaffingIsSeed:
+      stepProvenance("staffing", args.forecastInputs ?? null) === "seeded",
   });
   if (hf) out.push(hf);
 

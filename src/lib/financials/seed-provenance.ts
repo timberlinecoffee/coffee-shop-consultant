@@ -160,7 +160,14 @@ export function buildSeedFingerprints(mp: FingerprintableModel): SeedFingerprint
 }
 
 /** Where this step's values came from, right now. */
-export function stepProvenance(step: FinancialStepKey, mp: FingerprintableModel): StepProvenance {
+export function stepProvenance(
+  step: FinancialStepKey,
+  mp: FingerprintableModel | null | undefined,
+): StepProvenance {
+  // A missing model is not evidence the owner did nothing — "unknown", not
+  // "seeded". Callers reading a raw stored blob pass null when there is no
+  // financial model row yet.
+  if (!mp) return "unknown";
   const prints = mp.seed_fingerprints;
   if (!prints || typeof prints !== "object") return "unknown";
   const seeded = prints[step];
@@ -169,12 +176,17 @@ export function stepProvenance(step: FinancialStepKey, mp: FingerprintableModel)
 }
 
 /** True when this step's numbers are still ours, so it must not count as done. */
-export function isUntouchedSeed(step: FinancialStepKey, mp: FingerprintableModel): boolean {
+export function isUntouchedSeed(
+  step: FinancialStepKey,
+  mp: FingerprintableModel | null | undefined,
+): boolean {
   return stepProvenance(step, mp) === "seeded";
 }
 
 /** Steps the owner has actually made decisions about. */
-export function ownerTouchedSteps(mp: FingerprintableModel): FinancialStepKey[] {
+export function ownerTouchedSteps(
+  mp: FingerprintableModel | null | undefined,
+): FinancialStepKey[] {
   return FINANCIAL_STEP_KEYS.filter((s) => stepProvenance(s, mp) !== "seeded");
 }
 
