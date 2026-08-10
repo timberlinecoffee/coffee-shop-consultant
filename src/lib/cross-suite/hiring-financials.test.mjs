@@ -301,3 +301,72 @@ test("path summaries differ enough to not read as duplicates (board bug #5 fix)"
   assert.match(raise.summary, /Increase Financials payroll budget/i);
   assert.match(phase.summary, /push the last .* start date/i);
 });
+
+// ── TIM-3453: the product must not report its own two guesses as a conflict ──
+
+/** The exact production shape: trigger seeds 7 in Hiring, model seeds 3. */
+function seededSides() {
+  return {
+    hiringRoles: [
+      { id: "1", role_title: "Barista", headcount: 3, monthly_cost_cents: null, start_date: null, source: "seed" },
+      { id: "2", role_title: "Shift Lead", headcount: 2, monthly_cost_cents: null, start_date: null, source: "seed" },
+      { id: "3", role_title: "Assistant Manager", headcount: 1, monthly_cost_cents: null, start_date: null, source: "seed" },
+      { id: "4", role_title: "General Manager", headcount: 1, monthly_cost_cents: null, start_date: null, source: "seed" },
+    ],
+    financialsLabor: { total_headcount: 3, monthly_loaded_cost_cents: 900000 },
+    monthlyRevenueCents: 2600000,
+    laborPctBand: { min: 0.28, max: 0.35, source: "test" },
+    currencyCode: "USD",
+    financialsStaffingIsSeed: true,
+  };
+}
+
+test("TIM-3453: an untouched account is told about no conflict", () => {
+  // 7 vs 3, both non-zero and different — the old guards let this through and
+  // every brand-new account saw "1 plan conflict found" before entering a
+  // thing. Neither number was the owner's.
+  assert.equal(detectHiringFinancialsConflict(seededSides()), null);
+});
+
+test("TIM-3453: editing the hiring side makes the comparison real", () => {
+  const input = seededSides();
+  input.hiringRoles[0] = { ...input.hiringRoles[0], headcount: 5, source: "user" };
+  assert.notEqual(
+    detectHiringFinancialsConflict(input),
+    null,
+    "the owner changed their staffing and the mismatch was suppressed",
+  );
+});
+
+test("TIM-3453: editing the financials side makes the comparison real", () => {
+  const input = seededSides();
+  input.financialsStaffingIsSeed = false;
+  assert.notEqual(detectHiringFinancialsConflict(input), null);
+});
+
+test("TIM-3453: a caller that knows neither provenance loses no conflicts", () => {
+  // Fails toward reporting. An un-updated call site, a plan predating the
+  // fingerprints, or an unreadable marker must never silently hide a real
+  // disagreement between the owner's own numbers.
+  const input = seededSides();
+  input.hiringRoles = input.hiringRoles.map((r) => ({ ...r, source: null }));
+  delete input.financialsStaffingIsSeed;
+  assert.notEqual(detectHiringFinancialsConflict(input), null);
+
+  const halfKnown = seededSides();
+  delete halfKnown.financialsStaffingIsSeed;
+  assert.notEqual(
+    detectHiringFinancialsConflict(halfKnown),
+    null,
+    "seeded hiring alone suppressed a conflict — both sides must be ours",
+  );
+});
+
+test("TIM-3453: one owner-added role among seeded ones still counts as theirs", () => {
+  const input = seededSides();
+  input.hiringRoles.push({
+    id: "5", role_title: "Head Roaster", headcount: 1,
+    monthly_cost_cents: 500000, start_date: null, source: "user",
+  });
+  assert.notEqual(detectHiringFinancialsConflict(input), null);
+});
