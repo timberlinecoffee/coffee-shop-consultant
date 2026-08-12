@@ -7,7 +7,14 @@
 //   --background, --foreground, --card, --muted, --muted-foreground, --border.
 
 import Link from "next/link";
-import { ShieldCheck, AlertTriangle, ArrowRight, TrendingUp, HelpCircle } from "lucide-react";
+import {
+  ShieldCheck,
+  AlertTriangle,
+  ArrowRight,
+  TrendingUp,
+  HelpCircle,
+  ListChecks,
+} from "lucide-react";
 import type {
   PlanOverview,
   ConflictItem,
@@ -28,8 +35,19 @@ import { formatCurrencyAmount } from "@/lib/currency";
 // ── Progress Ring ──
 
 // TIM-4104 (T1-D): the ring said "18% ready" and never said ready for WHAT.
-// It now says "ready to open", and `total` lets the title spell out what 100%
-// actually means — the one question a percentage always invites.
+// `total` lets the title spell out what 100% actually means — the one question
+// a percentage always invites.
+//
+// TIM-3455: it said "ready to open", which the number does not support. It is
+// the share of workspaces marked complete (see `completedPct` in
+// plan-overview.ts) — a measure of how much of the PLAN is filled in. A plan
+// can be 100% filled in and the shop nowhere near able to open: no lease
+// signed, no licence, no espresso machine. Telling a first-time owner they are
+// "100% ready to open" on the strength of eleven finished forms is the same
+// class of mistake as counting our own seeded numbers as their progress.
+//
+// The label is gone entirely rather than reworded: the card is now titled, and
+// the line under the ring already names what is being counted.
 function ProgressRing({ pct, total }: { pct: number; total: number }) {
   const r = 36;
   const circ = 2 * Math.PI * r; // 226.19...
@@ -37,10 +55,10 @@ function ProgressRing({ pct, total }: { pct: number; total: number }) {
 
   return (
     <div
-      className="flex flex-col items-center gap-2"
+      className="flex flex-col items-center"
       title={
         total > 0
-          ? `100% means all ${total} workspaces are complete — everything your plan covers before you open.`
+          ? `100% means all ${total} workspaces are filled in. It tracks how complete your plan is, not the state of the shop itself.`
           : undefined
       }
     >
@@ -77,8 +95,8 @@ function ProgressRing({ pct, total }: { pct: number; total: number }) {
           className="absolute inset-0 flex items-center justify-center"
           aria-label={
             total > 0
-              ? `${pct}% ready to open. 100% means all ${total} workspaces are complete.`
-              : `${pct}% ready to open`
+              ? `${pct}% of your plan is complete. 100% means all ${total} workspaces are filled in.`
+              : `${pct}% of your plan is complete`
           }
         >
           <span className="text-xl font-bold text-[var(--foreground)] leading-none tabular-nums">
@@ -86,22 +104,6 @@ function ProgressRing({ pct, total }: { pct: number; total: number }) {
           </span>
         </div>
       </div>
-
-      {/* TIM-3454: "ready to open" used to sit inside the ring under the
-          percentage, where it did not fit. The ring's clear inner diameter is
-          65px, but a circle narrows as you move away from its centre: at the
-          height the label sat, only 55-64px was actually available, and the
-          label needs 65-72px at 10px. It collided with the stroke on both
-          sides at every percentage.
-
-          Shrinking it further was the wrong direction — the 5 August audit
-          found 10px body text is already below the readable floor. Outside the
-          ring it has the full card width, so it reads at 12px, the percentage
-          gets the whole circle to itself, and a longer translation cannot
-          reintroduce the collision. */}
-      <span className="text-xs text-[var(--muted-foreground)] leading-tight">
-        ready to open
-      </span>
     </div>
   );
 }
@@ -422,14 +424,27 @@ export function HomeV2({ firstName, overview, snapshot }: HomeV2Props) {
 
         {/* Row 1: readiness ring + plan badge */}
         <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4 items-stretch">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 flex flex-col items-center justify-center gap-3">
-            <ProgressRing pct={counts.completedPct} total={counts.total} />
-            {/* TIM-4104 (T1-D): "sections" here meant WORKSPACES, while three
-                other screens used the same word for the steps inside one. The
-                left-hand nav has always called these workspaces; say that. */}
-            <p className="text-xs text-[var(--muted-foreground)] text-center">
-              {counts.completed} of {counts.total} workspaces complete
-            </p>
+          {/* TIM-3455: the card is titled, like the Financial Snapshot card
+              below it. A heading is what lets the ring drop its own label:
+              "Plan Progress" says what the percentage measures once, at the
+              top, instead of a floating line wedged between the ring and the
+              count that said something the number could not support. */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <ListChecks size={16} className="text-[var(--teal)]" aria-hidden="true" />
+              <h2 className="text-sm font-semibold text-[var(--foreground)]">
+                Plan Progress
+              </h2>
+            </div>
+            <div className="flex flex-1 flex-col items-center justify-center gap-3">
+              <ProgressRing pct={counts.completedPct} total={counts.total} />
+              {/* TIM-4104 (T1-D): "sections" here meant WORKSPACES, while three
+                  other screens used the same word for the steps inside one. The
+                  left-hand nav has always called these workspaces; say that. */}
+              <p className="text-xs text-[var(--muted-foreground)] text-center">
+                {counts.completed} of {counts.total} workspaces complete
+              </p>
+            </div>
           </div>
           <PlanBadge conflicts={conflicts} state={conflictCheckState} />
         </div>
