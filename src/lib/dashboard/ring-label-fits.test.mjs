@@ -1,21 +1,25 @@
-// TIM-3454: the readiness ring's centre holds the percentage and nothing else.
+// TIM-3454 / TIM-3455: the readiness ring holds the percentage and nothing else,
+// and nothing on the card claims the shop is ready to open.
 //
-// "ready to open" used to sit inside the ring, under the percentage, where it
-// did not fit. A circle narrows as you move away from its centre: the ring's
-// clear inner diameter is 65px, but at the height the label sat only 55px was
-// actually available, and the label measures 70px at 10px type. It collided
-// with the stroke on both sides at every percentage.
+// Two defects, one card.
 //
-// This is the same shape as every other defect this month — a contract with
-// two sides and no test comparing them. The two sides here are the ring's
-// geometry and the text put inside it. So: compute the space the circle
-// actually offers at the label's height, and fail if a second line of text is
-// ever placed back inside the overlay.
+// TIM-3454 was geometry. "ready to open" sat inside the ring under the
+// percentage, where it did not fit. A circle narrows as you move away from its
+// centre: the clear inner diameter is 65px, but at the height the label sat
+// only 55px was actually available and the label measures 70px at 10px type.
+// It collided with the stroke on both sides at every percentage. Same shape as
+// every other defect this month — a contract with two sides and no test
+// comparing them. The two sides are the ring's geometry and the text put
+// inside it, so this computes the space the circle actually offers.
 //
-// Shrinking the label to fit was the wrong direction anyway. The 5 August
-// audit found 10px body text is already below the readable floor, and a
-// translation longer than "ready to open" would reintroduce the collision at
-// any size. Outside the ring it has the full card width.
+// TIM-3455 was the claim. The percentage is `completedPct` in plan-overview.ts:
+// the share of workspaces marked complete. That measures how much of the plan
+// is filled in. It says nothing about whether the shop can open — no lease, no
+// licence, no machine. A first-time owner told they are "100% ready to open"
+// because eleven forms are finished is being misled by their own software.
+//
+// The fix for both was the same: take the label off the ring entirely and title
+// the card instead. So this file guards the geometry AND the wording.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -69,10 +73,10 @@ test("a second line of text does not fit inside the ring", () => {
 
   assert.ok(
     labelWidth > available,
-    `"ready to open" was expected not to fit; the maths now says it does ` +
+    `a second line was expected not to fit; the maths now says it does ` +
       `(${labelWidth}px label vs ${available.toFixed(1)}px available). ` +
-      `If the ring genuinely grew, update this test — do not move the label back ` +
-      `on the strength of a number nobody re-measured.`,
+      `If the ring genuinely grew, update this test — do not move a label back ` +
+      `inside on the strength of a number nobody re-measured.`,
   );
 });
 
@@ -93,25 +97,59 @@ test("the ring's centre overlay holds the percentage alone", () => {
   );
 });
 
-test("the label reads at the body size, outside the ring", () => {
+test("nothing on the card tells the owner they are ready to open", () => {
   const src = code();
-  assert.match(
-    src,
-    /<span className="text-xs text-\[var\(--muted-foreground\)\] leading-tight">\s*ready to open/,
-    "the readiness label is no longer a 12px line under the ring",
-  );
+
+  // The whole point of TIM-3455. `completedPct` counts finished workspaces;
+  // readiness to trade is not something this product measures at all.
   assert.doesNotMatch(
     src,
-    /text-\[10px\][^>]*>\s*\n?\s*ready to open/,
-    "the label is back at 10px, below the readable floor the audit set",
+    /ready to open/,
+    'the card claims "ready to open" again — the percentage counts filled-in ' +
+      "workspaces and cannot support that",
+  );
+
+  // Neither may the wording drift to a synonym that makes the same promise.
+  assert.doesNotMatch(
+    src,
+    /\bready to (trade|launch|serve)\b/i,
+    "the readiness claim is back under a different verb",
   );
 });
 
-test("the spoken label still says what the percentage means", () => {
-  // Moving the text out of the ring must not take it away from a screen
-  // reader: the percentage on its own is the thing that prompted TIM-4104.
+test("the card is titled, which is what lets the ring drop its label", () => {
+  const src = code();
+  assert.match(
+    src,
+    /<h2 className="text-sm font-semibold text-\[var\(--foreground\)\]">\s*Plan Progress/,
+    'the "Plan Progress" heading is gone — without it the ring is an unlabelled ' +
+      "number, which is the state TIM-4104 fixed",
+  );
+  // TIM-1002: label-shaped text is Title Case.
+  assert.doesNotMatch(src, /Plan progress/, "heading is not Title Case (TIM-1002)");
+});
+
+test("the count under the ring still names what is being counted", () => {
+  // This line is now the only thing explaining the percentage on screen, so it
+  // carries more weight than it did when a label sat above it.
   assert.match(
     code(),
-    /\$\{pct\}% ready to open\. 100% means all \$\{total\} workspaces are complete\./,
+    /\{counts\.completed\} of \{counts\.total\} workspaces complete/,
+    "the workspace count is gone — the ring is now a bare percentage",
+  );
+});
+
+test("the spoken label says what the percentage measures", () => {
+  // A screen reader gets no heading-to-ring association for free, so the
+  // overlay states the measure outright.
+  const src = code();
+  assert.match(
+    src,
+    /\$\{pct\}% of your plan is complete\. 100% means all \$\{total\} workspaces are filled in\./,
+  );
+  assert.doesNotMatch(
+    src,
+    /aria-label[\s\S]{0,200}ready to open/,
+    "the spoken label still says ready to open",
   );
 });
