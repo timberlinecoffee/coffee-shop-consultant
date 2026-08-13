@@ -98,25 +98,34 @@ export default async function DashboardPage() {
         <Suspense fallback={null}>
           <OpenImportFromQuery />
         </Suspense>
-        {profile?.subscription_status === "free_trial" &&
-          isTrialActive(profile.trial_ends_at) && (
-            <TrialBanner
-              trialEndsAt={profile.trial_ends_at as string}
-              chosenTier={
-                profile.subscription_tier === "pro" ? "pro" : "starter"
+        {/* TIM-3459: these banners are siblings of HomeV2, not children, so
+            they never got HomeV2's `px-4 sm:px-6` gutter — the trial strip ran
+            edge to edge and touched the top of the frame while everything
+            below it was inset. Reported from a live screen. The gutter is
+            declared once here, matching HomeV2's exactly; the last banner's
+            own bottom margin is dropped so HomeV2's `pt-8` is the only gap
+            between the strip and "Welcome back". */}
+        <div className="w-full px-4 sm:px-6 pt-6 [&>*:last-child]:mb-0 empty:hidden">
+          {profile?.subscription_status === "free_trial" &&
+            isTrialActive(profile.trial_ends_at) && (
+              <TrialBanner
+                trialEndsAt={profile.trial_ends_at as string}
+                chosenTier={
+                  profile.subscription_tier === "pro" ? "pro" : "starter"
+                }
+              />
+            )}
+          {profile?.subscription_status === "past_due" && <PaymentFailureBanner />}
+          {profile?.trial_just_converted_to && (
+            <WelcomeToast
+              planName={
+                PLAN_DISPLAY_NAMES[profile.trial_just_converted_to as string] ??
+                "Pro"
               }
             />
           )}
-        {profile?.subscription_status === "past_due" && <PaymentFailureBanner />}
-        {profile?.trial_just_converted_to && (
-          <WelcomeToast
-            planName={
-              PLAN_DISPLAY_NAMES[profile.trial_just_converted_to as string] ??
-              "Pro"
-            }
-          />
-        )}
-        {overview.planId && <IntakeBanner planId={overview.planId} subscriptionTier={profile ? effectivePlanForGating(profile) : "free"} />}
+          {overview.planId && <IntakeBanner planId={overview.planId} subscriptionTier={profile ? effectivePlanForGating(profile) : "free"} />}
+        </div>
         <HomeV2 firstName={firstName} overview={overview} snapshot={snapshot} />
         {overview.planId && (
           <CoPilotDrawer
