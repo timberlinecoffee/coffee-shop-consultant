@@ -95,7 +95,14 @@ export function SectionHeader({
   return (
     <div className={`flex items-center justify-between gap-4${className != null ? ` ${className}` : ' mb-4'}`}>
       <div className="flex items-center gap-2 min-w-0">
-        <TitleEl className="text-sm font-semibold text-[var(--foreground)] truncate" title={title}>
+        {/* TIM-3457: 16px, not 14px. Section titles were the same size as the
+            body text beneath them, so a workspace read as one undifferentiated
+            column and nothing told the eye where a section began. The scale is
+            now 28px page title / 16px section title / 14px body, which is a
+            real step at each level. Changing it here changes it on all 25
+            screens that render through this component — the reason the
+            component exists. */}
+        <TitleEl className="text-base font-semibold text-[var(--foreground)] truncate" title={title}>
           {title}
         </TitleEl>
 
