@@ -2566,7 +2566,14 @@ function RoleNavRow({
           : "border-l-transparent hover:bg-[var(--neutral-cool-50)]"
       }`}
     >
-      <div className="flex items-center">
+      {/* TIM-3456: the row's left margin used to come entirely from the drag
+          handle's `pl-2`, and the handle is not rendered at all when the plan
+          is read-only. So the moment a trial lapsed, every role title sat flush
+          against the card's left border with no gap — reported from a live
+          screen. Padding now lives on the row itself, where it cannot depend on
+          whether the owner is allowed to edit, and it matches the `px-3` on the
+          "Roles" header above so the titles line up with it. */}
+      <div className="flex items-center px-3">
         {canEdit && (
           <button
             type="button"
@@ -2574,7 +2581,7 @@ function RoleNavRow({
             {...attributes}
             {...listeners}
             tabIndex={-1}
-            className="pl-2 py-2 text-[var(--neutral-cool-400)] opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing touch-none shrink-0"
+            className="pr-1.5 py-2 text-[var(--neutral-cool-400)] opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing touch-none shrink-0"
           >
             <GripVertical size={12} />
           </button>
@@ -2591,7 +2598,7 @@ function RoleNavRow({
         <button
           type="button"
           onClick={onSelect}
-          className="flex-1 min-w-0 text-left py-2 pr-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--teal)] rounded-sm"
+          className="flex-1 min-w-0 text-left py-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--teal)] rounded-sm"
         >
           {node.role.role_title ? (
             <span className="block text-sm font-medium truncate">
@@ -2614,7 +2621,7 @@ function RoleNavRow({
               e.stopPropagation();
               onDelete();
             }}
-            className="pr-2 py-2 opacity-0 group-hover:opacity-100 text-[var(--dark-grey)] hover:text-[var(--destructive)] shrink-0"
+            className="pl-2 py-2 opacity-0 group-hover:opacity-100 text-[var(--dark-grey)] hover:text-[var(--destructive)] shrink-0"
           >
             <Trash2 size={12} />
           </button>
