@@ -131,7 +131,7 @@ export function PersonaSection({ personas, canEdit, onUpdate, onWriteWithAi }: P
               onClick={() =>
                 setExpandedId(expandedId === EXAMPLE_PERSONA_ID ? null : EXAMPLE_PERSONA_ID)
               }
-              className="text-[var(--teal)] hover:underline focus-visible:outline-none"
+              className="text-[var(--sage-text)] hover:underline focus-visible:outline-none"
             >
               {expandedId === EXAMPLE_PERSONA_ID ? "Hide example" : "See an example"}
             </button>
