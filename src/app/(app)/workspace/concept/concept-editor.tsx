@@ -494,7 +494,7 @@ export function ConceptWorkspace({
                         }
                       }}
                       aria-expanded={openExampleId === meta.id}
-                      className="mb-2 text-xs text-[var(--teal)] font-medium hover:underline focus-visible:outline-none focus:underline"
+                      className="mb-2 text-xs text-[var(--sage-text)] font-medium hover:underline focus-visible:outline-none focus:underline"
                     >
                       {openExampleId === meta.id ? "Hide example" : "See an example"}
                     </button>
@@ -535,7 +535,7 @@ export function ConceptWorkspace({
                             <button
                               type="button"
                               onClick={() => setExampleIdx((i) => (i + 1) % examples.length)}
-                              className="text-xs text-[var(--teal)] hover:underline focus-visible:outline-none focus:text-[var(--teal-dark)]"
+                              className="text-xs text-[var(--sage-text)] hover:underline focus-visible:outline-none focus:text-[var(--teal-dark)]"
                             >
                               See another shop
                             </button>

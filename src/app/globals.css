@@ -364,6 +364,14 @@
   --gray-mid: #5a5a5a;
   --sage-medium: #5d8c7e;
   --sage-muted: #6B7B70;
+  /* TIM-3458: sage for TEXT. The brand sage (--sage, #76b39d) is a fill
+     colour — on white it measures 2.41:1, well under the 4.5:1 a person with
+     low vision needs to read 12px type, and it would drag the Lighthouse
+     accessibility gate down with it. --sage-medium (3.81:1) and --sage-muted
+     (4.48:1) both miss too. This is the brand sage darkened to 70%, which
+     reads as the same colour and measures 4.68:1. Use it whenever sage is the
+     ink rather than the paint. */
+  --sage-text: #4F7D6C;
   --sage-light: #7BAE8A;
   --sage-pale: #8FA694;
   --rust: #B23A1F;
