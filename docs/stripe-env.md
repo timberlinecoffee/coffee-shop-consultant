@@ -64,6 +64,19 @@ Provisioned 2026-06-01 in **test mode** (`sk_test_…`) via `scripts/stripe-crea
 
 Credits/prices are launch defaults flagged for Trent/product calibration before live mode. When Stripe goes live, create live-mode prices and rotate the Production env values.
 
+## Verifying Vercel env matches Stripe (TIM-1584)
+
+Whenever Stripe keys are rotated (test→live, live→live, account swap), verify every `STRIPE_*_PRICE_ID` in the target Vercel environment actually resolves to an active price in the target Stripe account, at the documented amount/interval:
+
+```bash
+cd coffee-shop-consultant
+npx vercel env pull .env.prod --environment production
+node --env-file=.env.prod scripts/verify-stripe-live-prices.mjs
+rm .env.prod
+```
+
+The script is read-only (calls `stripe.prices.retrieve` only) and prints a PASS / FAIL row per env var covering: `livemode`, `active`, `unit_amount`, `currency`, `interval`, and product name. Non-zero exit means at least one row failed — fix before shipping any Checkout flow to prod. Repeat with `--environment preview` and `--environment development` if you want to audit those too.
+
 ## Revising a price (e.g. Pro rate change)
 
 1. In the Stripe Dashboard, create a new price on the existing Pro product.
